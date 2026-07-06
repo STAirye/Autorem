@@ -41,17 +41,25 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Estructura **v1.3**
+tras modularizar (§4.4):
+
 | Archivo | Rol |
 |---|---|
-| `rem_marcar_egresos 1.2.py` | **VERSIÓN ACTUAL.** GUI Tkinter + detector de formato + error handler. |
+| `rem_utils.py` | **BASE COMÚN.** Utilidades genéricas sin lógica de sección: `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido` y la guarda de `openpyxl`. |
+| `rem_a05_egresos.py` | **VERSIÓN ACTUAL** (ex `rem_marcar_egresos 1.2.py`). Módulo A05: config clínica, `validar_formato` IRIS/admin, `procesar`, GUI Tkinter y CLI. Importa de `rem_utils`. |
+| `rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada; se usó para verificar equivalencia. |
 | `rem_marcar_egresos 1.1.py` | Versión previa (CLI puro). Base validada del core. |
-| `rem_marcar_egresos v0.2.py`, `rem_marcar_egresos.py`, `... 1.0 licenced.py` | Históricas. |
-| `CONTEXTO_COWORK_rem_egresos.md` | Contexto original del handoff a Cowork (v1.1). Superado por este archivo. |
-| `formato rem administrativo.xlsx` | ⚠ **CONTIENE PII REAL** (RUT, nombre, dirección, teléfono). Vive en la carpeta de trabajo (OneDrive), **NO en el repo git**. Se usó solo para construir el detector. No copiar al repo. |
-| `license.txt` | Texto GPL-3.0 completo. |
+| `rem_marcar_egresos v0.2.py`, `rem_marcar_egresos.py` | Históricas. |
+| `LICENSE` | Texto GPL-3.0 completo (inglés, el que vale legalmente). |
+| `license ES.txt` | Traducción no oficial del GPL-3.0 al español (solo referencia). |
+| `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red de seguridad anti-PII). |
 
-**Recomendación al iniciar en Claude Code:** el core está estable. Antes de
-seguir, considerar limpiar nombres (§10, "Higiene de repo").
+Los exports RAYEN/IRIS con PII y `formato rem administrativo.xlsx` viven **solo
+en la carpeta de trabajo (OneDrive), NUNCA en el repo** (§8).
+
+**Estado:** el core está estable y modularizado. Los `.py` viejos se conservan
+como referencia; mover a `legacy/` cuando se quiera (§10, "Higiene de repo").
 
 ---
 
@@ -97,6 +105,17 @@ un callback `log` (default `print`) para que GUI y CLI compartan el núcleo.
 Mensajes claros para: `openpyxl` faltante, `PermissionError` (abierto en
 Excel/OneDrive), archivo inexistente, extensión no-xlsx, formato administrativo
 y formato desconocido. En error inesperado vuelca el traceback al log.
+
+### 4.4 Modularización v1.3
+El monolito `rem_marcar_egresos 1.2.py` se partió en dos:
+- **`rem_utils.py`** — utilidades genéricas reutilizables por cualquier módulo
+  del REM (§2). `encontrar_fila_encabezado` quedó **parametrizado** (recibe
+  `ancla, usar_blanco_en_a, n_hardcode, max_filas`) en vez de leer globales.
+- **`rem_a05_egresos.py`** — solo la lógica A05; importa de `rem_utils`.
+
+Verificado: salida `A05_Egresos` **idéntica** a v1.2 sobre un export sintético
+(Alta con/sin subtipo, Trans, Migrante, fila sin egreso). Entry point pasa a ser
+`rem_a05_egresos.py` (GUI/CLI viven ahí por ahora; ver §12).
 
 ---
 
@@ -207,8 +226,9 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
   author reviewed, modified, and integrated the code."* + autor
   (Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa) + `SPDX-License-Identifier:
   GPL-3.0-or-later` + versión.
-- **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`/
-  `COPYING` con el texto completo (ya está en `license.txt`).
+- **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`
+  con el texto completo (ya está en el repo; `license ES.txt` es traducción de
+  referencia, no la versión legal).
 - Comentarios y mensajes de usuario en español; nombres de función mixtos OK.
 
 ---
@@ -231,11 +251,17 @@ git commit -m "Import inicial: módulo egresos A05 v1.2 + contexto"
 debe listar planillas). El `.gitignore` ya excluye `*.xlsx/*.xls/*.csv` como red
 de seguridad.
 
-### Higiene de repo (recomendado, opcional)
-- Renombrar el módulo a `rem_marcar_egresos.py` (sin versión ni espacios en el
-  nombre — git ya versiona; los espacios molestan a PyInstaller y a la shell).
-  Mover las versiones viejas a `legacy/` o borrarlas (git guarda la historia).
-- Tag de versión: `git tag v1.2`.
+### Estado git (jul-2026)
+- Repo inicializado en rama `main`, identidad local `Simón Tobar`.
+- Commits: `Import inicial` (v1.2 monolito) → `Modularizar` (v1.3, split
+  utils/A05). Tag `v1.2` en el import.
+- El módulo actual ya tiene nombre limpio (`rem_a05_egresos.py`, sin versión ni
+  espacios).
+
+### Higiene pendiente (opcional)
+- Mover los `.py` viejos (`1.1`, `1.2`, `v0.2`, `rem_marcar_egresos.py`) a
+  `legacy/` — git ya guarda la historia; solo ordenan la carpeta.
+- Tag `v1.3` cuando se estabilice.
 
 ---
 
@@ -244,11 +270,13 @@ de seguridad.
 Meta: colega no técnico hace doble-clic, sin instalar Python.
 
 ```bash
-pyinstaller --onefile --windowed --name "MarcarEgresos" rem_marcar_egresos.py
+pyinstaller --onefile --windowed --name "MarcarEgresos" rem_a05_egresos.py
 # -> dist/MarcarEgresos.exe
 ```
 
 **Gotchas:**
+- Entry point = `rem_a05_egresos.py`. `rem_utils.py` debe estar **en la misma
+  carpeta**; PyInstaller sigue el `import` solo y lo empaqueta.
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
   desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede
@@ -261,12 +289,15 @@ pyinstaller --onefile --windowed --name "MarcarEgresos" rem_marcar_egresos.py
 
 ## 12. Roadmap / arquitectura futura
 
-- **`rem_utils.py` compartido:** extraer funciones comunes (`norm`, `to_year`,
-  `solo_entero`, `num_pregunta`, `encontrar_fila_encabezado`, cortador de banner,
-  `validar_formato` genérico). Base para todos los módulos.
-- **Un módulo por sección del REM** (A05 es el primero). Estructura sugerida:
+- **`rem_utils.py` compartido:** ✅ HECHO (v1.3, §4.4). Extraídas `norm`,
+  `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`,
+  `encontrar_fila_encabezado`, `abrir_carpeta`, `ArchivoInvalido`. Pendiente
+  posible: un `validar_formato` genérico (hoy cada módulo trae el suyo).
+- **Un módulo por sección del REM** (A05 es el primero). Estructura:
   `rem_utils.py` + `rem_a05_egresos.py` + `rem_<seccion>.py`, con una GUI/CLI
-  común que despache al módulo correcto según el export detectado.
+  común que despache al módulo correcto según el export detectado. Hoy la GUI/CLI
+  vive dentro de `rem_a05_egresos.py`; al sumar el 2º módulo, extraerla a un
+  despachador común.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.
 - **Abandonos:** dependen del cálculo del "PowerBI madre" — etapa aparte.
