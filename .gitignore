@@ -1,0 +1,38 @@
+# ==========================================================================
+# .gitignore — proyecto autoREM
+# REGLA DURA: NUNCA versionar datos de pacientes (PII: RUT, nombre, dirección,
+# teléfono, fecha de nacimiento). Los exports RAYEN/IRIS quedan fuera de git.
+# ==========================================================================
+
+# --- Datos: planillas de pacientes (PII) ---
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.tsv
+# Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
+# explícito: git add -f muestra_anonimizada.xlsx
+
+# --- Salidas del script ---
+*_procesado.xlsx
+
+# --- Empaquetado PyInstaller ---
+build/
+dist/
+*.spec
+*.exe
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- Editores / SO ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
