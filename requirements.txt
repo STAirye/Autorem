@@ -1,0 +1,7 @@
+# Dependencias de autoREM.
+# Instala con:  pip install -r requirements.txt
+#
+# openpyxl es la ÚNICA dependencia externa (lectura/escritura de .xlsx).
+# tkinter (la GUI) viene incluido con el Python de Windows, no se instala aparte.
+# Probado con openpyxl 3.1.5 / Python 3.14.
+openpyxl>=3.1,<4
