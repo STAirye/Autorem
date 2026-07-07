@@ -126,10 +126,13 @@ def lanzar_gui(ruta_inicial=""):
 
     instr = (
         "1.  Descarga el Excel del formulario «Control de Salud Mental» (IRIS o Administrativo).\n"
+        "A) IRIS: Formularios RAYEN -> Control de Salud Mental. -> Todos los metacampos, Situacion TODOS, estado AMBOS.\n"
+        "B) RAYEN: Herramientas -> Informe Estadistico -> Impresion Formularios Clinicos. Reporte Administrativo.\n"
         "2.  Elige abajo el FORMATO que descargaste y el archivo.\n"
         "3.  Marca la(s) TAREA(s) y presiona «Procesar». Se crea una copia\n"
         "     «…_procesado.xlsx» con una hoja por tarea. Tu archivo original NO se modifica.\n"
-        "⚠  No discrimina fecha."
+        "⚠  No discrimina fecha, debe seleccionarse correctamente al bajar el reporte.\n"
+        "Programa de código abierto, con licencia GPL-3.0 y posterior (ver LICENSE)."
     )
     caja_instr = ttk.LabelFrame(cont, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(10, 8))

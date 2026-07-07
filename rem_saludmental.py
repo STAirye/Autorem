@@ -254,15 +254,16 @@ def validar_admin(ws):
 _DISCLAIMER_ADMIN = (
     "⚠ Formato ADMINISTRATIVO: esta herramienta fue hecha para IRIS.\n"
     "Funciona, pero OJO:\n"
-    "  • Las columnas Pueblos_Originarios, SENAME, Proteccion_Ninez, Migrante y\n"
-    "    Trans NO vienen en este export → saldrán VACÍAS.\n"
+    "  • Las columnas Pueblos Originarios, SENAME, Proteccion Niñez, Migrante y\n"
+    "    Trans NO son calculables desde este export → saldrán VACÍAS.\n"
     "  • La edad se toma de 'Edad de registro formulario' (formato en años).\n"
+    "    y no de la edad real del Usuario que se informa por fecha de nacimiento.\n"
     "Revisa los resultados antes de tabular."
 )
 
 PERFIL_IRIS = {
     "id": "iris",
-    "nombre": "IRIS · Control de Salud Mental  (recomendado)",
+    "nombre": "IRIS · Formularios Clinicos Control de Salud Mental  (recomendado)",
     "ancla": ANCLA_IRIS,
     "usar_blanco_en_a": True,
     "n_hardcode": 16,
