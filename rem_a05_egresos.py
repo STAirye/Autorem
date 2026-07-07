@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3
+# Version: 1.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -29,23 +29,26 @@ Limpieza y marcado de egresos de Salud Mental (export RAYEN) para REM A05.
      la izq o der del ESTADO.
   4. Escribe todo en una hoja nueva 'A05_Egresos' (la original queda intacta).
 
-USO:
-  - Doble-clic al .exe / .py  ->  abre la ventana (GUI).
-  - Arrastra el .xlsx ENCIMA del .exe / .py  ->  abre la ventana con la ruta ya cargada.
-  - Terminal (modo experto):  python rem_a05_egresos.py --cli entrada.xlsx [salida.xlsx]
+Este módulo es HEADLESS (sin ventana): expone la lógica A05-egresos. La GUI y el
+selector de tareas viven en autorem.py, que registra este módulo vía su
+descriptor TAREA (al final del archivo).
 
-NUEVO en 1.3:
-  - Modularización: las utilidades genéricas viven en rem_utils.py (base común
-    para futuros módulos del REM). Este archivo queda solo con la lógica A05.
+USO como librería:
+    from rem_a05_egresos import procesar
+    procesar(entrada_xlsx, salida_xlsx, log=print)
 
+NUEVO en 1.4:
+  - GUI/CLI extraídas a autorem.py (dispatcher con registro de tareas). Este
+    archivo queda solo con la lógica; expone TAREA/REPORTE para el registro.
+
+De 1.3:
+  - Modularización: las utilidades genéricas viven en rem_utils.py.
 De 1.2:
-  - Interfaz gráfica (Tkinter, sin dependencias extra).
   - Detector de "archivo equivocado": distingue el export ADMINISTRATIVO del
     de IRIS, y avisa si el archivo no tiene nada que ver.
 """
 
 import re
-import sys
 from pathlib import Path
 
 # Base común del proyecto (ver rem_utils.py). Debe estar junto a este archivo.
@@ -53,7 +56,7 @@ from rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
     ArchivoInvalido,
     norm, solo_entero, buscar_col, num_pregunta,
-    encontrar_fila_encabezado, abrir_carpeta,
+    encontrar_fila_encabezado,
 )
 
 # ╔═══════════════════════════════════════════════════════════════════╗
@@ -405,208 +408,19 @@ def procesar(entrada: Path, salida: Path, log=print):
 
 
 # ╔═══════════════════════════════════════════════════════════════════╗
-# ║  INTERFAZ GRÁFICA (Tkinter)                                        ║
+# ║  DESCRIPTORES PARA EL REGISTRO DE TAREAS (los consume autorem.py)   ║
 # ╚═══════════════════════════════════════════════════════════════════╝
-# NOTA (roadmap §12): a futuro esta GUI/CLI se vuelve un despachador común que
-# elige el módulo del REM según el export detectado. Por ahora vive con el A05.
-def lanzar_gui(ruta_inicial=""):
-    import tkinter as tk
-    from tkinter import ttk, filedialog, messagebox, scrolledtext
-
-    root = tk.Tk()
-    root.title("Marcar Egresos — REM A05 Salud Mental")
-    root.geometry("760x560")
-    root.minsize(680, 520)
-
-    cont = ttk.Frame(root, padding=14)
-    cont.pack(fill="both", expand=True)
-
-    # — Título —
-    ttk.Label(cont, text="Marcar Egresos para el REM A05 (Salud Mental)",
-              font=("Segoe UI", 13, "bold")).pack(anchor="w")
-
-    # — Instrucciones —
-    instr = (
-        "1.  Descarga el Excel desde IRIS → Formularios RAYEN → «Control de Salud Mental».\n"
-        "2.  Elige ese archivo abajo (botón «Examinar…» o pega la ruta).\n"
-        "3.  Presiona «Procesar». Se crea una copia «…_procesado.xlsx» con la hoja\n"
-        "     «A05_Egresos» lista para tabular. Tu archivo original NO se modifica.\n"
-        "⚠  No sirve el reporte «administrativo»: tiene otro formato.\n"
-        "⚠  No discrimina fecha"
-    )
-    caja_instr = ttk.LabelFrame(cont, text="Instrucciones", padding=8)
-    caja_instr.pack(fill="x", pady=(10, 8))
-    ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
-
-    # — Selector de archivo —
-    fila_arch = ttk.Frame(cont)
-    fila_arch.pack(fill="x", pady=(2, 6))
-    ttk.Label(fila_arch, text="Archivo Excel:").pack(side="left")
-    var_ruta = tk.StringVar(value=ruta_inicial)
-    entry = ttk.Entry(fila_arch, textvariable=var_ruta)
-    entry.pack(side="left", fill="x", expand=True, padx=6)
-
-    def examinar():
-        f = filedialog.askopenfilename(
-            title="Elige el export de IRIS (Control de Salud Mental)",
-            filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
-        )
-        if f:
-            var_ruta.set(f)
-
-    ttk.Button(fila_arch, text="Examinar…", command=examinar).pack(side="left")
-
-    # — Log —
-    caja_log = ttk.LabelFrame(cont, text="Registro", padding=6)
-    caja_log.pack(fill="both", expand=True, pady=(6, 8))
-    txt = scrolledtext.ScrolledText(caja_log, height=12, wrap="word",
-                                    font=("Consolas", 9), state="disabled")
-    txt.pack(fill="both", expand=True)
-
-    def log(msg=""):
-        txt.configure(state="normal")
-        txt.insert("end", str(msg) + "\n")
-        txt.see("end")
-        txt.configure(state="disabled")
-        root.update_idletasks()
-
-    def limpiar_log():
-        txt.configure(state="normal")
-        txt.delete("1.0", "end")
-        txt.configure(state="disabled")
-
-    # — Acción principal —
-    def on_procesar():
-        limpiar_log()
-        ruta = var_ruta.get().strip().strip('"').strip("'")
-        if not ruta:
-            messagebox.showwarning("Falta el archivo",
-                                   "Primero elige el Excel descargado desde IRIS.")
-            return
-        entrada = Path(ruta)
-        if not entrada.exists():
-            messagebox.showerror("No encontrado",
-                                 f"No encuentro el archivo:\n{entrada}")
-            return
-        if entrada.suffix.lower() not in (".xlsx", ".xlsm"):
-            if not messagebox.askyesno(
-                "¿Seguro?",
-                f"El archivo no termina en .xlsx ({entrada.suffix}).\n"
-                "¿Intento procesarlo igual?"):
-                return
-        salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
-
-        btn_proc.configure(state="disabled")
-        log(f"Procesando: {entrada.name}")
-        try:
-            res = procesar(entrada, salida, log=log)
-        except ArchivoInvalido as e:
-            titulo = ("Archivo equivocado (reporte administrativo)"
-                      if e.categoria == "administrativo"
-                      else "Formato no reconocido")
-            log(f"[ARCHIVO EQUIVOCADO] {e.categoria}")
-            messagebox.showerror(titulo, str(e))
-            return
-        except PermissionError:
-            msg = ("No pude escribir el resultado.\n\n"
-                   "Suele ser porque el archivo está ABIERTO en Excel "
-                   "(o bloqueado por OneDrive).\n\n"
-                   "Ciérralo en Excel y vuelve a intentar.")
-            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
-            messagebox.showerror("Permiso denegado", msg)
-            return
-        except ImportError as e:
-            log(f"[DEPENDENCIA] {e}")
-            messagebox.showerror("Falta una librería", str(e))
-            return
-        except Exception as e:
-            import traceback
-            log("[ERROR INESPERADO]")
-            log(traceback.format_exc())
-            messagebox.showerror(
-                "Error inesperado",
-                f"Ocurrió un error no previsto:\n\n{e}\n\n"
-                "Copia el texto del registro y pásaselo a Simón.")
-            return
-        finally:
-            btn_proc.configure(state="normal")
-
-        # éxito
-        det = "\n".join(f"   • {t}: {c}" for t, c in res["por_tipo"].items())
-        resumen = (f"Listo. {res['total']} egresos marcados.\n\n{det}\n\n"
-                   f"Altas sin subtipo (revisar): {res['falta_subtipo']}\n\n"
-                   f"Guardado en:\n{res['salida']}")
-        log("")
-        log("✔ " + resumen.replace("\n\n", "\n"))
-        if messagebox.askyesno("Listo",
-                               resumen + "\n\n¿Abrir la carpeta del resultado?"):
-            abrir_carpeta(Path(res["salida"]).parent)
-
-    # — Botonera —
-    fila_btn = ttk.Frame(cont)
-    fila_btn.pack(fill="x")
-    btn_proc = ttk.Button(fila_btn, text="Procesar", command=on_procesar)
-    btn_proc.pack(side="left")
-    ttk.Button(fila_btn, text="Salir", command=root.destroy).pack(side="right")
-
-    if not OPENPYXL_OK:
-        log("⚠ Falta 'openpyxl'. Instálalo con: pip install openpyxl")
-
-    root.mainloop()
-
-
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  MODO CONSOLA (experto) y ARRANQUE                                 ║
-# ╚═══════════════════════════════════════════════════════════════════╝
-def main_cli(args):
-    if not args:
-        print("USO: python rem_a05_egresos.py --cli entrada.xlsx [salida.xlsx]")
-        return 2
-    entrada = Path(args[0].strip().strip('"').strip("'"))
-    salida = (Path(args[1]) if len(args) > 1
-              else entrada.with_name(entrada.stem + "_procesado.xlsx"))
-    if not entrada.exists():
-        print(f"ERROR: no encuentro el archivo:\n  {entrada}")
-        return 1
-    try:
-        procesar(entrada, salida)
-    except ArchivoInvalido as e:
-        print(f"\n[ARCHIVO EQUIVOCADO — {e.categoria}]\n{e}")
-        return 1
-    except PermissionError:
-        print("\n[PERMISO DENEGADO] ¿está abierto en Excel? Ciérralo y reintenta.")
-        return 1
-    return 0
-
-
-def main():
-    argv = sys.argv[1:]
-
-    # Modo consola explícito para usuarios avanzados: --cli entrada [salida]
-    if argv and argv[0] in ("--cli", "-c"):
-        sys.exit(main_cli(argv[1:]))
-
-    # Si arrastraron un archivo encima del .exe/.py, Windows lo pasa como argv[1].
-    # Abrimos la GUI con esa ruta ya cargada (más amigable para colegas).
-    ruta_inicial = ""
-    if argv:
-        cand = argv[0].strip().strip('"').strip("'")
-        if cand and not cand.startswith("-"):
-            ruta_inicial = cand
-
-    try:
-        lanzar_gui(ruta_inicial)
-    except Exception as e:
-        # Si Tkinter no está disponible (raro), caemos a un modo texto mínimo.
-        print(f"No pude abrir la ventana ({e}).")
-        print("Modo texto: pega la ruta del .xlsx (Enter para salir).")
-        try:
-            ruta = input("> ").strip().strip('"').strip("'")
-        except EOFError:
-            return
-        if ruta:
-            sys.exit(main_cli([ruta]))
-
-
-if __name__ == "__main__":
-    main()
+# El dispatcher (autorem.py) agrupa las tareas por 'reporte' de entrada: las que
+# leen el mismo export se pueden correr juntas. Egresos e ingresos comparten el
+# export IRIS 'Control de Salud Mental'.
+REPORTE = {
+    "id": "iris_salud_mental",
+    "nombre": "IRIS · Control de Salud Mental",
+}
+TAREA = {
+    "id": "a05_egresos",
+    "nombre": "A05 · Egresos",
+    "reporte": REPORTE["id"],
+    "correr": procesar,          # (entrada, salida, log) -> resumen dict
+    "hoja": NOMBRE_HOJA_SALIDA,
+}
