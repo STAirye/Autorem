@@ -20,56 +20,46 @@
 # for more details: <https://www.gnu.org/licenses/>.
 # ==========================================================================
 """
-Marcado de EGRESOS de Salud Mental (export IRIS) para el REM A05.
+Marcado de INGRESOS de Salud Mental (export IRIS) para el REM A05.
 
-Módulo de tarea HEADLESS y fino: solo aporta la config del egreso (qué token de
-ESTADO flaggear, cómo se llama su hoja/columna). Todo el análisis —validación,
-patología, subtipo, demografía, motor de marcado— vive en rem_saludmental.py,
-que comparte con rem_a05_ingresos.py. La GUI/CLI está en autorem.py.
-
-Un egreso puede ser Alta, Traslado u Otras Causas:
-  - Alta y Traslado van a estadística.
-  - Otras Causas se flaggea para revisión MANUAL (abandono vs clínica, caso a
-    caso); solo se marca, no se clasifica automático.
+Gemelo de rem_a05_egresos.py: mismo export IRIS 'Control de Salud Mental', mismo
+análisis (patología, subtipo, demografía). La única diferencia es el token de
+ESTADO: aquí se flaggea 'INGRESO' (un solo tipo de evento). Todo el motor vive en
+rem_saludmental.py. La GUI/CLI está en autorem.py.
 
 USO como librería:
-    from rem_a05_egresos import procesar
+    from rem_a05_ingresos import procesar
     procesar(entrada_xlsx, salida_xlsx, log=print)
 """
 
 import rem_saludmental as sm
 
-# ── Config específica del EGRESO (lo único propio de este módulo) ──────
-NOMBRE_HOJA_SALIDA = "A05_Egresos"
-BUSQUEDAS = {
-    "Alta":        ["EGRESO", "ALTA"],
-    "Traslado":    ["EGRESO", "TRASLADO"],
-    "OtrasCausas": ["EGRESO", "OTRAS", "CAUSAS"],
-}
-TIPO_LABEL = {"Alta": "Alta", "Traslado": "Traslado", "OtrasCausas": "Otras Causas"}
-ORDEN_TIPOS = {"Alta": 0, "Traslado": 1, "OtrasCausas": 2}
-# Avisar egreso por Alta sin subtipo (solo en diagnósticos que SÍ tienen subtipo).
-AVISAR_SIN_SUBTIPO = {"Alta"}
+# ── Config específica del INGRESO ─────────────────────────────────────
+NOMBRE_HOJA_SALIDA = "A05_Ingresos"
+BUSQUEDAS = {"Ingreso": ["INGRESO"]}     # la columna '...ESTADO' muestra 'Ingreso'
+TIPO_LABEL = {"Ingreso": "Ingreso"}
+ORDEN_TIPOS = {"Ingreso": 0}
+# Ingreso con diagnóstico que DEBERÍA tener subtipo y no lo trae -> Falta_Subtipo.
+AVISAR_SIN_SUBTIPO = {"Ingreso"}
 
 _CFG = dict(
     busquedas=BUSQUEDAS,
     tipo_label=TIPO_LABEL,
     orden_tipos=ORDEN_TIPOS,
     hoja_salida=NOMBRE_HOJA_SALIDA,
-    tipo_col_header="Tipo_Egreso",
+    tipo_col_header="Tipo_Ingreso",
     avisar_sin_subtipo=AVISAR_SIN_SUBTIPO,
-    etiqueta="egreso",
+    etiqueta="ingreso",
 )
 
 
 def agregar_hoja(wb, ws, perfil, log=print):
-    """Agrega la hoja de egresos al workbook ya abierto (NO guarda)."""
+    """Agrega la hoja de ingresos al workbook ya abierto (NO guarda)."""
     return sm.marcar_eventos(wb, ws, perfil, log=log, **_CFG)
 
 
 def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print):
-    """Conveniencia standalone: abre + valida + marca + guarda. `perfil` fija el
-    formato de entrada (IRIS por defecto). Devuelve el resumen con la ruta."""
+    """Conveniencia standalone: abre + valida + marca + guarda."""
     wb, ws = sm.abrir_validado(entrada, perfil)
     res = agregar_hoja(wb, ws, perfil, log=log)
     wb.save(salida)
@@ -80,11 +70,9 @@ def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print):
 
 
 # ── Descriptor para el registro de tareas (lo consume autorem.py) ──
-# La tarea es agnóstica al formato; el perfil (IRIS/admin) lo elige el usuario y
-# lo pasa el dispatcher. Egresos e ingresos leen el mismo formulario.
 TAREA = {
-    "id": "a05_egresos",
-    "nombre": "A05 · Egresos",
+    "id": "a05_ingresos",
+    "nombre": "A05 · Ingresos",
     "agregar": agregar_hoja,             # (wb, ws, perfil, log) -> resumen ; NO guarda
     "correr": procesar,                  # (entrada, salida, perfil, log) -> resumen
     "hoja": NOMBRE_HOJA_SALIDA,

@@ -41,25 +41,32 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Estructura **v1.3**
-tras modularizar (§4.4):
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Estructura **v1.6**
+(capa compartida + módulos egresos/ingresos + dispatcher con perfiles):
 
 | Archivo | Rol |
 |---|---|
-| `rem_utils.py` | **BASE COMÚN.** Utilidades genéricas sin lógica de sección: `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido` y la guarda de `openpyxl`. |
-| `rem_a05_egresos.py` | **VERSIÓN ACTUAL** (ex `rem_marcar_egresos 1.2.py`). Módulo A05: config clínica, `validar_formato` IRIS/admin, `procesar`, GUI Tkinter y CLI. Importa de `rem_utils`. |
-| `rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada; se usó para verificar equivalencia. |
-| `rem_marcar_egresos 1.1.py` | Versión previa (CLI puro). Base validada del core. |
-| `rem_marcar_egresos v0.2.py`, `rem_marcar_egresos.py` | Históricas. |
-| `LICENSE` | Texto GPL-3.0 completo (inglés, el que vale legalmente). |
-| `license ES.txt` | Traducción no oficial del GPL-3.0 al español (solo referencia). |
-| `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red de seguridad anti-PII). |
+| `rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido` y la guarda de `openpyxl`. |
+| `rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, `edad_anios`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. La usan egresos e ingresos. |
+| `rem_a05_egresos.py` | **Módulo de tarea (fino).** Config del egreso (Alta/Traslado/OtrasCausas) + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA`. Importa de `rem_saludmental`. |
+| `rem_a05_ingresos.py` | **Módulo de tarea (fino).** Gemelo de egresos: token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso`. |
+| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
+| `rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia. |
+| `rem_marcar_egresos 1.1.py` / `v0.2.py` / `.py` | Históricas. |
+| `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
+| `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
 
-Los exports RAYEN/IRIS con PII y `formato rem administrativo.xlsx` viven **solo
-en la carpeta de trabajo (OneDrive), NUNCA en el repo** (§8).
+Los exports con PII (IRIS y Administrativo reales) viven **solo en la carpeta de
+trabajo (OneDrive), NUNCA en el repo** (§8). En el repo hay una muestra admin
+anonimizada (`Formulario csm reporte Administrativo.xlsx`) para probar formato;
+igual la bloquea el `.gitignore`.
 
-**Estado:** el core está estable y modularizado. Los `.py` viejos se conservan
-como referencia; mover a `legacy/` cuando se quiera (§10, "Higiene de repo").
+**Arquitectura (2 ejes ortogonales):**
+- **Perfil de formato** (`rem_saludmental.PERFILES`): `iris` | `administrativo`.
+  Define cómo ubicar encabezado/columnas y qué validar. Lo elige el usuario.
+- **Tarea** (`autorem.TAREAS`): egresos | ingresos. Agnóstica al formato; aporta
+  qué token de ESTADO flaggear y su hoja. Tareas del mismo archivo corren juntas
+  → un solo `…_procesado.xlsx` con una hoja por tarea.
 
 ---
 
@@ -114,29 +121,55 @@ El monolito `rem_marcar_egresos 1.2.py` se partió en dos:
 - **`rem_a05_egresos.py`** — solo la lógica A05; importa de `rem_utils`.
 
 Verificado: salida `A05_Egresos` **idéntica** a v1.2 sobre un export sintético
-(Alta con/sin subtipo, Trans, Migrante, fila sin egreso). Entry point pasa a ser
-`rem_a05_egresos.py` (GUI/CLI viven ahí por ahora; ver §12).
+(Alta con/sin subtipo, Trans, Migrante, fila sin egreso).
+
+### 4.5 Evolución v1.4 → v1.6
+- **v1.4** — GUI/CLI extraídas a `autorem.py` (dispatcher con registro de tareas).
+  `rem_a05_egresos.py` quedó headless.
+- **v1.5** — capa compartida `rem_saludmental.py` + módulo `rem_a05_ingresos.py`
+  (gemelo, token ESTADO `INGRESO`). Motor `marcar_eventos()` parametrizado. El
+  dispatcher carga el workbook una vez y cada tarea agrega su hoja → un solo
+  `…_procesado.xlsx` multi-hoja.
+- **v1.6** — **perfiles de formato IRIS/Administrativo** (§5). El usuario elige el
+  formato al inicio; disclaimer visible para admin. `edad_anios()` parsea la
+  edad del admin (`'99 años 12 meses 31 días'` → 99; menor de 1 año → 0).
+  Fix Windows: `stdout` a UTF-8 en el CLI (los símbolos `▶·→«»✔` reventaban en
+  cp1252, y `UnicodeEncodeError` ⊂ `ValueError` disfrazaba el error).
+
+Cada paso verificado contra la salida IRIS de v1.2 (equivalencia) + tests de
+ingresos, admin (sintético y archivo real anonimizado) y validación cruzada.
 
 ---
 
-## 5. Detector de formato: IRIS vs administrativo
+## 5. Perfiles de formato: IRIS vs Administrativo (v1.6)
 
-Hay **dos exports RAYEN distintos** y el colega puede confundirlos. El script
-solo procesa el de **IRIS** ("Control de Salud Mental") y rechaza el resto.
+El mismo formulario 'Control de Salud Mental' se descarga en **dos formatos**.
+Desde v1.6 **ambos se procesan** (antes el admin se rechazaba). El usuario elige
+el formato al inicio; cada uno es un **perfil** en `rem_saludmental.PERFILES`.
 
-**Firma IRIS (la que se acepta):** existe fila-encabezado con el ancla
-`AÑO APLICACIÓN FORMULARIO` **y** una columna `NÚMERO ... IDENTIFICACIÓN`.
+**`detectar_formato(ws)`** devuelve `iris | administrativo | desconocido`:
+- **IRIS:** ancla `AÑO APLICACIÓN FORMULARIO` **y** columna `NÚMERO ... IDENTIFICACIÓN`.
+- **Administrativo:** banner `Servicio de Salud` en A1, y/o `ADMIN_MARKERS`
+  (`Numero de Fichas` / `Edad de registro formulario` / `Fecha Formulario`).
 
-**Firma administrativo (se rechaza con mensaje específico):** banner
-`Servicio de Salud` en A1, y/o columnas `Numero de Fichas` /
-`Edad de registro formulario` / `Fecha Formulario`. Encabezado en fila 9.
-Columnas de estado como `"5.- Estado"` (no `"N.- ESTADO"`). **No** trae el ancla
-IRIS. Constantes: `ADMIN_MARKERS`, `ADMIN_BANNER`.
+`validar_iris()` / `validar_admin()` aceptan su formato y, si detectan el otro,
+levantan `ArchivoInvalido` con **mensaje cruzado** ("elegiste IRIS pero esto
+parece Administrativo — cambia el selector"). `categoria ∈ {iris, administrativo,
+desconocido}`. `abrir_validado(entrada, perfil)` valida antes de tocar nada.
 
-**Desconocido:** cualquier otra cosa → "no reconozco este formato" + checklist.
+**Diferencias que maneja el perfil admin** (comparado con IRIS):
+| | IRIS | Administrativo |
+|---|---|---|
+| Encabezado | ancla IRIS | **fila 9** (ancla `EDAD/REGISTRO/FORMULARIO`; `usar_blanco_en_a=False` para no caer en fila 7) |
+| RUT | `NÚMERO TIPO IDENTIFICACIÓN` | columna `RUT` |
+| Edad | `AÑO APLICACIÓN FORMULARIO` (nº) | `Edad de registro formulario` = `'99 años 12 meses 31 días'` → `edad_anios()` saca los años |
+| Numeración preguntas / subtipos | idéntica | **idéntica** (el motor de diagnóstico sirve igual) |
+| `Pueblos_Originarios`, `SENAME`, `Proteccion_Ninez`, `Migrante`, `Trans` | columnas presentes | **NO existen** → salen VACÍAS (disclaimer lo advierte) |
 
-`ArchivoInvalido(categoria, mensaje)` con `categoria ∈ {"administrativo",
-"desconocido"}`. `procesar()` la levanta antes de tocar nada.
+`_preparar()` acepta los nombres de RUT/edad de **ambos** formatos (robusto ante
+mala elección). La detección de columnas demográficas ausentes se loguea
+(`[demo] columnas AUSENTES...`). **Disclaimer admin** en `_DISCLAIMER_ADMIN`,
+visible en la GUI al elegir el formato y logueado al procesar.
 
 ---
 
@@ -270,13 +303,14 @@ de seguridad.
 Meta: colega no técnico hace doble-clic, sin instalar Python.
 
 ```bash
-pyinstaller --onefile --windowed --name "MarcarEgresos" rem_a05_egresos.py
-# -> dist/MarcarEgresos.exe
+pyinstaller --onefile --windowed --name "autoREM" autorem.py
+# -> dist/autoREM.exe
 ```
 
 **Gotchas:**
-- Entry point = `rem_a05_egresos.py`. `rem_utils.py` debe estar **en la misma
-  carpeta**; PyInstaller sigue el `import` solo y lo empaqueta.
+- Entry point = `autorem.py`. Los otros 4 `.py` (`rem_utils`, `rem_saludmental`,
+  `rem_a05_egresos`, `rem_a05_ingresos`) deben estar **en la misma carpeta**;
+  PyInstaller sigue los `import` solo y los empaqueta.
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
   desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede
@@ -289,20 +323,24 @@ pyinstaller --onefile --windowed --name "MarcarEgresos" rem_a05_egresos.py
 
 ## 12. Roadmap / arquitectura futura
 
-- **`rem_utils.py` compartido:** ✅ HECHO (v1.3, §4.4). Extraídas `norm`,
-  `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`,
-  `encontrar_fila_encabezado`, `abrir_carpeta`, `ArchivoInvalido`. Pendiente
-  posible: un `validar_formato` genérico (hoy cada módulo trae el suyo).
-- **Un módulo por sección del REM** (A05 es el primero). Estructura:
-  `rem_utils.py` + `rem_a05_egresos.py` + `rem_<seccion>.py`, con una GUI/CLI
-  común que despache al módulo correcto según el export detectado. Hoy la GUI/CLI
-  vive dentro de `rem_a05_egresos.py`; al sumar el 2º módulo, extraerla a un
-  despachador común.
+**Hecho:**
+- ✅ `rem_utils.py` compartido (v1.3).
+- ✅ GUI/CLI en dispatcher común `autorem.py` con registro de tareas (v1.4).
+- ✅ Capa compartida `rem_saludmental.py` + módulo **ingresos** (v1.5).
+- ✅ **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
+
+**Pendiente:**
+- **Empaquetar a `.exe`** (`autorem.py`, §11) — pendiente inmediato.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.
+- **Dos inputs nuevos (mediano plazo):** reporte de **PowerBI** y reporte de
+  **atenciones/diagnósticos/actividades**. Cada uno entra como un módulo/tarea
+  nuevo; si tienen otro formato de archivo, como perfil nuevo. Atenciones es
+  menos prioritario (lo manual desde ese reporte es simple).
 - **Abandonos:** dependen del cálculo del "PowerBI madre" — etapa aparte.
 - **Cosmético:** `LIMPIAR_NOMBRE_PATOLOGIA = True` + precargar `OVERRIDE_PATOLOGIA`
   para nombres bonitos.
+- **Higiene:** mover los `.py` viejos a `legacy/`; tag `v1.6`.
 
 ---
 
