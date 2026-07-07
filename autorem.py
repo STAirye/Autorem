@@ -42,12 +42,12 @@ USO:
 import sys
 from pathlib import Path
 
-from rem_utils import VERSION
-import rem_saludmental as sm
+from programas.rem_utils import VERSION
+import programas.rem_saludmental as sm
 
 # ── Registro de módulos de tarea ──────────────────────────────────────
-import rem_a05_egresos
-import rem_a05_ingresos
+from modulos import rem_a05_egresos
+from modulos import rem_a05_ingresos
 
 MODULOS = [rem_a05_egresos, rem_a05_ingresos]
 
@@ -287,7 +287,7 @@ def lanzar_gui(ruta_inicial=""):
 
 
 def _abrir_carpeta(carpeta):
-    from rem_utils import abrir_carpeta
+    from programas.rem_utils import abrir_carpeta
     abrir_carpeta(carpeta)
 
 

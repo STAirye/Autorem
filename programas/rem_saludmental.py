@@ -43,7 +43,7 @@ La GUI/CLI (autorem.py) deja elegir el perfil al inicio.
 
 import re
 
-from rem_utils import (
+from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
     ArchivoInvalido,
     norm, solo_entero, buscar_col, num_pregunta,

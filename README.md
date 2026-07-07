@@ -80,13 +80,13 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Estructura del proyecto
 
-| Archivo | Rol |
+| Ruta | Rol |
 |---|---|
 | `autorem.py` | **Entry point.** Dispatcher GUI + CLI: selector de formato y tareas. |
-| `rem_utils.py` | Utilidades genéricas del REM (texto, columnas, apertura de archivos). |
-| `rem_saludmental.py` | Capa compartida del formulario "Control de Salud Mental": validación, diagnóstico/subtipo, demografía, perfiles IRIS/Admin. |
-| `rem_a05_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
-| `rem_a05_ingresos.py` | Módulo de tarea: ingresos. |
+| `programas/rem_utils.py` | Utilidades genéricas del REM (texto, columnas, apertura de archivos). |
+| `programas/rem_saludmental.py` | Capa compartida del formulario "Control de Salud Mental": validación, diagnóstico/subtipo, demografía, perfiles IRIS/Admin. |
+| `modulos/rem_a05_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
+| `modulos/rem_a05_ingresos.py` | Módulo de tarea: ingresos. |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 
@@ -114,9 +114,9 @@ Para que un colega no técnico lo use con doble-clic, sin instalar Python:
 pyinstaller --onefile --windowed --name "autoREM" autorem.py
 ```
 
-Los 5 `.py` deben estar en la misma carpeta (PyInstaller sigue los `import`
-solo). Detalles y gotchas (SmartScreen, antivirus institucional) en
-[CLAUDE.md](CLAUDE.md) §11.
+Correr desde la raíz del repo (con las carpetas `programas/` y `modulos/` al
+lado de `autorem.py`); PyInstaller sigue los `import` solo. Detalles y gotchas
+(SmartScreen, antivirus institucional) en [CLAUDE.md](CLAUDE.md) §11.
 
 ---
 

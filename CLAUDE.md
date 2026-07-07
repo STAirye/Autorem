@@ -45,15 +45,31 @@ Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.2.0**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + dispatcher
 con perfiles.
 
+**Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
+```
+autorem.py            entry point / dispatcher (raíz)
+programas/            motor y base compartida (paquete)
+  rem_utils.py
+  rem_saludmental.py
+modulos/              módulos de tarea (paquete)
+  rem_a05_egresos.py
+  rem_a05_ingresos.py
+legacy/               versiones viejas (no se importan)
+tests/                pruebas automáticas
+```
+Imports **absolutos** rooteados en la raíz: `from programas.rem_utils import …`,
+`import programas.rem_saludmental as sm`, `from modulos import rem_a05_egresos`.
+Funcionan porque la raíz (donde vive `autorem.py`) está en `sys.path`.
+
 | Archivo | Rol |
 |---|---|
-| `rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido` y la guarda de `openpyxl`. |
-| `rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, `edad_anios`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. La usan egresos e ingresos. |
-| `rem_a05_egresos.py` | **Módulo de tarea (fino).** Config del egreso (Alta/Traslado/OtrasCausas) + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA`. Importa de `rem_saludmental`. |
-| `rem_a05_ingresos.py` | **Módulo de tarea (fino).** Gemelo de egresos: token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso`. |
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
+| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
+| `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, `edad_anios`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
+| `modulos/rem_a05_egresos.py` | **Módulo de tarea (fino).** Config del egreso (Alta/Traslado/OtrasCausas) + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA`. |
+| `modulos/rem_a05_ingresos.py` | **Módulo de tarea (fino).** Gemelo de egresos: token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso`. |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
-| `legacy/rem_marcar_egresos 1.1.py` / `v0.2.py` / `.py` | Históricas. |
+| `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
 | `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
 
@@ -318,14 +334,17 @@ de seguridad.
 Meta: colega no técnico hace doble-clic, sin instalar Python.
 
 ```bash
+# Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
+# programas/ y modulos/):
 pyinstaller --onefile --windowed --name "autoREM" autorem.py
 # -> dist/autoREM.exe
 ```
 
 **Gotchas:**
-- Entry point = `autorem.py`. Los otros 4 `.py` (`rem_utils`, `rem_saludmental`,
-  `rem_a05_egresos`, `rem_a05_ingresos`) deben estar **en la misma carpeta**;
-  PyInstaller sigue los `import` solo y los empaqueta.
+- Entry point = `autorem.py` (raíz). Los paquetes `programas/` y `modulos/` deben
+  estar junto a él; PyInstaller sigue los `import programas.x` / `from modulos
+  import x` solo y los empaqueta. Si por algún motivo no los encuentra, agregar
+  `--paths .` (la raíz al path de búsqueda).
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
   desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede

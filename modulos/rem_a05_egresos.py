@@ -37,7 +37,7 @@ USO como librería:
     procesar(entrada_xlsx, salida_xlsx, log=print)
 """
 
-import rem_saludmental as sm
+import programas.rem_saludmental as sm
 
 # ── Config específica del EGRESO (lo único propio de este módulo) ──────
 NOMBRE_HOJA_SALIDA = "A05_Egresos"
