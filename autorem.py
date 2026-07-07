@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6
+# Version: 1.2.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,6 +42,7 @@ USO:
 import sys
 from pathlib import Path
 
+from rem_utils import VERSION
 import rem_saludmental as sm
 
 # ── Registro de módulos de tarea ──────────────────────────────────────
@@ -113,14 +114,14 @@ def lanzar_gui(ruta_inicial=""):
     from tkinter import ttk, filedialog, messagebox, scrolledtext
 
     root = tk.Tk()
-    root.title("autoREM — Tabulador del REM (Salud Mental)")
+    root.title(f"autoREM {VERSION} — Tabulador del REM (Salud Mental)")
     root.geometry("820x720")
     root.minsize(720, 640)
 
     cont = ttk.Frame(root, padding=14)
     cont.pack(fill="both", expand=True)
 
-    ttk.Label(cont, text="autoREM — Tabulador del REM (Salud Mental)",
+    ttk.Label(cont, text=f"autoREM {VERSION} — Tabulador del REM (Salud Mental)",
               font=("Segoe UI", 13, "bold")).pack(anchor="w")
 
     instr = (

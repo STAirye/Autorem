@@ -41,8 +41,9 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Estructura **v1.6**
-(capa compartida + módulos egresos/ingresos + dispatcher con perfiles):
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.2.0**
+(esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + dispatcher
+con perfiles.
 
 | Archivo | Rol |
 |---|---|
@@ -254,11 +255,25 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
 
 ## 9. Convenciones de código
 
+### Versionado — `X.Y.Z` (¡respetar!)
+Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquema:
+- **X** = por cada **PROGRAMA** que se agregue. Hoy = **1** (autoREM).
+- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **2** (egresos, ingresos).
+- **Z** = por cada **corrección del módulo que se está trabajando**. Reinicia a 0
+  al sumar un módulo nuevo (Y++).
+
+Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
+romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
+`rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
+La GUI la muestra en el título. Estado actual: **1.2.0**.
+(Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
+estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
+
 - **Header en cada archivo** (código y docs): bloque con
   *"This code/document was generated with the assistance of [modelo]. The human
   author reviewed, modified, and integrated the code."* + autor
   (Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa) + `SPDX-License-Identifier:
-  GPL-3.0-or-later` + versión.
+  GPL-3.0-or-later` + versión (`X.Y.Z`, sincronizada con `rem_utils.VERSION`).
 - **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`
   con el texto completo (ya está en el repo; `license ES.txt` es traducción de
   referencia, no la versión legal).
