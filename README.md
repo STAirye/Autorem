@@ -88,7 +88,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `rem_a05_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
 | `rem_a05_ingresos.py` | Módulo de tarea: ingresos. |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
-| `rem_marcar_egresos *.py` | Versiones históricas (referencia validada). |
+| `legacy/` | Versiones históricas (referencia validada). |
 
 ---
 

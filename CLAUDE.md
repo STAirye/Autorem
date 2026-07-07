@@ -52,8 +52,8 @@ con perfiles.
 | `rem_a05_egresos.py` | **Módulo de tarea (fino).** Config del egreso (Alta/Traslado/OtrasCausas) + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA`. Importa de `rem_saludmental`. |
 | `rem_a05_ingresos.py` | **Módulo de tarea (fino).** Gemelo de egresos: token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso`. |
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
-| `rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia. |
-| `rem_marcar_egresos 1.1.py` / `v0.2.py` / `.py` | Históricas. |
+| `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
+| `legacy/rem_marcar_egresos 1.1.py` / `v0.2.py` / `.py` | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
 | `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
 

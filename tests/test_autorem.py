@@ -100,9 +100,9 @@ def _quiet(*_args, **_kwargs):
 # ── Pruebas ───────────────────────────────────────────────────────────
 def test_iris_equivalencia_v12():
     """La salida de egresos (perfil IRIS) es idéntica al monolito validado v1.2."""
-    monolito = REPO / "rem_marcar_egresos 1.2.py"
+    monolito = REPO / "legacy" / "rem_marcar_egresos 1.2.py"
     if not monolito.exists():
-        print("    SKIP: no está 'rem_marcar_egresos 1.2.py' (referencia v1.2)")
+        print("    SKIP: no está 'legacy/rem_marcar_egresos 1.2.py' (referencia v1.2)")
         return
     spec = importlib.util.spec_from_file_location("viejo_v12", monolito)
     viejo = importlib.util.module_from_spec(spec); spec.loader.exec_module(viejo)
