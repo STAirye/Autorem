@@ -1,15 +1,22 @@
 <!--
-Documento de contexto importado desde el chat de Cowork (jul-2026) para el
-futuro módulo de screening/instrumentos. Sin PII. Autor: Simón Tobar.
-SPDX-License-Identifier: GPL-3.0-or-later
-
-⚠ ABIERTO / A RESOLVER antes de codificar: el pedido original habla de DOS
-resultados — "cálculo DISAM" y "cálculo real". Este doc trae UN set de cortes
-(los oficiales del Manual REM SA 2026). Falta aclarar qué es el "cálculo DISAM"
-(¿cortes locales distintos? ¿otra convención de puntaje?) vs el "real/oficial".
+Documento de contexto para el módulo de screening/instrumentos (rem_a03_d3_instrumentos).
+Sin PII. Autor: Simón Tobar. SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 # CONTEXTO: Automatización REM A03 Sección D.3 — PSC / PSC-Y / GHQ-12
+
+## ✅ RESUELTO (jul-2026): los "dos resultados"
+
+RAYEN **precalcula** por cada aplicación tanto el **PUNTAJE** como un **RESULTADO**
+(su clasificación automática), y ambos vienen como columnas en el export. Entonces:
+
+- **Resultado AUTOMÁTICO** = leer la columna `RESULTADO` de RAYEN tal cual.
+- **Resultado CALCULADO (DISAM)** = tomar el `PUNTAJE` y reclasificar con los cortes
+  de este doc (`clasificar_*`, más abajo) — que es lo que pasó DISAM.
+- El reporte muestra **las dos** para poder comparar (RAYEN a veces difiere).
+
+Estructura de columnas del export **confirmada** contra ejemplos reales
+anonimizados en `refs tablas/` (goldberg/pscy/psc): ver «Estructura real» abajo.
 
 ## Setup general
 - **Centro:** CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC, Maipú)
@@ -99,24 +106,32 @@ Desagregación requerida: **rango etario × sexo × resultado (Bajo / Medio / Al
 
 ---
 
-## Input esperado desde RAYEN
+## Estructura real del export (confirmado jul-2026)
 
-Export de formularios clínicos. Columnas relevantes probables:
+Se exporta **un archivo por instrumento**. Los DOS formatos del proyecto aplican
+también acá (reutilizar el sistema de perfiles de `rem_saludmental`):
 
-```
-INSTRUMENTO          # nombre del formulario (ver nombres RAYEN arriba)
-FECHA ATENCION       # o similar
-SEXO                 # "Hombre" / "Mujer"
-EDAD PACIENTE        # ojo: puede ser edad a la descarga, no al llenado
-AÑO APLICACION FORMULARIO  # quirk conocido: en otros exports contiene EDAD al llenado, no año
-PUNTAJE TOTAL        # o equivalente — confirmar nombre exacto en export real
-RESULTADO            # puede venir calculado como "Bajo/Medio/Alto" o no existir
-MOMENTO              # "Ingreso" / "Egreso" — puede no existir como columna separada
-```
+**Perfil IRIS** (`goldberg iris.xlsx`, `pscy 10 14 iris.xlsx`): encabezado arriba,
+1 fila por aplicación. Columnas clave (nombre exacto):
+- `INSTRUMENTO` — identifica PSC / PSC-Y / Goldberg (nombres RAYEN arriba).
+- `NUMERO TIPO IDENTIFICACION` (RUT), `SEXO`, `GENERO`.
+- `AÑO APLICACIÓN FORMULARIO` = **edad al llenado** (usar esta; `EDAD PACIENTE` = edad a la descarga, ignorar).
+- `FECHA ATENCION`, `FECHA FORMULARIO`.
+- `1.- ESTADO` — candidato a **Momento** (Ingreso/Egreso); confirmar valores con dato real.
+- `N.- PUNTAJE` (ej. goldberg `14.- PUNTAJE`) — el puntaje que suma RAYEN.
+- `N.- RESULTADO` (ej. goldberg `15.- RESULTADO`) — clasificación AUTOMÁTICA de RAYEN.
 
-> ⚠️ **Quirk RAYEN documentado** (de `rem_marcar_egresos.py`): `AÑO APLICACIÓN FORMULARIO` contiene **edad al llenado**, no año calendario. `EDAD PACIENTE` contiene edad a la descarga del reporte → ignorar para cálculos.
+**Perfil Administrativo** (`psc administrativo.xlsx`): banner filas 1-7, blanco 8,
+encabezado **fila 9**. El **instrumento va en el banner** (fila 7, col 3:
+`Formulario: Cuestionario para padres PSC`), NO en columna. RUT en columna `RUT`,
+edad en `Edad de registro formulario` (texto → `edad_anios`). Puntaje/Resultado al
+final: `40.- Puntaje`, `41.- Resultado`.
 
-> Los nombres exactos de columnas del export de estos formularios **no están verificados aún** — confirmar con export real antes de codificar detección de headers.
+> Detección: `PUNTAJE` por token `PUNTAJE`; automático por token `RESULTADO`;
+> instrumento por columna `INSTRUMENTO` (IRIS) o por el banner (admin).
+
+> ⚠️ **Quirk RAYEN**: `AÑO APLICACIÓN FORMULARIO` = edad al llenado (usar).
+> `EDAD PACIENTE` = edad a la descarga → ignorar.
 
 ---
 
@@ -154,12 +169,13 @@ def clasificar_ghq12(puntaje):
 
 ## Pendientes antes de codificar
 
-- [ ] **Aclarar "cálculo DISAM" vs "cálculo real"** (los DOS resultados que pediste): ¿cortes distintos, otra convención de puntaje, o qué?
-- [ ] Obtener export real de RAYEN para los formularios PSC/PSC-Y/Goldberg y verificar nombres exactos de columnas
-- [ ] Confirmar si el puntaje viene precalculado o hay que sumar ítems individuales
-- [ ] Confirmar si el campo "Momento" (Ingreso/Egreso) existe como columna o hay que inferirlo por lógica (¿primer formulario del paciente = ingreso?)
-- [ ] Verificar rangos etarios exactos usados en la planilla SA_26 para D.3
-- [ ] Confirmar si hay columna `INSTRUMENTO` que permita distinguir PSC vs PSC-Y vs Goldberg en un export unificado, o si se exportan por separado
+- [x] ~~"cálculo DISAM" vs "real"~~ → RESUELTO: automático = col `RESULTADO`; calculado = `clasificar_*(PUNTAJE)`. Ver arriba.
+- [x] ~~Nombres exactos de columnas~~ → confirmados contra ejemplos en `refs tablas/` (ver «Estructura real»).
+- [x] ~~¿Puntaje precalculado?~~ → SÍ, RAYEN lo trae en columna `PUNTAJE`.
+- [x] ~~¿Instrumento distinguible?~~ → SÍ: columna `INSTRUMENTO` (IRIS) o banner (admin). Se exporta 1 archivo por instrumento.
+- [ ] **Momento (Ingreso/Egreso):** confirmar si la columna `1.- ESTADO` trae eso (falta una fila de datos falsos con valor) o si se infiere (¿1er formulario del paciente = ingreso?).
+- [ ] **Rangos etarios** exactos de D.3 en la planilla SA_26 (está en `refs tablas/SA_26_V1.2.xlsm` → se puede extraer).
+- [ ] Definir forma de salida: ¿1 fila por aplicación (con ambos resultados, estilo A05) + hoja de conteos agregados para pegar en SA?
 
 ---
 
