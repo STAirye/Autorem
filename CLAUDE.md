@@ -56,6 +56,7 @@ modulos/              módulos de tarea (paquete)
   rem_a05_ingresos.py
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas
+refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas)
 ```
 Imports **absolutos** rooteados en la raíz: `from programas.rem_utils import …`,
 `import programas.rem_saludmental as sm`, `from modulos import rem_a05_egresos`.
@@ -74,9 +75,13 @@ Funcionan porque la raíz (donde vive `autorem.py`) está en `sys.path`.
 | `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
 
 Los exports con PII (IRIS y Administrativo reales) viven **solo en la carpeta de
-trabajo (OneDrive), NUNCA en el repo** (§8). En el repo hay una muestra admin
-anonimizada (`Formulario csm reporte Administrativo.xlsx`) para probar formato;
-igual la bloquea el `.gitignore`.
+trabajo (OneDrive), NUNCA en el repo** (§8). Las planillas de EJEMPLO van en
+`refs tablas/` y **sí se versionan**, pero con **whitelist POR-ARCHIVO** en el
+`.gitignore` (no del folder entero): cada planilla se habilita a mano SOLO tras
+verificar que no tiene PII. Un `.xlsx` que caiga ahí queda **ignorado** hasta
+vetarlo (así ya se evitó colar un export IRIS real por error, jul-2026).
+Vetados hoy: `Formulario csm reporte Administrativo.xlsx` y
+`PSC_PSC-Y_GHQ12_comparativo_final.xlsx` (0 datos identificatorios).
 
 **Arquitectura (2 ejes ortogonales):**
 - **Perfil de formato** (`rem_saludmental.PERFILES`): `iris` | `administrativo`.
@@ -364,6 +369,11 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
 - ✅ **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
 
 **Pendiente:**
+- **Módulo SCREENING (próximo):** procesar los formularios de screening y dar DOS
+  resultados del mismo formulario — cálculo **DISAM** y cálculo **real**. Las
+  fórmulas las hizo el autor en el chat de Cowork pero **NO están en este repo**
+  (verificado jul-2026); hay que traerlas. Falta definir: cómo se ve el export de
+  screening (¿IRIS? ¿otro formato → perfil nuevo?) y las dos fórmulas.
 - **Empaquetar a `.exe`** (`autorem.py`, §11) — pendiente inmediato.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.
@@ -374,7 +384,8 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
 - **Abandonos:** dependen del cálculo del "PowerBI madre" — etapa aparte.
 - **Cosmético:** `LIMPIAR_NOMBRE_PATOLOGIA = True` + precargar `OVERRIDE_PATOLOGIA`
   para nombres bonitos.
-- **Higiene:** mover los `.py` viejos a `legacy/`; tag `v1.6`.
+- ~~Higiene: mover los `.py` viejos a `legacy/`~~ ✅ hecho; reorg en paquetes
+  `programas/` + `modulos/` ✅; tag `1.2.0` ✅.
 
 ---
 

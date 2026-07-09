@@ -13,6 +13,14 @@
 # Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
 # explícito: git add -f muestra_anonimizada.xlsx
 
+# --- Referencias: planillas de EJEMPLO anonimizadas (SÍ se versionan) ---
+# Excepción a la regla anti-PII, PERO por-archivo (NO whitelist del folder):
+# cada planilla se agrega a mano abajo SOLO tras verificar que NO tiene datos
+# reales de pacientes (RUT/nombre/dirección/teléfono/fecha nac.). Así, un
+# archivo nuevo que caiga en 'refs tablas/' queda IGNORADO hasta vetarlo. Ver §8.
+!refs tablas/Formulario csm reporte Administrativo.xlsx
+!refs tablas/PSC_PSC-Y_GHQ12_comparativo_final.xlsx
+
 # --- Salidas del script ---
 *_procesado.xlsx
 
