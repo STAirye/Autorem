@@ -113,8 +113,13 @@ también acá (reutilizar el sistema de perfiles de `rem_saludmental`):
 
 **Perfil IRIS** (`goldberg iris.xlsx`, `pscy 10 14 iris.xlsx`): encabezado arriba,
 1 fila por aplicación. Columnas clave (nombre exacto):
-- `INSTRUMENTO` — identifica PSC / PSC-Y / Goldberg (nombres RAYEN arriba).
-- `NUMERO TIPO IDENTIFICACION` (RUT), `SEXO`, `GENERO`.
+- ⚠ `INSTRUMENTO` (columna **AH**, entre `FUNCIONARIO` y `ESTABLECIMIENTO INSCRIPCION`) —
+  **RAYEN la mal-rotula**: en realidad trae el **ESTAMENTO** de quién aplicó
+  (`Médico` / `Psicólogo(a)` / `Terapeuta Ocupacional` / `Trabajador(a) Social`),
+  NO el instrumento. (Solo IRIS trae el estamento; el Administrativo NO.)
+- El **instrumento** (PSC / PSC-Y / Goldberg) NO viene en esa columna → sale del
+  `FORMULARIO` (col ~36) o de que cada archivo es un instrumento. CONFIRMAR cuál.
+- `NUMERO TIPO IDENTIFICACION` (RUT), `SEXO`, `GENERO`, `FUNCIONARIO` (nombre).
 - `AÑO APLICACIÓN FORMULARIO` = **edad al llenado** (usar esta; `EDAD PACIENTE` = edad a la descarga, ignorar).
 - `FECHA ATENCION`, `FECHA FORMULARIO`.
 - `1.- ESTADO` — candidato a **Momento** (Ingreso/Egreso); confirmar valores con dato real.
@@ -185,10 +190,11 @@ Además de instrumento/momento/resultado, reportar el **estamento**
 (Médico / Psicólogo / Terapeuta Ocupacional / Trabajador Social / Otro) que llenó
 el instrumento.
 
-- **IRIS:** el estamento está disponible — CONFIRMAR cómo (¿columna propia?, ¿dentro
-  del string de `FUNCIONARIO` / `FUNCIONARIOS FORMULARIO`?).
-- **Administrativo:** solo trae el nombre del `Funcionario` → necesita mapeo
-  `funcionario → estamento`.
+- **IRIS:** el estamento viene **directo** en la columna AH `INSTRUMENTO` (mal
+  rotulada; valores `Médico`/`Psicólogo(a)`/`Terapeuta Ocupacional`/`Trabajador(a) Social`).
+  No necesita lookup.
+- **Administrativo:** NO trae estamento, solo el nombre del `Funcionario` → necesita
+  mapeo `funcionario → estamento`.
 
 Diseño propuesto:
 - **Tabla auxiliar `funcionario → estamento`, LOCAL (gitignored):** son nombres de
