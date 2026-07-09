@@ -117,8 +117,11 @@ también acá (reutilizar el sistema de perfiles de `rem_saludmental`):
   **RAYEN la mal-rotula**: en realidad trae el **ESTAMENTO** de quién aplicó
   (`Médico` / `Psicólogo(a)` / `Terapeuta Ocupacional` / `Trabajador(a) Social`),
   NO el instrumento. (Solo IRIS trae el estamento; el Administrativo NO.)
-- El **instrumento** (PSC / PSC-Y / Goldberg) NO viene en esa columna → sale del
-  `FORMULARIO` (col ~36) o de que cada archivo es un instrumento. CONFIRMAR cuál.
+- El **instrumento** (PSC / PSC-Y / Goldberg) NO viene en esa columna → se
+  **DETECTA POR CONTENIDO** (col `FORMULARIO` en IRIS / banner en admin, o el
+  fingerprint de los ítems), NUNCA por nombre de archivo: RAYEN baja TODO como
+  `Formulario_Rayen.xlsx` sin importar el contenido. Tras detectar, **confirmar
+  con el usuario** ("Detecté: <instrumento> (<formato>) — ¿correcto? S/N").
 - `NUMERO TIPO IDENTIFICACION` (RUT), `SEXO`, `GENERO`, `FUNCIONARIO` (nombre).
 - `AÑO APLICACIÓN FORMULARIO` = **edad al llenado** (usar esta; `EDAD PACIENTE` = edad a la descarga, ignorar).
 - `FECHA ATENCION`, `FECHA FORMULARIO`.

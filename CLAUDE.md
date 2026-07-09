@@ -258,6 +258,13 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
 - **RUT** viene de `NUMERO TIPO IDENTIFICACION`, ya con guión y DV (`11111111-1`).
 - **Otras Causas es manual por diseño:** requiere decisión clínica caso a caso
   (abandono vs clínica). Solo se flaggea; no se clasifica automático.
+- **Detectar por CONTENIDO, nunca por nombre de archivo, + confirmar:** RAYEN baja
+  TODO como `Formulario_Rayen.xlsx` sin importar el contenido. El nombre no dice
+  nada. Regla del proyecto: identificar formato/instrumento por firmas de
+  contenido (ancla, banner, columnas, fingerprint de ítems) y **confirmar con el
+  usuario** ("Detecté X — ¿correcto? S/N") antes de procesar. Extiende
+  `detectar_formato()`; a futuro puede reemplazar el selector manual del A05 por
+  auto-detección + confirmación.
 
 ### Zonas de configuración editables (arriba del archivo)
 `BUSQUEDAS` · `DIAGNOSTICOS_CON_SUBTIPO` · `REMAP_DIAGNOSTICO` · `DEMOGRAFIA` ·
