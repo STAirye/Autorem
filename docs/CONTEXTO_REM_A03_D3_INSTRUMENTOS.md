@@ -173,9 +173,37 @@ def clasificar_ghq12(puntaje):
 - [x] ~~Nombres exactos de columnas~~ → confirmados contra ejemplos en `refs tablas/` (ver «Estructura real»).
 - [x] ~~¿Puntaje precalculado?~~ → SÍ, RAYEN lo trae en columna `PUNTAJE`.
 - [x] ~~¿Instrumento distinguible?~~ → SÍ: columna `INSTRUMENTO` (IRIS) o banner (admin). Se exporta 1 archivo por instrumento.
-- [ ] **Momento (Ingreso/Egreso):** confirmar si la columna `1.- ESTADO` trae eso (falta una fila de datos falsos con valor) o si se infiere (¿1er formulario del paciente = ingreso?).
+- [x] ~~Momento (Ingreso/Egreso)~~ → RESUELTO: la columna `1.- ESTADO` es binaria "Ingreso"/"Egreso".
 - [ ] **Rangos etarios** exactos de D.3 en la planilla SA_26 (está en `refs tablas/SA_26_V1.2.xlsm` → se puede extraer).
 - [ ] Definir forma de salida: ¿1 fila por aplicación (con ambos resultados, estilo A05) + hoja de conteos agregados para pegar en SA?
+
+---
+
+## Idea: reportar ESTAMENTO del funcionario que aplicó (pendiente de diseño)
+
+Además de instrumento/momento/resultado, reportar el **estamento**
+(Médico / Psicólogo / Terapeuta Ocupacional / Trabajador Social / Otro) que llenó
+el instrumento.
+
+- **IRIS:** el estamento está disponible — CONFIRMAR cómo (¿columna propia?, ¿dentro
+  del string de `FUNCIONARIO` / `FUNCIONARIOS FORMULARIO`?).
+- **Administrativo:** solo trae el nombre del `Funcionario` → necesita mapeo
+  `funcionario → estamento`.
+
+Diseño propuesto:
+- **Tabla auxiliar `funcionario → estamento`, LOCAL (gitignored):** son nombres de
+  personal (dato personal de funcionarios, no PII de pacientes, pero igual no se
+  versiona) y es un artefacto que cambia con las rotaciones.
+- **Auto-sembrado** desde los exports IRIS (donde el estamento sí está); el
+  funcionario aparece en muchos reportes → la tabla se llena sola con el uso.
+- **Funcionarios desconocidos → popup interactivo** al procesar: lista los no
+  clasificados con dropdown (Médico/Psicólogo/TO/TS/Otro). MISMO patrón que el
+  popup "Otras Causas" del roadmap → hacer UNO reutilizable.
+- **Ubicación:** la LÓGICA (cargar/guardar/lookup del mapeo) es reutilizable; el
+  POPUP es GUI (Tkinter) → va en la capa dispatcher (`autorem` o un helper GUI),
+  NO en `rem_utils` (que es headless). El core del módulo puede salir SIN esto (v2).
+- Probablemente **cross-módulo** (egresos/ingresos también podrían querer "quién
+  llenó"), así que conviene un helper compartido.
 
 ---
 
