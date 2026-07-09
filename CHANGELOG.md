@@ -14,7 +14,11 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ## [Sin publicar]
 
-- (nada pendiente por ahora)
+### Cambiado
+- **Convención de nombre de módulos de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`
+  (`<casilla>` = celda REM). `rem_a05_egresos` → `rem_a05_o_egresos`,
+  `rem_a05_ingresos` → `rem_a05_n_ingresos`. Los `id` de `--tarea` cambian a
+  `a05_o_egresos` / `a05_n_ingresos`. Sin cambio de comportamiento (tests 7/7).
 
 ## [1.2.0] — 2026-07-07
 
@@ -23,9 +27,9 @@ previas (etiquetadas informalmente v1.2–v1.6; el detalle vive en el historial 
 git). Programa **autoREM** (X=1) con **2 módulos** (Y=2: egresos, ingresos).
 
 ### Agregado
-- **Módulo A05 · Egresos** (`rem_a05_egresos.py`): marca Altas / Traslados /
+- **Módulo A05 · Egresos** (`rem_a05_o_egresos.py`): marca Altas / Traslados /
   Otras Causas de Salud Mental, con patología, subtipo y demografía.
-- **Módulo A05 · Ingresos** (`rem_a05_ingresos.py`): gemelo del anterior para
+- **Módulo A05 · Ingresos** (`rem_a05_n_ingresos.py`): gemelo del anterior para
   eventos de INGRESO.
 - **Dispatcher GUI + CLI** (`autorem.py`): selector de tareas; corre varias en
   una pasada y produce un solo `…_procesado.xlsx` con una hoja por tarea.

@@ -52,23 +52,28 @@ programas/            motor y base compartida (paquete)
   rem_utils.py
   rem_saludmental.py
 modulos/              módulos de tarea (paquete)
-  rem_a05_egresos.py
-  rem_a05_ingresos.py
+  rem_a05_o_egresos.py
+  rem_a05_n_ingresos.py
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas
 refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas)
 ```
 Imports **absolutos** rooteados en la raíz: `from programas.rem_utils import …`,
-`import programas.rem_saludmental as sm`, `from modulos import rem_a05_egresos`.
+`import programas.rem_saludmental as sm`, `from modulos import rem_a05_o_egresos`.
 Funcionan porque la raíz (donde vive `autorem.py`) está en `sys.path`.
+
+**Convención de nombre de módulo de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`,
+donde `<casilla>` es la celda/columna del REM (A05: `n`=ingresos, `o`=egresos).
+El descriptor y el `id` del `TAREA` la incluyen (ej. `a05_o_egresos`). El próximo
+módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 
 | Archivo | Rol |
 |---|---|
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
 | `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, `edad_anios`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
-| `modulos/rem_a05_egresos.py` | **Módulo de tarea (fino).** Config del egreso (Alta/Traslado/OtrasCausas) + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA`. |
-| `modulos/rem_a05_ingresos.py` | **Módulo de tarea (fino).** Gemelo de egresos: token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso`. |
+| `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
+| `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |

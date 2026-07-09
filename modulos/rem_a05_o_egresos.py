@@ -25,7 +25,7 @@ Marcado de EGRESOS de Salud Mental (export IRIS) para el REM A05.
 Módulo de tarea HEADLESS y fino: solo aporta la config del egreso (qué token de
 ESTADO flaggear, cómo se llama su hoja/columna). Todo el análisis —validación,
 patología, subtipo, demografía, motor de marcado— vive en rem_saludmental.py,
-que comparte con rem_a05_ingresos.py. La GUI/CLI está en autorem.py.
+que comparte con rem_a05_n_ingresos.py. La GUI/CLI está en autorem.py.
 
 Un egreso puede ser Alta, Traslado u Otras Causas:
   - Alta y Traslado van a estadística.
@@ -33,7 +33,7 @@ Un egreso puede ser Alta, Traslado u Otras Causas:
     caso); solo se marca, no se clasifica automático.
 
 USO como librería:
-    from rem_a05_egresos import procesar
+    from modulos.rem_a05_o_egresos import procesar
     procesar(entrada_xlsx, salida_xlsx, log=print)
 """
 
@@ -83,7 +83,7 @@ def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print):
 # La tarea es agnóstica al formato; el perfil (IRIS/admin) lo elige el usuario y
 # lo pasa el dispatcher. Egresos e ingresos leen el mismo formulario.
 TAREA = {
-    "id": "a05_egresos",
+    "id": "a05_o_egresos",
     "nombre": "A05 · Egresos",
     "agregar": agregar_hoja,             # (wb, ws, perfil, log) -> resumen ; NO guarda
     "correr": procesar,                  # (entrada, salida, perfil, log) -> resumen

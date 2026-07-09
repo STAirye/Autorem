@@ -22,13 +22,13 @@
 """
 Marcado de INGRESOS de Salud Mental (export IRIS) para el REM A05.
 
-Gemelo de rem_a05_egresos.py: mismo export IRIS 'Control de Salud Mental', mismo
+Gemelo de rem_a05_o_egresos.py: mismo export IRIS 'Control de Salud Mental', mismo
 análisis (patología, subtipo, demografía). La única diferencia es el token de
 ESTADO: aquí se flaggea 'INGRESO' (un solo tipo de evento). Todo el motor vive en
 rem_saludmental.py. La GUI/CLI está en autorem.py.
 
 USO como librería:
-    from rem_a05_ingresos import procesar
+    from modulos.rem_a05_n_ingresos import procesar
     procesar(entrada_xlsx, salida_xlsx, log=print)
 """
 
@@ -71,7 +71,7 @@ def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print):
 
 # ── Descriptor para el registro de tareas (lo consume autorem.py) ──
 TAREA = {
-    "id": "a05_ingresos",
+    "id": "a05_n_ingresos",
     "nombre": "A05 · Ingresos",
     "agregar": agregar_hoja,             # (wb, ws, perfil, log) -> resumen ; NO guarda
     "correr": procesar,                  # (entrada, salida, perfil, log) -> resumen

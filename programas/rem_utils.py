@@ -23,8 +23,8 @@
 rem_utils.py — utilidades comunes para los módulos del REM (RAYEN/IRIS).
 
 Base compartida por todas las herramientas del proyecto autoREM. NO contiene
-lógica de ninguna sección específica del REM; cada módulo (rem_a05_egresos.py,
-rem_<seccion>.py, ...) importa de aquí.
+lógica de ninguna sección específica del REM; cada módulo de tarea
+(modulos/rem_<pestaña>_<casilla>_<descriptor>.py) importa de aquí.
 
 Contenido:
   - Guarda de dependencia (openpyxl) y excepción común (ArchivoInvalido).

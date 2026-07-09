@@ -32,8 +32,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 import programas.rem_saludmental as sm       # noqa: E402
-import modulos.rem_a05_egresos as egresos    # noqa: E402
-import modulos.rem_a05_ingresos as ingresos  # noqa: E402
+import modulos.rem_a05_o_egresos as egresos    # noqa: E402
+import modulos.rem_a05_n_ingresos as ingresos  # noqa: E402
 import autorem                               # noqa: E402
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_tests_"))

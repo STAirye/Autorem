@@ -73,7 +73,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 ```
 
 - Sin `--formato`: asume **iris**.
-- Sin `--tarea`: corre la primera tarea. IDs: `a05_egresos`, `a05_ingresos`.
+- Sin `--tarea`: corre la primera tarea. IDs: `a05_o_egresos`, `a05_n_ingresos`.
 - Varias tareas → un solo archivo con una hoja por tarea.
 
 ---
@@ -85,8 +85,8 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `autorem.py` | **Entry point.** Dispatcher GUI + CLI: selector de formato y tareas. |
 | `programas/rem_utils.py` | Utilidades genéricas del REM (texto, columnas, apertura de archivos). |
 | `programas/rem_saludmental.py` | Capa compartida del formulario "Control de Salud Mental": validación, diagnóstico/subtipo, demografía, perfiles IRIS/Admin. |
-| `modulos/rem_a05_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
-| `modulos/rem_a05_ingresos.py` | Módulo de tarea: ingresos. |
+| `modulos/rem_a05_o_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
+| `modulos/rem_a05_n_ingresos.py` | Módulo de tarea: ingresos. |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 

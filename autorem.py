@@ -46,10 +46,10 @@ from programas.rem_utils import VERSION
 import programas.rem_saludmental as sm
 
 # ── Registro de módulos de tarea ──────────────────────────────────────
-from modulos import rem_a05_egresos
-from modulos import rem_a05_ingresos
+from modulos import rem_a05_o_egresos
+from modulos import rem_a05_n_ingresos
 
-MODULOS = [rem_a05_egresos, rem_a05_ingresos]
+MODULOS = [rem_a05_o_egresos, rem_a05_n_ingresos]
 
 TAREAS = [m.TAREA for m in MODULOS]
 PERFILES = sm.PERFILES

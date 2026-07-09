@@ -33,7 +33,7 @@ El mismo formulario se puede descargar en DOS formatos de export distintos:
                   layout de encabezado y SIN varias columnas demográficas.
 
 Un 'perfil' encapsula esas diferencias de formato; las tareas (egresos/ingresos)
-son agnósticas al formato. Lo consumen rem_a05_egresos.py y rem_a05_ingresos.py.
+son agnósticas al formato. Lo consumen rem_a05_o_egresos.py y rem_a05_n_ingresos.py.
 La GUI/CLI (autorem.py) deja elegir el perfil al inicio.
 
 ╔══════════════════════════════════════════════════════════════════════╗
