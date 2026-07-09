@@ -80,8 +80,11 @@ trabajo (OneDrive), NUNCA en el repo** (§8). Las planillas de EJEMPLO van en
 `.gitignore` (no del folder entero): cada planilla se habilita a mano SOLO tras
 verificar que no tiene PII. Un `.xlsx` que caiga ahí queda **ignorado** hasta
 vetarlo (así ya se evitó colar un export IRIS real por error, jul-2026).
-Vetados hoy: `Formulario csm reporte Administrativo.xlsx` y
-`PSC_PSC-Y_GHQ12_comparativo_final.xlsx` (0 datos identificatorios).
+Versionados hoy: exports de EJEMPLO (RAYEN/IRIS/PowerBI con datos falsos) para
+egresos/ingresos/screening/población, `CALCULADOR A05`, y las **plantillas
+target SA/SP `.xlsm`** — estas se versionan para detectar cuándo MINSAL cambia
+su estructura (git nota el cambio aunque no muestre diff legible del binario).
+El `.xls` de RAYEN NO se versiona: openpyxl no lee `.xls` → convertir a `.xlsx`.
 
 **Arquitectura (2 ejes ortogonales):**
 - **Perfil de formato** (`rem_saludmental.PERFILES`): `iris` | `administrativo`.
