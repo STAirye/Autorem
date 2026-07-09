@@ -90,6 +90,22 @@ def solo_entero(v):
     return int(m.group()) if m else None
 
 
+def edad_anios(v):
+    """Edad en AÑOS (int) desde la celda. RAYEN a veces la trae pelada (IRIS:
+    'AÑO APLICACIÓN FORMULARIO' = número) y a veces como texto (Administrativo:
+    '99 años 12 meses 31 días'). Menor de 1 año (solo meses/días) -> 0. None si
+    no hay dato. Genérica: sirve a cualquier export RAYEN."""
+    if v is None:
+        return None
+    n = norm(v)                       # '99 ANOS 12 MESES 31 DIAS'
+    m = re.search(r"(\d+)\s*ANOS?", n)
+    if m:
+        return int(m.group(1))
+    if "MES" in n or "DIA" in n:      # menor de 1 año expresado en meses/días
+        return 0
+    return solo_entero(v)
+
+
 # ── Búsqueda de columnas / numeración de preguntas RAYEN ──────────────
 def buscar_col(headers_norm, tokens=None, exacto=None):
     """Índice 1-based de la 1ª columna cuyo header (ya normalizado) contiene

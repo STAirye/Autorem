@@ -47,7 +47,7 @@ from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
     ArchivoInvalido,
     norm, solo_entero, buscar_col, num_pregunta,
-    encontrar_fila_encabezado,
+    encontrar_fila_encabezado, edad_anios,
 )
 
 # ── Diagnósticos con subtipo (clave = N.- diagnóstico, valor = N.- subtipo) ──
@@ -115,21 +115,6 @@ ANCHOS_COLA = [16, 11]                      # Trans, Fila_Origen
 # ── Helpers de estructura del formulario ──────────────────────────────
 def es_estado(h):
     return norm(h).endswith("ESTADO")
-
-
-def edad_anios(v):
-    """Edad en AÑOS (int) desde la celda. IRIS trae el número pelado; el
-    Administrativo trae '99 años 12 meses 31 días'. Menor de 1 año (solo meses/
-    días) -> 0. None si no hay dato."""
-    if v is None:
-        return None
-    n = norm(v)                       # '99 ANOS 12 MESES 31 DIAS'
-    m = re.search(r"(\d+)\s*ANOS?", n)
-    if m:
-        return int(m.group(1))
-    if "MES" in n or "DIA" in n:      # menor de 1 año expresado en meses/días
-        return 0
-    return solo_entero(v)
 
 
 def limpiar_patologia(header):

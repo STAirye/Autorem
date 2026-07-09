@@ -14,11 +14,21 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ## [Sin publicar]
 
+### Agregado
+- **Módulo screening A03 D.3** (`modulos/rem_a03_d3_instrumentos.py`): procesa
+  PSC / PSC-Y / GHQ-12. Autodetecta formato (IRIS/Admin) e instrumento por
+  contenido; por cada aplicación reporta puntaje, resultado automático (RAYEN),
+  resultado calculado (cortes DISAM), discrepancia, momento (Ingreso/Egreso) y
+  estamento (IRIS). Tests en `tests/test_screening.py` (5/5). Core: aún NO
+  integrado a la GUI (ver roadmap).
+
 ### Cambiado
 - **Convención de nombre de módulos de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`
   (`<casilla>` = celda REM). `rem_a05_egresos` → `rem_a05_o_egresos`,
   `rem_a05_ingresos` → `rem_a05_n_ingresos`. Los `id` de `--tarea` cambian a
   `a05_o_egresos` / `a05_n_ingresos`. Sin cambio de comportamiento (tests 7/7).
+- `edad_anios()` movida de `rem_saludmental` a `rem_utils` (parsing RAYEN
+  genérico; la usan tanto A05 como screening).
 
 ## [1.2.0] — 2026-07-07
 

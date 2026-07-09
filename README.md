@@ -87,6 +87,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `programas/rem_saludmental.py` | Capa compartida del formulario "Control de Salud Mental": validación, diagnóstico/subtipo, demografía, perfiles IRIS/Admin. |
 | `modulos/rem_a05_o_egresos.py` | Módulo de tarea: egresos (Alta/Traslado/Otras Causas). |
 | `modulos/rem_a05_n_ingresos.py` | Módulo de tarea: ingresos. |
+| `modulos/rem_a03_d3_instrumentos.py` | Módulo screening A03 D.3: PSC/PSC-Y/GHQ-12 (resultado automático + calculado DISAM). Core; integración GUI pendiente. |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 

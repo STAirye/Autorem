@@ -54,6 +54,7 @@ programas/            motor y base compartida (paquete)
 modulos/              módulos de tarea (paquete)
   rem_a05_o_egresos.py
   rem_a05_n_ingresos.py
+  rem_a03_d3_instrumentos.py
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas
 refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas)
@@ -70,10 +71,11 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | Archivo | Rol |
 |---|---|
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
-| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
-| `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, `edad_anios`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
+| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
+| `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
+| `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; da resultado automático (col RESULTADO) + calculado DISAM (`clasificar_*(puntaje)`) + discrepancia + momento (`1.- Estado`) + estamento (IRIS). Core hecho; **falta integrar a la GUI** y v2 (lookup admin, conteos, popup). |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
@@ -384,14 +386,16 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
 - ✅ **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
 
 **Pendiente:**
-- **Módulo INSTRUMENTOS / screening (próximo) — REM A03 sección D.3, NO A05.**
-  Instrumentos PSC (5-9a) / PSC-Y (10-14a) / GHQ-12 (15+), aplicados al ingreso
-  y egreso del PSM. Contexto completo (cortes, columnas esperadas, funciones
-  `clasificar_*`, pendientes) en `docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md`.
-  **Abierto clave:** el pedido pide DOS resultados —"cálculo DISAM" y "cálculo
-  real"— pero el doc trae UN set de cortes (oficial REM SA 2026); aclarar qué es
-  el DISAM antes de codificar. Es otra sección del REM → probable perfil/tarea
-  nueva; confirmar formato del export.
+- **Módulo screening A03 D.3** (`modulos/rem_a03_d3_instrumentos.py`): ✅ CORE HECHO.
+  Autodetecta formato+instrumento, da resultado automático + DISAM + discrepancia
+  + momento + estamento (IRIS). Tests en `tests/test_screening.py` (5/5).
+  Contexto en `docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md`. **Pendiente:**
+  (a) **integrarlo a la GUI/dispatcher** — es un REPORTE distinto (perfiles
+  propios); el dispatcher hoy asume el reporte de Salud Mental. Encaja con el
+  paso de "autodetectar + confirmar" (§7): reestructurar el dispatcher para
+  multi-reporte con confirmación. (b) v2: lookup funcionario→estamento para el
+  Administrativo, conteos agregados por rango etario (extraer de `SA_26`), popup
+  de clasificación.
 - **Empaquetar a `.exe`** (`autorem.py`, §11) — pendiente inmediato.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.

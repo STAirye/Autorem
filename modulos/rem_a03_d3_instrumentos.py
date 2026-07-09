@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ==========================================================================
+# This code was generated with the assistance of Claude Opus 4.8 (Anthropic).
+# The human author reviewed, modified, and integrated the code.
+#
+# Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
+# Copyright (C) 2026 Simón Tobar
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Version: 1.2.0
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# for more details: <https://www.gnu.org/licenses/>.
+# ==========================================================================
+"""
+Instrumentos de monitoreo del PSM (REM A03 sección D.3) — PSC / PSC-Y / GHQ-12.
+
+Procesa el export RAYEN de un formulario de screening (aplicado al ingreso y
+egreso del Programa de Salud Mental) y, por cada aplicación, reporta:
+  - Instrumento (PSC / PSC-Y / GHQ-12) — DETECTADO por contenido (no por nombre
+    de archivo: RAYEN baja todo como 'Formulario_Rayen.xlsx').
+  - Momento (Ingreso / Egreso), del campo '1.- Estado'.
+  - Puntaje (el que suma RAYEN).
+  - Resultado AUTOMÁTICO (columna RESULTADO de RAYEN, tal cual).
+  - Resultado CALCULADO (recalcula el puntaje con los cortes REM/DISAM, abajo).
+  - Discrepancia (SI el automático != el calculado).
+  - Estamento de quien aplicó (solo IRIS: la columna mal rotulada 'INSTRUMENTO').
+
+Dos formatos (perfiles), igual que el A05: IRIS y Administrativo. Se autodetectan.
+
+CORE (esta versión): 1 fila por aplicación con ambos resultados. PENDIENTE (v2):
+lookup funcionario→estamento para el Administrativo, conteos agregados por rango
+etario para pegar en el SA, y el popup GUI de confirmación/clasificación.
+
+Contexto completo: docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md
+"""
+
+from programas.rem_utils import (
+    OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
+    ArchivoInvalido,
+    norm, solo_entero, buscar_col, num_pregunta,
+    encontrar_fila_encabezado, edad_anios,
+)
+
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.║
+# ╚═══════════════════════════════════════════════════════════════════╝
+def clasificar_psc(p):
+    """PSC / PSC-Y (cortes idénticos). <33 = fuera de rango REM -> None."""
+    if p is None: return None
+    if 33 <= p <= 63: return "Bajo"
+    if 64 <= p <= 69: return "Medio"
+    if p >= 70:       return "Alto"
+    return None
+
+def clasificar_ghq12(p):
+    if p is None: return None
+    if 0 <= p <= 4:  return "Bajo"
+    if 5 <= p <= 6:  return "Medio"
+    if 7 <= p <= 12: return "Alto"
+    return None
+
+# Registro de instrumentos. `patrones` = substrings (normalizados) para detectar
+# el instrumento en el nombre del formulario. Orden de chequeo: PSC-Y antes que
+# PSC (porque 'PSC' es substring), luego GHQ, luego PSC.
+INSTRUMENTOS = {
+    "PSC-Y":  {"nombre": "PSC-Y",  "clasificar": clasificar_psc,   "patrones": ["PSC-Y", "ADOLESCENTES"]},
+    "GHQ-12": {"nombre": "GHQ-12", "clasificar": clasificar_ghq12, "patrones": ["GOLDBERG", "GHQ"]},
+    "PSC":    {"nombre": "PSC",    "clasificar": clasificar_psc,   "patrones": ["PADRES PSC", "CUESTIONARIO PARA PADRES", "PADRES"]},
+}
+_ORDEN_DETECCION = ["PSC-Y", "GHQ-12", "PSC"]
+
+# ── Firmas de formato (RAYEN genérico; igual que el A05) ──
+ANCLA_IRIS   = ["AÑO", "APLICACION", "FORMULARIO"]
+ANCLA_ADMIN  = ["EDAD", "REGISTRO", "FORMULARIO"]
+ADMIN_BANNER = "SERVICIO DE SALUD"
+ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
+MAX_FILAS_HEADER = 60
+
+# Detección de columnas (nombres de ambos formatos)
+RUT_TOKENS_IRIS  = ["NUMERO", "IDENTIFICACION"]
+RUT_EXACTO_ADMIN = "RUT"
+EDAD_TOKENS_IRIS  = ["AÑO", "APLICACION", "FORMULARIO"]
+EDAD_TOKENS_ADMIN = ["EDAD", "REGISTRO", "FORMULARIO"]
+
+NOMBRE_HOJA_SALIDA = "A03_D3_Instrumentos"
+
+
+# ── Detección de formato / encabezado / instrumento ───────────────────
+def detectar_formato(ws):
+    """'iris' | 'administrativo' | 'desconocido' (mismas firmas RAYEN que A05)."""
+    tope = min(ws.max_row, MAX_FILAS_HEADER)
+    ancla = [norm(t) for t in ANCLA_IRIS]
+    for r in range(1, tope + 1):
+        vals = [norm(c.value) for c in ws[r]]
+        if all(any(tok in v for v in vals) for tok in ancla):
+            return "iris"
+    if norm(ws.cell(row=1, column=1).value) == ADMIN_BANNER:
+        return "administrativo"
+    for r in range(1, tope + 1):
+        vals = [norm(c.value) for c in ws[r]]
+        for m in ADMIN_MARKERS:
+            if any(norm(m) in v for v in vals):
+                return "administrativo"
+    return "desconocido"
+
+
+def _fila_encabezado(ws, formato):
+    if formato == "administrativo":
+        return encontrar_fila_encabezado(ws, ANCLA_ADMIN, usar_blanco_en_a=False,
+                                         n_hardcode=8, max_filas=MAX_FILAS_HEADER)
+    return encontrar_fila_encabezado(ws, ANCLA_IRIS, usar_blanco_en_a=True,
+                                     n_hardcode=0, max_filas=MAX_FILAS_HEADER)
+
+
+def detectar_instrumento(ws, formato, header_idx, headers_norm):
+    """Detecta PSC / PSC-Y / GHQ-12 por CONTENIDO (nunca por nombre de archivo):
+    en IRIS por la columna 'FORMULARIO'; en Administrativo por el banner
+    'Formulario: ...'. Devuelve la clave o None si no se reconoce."""
+    texto = ""
+    if formato == "iris":
+        col = buscar_col(headers_norm, exacto="FORMULARIO")
+        if col:
+            for r in range(header_idx + 1, ws.max_row + 1):
+                v = ws.cell(row=r, column=col).value
+                if v not in (None, ""):
+                    texto = norm(v); break
+    else:
+        for r in range(1, header_idx):
+            for c in range(1, ws.max_column + 1):
+                v = ws.cell(row=r, column=c).value
+                if v and "FORMULARIO" in norm(v) and ":" in str(v):
+                    texto = norm(v); break
+            if texto:
+                break
+    for key in _ORDEN_DETECCION:
+        if any(norm(p) in texto for p in INSTRUMENTOS[key]["patrones"]):
+            return key
+    return None
+
+
+# ── Apertura + validación ─────────────────────────────────────────────
+def abrir_validado(entrada):
+    """Carga el workbook y valida que sea un export de instrumentos RAYEN
+    (formato reconocido + columnas PUNTAJE y RESULTADO). Devuelve
+    (wb, ws, formato, header_idx). Levanta ImportError/ArchivoInvalido."""
+    if not OPENPYXL_OK:
+        raise ImportError(
+            "Falta 'openpyxl'. Instálala con:  pip install openpyxl\n"
+            f"(detalle: {OPENPYXL_ERR})")
+    wb = openpyxl.load_workbook(entrada)
+    ws = wb.active
+    formato = detectar_formato(ws)
+    if formato == "desconocido":
+        raise ArchivoInvalido(
+            "desconocido",
+            "No reconozco este archivo como un export RAYEN (ni IRIS ni "
+            "Administrativo). Descárgalo de nuevo sin modificarlo.")
+    header_idx, _ = _fila_encabezado(ws, formato)
+    headers_norm = [norm(ws.cell(row=header_idx, column=c).value)
+                    for c in range(1, ws.max_column + 1)]
+    if not (buscar_col(headers_norm, tokens=["PUNTAJE"]) and
+            buscar_col(headers_norm, tokens=["RESULTADO"])):
+        raise ArchivoInvalido(
+            "no_instrumento",
+            "Este export no parece un formulario de instrumento (PSC/PSC-Y/"
+            "Goldberg): no encontré columnas PUNTAJE y RESULTADO.\n"
+            "¿Quizás cargaste el formulario de 'Control de Salud Mental'? "
+            "Ese va en el módulo de egresos/ingresos.")
+    return wb, ws, formato, header_idx
+
+
+# ── Núcleo ────────────────────────────────────────────────────────────
+def procesar(entrada, salida, instrumento=None, log=print):
+    """Detecta formato + instrumento, arma la hoja de instrumentos y guarda.
+    `instrumento` opcional fuerza el instrumento (para el 'confirmar/corregir'
+    del usuario); si es None se autodetecta. Devuelve un resumen."""
+    wb, ws, formato, header_idx = abrir_validado(entrada)
+
+    if instrumento is None:
+        headers_norm0 = [norm(ws.cell(row=header_idx, column=c).value)
+                         for c in range(1, ws.max_column + 1)]
+        instrumento = detectar_instrumento(ws, formato, header_idx, headers_norm0)
+    if instrumento not in INSTRUMENTOS:
+        raise ArchivoInvalido(
+            "instrumento_desconocido",
+            "No pude detectar qué instrumento es (PSC / PSC-Y / GHQ-12). "
+            "Especifícalo a mano al procesar.")
+    inst = INSTRUMENTOS[instrumento]
+    clasificar = inst["clasificar"]
+    log(f"[corte] formato={formato} | encabezado fila {header_idx} | instrumento={inst['nombre']}")
+
+    ncols = ws.max_column
+    headers = [ws.cell(row=header_idx, column=c).value for c in range(1, ncols + 1)]
+    hn = [norm(h) for h in headers]
+
+    rut_col   = (buscar_col(hn, tokens=[norm(t) for t in RUT_TOKENS_IRIS])
+                 or buscar_col(hn, exacto=RUT_EXACTO_ADMIN))
+    edad_col  = (buscar_col(hn, tokens=[norm(t) for t in EDAD_TOKENS_IRIS])
+                 or buscar_col(hn, tokens=[norm(t) for t in EDAD_TOKENS_ADMIN]))
+    sexo_col  = buscar_col(hn, exacto="SEXO")
+    punt_col  = buscar_col(hn, tokens=["PUNTAJE"])
+    resu_col  = buscar_col(hn, tokens=["RESULTADO"])
+    func_col  = buscar_col(hn, exacto="FUNCIONARIO")
+    estam_col = buscar_col(hn, exacto="INSTRUMENTO")   # mal rotulada = estamento (solo IRIS)
+    momento_col = next((i + 1 for i, h in enumerate(headers)
+                        if num_pregunta(h) == 1 and norm(h).endswith("ESTADO")), None)
+    log(f"[cols] RUT=col{rut_col} Edad=col{edad_col} Sexo=col{sexo_col} "
+        f"Puntaje=col{punt_col} Resultado=col{resu_col} Momento=col{momento_col} "
+        f"Estamento=col{estam_col}")
+    if formato != "iris" and not estam_col:
+        log("[estamento] AUSENTE en este formato (Administrativo) -> vacío. "
+            "Lookup funcionario→estamento pendiente (v2).")
+
+    filas = []
+    for r in range(header_idx + 1, ws.max_row + 1):
+        fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
+        puntaje = solo_entero(fila[punt_col - 1]) if punt_col else None
+        resu_rayen = fila[resu_col - 1] if resu_col else None
+        # fila vacía / sin aplicación -> saltar
+        if puntaje is None and (resu_rayen in (None, "")):
+            continue
+        rut  = fila[rut_col - 1]  if rut_col  else ""
+        edad = edad_anios(fila[edad_col - 1]) if edad_col else None
+        sexo = fila[sexo_col - 1] if sexo_col else ""
+        momento = fila[momento_col - 1] if momento_col else ""
+        estamento = fila[estam_col - 1] if estam_col else ""
+        funcionario = fila[func_col - 1] if func_col else ""
+        resu_disam = clasificar(puntaje)
+        disc = ""
+        if resu_rayen not in (None, "") and resu_disam:
+            disc = "SI" if norm(resu_rayen) != norm(resu_disam) else ""
+        filas.append({
+            "rut": rut, "edad": edad, "sexo": sexo, "instrumento": inst["nombre"],
+            "momento": momento, "puntaje": puntaje,
+            "resu_rayen": resu_rayen if resu_rayen is not None else "",
+            "resu_disam": resu_disam if resu_disam is not None else "",
+            "disc": disc, "estamento": estamento, "funcionario": funcionario,
+            "fila": r,
+        })
+
+    # ── hoja de salida ──
+    if NOMBRE_HOJA_SALIDA in wb.sheetnames:
+        del wb[NOMBRE_HOJA_SALIDA]
+    ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
+    cols = ["RUT", "Edad", "Sexo", "Instrumento", "Momento", "Puntaje",
+            "Resultado_RAYEN", "Resultado_DISAM", "Discrepancia",
+            "Estamento", "Funcionario", "Fila_Origen"]
+    ws2.append(cols)
+    orden_mom = {"INGRESO": 0, "EGRESO": 1}
+    filas.sort(key=lambda e: (orden_mom.get(norm(e["momento"]), 9),
+                              str(e["resu_disam"]), str(e["rut"])))
+    for e in filas:
+        ws2.append([e["rut"], e["edad"], e["sexo"], e["instrumento"], e["momento"],
+                    e["puntaje"], e["resu_rayen"], e["resu_disam"], e["disc"],
+                    e["estamento"], e["funcionario"], e["fila"]])
+
+    from openpyxl.styles import Font
+    for cell in ws2[1]:
+        cell.font = Font(bold=True)
+    ws2.freeze_panes = "A2"
+    if ws2.max_row >= 1:
+        ws2.auto_filter.ref = ws2.dimensions
+    from openpyxl.utils import get_column_letter
+    anchos = [13, 6, 8, 12, 10, 8, 16, 16, 12, 22, 22, 11]
+    for i, w in enumerate(anchos, 1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+
+    wb.save(salida)
+    log(f"[ok] guardado: {salida}  (hoja '{NOMBRE_HOJA_SALIDA}')")
+
+    n_disc = sum(1 for e in filas if e["disc"] == "SI")
+    por_momento = {}
+    for e in filas:
+        k = str(e["momento"]) or "(sin momento)"
+        por_momento[k] = por_momento.get(k, 0) + 1
+    log(f"[resumen] aplicaciones: {len(filas)} | discrepancias RAYEN vs DISAM: {n_disc}")
+    for k, v in por_momento.items():
+        log(f"          {k}: {v}")
+
+    return {
+        "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,
+        "total": len(filas), "discrepancias": n_disc, "por_momento": por_momento,
+        "hoja": NOMBRE_HOJA_SALIDA,
+    }
+
+
+# ── Descriptor para el registro de tareas (lo consumirá autorem.py) ──
+# OJO: es un REPORTE distinto al 'Control de Salud Mental' (otros perfiles y
+# autodetección propia). La integración a la GUI/dispatcher (con el paso de
+# confirmar el instrumento detectado) es el próximo paso.
+TAREA = {
+    "id": "a03_d3_instrumentos",
+    "nombre": "A03 D.3 · Instrumentos (PSC/PSC-Y/GHQ-12)",
+    "correr": procesar,                  # (entrada, salida, instrumento=None, log) -> resumen
+    "hoja": NOMBRE_HOJA_SALIDA,
+}
