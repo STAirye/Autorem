@@ -369,11 +369,14 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
 - ✅ **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
 
 **Pendiente:**
-- **Módulo SCREENING (próximo):** procesar los formularios de screening y dar DOS
-  resultados del mismo formulario — cálculo **DISAM** y cálculo **real**. Las
-  fórmulas las hizo el autor en el chat de Cowork pero **NO están en este repo**
-  (verificado jul-2026); hay que traerlas. Falta definir: cómo se ve el export de
-  screening (¿IRIS? ¿otro formato → perfil nuevo?) y las dos fórmulas.
+- **Módulo INSTRUMENTOS / screening (próximo) — REM A03 sección D.3, NO A05.**
+  Instrumentos PSC (5-9a) / PSC-Y (10-14a) / GHQ-12 (15+), aplicados al ingreso
+  y egreso del PSM. Contexto completo (cortes, columnas esperadas, funciones
+  `clasificar_*`, pendientes) en `docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md`.
+  **Abierto clave:** el pedido pide DOS resultados —"cálculo DISAM" y "cálculo
+  real"— pero el doc trae UN set de cortes (oficial REM SA 2026); aclarar qué es
+  el DISAM antes de codificar. Es otra sección del REM → probable perfil/tarea
+  nueva; confirmar formato del export.
 - **Empaquetar a `.exe`** (`autorem.py`, §11) — pendiente inmediato.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.
