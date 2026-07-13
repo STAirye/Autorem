@@ -109,8 +109,35 @@ def test_iris_equivalencia_v12():
 
     iris = _iris_fixture()
     out_ref = _TMP / "ref.xlsx"; viejo.procesar(iris, out_ref, log=_quiet)
-    out_new = _TMP / "new.xlsx"; egresos.procesar(iris, out_new, log=_quiet)
+    # v1.2 usa nombres de patología CRUDOS; acá comparamos el refactor, no el
+    # renombre (que es un cambio intencional). Forzamos crudo solo para el test.
+    prev = sm.LIMPIAR_NOMBRE_PATOLOGIA
+    sm.LIMPIAR_NOMBRE_PATOLOGIA = False
+    try:
+        out_new = _TMP / "new.xlsx"; egresos.procesar(iris, out_new, log=_quiet)
+    finally:
+        sm.LIMPIAR_NOMBRE_PATOLOGIA = prev
     assert _dump(out_new, "A05_Egresos") == _dump(out_ref, "A05_Egresos")
+
+
+def test_nombre_patologia_y_exclusion():
+    """LIMPIAR_NOMBRE_PATOLOGIA=True: nombre canónico + epilepsia (75) excluida."""
+    p = _TMP / "nombres.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio", None]); ws.append(["Filtros", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO", "20.- TIPO DE DEPRESIÓN",
+               "75.- ¿Paciente Presenta Epilepsia?", "76.- Estado"])
+    ws.append(["11111111-1", 50, "Hombre", "SI", "EGRESO ALTA", "Depresión Moderada",
+               "SI", "EGRESO ALTA"])          # 1 egreso depresión + 1 epilepsia (se excluye)
+    wb.save(p)
+    out = _TMP / "nombres_out.xlsx"
+    egresos.procesar(p, out, log=_quiet)      # LIMPIAR=True por defecto
+    ws2 = openpyxl.load_workbook(out)["A05_Egresos"]
+    head = [ws2.cell(row=1, column=c).value for c in range(1, ws2.max_column + 1)]
+    pi = head.index("Patologia") + 1
+    pats = [ws2.cell(row=r, column=pi).value for r in range(2, ws2.max_row + 1)]
+    assert pats == ["Depresión"]              # epilepsia excluida; nombre canónico
 
 
 def test_edad_anios():

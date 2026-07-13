@@ -251,9 +251,12 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
   `"Depresión Moderada"` con header `TIPO DE DEPRESIÓN` → `"Moderada"`.
 - **Remap deprecated:** Abuso Sexual (pregunta 9) → patología `Violencia`,
   subtipo `Sexual` (`REMAP_DIAGNOSTICO`).
-- **Nombre de patología sale crudo** (header tal cual). `LIMPIAR_NOMBRE_PATOLOGIA
-  = False` (pendiente cosmético; `limpiar_patologia()` + `OVERRIDE_PATOLOGIA` ya
-  existen detrás del flag).
+- **Nombre de patología canónico** (`LIMPIAR_NOMBRE_PATOLOGIA = True`, jul-2026):
+  `OVERRIDE_PATOLOGIA` mapea cada Nº de pregunta → nombre limpio (tomados de
+  SP·P6 y revisados con el autor). Abuso Sexual (9) lo maneja `REMAP_DIAGNOSTICO`.
+- **`EXCLUIR_PATOLOGIA = {75,77,79,81}`:** epilepsia (va al REM adulto) y los
+  programas de rehabilitación/acompañamiento NO son diagnósticos SM → se saltan
+  del output de egresos/ingresos.
 - **Quirk RAYEN clave:** `AÑO APLICACIÓN FORMULARIO` **NO trae el año, trae la
   EDAD a la fecha de llenado** (lo que A05 necesita). `EDAD PACIENTE` es la edad
   a la fecha de descarga → se ignora.

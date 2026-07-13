@@ -23,6 +23,10 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   integrado a la GUI (ver roadmap).
 
 ### Cambiado
+- **Nombres de patología limpios** en el output A05 (`LIMPIAR_NOMBRE_PATOLOGIA=True`):
+  `OVERRIDE_PATOLOGIA` con nombres canónicos por Nº de pregunta (tomados de SP·P6).
+  Nuevo `EXCLUIR_PATOLOGIA = {75,77,79,81}`: epilepsia (→ REM adulto) y programas
+  de rehabilitación/acompañamiento se excluyen del output de egresos/ingresos.
 - **Convención de nombre de módulos de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`
   (`<casilla>` = celda REM). `rem_a05_egresos` → `rem_a05_o_egresos`,
   `rem_a05_ingresos` → `rem_a05_n_ingresos`. Los `id` de `--tarea` cambian a

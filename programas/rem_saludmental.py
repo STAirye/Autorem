@@ -66,10 +66,51 @@ REMAP_DIAGNOSTICO = {
     9: ("Violencia", "Sexual"),   # Abuso Sexual (deprecated) -> Violencia > Víctima > Sexual
 }
 
-# Nombre de patología: False = header crudo. True = limpiar_patologia() + OVERRIDE.
-LIMPIAR_NOMBRE_PATOLOGIA = False
+# Diagnósticos que NO van al A05 Salud Mental (se saltan del output):
+#   epilepsia -> REM adulto; programas de rehabilitación/acompañamiento -> no son
+#   egresos/ingresos de diagnóstico SM.
+EXCLUIR_PATOLOGIA = {75, 77, 79, 81}
+
+# Nombre de patología: True = limpiar_patologia() + OVERRIDE (nombres canónicos,
+# tomados de SP·P6 y revisados jul-2026). False = header crudo.
+LIMPIAR_NOMBRE_PATOLOGIA = True
 OVERRIDE_PATOLOGIA = {
-    # 65: "Otros trastornos del comportamiento",
+    4:  "Violencia",
+    11: "Suicidio",
+    18: "Depresión",
+    21: "Depresión post parto",
+    23: "Trastorno bipolar",                 # RAYEN trae typo 'Transtorno'
+    25: "Depresión refractaria",
+    27: "Depresión grave con psicosis",
+    29: "Depresión con alto riesgo suicida",
+    31: "Consumo perjudicial de alcohol",
+    33: "Consumo dependiente de alcohol",
+    35: "Consumo perjudicial de drogas",
+    37: "Consumo dependiente de drogas",
+    39: "Consumo de drogas y alcohol",
+    41: "Trastorno de ansiedad",
+    44: "Demencia (incluye Alzheimer)",
+    47: "Psicosis",
+    49: "Trastorno adaptativo",
+    51: "Esquizofrenia",
+    53: "Primer episodio de esquizofrenia",
+    55: "Trastorno de la conducta alimentaria",
+    57: "TDAH (trastorno hipercinético)",
+    59: "Retraso mental",
+    61: "Trastorno de personalidad",
+    63: "Trastorno generalizado del desarrollo",
+    65: "Otros trastornos (no incluidos)",
+    67: "Trastornos conductuales asociados a demencia",
+    69: "Trastorno disocial desafiante y oposicionista",
+    71: "Trastorno de ansiedad de separación en la infancia",
+    73: "Otros trastornos del comportamiento y las emociones (infancia)",
+    83: "Autismo",
+    85: "Asperger",
+    87: "Síndrome de Rett",
+    89: "Trastorno desintegrativo de la infancia",
+    91: "Trastorno generalizado del desarrollo no especificado",
+    # 9 (Abuso Sexual) NO va aquí: lo maneja REMAP_DIAGNOSTICO -> Violencia/Sexual.
+    # 75/77/79/81 excluidos (ver EXCLUIR_PATOLOGIA).
 }
 
 # ── Detección de columnas de identificación (varía por formato) ──
@@ -374,6 +415,8 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
                     continue
                 d = encontrar_diagnostico(headers, c0)
                 diag_num = num_pregunta(headers[d])
+                if diag_num in EXCLUIR_PATOLOGIA:
+                    continue   # epilepsia / programas -> no van al A05 SM
                 if diag_num in REMAP_DIAGNOSTICO:
                     pat, sub = REMAP_DIAGNOSTICO[diag_num]
                 else:
