@@ -31,6 +31,9 @@
 !refs tablas/poblacion sm powerbi.xlsx
 !refs tablas/psc administrativo.xlsx
 !refs tablas/pscy 10 14 iris.xlsx
+!refs tablas/goldberg administrativo.xlsx
+!refs tablas/pscy 10 14 administrativo.xlsx
+!refs tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES iris.xlsx
 
 # --- Salidas del script ---
 *_procesado.xlsx
