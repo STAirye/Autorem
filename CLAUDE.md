@@ -248,7 +248,10 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
   diagnóstico, valor = N.- de su columna de subtipo): Violencia(4→6),
   Suicidio(11→12), Depresión(18→20), Ansiedad(41→43), Alzheimer(44→45=ETAPA).
 - **Subtipo se recorta** quitando el sustantivo del header vía `limpiar_subtipo()`:
-  `"Depresión Moderada"` con header `TIPO DE DEPRESIÓN` → `"Moderada"`.
+  `"Depresión Moderada"` con header `TIPO DE DEPRESIÓN` → `"Moderada"`. Casos que
+  no se resuelven así van en `OVERRIDE_SUBTIPO` (mapa por Nº de subtipo): hoy
+  Ansiedad (43) → Fobia social / **Pánico** (junta los dos) / Generalizada / TEPT
+  / Otros. Verificado contra export real (jun-2026); los demás salen limpios solos.
 - **Remap deprecated:** Abuso Sexual (pregunta 9) → patología `Violencia`,
   subtipo `Sexual` (`REMAP_DIAGNOSTICO`).
 - **Nombre de patología canónico** (`LIMPIAR_NOMBRE_PATOLOGIA = True`, jul-2026):

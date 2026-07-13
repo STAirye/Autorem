@@ -27,6 +27,11 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   `OVERRIDE_PATOLOGIA` con nombres canónicos por Nº de pregunta (tomados de SP·P6).
   Nuevo `EXCLUIR_PATOLOGIA = {75,77,79,81}`: epilepsia (→ REM adulto) y programas
   de rehabilitación/acompañamiento se excluyen del output de egresos/ingresos.
+- **Subtipos:** verificados contra un export real (junio). Depresión / Violencia /
+  Suicidio / Alzheimer ya salen limpios por el recorte del header. Nuevo
+  `OVERRIDE_SUBTIPO` para Ansiedad (Q43): nombres cortos (Fobia social / Pánico /
+  Generalizada / TEPT / Otros) y **junta los dos "Pánico"** en uno (el REM solo
+  tiene "Pánico" a secas).
 - **Convención de nombre de módulos de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`
   (`<casilla>` = celda REM). `rem_a05_egresos` → `rem_a05_o_egresos`,
   `rem_a05_ingresos` → `rem_a05_n_ingresos`. Los `id` de `--tarea` cambian a

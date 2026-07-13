@@ -140,6 +140,20 @@ def test_nombre_patologia_y_exclusion():
     assert pats == ["Depresión"]              # epilepsia excluida; nombre canónico
 
 
+def test_subtipo_ansiedad_override():
+    """Ansiedad Q43: nombres cortos + los DOS pánicos se juntan en 'Pánico'."""
+    h = "43.- TIPO DE TRASTORNO DE ANSIEDAD"
+    assert sm.limpiar_subtipo("Trastorno de Pánico", h) == "Pánico"
+    assert sm.limpiar_subtipo("Trastorno de Pánico sin Agorofobia", h) == "Pánico"   # merge
+    assert sm.limpiar_subtipo("Fobias Sociales", h) == "Fobia social"
+    assert sm.limpiar_subtipo("Trastornos de Ansiedad Generalizada", h) == "Generalizada"
+    assert sm.limpiar_subtipo("Trastorno de Estrés Post Traumático", h) == "TEPT"
+    assert sm.limpiar_subtipo("Otros Trastornos de Ansiedad", h) == "Otros"
+    # los otros subtipos siguen por recorte del header:
+    assert sm.limpiar_subtipo("Depresión Moderada", "20.- TIPO DE DEPRESIÓN") == "Moderada"
+    assert sm.limpiar_subtipo("Moderado", "45.- ETAPA") == "Moderado"
+
+
 def test_edad_anios():
     assert sm.edad_anios("45 años 3 meses 2 días") == 45
     assert sm.edad_anios("8 meses 10 días") == 0        # menor de 1 año

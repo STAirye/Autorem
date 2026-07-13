@@ -113,6 +113,22 @@ OVERRIDE_PATOLOGIA = {
     # 75/77/79/81 excluidos (ver EXCLUIR_PATOLOGIA).
 }
 
+# Override de nombre de SUBTIPO, por Nº de pregunta del subtipo. Cada regla es
+# (keywords, nombre): si el valor crudo normalizado contiene CUALQUIER keyword,
+# sale ese nombre. Sirve para juntar variantes (el REM tiene 'Pánico' a secas ->
+# los dos pánicos de RAYEN caen en uno) y acortar. Los subtipos SIN entrada acá
+# (Depresión, Violencia, Suicidio, Alzheimer) salen por el recorte del header,
+# que ya los deja limpios (Moderada / Física / Intento / Moderado).
+OVERRIDE_SUBTIPO = {
+    43: [  # 43.- TIPO DE TRASTORNO DE ANSIEDAD  (¡PANICO antes que FOBIA! 'AgoroFOBIA')
+        (["PANICO"],                       "Pánico"),        # junta 'Pánico' y 'Pánico sin agorafobia'
+        (["FOBIA"],                        "Fobia social"),
+        (["GENERALIZ"],                    "Generalizada"),
+        (["TEPT", "ESTRES", "TRAUMATICO"], "TEPT"),
+        (["OTROS"],                        "Otros"),
+    ],
+}
+
 # ── Detección de columnas de identificación (varía por formato) ──
 # QUIRK RAYEN (IRIS): 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la EDAD a la
 # fecha de LLENADO. En el Administrativo el equivalente es 'Edad de registro
@@ -172,10 +188,18 @@ def limpiar_patologia(header):
 
 
 def limpiar_subtipo(valor, subtipo_header):
-    """Recorta el sustantivo del header: valor 'Depresión Moderada' con header
-    '20.- TIPO DE DEPRESIÓN' -> 'Moderada'. Si no hay 'TIPO DE', deja el valor."""
+    """Nombre de subtipo limpio. 1) aplica OVERRIDE_SUBTIPO (mapa por Nº de
+    pregunta del subtipo; ej. Ansiedad Q43 junta los dos 'Pánico'). 2) si no hay
+    regla, recorta el sustantivo del header ('Depresión Moderada' con
+    '20.- TIPO DE DEPRESIÓN' -> 'Moderada'; sin 'TIPO DE' deja el valor)."""
     if valor in (None, ""): return ""
     s = str(valor).strip()
+    reglas = OVERRIDE_SUBTIPO.get(num_pregunta(subtipo_header))
+    if reglas:
+        vn = norm(s)
+        for keys, nombre in reglas:
+            if any(norm(k) in vn for k in keys):
+                return nombre
     m = re.search(r"TIPO DE\s+(.+)$", norm(subtipo_header))
     if m:
         noun = m.group(1).strip()
