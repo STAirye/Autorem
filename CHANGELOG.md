@@ -19,8 +19,12 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   PSC / PSC-Y / GHQ-12. Autodetecta formato (IRIS/Admin) e instrumento por
   contenido; por cada aplicación reporta puntaje, resultado automático (RAYEN),
   resultado calculado (cortes DISAM), discrepancia, momento (Ingreso/Egreso) y
-  estamento (IRIS). Tests en `tests/test_screening.py` (5/5). Core: aún NO
-  integrado a la GUI (ver roadmap).
+  estamento (IRIS). Tests en `tests/test_screening.py` (5/5). Validado también
+  sobre exports Administrativos reales (goldberg/pscy).
+- **GUI con PESTAÑAS por módulo** (`ttk.Notebook`): «REM A05 · Egresos/Ingresos»
+  y «REM A03 D.3 · Screening», cada una con sus instrucciones, archivo y log. El
+  screening ya se usa desde la GUI (detecta el instrumento; dropdown para
+  corregir). Sumar un módulo = sumar una pestaña.
 
 ### Cambiado
 - **Nombres de patología limpios** en el output A05 (`LIMPIAR_NOMBRE_PATOLOGIA=True`):

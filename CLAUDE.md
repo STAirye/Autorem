@@ -70,7 +70,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 
 | Archivo | Rol |
 |---|---|
-| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** Selector de FORMATO (perfil) + TAREAS, registro de módulos, orquestación cargar-una-vez/guardar-una-vez. |
+| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos (selector formato + tareas) y A03 screening (autodetección de instrumento). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez. CLI = solo A05. |
 | `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
@@ -392,16 +392,15 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
 - ✅ **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
 
 **Pendiente:**
-- **Módulo screening A03 D.3** (`modulos/rem_a03_d3_instrumentos.py`): ✅ CORE HECHO.
-  Autodetecta formato+instrumento, da resultado automático + DISAM + discrepancia
-  + momento + estamento (IRIS). Tests en `tests/test_screening.py` (5/5).
-  Contexto en `docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md`. **Pendiente:**
-  (a) **integrarlo a la GUI/dispatcher** — es un REPORTE distinto (perfiles
-  propios); el dispatcher hoy asume el reporte de Salud Mental. Encaja con el
-  paso de "autodetectar + confirmar" (§7): reestructurar el dispatcher para
-  multi-reporte con confirmación. (b) v2: lookup funcionario→estamento para el
-  Administrativo, conteos agregados por rango etario (extraer de `SA_26`), popup
-  de clasificación.
+- **Módulo screening A03 D.3** (`modulos/rem_a03_d3_instrumentos.py`): ✅ HECHO
+  e **integrado a la GUI** (pestaña propia; el multi-reporte se resolvió con
+  pestañas por módulo, no con un dispatcher que auto-detecta todo). Autodetecta
+  formato+instrumento, da resultado automático + DISAM + discrepancia + momento
+  + estamento (IRIS). Tests `tests/test_screening.py` (5/5) + validado sobre
+  admin real. Contexto en `docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md`.
+  **Pendiente v2:** lookup funcionario→estamento (Administrativo), conteos
+  agregados por rango etario (extraer de `SA_26`), y CLI para screening (hoy solo
+  GUI). Falta también validar la GUI a ojo (doble-clic) y con datos reales.
 - **Empaquetar a `.exe`** (`autorem.py`, §11) — pendiente inmediato.
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumar al reporte final.

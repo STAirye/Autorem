@@ -22,20 +22,18 @@
 """
 autorem.py — dispatcher (GUI + CLI) del proyecto autoREM.
 
-Arma la ventana, deja elegir el FORMATO del reporte de entrada (IRIS o
-Administrativo) y las TAREAS a ejecutar (egresos/ingresos), y orquesta la
-corrida. Cada tarea vive en su propio módulo HEADLESS y se registra vía su
-descriptor TAREA. El formato es un 'perfil' de rem_saludmental.
-
-Se carga el workbook UNA vez y cada tarea agrega su hoja -> un solo
-«…_procesado.xlsx» con una hoja por tarea.
-
-Para sumar una tarea nueva: impórtala y agrégala a MODULOS.
+La GUI tiene una PESTAÑA por módulo/reporte (cada una autocontenida: su archivo,
+sus opciones, sus instrucciones y su log). Al sumar un módulo se agrega su pestaña.
+Hoy:
+  - «REM A05 · Egresos / Ingresos»  (formulario Control de Salud Mental; perfil
+    IRIS/Administrativo + tareas egresos/ingresos → un .xlsx con una hoja por tarea).
+  - «REM A03 D.3 · Screening»       (instrumentos PSC/PSC-Y/GHQ-12; autodetecta
+    formato e instrumento por contenido).
 
 USO:
-  - Doble-clic al .exe / .py                 -> ventana (GUI).
-  - Arrastra el .xlsx ENCIMA del .exe / .py  -> ventana con la ruta cargada.
-  - Terminal:  python autorem.py --cli entrada.xlsx
+  - Doble-clic al .exe / .py                 -> ventana (GUI, pestaña A05 por defecto).
+  - Arrastra el .xlsx ENCIMA del .exe / .py  -> GUI con la ruta cargada en A05.
+  - Terminal (solo A05):  python autorem.py --cli entrada.xlsx
                     [--formato iris|administrativo] [--tarea ID[,ID2,...]]
 """
 
@@ -48,6 +46,7 @@ import programas.rem_saludmental as sm
 # ── Registro de módulos de tarea ──────────────────────────────────────
 from modulos import rem_a05_o_egresos
 from modulos import rem_a05_n_ingresos
+import modulos.rem_a03_d3_instrumentos as screening   # reporte aparte (su propia pestaña)
 
 MODULOS = [rem_a05_o_egresos, rem_a05_n_ingresos]
 
@@ -107,39 +106,118 @@ def _resumen_texto(resultados, salida):
 
 
 # ╔═══════════════════════════════════════════════════════════════════╗
-# ║  INTERFAZ GRÁFICA (Tkinter)                                        ║
+# ║  INTERFAZ GRÁFICA (Tkinter) — una pestaña por módulo/reporte       ║
 # ╚═══════════════════════════════════════════════════════════════════╝
+_MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
+                "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
+
+
 def lanzar_gui(ruta_inicial=""):
     import tkinter as tk
-    from tkinter import ttk, filedialog, messagebox, scrolledtext
+    from tkinter import ttk
 
     root = tk.Tk()
-    root.title(f"autoREM {VERSION} — Tabulador del REM (Salud Mental)")
-    root.geometry("820x720")
-    root.minsize(720, 640)
+    root.title(f"autoREM {VERSION} — Tabulador del REM")
+    root.geometry("880x780")
+    root.minsize(760, 680)
 
-    cont = ttk.Frame(root, padding=14)
-    cont.pack(fill="both", expand=True)
+    ttk.Label(root, text=f"autoREM {VERSION}", font=("Segoe UI", 12, "bold")).pack(
+        anchor="w", padx=12, pady=(10, 0))
+    nb = ttk.Notebook(root)
+    nb.pack(fill="both", expand=True, padx=8, pady=8)
 
-    ttk.Label(cont, text=f"autoREM {VERSION} — Tabulador del REM (Salud Mental)",
-              font=("Segoe UI", 13, "bold")).pack(anchor="w")
+    _tab_a05(nb, root, ruta_inicial)
+    _tab_a03(nb, root)
+
+    root.mainloop()
+
+
+# ── Helpers reutilizables por las pestañas ────────────────────────────
+def _crear_log(parent, root, height=10):
+    """Caja de log. Devuelve (log, limpiar)."""
+    from tkinter import ttk, scrolledtext
+    caja = ttk.LabelFrame(parent, text="Registro", padding=6)
+    caja.pack(fill="both", expand=True, pady=(6, 8))
+    txt = scrolledtext.ScrolledText(caja, height=height, wrap="word",
+                                    font=("Consolas", 9), state="disabled")
+    txt.pack(fill="both", expand=True)
+
+    def log(msg=""):
+        txt.configure(state="normal")
+        txt.insert("end", str(msg) + "\n")
+        txt.see("end")
+        txt.configure(state="disabled")
+        root.update_idletasks()
+
+    def limpiar():
+        txt.configure(state="normal")
+        txt.delete("1.0", "end")
+        txt.configure(state="disabled")
+
+    return log, limpiar
+
+
+def _fila_archivo(parent, var_ruta, titulo):
+    """Fila 'Archivo Excel: [___] [Examinar…]'."""
+    from tkinter import ttk, filedialog
+    fila = ttk.Frame(parent)
+    fila.pack(fill="x", pady=(6, 6))
+    ttk.Label(fila, text="Archivo Excel:").pack(side="left")
+    ttk.Entry(fila, textvariable=var_ruta).pack(side="left", fill="x", expand=True, padx=6)
+
+    def examinar():
+        f = filedialog.askopenfilename(
+            title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
+        if f:
+            var_ruta.set(f)
+
+    ttk.Button(fila, text="Examinar…", command=examinar).pack(side="left")
+
+
+def _valida_ruta(ruta, messagebox):
+    """Valida que la ruta exista. Devuelve Path o None (avisa con messagebox)."""
+    ruta = (ruta or "").strip().strip('"').strip("'")
+    if not ruta:
+        messagebox.showwarning("Falta el archivo", "Primero elige el Excel.")
+        return None
+    p = Path(ruta)
+    if not p.exists():
+        messagebox.showerror("No encontrado", f"No encuentro el archivo:\n{p}")
+        return None
+    return p
+
+
+def _error_inesperado(e, log, messagebox):
+    import traceback
+    log("[ERROR INESPERADO]")
+    log(traceback.format_exc())
+    messagebox.showerror(
+        "Error inesperado",
+        f"Ocurrió un error no previsto:\n\n{e}\n\n"
+        "Copia el texto del registro y pásaselo a Simón.")
+
+
+# ── Pestaña A05: Egresos / Ingresos ───────────────────────────────────
+def _tab_a05(nb, root, ruta_inicial=""):
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    tab = ttk.Frame(nb, padding=12)
+    nb.add(tab, text="REM A05 · Egresos / Ingresos")
 
     instr = (
-        "1.  Descarga el Excel del formulario «Control de Salud Mental» (IRIS o Administrativo).\n"
-        "A) IRIS: Formularios RAYEN -> Control de Salud Mental. -> Todos los metacampos, Situacion TODOS, estado AMBOS.\n"
-        "B) RAYEN: Herramientas -> Informe Estadistico -> Impresion Formularios Clinicos. Reporte Administrativo.\n"
-        "2.  Elige abajo el FORMATO que descargaste y el archivo.\n"
-        "3.  Marca la(s) TAREA(s) y presiona «Procesar». Se crea una copia\n"
-        "     «…_procesado.xlsx» con una hoja por tarea. Tu archivo original NO se modifica.\n"
-        "⚠  No discrimina fecha, debe seleccionarse correctamente al bajar el reporte.\n"
-        "Programa de código abierto, con licencia GPL-3.0 y posterior (ver LICENSE)."
+        "1.  Descarga el Excel del formulario «Control de Salud Mental»:\n"
+        "     A) IRIS: Formularios RAYEN → Control de Salud Mental → todos los metacampos, Situación TODOS, Estado AMBOS.\n"
+        "     B) RAYEN: Herramientas → Informe Estadístico → Impresión Formularios Clínicos → Reporte Administrativo.\n"
+        "2.  Elige el FORMATO que descargaste y el archivo.\n"
+        "3.  Marca la(s) TAREA(s) y «Procesar» → «…_procesado.xlsx» con una hoja por tarea.\n"
+        "     Tu archivo original NO se modifica.\n"
+        "⚠  No discrimina fecha: debe seleccionarse bien al bajar el reporte."
     )
-    caja_instr = ttk.LabelFrame(cont, text="Instrucciones", padding=8)
-    caja_instr.pack(fill="x", pady=(10, 8))
+    caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
+    caja_instr.pack(fill="x", pady=(0, 8))
     ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
 
-    # — Selector de FORMATO (perfil) —
-    caja_fmt = ttk.LabelFrame(cont, text="Formato del reporte de entrada", padding=8)
+    caja_fmt = ttk.LabelFrame(tab, text="Formato del reporte", padding=8)
     caja_fmt.pack(fill="x", pady=(2, 6))
     var_perfil = tk.StringVar(value=PERFILES[0]["id"])
     lbl_disc = ttk.Label(caja_fmt, text="", justify="left", foreground="#a05a00")
@@ -153,84 +231,32 @@ def lanzar_gui(ruta_inicial=""):
                         variable=var_perfil, command=on_perfil_change).pack(anchor="w")
     lbl_disc.pack(anchor="w", pady=(4, 0))
 
-    # — Selector de archivo —
-    fila_arch = ttk.Frame(cont)
-    fila_arch.pack(fill="x", pady=(6, 6))
-    ttk.Label(fila_arch, text="Archivo Excel:").pack(side="left")
     var_ruta = tk.StringVar(value=ruta_inicial)
-    entry = ttk.Entry(fila_arch, textvariable=var_ruta)
-    entry.pack(side="left", fill="x", expand=True, padx=6)
+    _fila_archivo(tab, var_ruta, "Elige el export de Control de Salud Mental")
 
-    def examinar():
-        f = filedialog.askopenfilename(
-            title="Elige el export del formulario Control de Salud Mental",
-            filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
-        )
-        if f:
-            var_ruta.set(f)
-
-    ttk.Button(fila_arch, text="Examinar…", command=examinar).pack(side="left")
-
-    # — Selector de TAREAS —
-    caja_tareas = ttk.LabelFrame(cont, text="Tareas a ejecutar", padding=8)
+    caja_tareas = ttk.LabelFrame(tab, text="Tareas a ejecutar", padding=8)
     caja_tareas.pack(fill="x", pady=(2, 6))
-    checks = {}   # tarea_id -> (tarea, BooleanVar)
+    checks = {}
     for t in TAREAS:
-        var = tk.BooleanVar(value=True)   # por defecto todas marcadas
+        var = tk.BooleanVar(value=True)
         ttk.Checkbutton(caja_tareas, text=t["nombre"], variable=var).pack(anchor="w")
         checks[t["id"]] = (t, var)
 
-    # — Log —
-    caja_log = ttk.LabelFrame(cont, text="Registro", padding=6)
-    caja_log.pack(fill="both", expand=True, pady=(6, 8))
-    txt = scrolledtext.ScrolledText(caja_log, height=10, wrap="word",
-                                    font=("Consolas", 9), state="disabled")
-    txt.pack(fill="both", expand=True)
+    log, limpiar = _crear_log(tab, root)
 
-    def log(msg=""):
-        txt.configure(state="normal")
-        txt.insert("end", str(msg) + "\n")
-        txt.see("end")
-        txt.configure(state="disabled")
-        root.update_idletasks()
-
-    def limpiar_log():
-        txt.configure(state="normal")
-        txt.delete("1.0", "end")
-        txt.configure(state="disabled")
-
-    # — Acción principal —
     def on_procesar():
-        limpiar_log()
-        ruta = var_ruta.get().strip().strip('"').strip("'")
-        if not ruta:
-            messagebox.showwarning("Falta el archivo",
-                                   "Primero elige el Excel del formulario.")
-            return
-        entrada = Path(ruta)
-        if not entrada.exists():
-            messagebox.showerror("No encontrado", f"No encuentro el archivo:\n{entrada}")
+        limpiar()
+        entrada = _valida_ruta(var_ruta.get(), messagebox)
+        if entrada is None:
             return
         seleccionadas = [t for (t, var) in checks.values() if var.get()]
         if not seleccionadas:
-            messagebox.showwarning("Sin tareas", "Marca al menos una tarea a ejecutar.")
+            messagebox.showwarning("Sin tareas", "Marca al menos una tarea.")
             return
-        if entrada.suffix.lower() not in (".xlsx", ".xlsm"):
-            if not messagebox.askyesno(
-                "¿Seguro?",
-                f"El archivo no termina en .xlsx ({entrada.suffix}).\n"
-                "¿Intento procesarlo igual?"):
-                return
-
         perfil = sm.perfil_por_id(var_perfil.get())
-        if perfil is None:
-            messagebox.showerror("Formato", "Elige un formato de reporte.")
-            return
         if perfil["disclaimer"]:
-            log(perfil["disclaimer"])
-            log("")
-
-        btn_proc.configure(state="disabled")
+            log(perfil["disclaimer"]); log("")
+        btn.configure(state="disabled")
         try:
             resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, log)
         except sm.ArchivoInvalido as e:
@@ -241,49 +267,97 @@ def lanzar_gui(ruta_inicial=""):
             messagebox.showerror(titulo, str(e))
             return
         except PermissionError:
-            msg = ("No pude escribir el resultado.\n\n"
-                   "Suele ser porque el archivo está ABIERTO en Excel "
-                   "(o bloqueado por OneDrive).\n\n"
-                   "Ciérralo en Excel y vuelve a intentar.")
             log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
-            messagebox.showerror("Permiso denegado", msg)
-            return
-        except ImportError as e:
-            log(f"[DEPENDENCIA] {e}")
-            messagebox.showerror("Falta una librería", str(e))
+            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
             return
         except Exception as e:
-            import traceback
-            log("[ERROR INESPERADO]")
-            log(traceback.format_exc())
-            messagebox.showerror(
-                "Error inesperado",
-                f"Ocurrió un error no previsto:\n\n{e}\n\n"
-                "Copia el texto del registro y pásaselo a Simón.")
+            _error_inesperado(e, log, messagebox)
             return
         finally:
-            btn_proc.configure(state="normal")
-
-        # éxito
+            btn.configure(state="normal")
         resumen = _resumen_texto(resultados, salida)
-        log("")
-        log("✔ " + resumen.replace("\n", " | "))
+        log(""); log("✔ " + resumen.replace("\n", " | "))
         if messagebox.askyesno("Listo", resumen + "\n\n¿Abrir la carpeta del resultado?"):
             if salida:
                 _abrir_carpeta(Path(salida).parent)
 
-    # — Botonera —
-    fila_btn = ttk.Frame(cont)
-    fila_btn.pack(fill="x")
-    btn_proc = ttk.Button(fila_btn, text="Procesar", command=on_procesar)
-    btn_proc.pack(side="left")
-    ttk.Button(fila_btn, text="Salir", command=root.destroy).pack(side="right")
+    barra = ttk.Frame(tab)
+    barra.pack(fill="x")
+    btn = ttk.Button(barra, text="Procesar", command=on_procesar)
+    btn.pack(side="left")
 
-    on_perfil_change()   # pinta el disclaimer inicial (vacío para IRIS)
+    on_perfil_change()
     if not sm.OPENPYXL_OK:
         log("⚠ Falta 'openpyxl'. Instálalo con: pip install openpyxl")
 
-    root.mainloop()
+
+# ── Pestaña A03 D.3: Screening (PSC / PSC-Y / GHQ-12) ──────────────────
+def _tab_a03(nb, root):
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    tab = ttk.Frame(nb, padding=12)
+    nb.add(tab, text="REM A03 D.3 · Screening")
+
+    instr = (
+        "Procesa un export de un instrumento de monitoreo del PSM (PSC / PSC-Y / GHQ-12),\n"
+        "aplicado al ingreso y egreso. Se baja UN archivo por instrumento (IRIS o Administrativo).\n"
+        "1.  Elige el archivo.\n"
+        "2.  El instrumento se detecta solo (por contenido, no por nombre); si sale mal,\n"
+        "     corrígelo en el desplegable.\n"
+        "3.  «Procesar» → «…_procesado.xlsx» con una fila por aplicación: puntaje, resultado\n"
+        "     automático (RAYEN) y calculado (cortes DISAM), discrepancia, momento y estamento.\n"
+        "⚠  El estamento (quién aplicó) solo viene en el formato IRIS."
+    )
+    caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
+    caja_instr.pack(fill="x", pady=(0, 8))
+    ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
+
+    var_ruta = tk.StringVar()
+    _fila_archivo(tab, var_ruta, "Elige el export del instrumento de screening")
+
+    caja_inst = ttk.LabelFrame(tab, text="Instrumento", padding=8)
+    caja_inst.pack(fill="x", pady=(2, 6))
+    ttk.Label(caja_inst, text="Se detecta por contenido. Cámbialo solo si la detección sale mal:").pack(anchor="w")
+    opciones = ["Auto-detectar"] + list(screening.INSTRUMENTOS.keys())
+    var_inst = tk.StringVar(value=opciones[0])
+    ttk.OptionMenu(caja_inst, var_inst, opciones[0], *opciones).pack(anchor="w", pady=(4, 0))
+
+    log, limpiar = _crear_log(tab, root)
+
+    def on_procesar():
+        limpiar()
+        entrada = _valida_ruta(var_ruta.get(), messagebox)
+        if entrada is None:
+            return
+        instrumento = None if var_inst.get() == "Auto-detectar" else var_inst.get()
+        salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
+        btn.configure(state="disabled")
+        try:
+            res = screening.procesar(entrada, salida, instrumento=instrumento, log=log)
+        except screening.ArchivoInvalido as e:
+            log(f"[ARCHIVO] {e.categoria}")
+            messagebox.showerror("No pude procesarlo", str(e))
+            return
+        except PermissionError:
+            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
+            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
+            return
+        except Exception as e:
+            _error_inesperado(e, log, messagebox)
+            return
+        finally:
+            btn.configure(state="normal")
+        txt = (f"Listo. {res['instrumento']} ({res['formato']}).\n"
+               f"{res['total']} aplicaciones · {res['discrepancias']} discrepancias RAYEN vs DISAM.\n\n"
+               f"Guardado en:\n{res['salida']}")
+        log(""); log("✔ " + txt.replace("\n", " | "))
+        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+            _abrir_carpeta(Path(res["salida"]).parent)
+
+    barra = ttk.Frame(tab)
+    barra.pack(fill="x")
+    btn = ttk.Button(barra, text="Procesar", command=on_procesar)
+    btn.pack(side="left")
 
 
 def _abrir_carpeta(carpeta):
@@ -327,6 +401,7 @@ def main_cli(args):
               "[--formato iris|administrativo] [--tarea ID[,ID2,...]]")
         print(f"Formatos: {fmts}  (por defecto: {PERFILES[0]['id']})")
         print(f"Tareas:   {ids}  (por defecto: la primera)")
+        print("(El screening A03 por ahora solo desde la GUI, pestaña 'Screening'.)")
         return 2
 
     if tarea_ids:
