@@ -12,7 +12,9 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
-## [Sin publicar]
+## [1.3.0] — 2026-07-13
+
+Suma el **tercer módulo** (screening A03 D.3) → `Y` pasa de 2 a 3, `Z` reinicia.
 
 ### Agregado
 - **Módulo screening A03 D.3** (`modulos/rem_a03_d3_instrumentos.py`): procesa
@@ -42,6 +44,14 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   `a05_o_egresos` / `a05_n_ingresos`. Sin cambio de comportamiento (tests 7/7).
 - `edad_anios()` movida de `rem_saludmental` a `rem_utils` (parsing RAYEN
   genérico; la usan tanto A05 como screening).
+
+### Corregido
+- **Screening PSC/PSC-Y bajo el corte (<33):** antes salía como `None` (celda
+  vacía, sin contar en el total, sin comparar contra RAYEN). Ahora se etiqueta
+  **«Sin riesgo»** (constante `LABEL_SIN_RIESGO`, renombrable) — es un resultado
+  válido y **el más común**. Se cuenta y se compara con RAYEN como cualquier otra
+  banda. Nuevo desglose `por_resultado` en el resumen (GUI + retorno) para ver
+  cuántos caen en cada categoría. GHQ-12 no cambia (0-4 ya es «Bajo»).
 
 ## [1.2.0] — 2026-07-07
 

@@ -158,10 +158,11 @@ Tabla de conteos: una celda por combinación de:
 
 ```python
 def clasificar_psc(puntaje):
-    if 33 <= puntaje <= 63: return "Bajo"
-    elif 64 <= puntaje <= 69: return "Medio"
-    elif puntaje >= 70: return "Alto"
-    else: return None  # puntaje < 33: no registrar en REM (no es categoría válida)
+    if puntaje is None: return None            # sin puntaje
+    if puntaje < 33: return "Sin riesgo"       # bajo el corte REM: resultado válido y el MÁS común
+    elif puntaje <= 63: return "Bajo"
+    elif puntaje <= 69: return "Medio"
+    else: return "Alto"  # >= 70
 
 def clasificar_psc_y(puntaje):
     return clasificar_psc(puntaje)  # cortes idénticos

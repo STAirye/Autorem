@@ -82,15 +82,32 @@ def _quiet(*_a, **_k):
 
 # ── Pruebas ───────────────────────────────────────────────────────────
 def test_clasificadores():
-    assert scr.clasificar_psc(32) is None      # < 33 fuera de rango
+    assert scr.clasificar_psc(None) is None          # sin puntaje -> None
+    assert scr.clasificar_psc(0) == "Sin riesgo"     # <33: bajo el corte (lo más común)
+    assert scr.clasificar_psc(32) == "Sin riesgo"
     assert scr.clasificar_psc(33) == "Bajo"
     assert scr.clasificar_psc(63) == "Bajo"
     assert scr.clasificar_psc(64) == "Medio"
     assert scr.clasificar_psc(70) == "Alto"
-    assert scr.clasificar_ghq12(4) == "Bajo"
+    assert scr.clasificar_ghq12(4) == "Bajo"         # GHQ no tiene 'sin riesgo': 0-4 ya es Bajo
     assert scr.clasificar_ghq12(6) == "Medio"
     assert scr.clasificar_ghq12(12) == "Alto"
     assert scr.clasificar_ghq12(None) is None
+
+
+def test_psc_bajo_el_corte_se_etiqueta():
+    """Un PSC <33 (el resultado MÁS común) no se pierde: sale 'Sin riesgo',
+    se cuenta en el total y aparece en el desglose por_resultado."""
+    p = _iris("psc_bajo.xlsx", "Cuestionario para padres PSC", [
+        ("55555555-5", 8, "Hombre", "F", "Médico", "Ingreso", 20, "Sin riesgo"),
+    ])
+    out = _TMP / "psc_bajo_out.xlsx"
+    res = scr.procesar(p, out, log=_quiet)
+    assert res["total"] == 1                          # NO se descarta
+    assert res["por_resultado"].get("Sin riesgo") == 1
+    _, filas = _dump(out)
+    assert filas[0]["Resultado_DISAM"] == "Sin riesgo"
+    assert filas[0]["Discrepancia"] in (None, "")     # RAYEN también 'Sin riesgo' -> coinciden
 
 
 def test_iris_goldberg_dos_resultados():

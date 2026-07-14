@@ -41,9 +41,9 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.2.0**
-(esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + dispatcher
-con perfiles.
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.0**
+(esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
+A03 D.3 + dispatcher con perfiles y GUI de pestañas.
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -302,14 +302,14 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
 ### Versionado — `X.Y.Z` (¡respetar!)
 Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquema:
 - **X** = por cada **PROGRAMA** que se agregue. Hoy = **1** (autoREM).
-- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **2** (egresos, ingresos).
+- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **3** (egresos, ingresos, screening A03 D.3).
 - **Z** = por cada **corrección del módulo que se está trabajando**. Reinicia a 0
   al sumar un módulo nuevo (Y++).
 
 Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
 romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
 `rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
-La GUI la muestra en el título. Estado actual: **1.2.0**.
+La GUI la muestra en el título. Estado actual: **1.3.0**.
 (Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
 estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
 
@@ -347,8 +347,8 @@ de seguridad.
 - Repo inicializado en rama `main`, identidad local `Simón Tobar`.
 - Commits: `Import inicial` (v1.2 monolito) → `Modularizar` (v1.3, split
   utils/A05). Tag `v1.2` en el import.
-- El módulo actual ya tiene nombre limpio (`rem_a05_egresos.py`, sin versión ni
-  espacios).
+- Los módulos de tarea ya tienen nombre limpio y con convención
+  (`rem_a05_o_egresos.py` / `rem_a05_n_ingresos.py`, sin versión ni espacios).
 
 ### Higiene pendiente (opcional)
 - Mover los `.py` viejos (`1.1`, `1.2`, `v0.2`, `rem_marcar_egresos.py`) a

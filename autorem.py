@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.2.0
+# Version: 1.3.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -347,8 +347,10 @@ def _tab_a03(nb, root):
             return
         finally:
             btn.configure(state="normal")
+        desglose = " · ".join(f"{k}: {v}" for k, v in res.get("por_resultado", {}).items())
         txt = (f"Listo. {res['instrumento']} ({res['formato']}).\n"
-               f"{res['total']} aplicaciones · {res['discrepancias']} discrepancias RAYEN vs DISAM.\n\n"
+               f"{res['total']} aplicaciones · {res['discrepancias']} discrepancias RAYEN vs DISAM.\n"
+               f"Resultado DISAM → {desglose}\n\n"
                f"Guardado en:\n{res['salida']}")
         log(""); log("✔ " + txt.replace("\n", " | "))
         if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):

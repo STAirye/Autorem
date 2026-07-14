@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.2.0
+# Version: 1.3.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -52,13 +52,21 @@ from programas.rem_utils import (
 # ╔═══════════════════════════════════════════════════════════════════╗
 # ║  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.║
 # ╚═══════════════════════════════════════════════════════════════════╝
+# Resultado para PSC/PSC-Y bajo el corte REM (<33): NO es una de las 3 bandas de
+# riesgo del REM, pero es un resultado VÁLIDO y el MÁS común (la mayoría de los
+# tamizajes salen negativos). Antes se perdía como None (celda vacía, sin contar,
+# sin comparar) -> ahora se etiqueta, se cuenta y se compara. Renómbralo acá si
+# DISAM/RAYEN usa otra palabra (ej. "Negativo", "Sin sospecha").
+LABEL_SIN_RIESGO = "Sin riesgo"
+
 def clasificar_psc(p):
-    """PSC / PSC-Y (cortes idénticos). <33 = fuera de rango REM -> None."""
+    """PSC / PSC-Y (cortes idénticos). <33 = bajo el corte REM -> 'Sin riesgo'
+    (resultado válido, no es banda de riesgo). None SOLO si no hay puntaje."""
     if p is None: return None
-    if 33 <= p <= 63: return "Bajo"
-    if 64 <= p <= 69: return "Medio"
-    if p >= 70:       return "Alto"
-    return None
+    if p < 33:  return LABEL_SIN_RIESGO
+    if p <= 63: return "Bajo"
+    if p <= 69: return "Medio"
+    return "Alto"   # >= 70
 
 def clasificar_ghq12(p):
     if p is None: return None
@@ -278,17 +286,22 @@ def procesar(entrada, salida, instrumento=None, log=print):
 
     n_disc = sum(1 for e in filas if e["disc"] == "SI")
     por_momento = {}
+    por_resultado = {}
     for e in filas:
         k = str(e["momento"]) or "(sin momento)"
         por_momento[k] = por_momento.get(k, 0) + 1
+        rk = str(e["resu_disam"]) or "(sin puntaje)"
+        por_resultado[rk] = por_resultado.get(rk, 0) + 1
     log(f"[resumen] aplicaciones: {len(filas)} | discrepancias RAYEN vs DISAM: {n_disc}")
     for k, v in por_momento.items():
         log(f"          {k}: {v}")
+    log("          resultado DISAM -> " +
+        " · ".join(f"{k}: {v}" for k, v in por_resultado.items()))
 
     return {
         "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,
         "total": len(filas), "discrepancias": n_disc, "por_momento": por_momento,
-        "hoja": NOMBRE_HOJA_SALIDA,
+        "por_resultado": por_resultado, "hoja": NOMBRE_HOJA_SALIDA,
     }
 
 
