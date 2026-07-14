@@ -112,6 +112,9 @@ def canon_resultado(v):
 INSTRUMENTOS = {
     "PSC-Y":  {"nombre": "PSC-Y",  "clasificar": clasificar_psc,   "patrones": ["PSC-Y", "ADOLESCENTES"]},
     "GHQ-12": {"nombre": "GHQ-12", "clasificar": clasificar_ghq12, "patrones": ["GOLDBERG", "GHQ"]},
+    # OJO: "PSC para padres" = el MISMO test que "PSC 5 a 9" (mismo instrumento,
+    # distinto nombre según la fuente). En RAYEN baja como 'Cuestionario para
+    # padres PSC'. NO es un instrumento aparte.
     "PSC":    {"nombre": "PSC",    "clasificar": clasificar_psc,   "patrones": ["PADRES PSC", "CUESTIONARIO PARA PADRES", "PADRES"]},
 }
 _ORDEN_DETECCION = ["PSC-Y", "GHQ-12", "PSC"]
