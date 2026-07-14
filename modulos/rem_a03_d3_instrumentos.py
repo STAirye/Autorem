@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.0
+# Version: 1.3.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -73,6 +73,37 @@ def clasificar_ghq12(p):
     if 0 <= p <= 4:  return "Bajo"
     if 5 <= p <= 6:  return "Medio"
     if 7 <= p <= 12: return "Alto"
+    return None
+
+# ── RESULTADO de RAYEN -> banda canónica ──────────────────────────────
+# OJO: RAYEN NO usa un vocabulario único. PSC / PSC-Y dicen 'Bajo/Medio/Alto' (y
+# blanco bajo el corte), pero GHQ-12 (Goldberg) usa frases clínicas:
+#   'Ausencia de psicopatología'              -> Bajo   (0-4)
+#   'Sospecha de psicopatología subumbral'    -> Medio  (5-6)
+#   'Indicativos de presencia de psicopatología' -> Alto (7-12)
+# Verificado contra exports reales (jul-2026). Sin canonizar, TODO Goldberg saldría
+# como discrepancia FALSA (la redacción difiere aunque la banda coincida). Orden =
+# keyword más específico primero. Extiende esto si aparece otra redacción.
+_MAP_RESULTADO = [
+    (["SUBUMBRAL"],                 "Medio"),        # GHQ: sospecha subumbral
+    (["AUSENCIA"],                  "Bajo"),         # GHQ: ausencia de psicopatología
+    (["INDICATIVOS", "PRESENCIA"],  "Alto"),         # GHQ: indicativos de presencia
+    (["ALTO"],                      "Alto"),         # PSC / PSC-Y
+    (["MEDIO"],                     "Medio"),
+    (["BAJO"],                      "Bajo"),
+    (["SIN RIESGO", "NEGATIVO"],    LABEL_SIN_RIESGO),
+]
+
+def canon_resultado(v):
+    """Lleva el RESULTADO crudo de RAYEN a la banda canónica
+    {Sin riesgo, Bajo, Medio, Alto}. None si viene en blanco (PSC/PSC-Y bajo el
+    corte) o si la redacción no se reconoce (para no inventar discrepancias)."""
+    n = norm(v)
+    if not n:
+        return None
+    for keys, banda in _MAP_RESULTADO:
+        if any(k in n for k in keys):
+            return banda
     return None
 
 # Registro de instrumentos. `patrones` = substrings (normalizados) para detectar
@@ -228,6 +259,7 @@ def procesar(entrada, salida, instrumento=None, log=print):
             "Lookup funcionario→estamento pendiente (v2).")
 
     filas = []
+    no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
         puntaje = solo_entero(fila[punt_col - 1]) if punt_col else None
@@ -242,13 +274,19 @@ def procesar(entrada, salida, instrumento=None, log=print):
         estamento = fila[estam_col - 1] if estam_col else ""
         funcionario = fila[func_col - 1] if func_col else ""
         resu_disam = clasificar(puntaje)
+        banda_rayen = canon_resultado(resu_rayen)   # canoniza la redacción de RAYEN
+        if resu_rayen not in (None, "") and banda_rayen is None:
+            k = str(resu_rayen)
+            no_reconocidos[k] = no_reconocidos.get(k, 0) + 1
+        # Discrepancia = las BANDAS difieren (no la redacción). Solo si ambas existen.
         disc = ""
-        if resu_rayen not in (None, "") and resu_disam:
-            disc = "SI" if norm(resu_rayen) != norm(resu_disam) else ""
+        if banda_rayen is not None and resu_disam is not None:
+            disc = "SI" if banda_rayen != resu_disam else ""
         filas.append({
             "rut": rut, "edad": edad, "sexo": sexo, "instrumento": inst["nombre"],
             "momento": momento, "puntaje": puntaje,
             "resu_rayen": resu_rayen if resu_rayen is not None else "",
+            "banda_rayen": banda_rayen if banda_rayen is not None else "",
             "resu_disam": resu_disam if resu_disam is not None else "",
             "disc": disc, "estamento": estamento, "funcionario": funcionario,
             "fila": r,
@@ -259,7 +297,7 @@ def procesar(entrada, salida, instrumento=None, log=print):
         del wb[NOMBRE_HOJA_SALIDA]
     ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
     cols = ["RUT", "Edad", "Sexo", "Instrumento", "Momento", "Puntaje",
-            "Resultado_RAYEN", "Resultado_DISAM", "Discrepancia",
+            "Resultado_RAYEN", "Banda_RAYEN", "Resultado_DISAM", "Discrepancia",
             "Estamento", "Funcionario", "Fila_Origen"]
     ws2.append(cols)
     orden_mom = {"INGRESO": 0, "EGRESO": 1}
@@ -267,8 +305,8 @@ def procesar(entrada, salida, instrumento=None, log=print):
                               str(e["resu_disam"]), str(e["rut"])))
     for e in filas:
         ws2.append([e["rut"], e["edad"], e["sexo"], e["instrumento"], e["momento"],
-                    e["puntaje"], e["resu_rayen"], e["resu_disam"], e["disc"],
-                    e["estamento"], e["funcionario"], e["fila"]])
+                    e["puntaje"], e["resu_rayen"], e["banda_rayen"], e["resu_disam"],
+                    e["disc"], e["estamento"], e["funcionario"], e["fila"]])
 
     from openpyxl.styles import Font
     for cell in ws2[1]:
@@ -277,7 +315,7 @@ def procesar(entrada, salida, instrumento=None, log=print):
     if ws2.max_row >= 1:
         ws2.auto_filter.ref = ws2.dimensions
     from openpyxl.utils import get_column_letter
-    anchos = [13, 6, 8, 12, 10, 8, 16, 16, 12, 22, 22, 11]
+    anchos = [13, 6, 8, 12, 10, 8, 30, 12, 16, 12, 22, 22, 11]
     for i, w in enumerate(anchos, 1):
         ws2.column_dimensions[get_column_letter(i)].width = w
 
@@ -297,6 +335,10 @@ def procesar(entrada, salida, instrumento=None, log=print):
         log(f"          {k}: {v}")
     log("          resultado DISAM -> " +
         " · ".join(f"{k}: {v}" for k, v in por_resultado.items()))
+    if no_reconocidos:
+        log("[aviso] RESULTADO de RAYEN con redacción NO reconocida (no se comparó "
+            "con DISAM; agrégala a _MAP_RESULTADO): "
+            + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
 
     return {
         "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,

@@ -12,6 +12,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.3.1] — 2026-07-14
+
+### Corregido
+- **Screening: la discrepancia RAYEN vs DISAM compara BANDAS, no texto.** RAYEN
+  no usa un vocabulario único: GHQ-12 (Goldberg) devuelve frases clínicas
+  («Ausencia de psicopatología» = Bajo, «Sospecha … subumbral» = Medio,
+  «Indicativos de presencia …» = Alto), mientras PSC/PSC-Y devuelven
+  «Bajo/Medio/Alto» (y **blanco** bajo el corte). El match exacto anterior
+  marcaba el **100 % de los Goldberg como discrepancia falsa**. Ahora se canoniza
+  la redacción (`canon_resultado` + `_MAP_RESULTADO`) antes de comparar.
+  Verificado contra 4 exports reales (Goldberg/PSC-Y × IRIS/Admin): **0
+  discrepancias falsas**.
+- Nueva columna **`Banda_RAYEN`** en la salida (banda a la que se mapeó el texto
+  de RAYEN, para auditar la comparación); aviso en el log si aparece una
+  redacción no mapeada.
+
 ## [1.3.0] — 2026-07-13
 
 Suma el **tercer módulo** (screening A03 D.3) → `Y` pasa de 2 a 3, `Z` reinicia.

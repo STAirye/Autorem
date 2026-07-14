@@ -41,7 +41,7 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.0**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.1**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + dispatcher con perfiles y GUI de pestañas.
 
@@ -309,7 +309,7 @@ Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquem
 Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
 romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
 `rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
-La GUI la muestra en el título. Estado actual: **1.3.0**.
+La GUI la muestra en el título. Estado actual: **1.3.1**.
 (Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
 estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
 

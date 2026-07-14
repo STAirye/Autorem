@@ -141,6 +141,25 @@ final: `40.- Puntaje`, `41.- Resultado`.
 > ⚠️ **Quirk RAYEN**: `AÑO APLICACIÓN FORMULARIO` = edad al llenado (usar).
 > `EDAD PACIENTE` = edad a la descarga → ignorar.
 
+### Redacción del RESULTADO de RAYEN (verificado contra exports reales, jul-2026)
+
+RAYEN **NO usa un vocabulario único** en la columna `RESULTADO`. Hay que
+canonizar a la banda antes de comparar contra DISAM (si no, todo Goldberg sale
+como discrepancia FALSA). Mapeo en `_MAP_RESULTADO` / `canon_resultado()`:
+
+| Instrumento | Texto de RAYEN | Puntaje | Banda canónica |
+|---|---|---|---|
+| GHQ-12 | `Ausencia de psicopatología` | 0–4 | Bajo |
+| GHQ-12 | `Sospecha de psicopatología subumbral` | 5–6 | Medio |
+| GHQ-12 | `Indicativos de presencia de psicopatología` | 7–12 | Alto |
+| PSC / PSC-Y | `Bajo` / `Medio` / `Alto` | (según corte) | Bajo / Medio / Alto |
+| PSC / PSC-Y | *(en blanco)* | <33 | Sin riesgo |
+
+Verificado con 4 exports reales (Goldberg + PSC-Y, IRIS + Admin): las **bandas
+coinciden** entre RAYEN y DISAM (misma regla de corte) → 0 discrepancias reales;
+la discrepancia queda para cuando de verdad difieran. Columna de salida
+`Banda_RAYEN` = a qué banda se mapeó el texto (auditable).
+
 ---
 
 ## Output requerido (para llenar A03 D.3)

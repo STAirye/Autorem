@@ -99,7 +99,7 @@ def test_psc_bajo_el_corte_se_etiqueta():
     """Un PSC <33 (el resultado MÁS común) no se pierde: sale 'Sin riesgo',
     se cuenta en el total y aparece en el desglose por_resultado."""
     p = _iris("psc_bajo.xlsx", "Cuestionario para padres PSC", [
-        ("55555555-5", 8, "Hombre", "F", "Médico", "Ingreso", 20, "Sin riesgo"),
+        ("55555555-5", 8, "Hombre", "F", "Médico", "Ingreso", 20, ""),   # RAYEN va BLANCO bajo el corte
     ])
     out = _TMP / "psc_bajo_out.xlsx"
     res = scr.procesar(p, out, log=_quiet)
@@ -107,29 +107,46 @@ def test_psc_bajo_el_corte_se_etiqueta():
     assert res["por_resultado"].get("Sin riesgo") == 1
     _, filas = _dump(out)
     assert filas[0]["Resultado_DISAM"] == "Sin riesgo"
-    assert filas[0]["Discrepancia"] in (None, "")     # RAYEN también 'Sin riesgo' -> coinciden
+    assert filas[0]["Resultado_RAYEN"] in (None, "")  # RAYEN venía en blanco
+    assert filas[0]["Discrepancia"] in (None, "")     # blanco + 'Sin riesgo' -> concuerdan
+
+
+def test_canon_resultado_wording():
+    """Canoniza la redacción REAL de RAYEN (Goldberg = frases; PSC/PSC-Y = bandas)."""
+    c = scr.canon_resultado
+    assert c("Ausencia de psicopatología") == "Bajo"
+    assert c("Sospecha de psicopatología subumbral") == "Medio"
+    assert c("Indicativos de presencia de psicopatología") == "Alto"
+    assert c("Alto") == "Alto"
+    assert c("Bajo") == "Bajo"
+    assert c("Medio") == "Medio"
+    assert c("") is None
+    assert c(None) is None
 
 
 def test_iris_goldberg_dos_resultados():
+    # GHQ-12 REAL: RAYEN usa frases clínicas, NO 'Bajo/Medio/Alto'. Hay que
+    # canonizar antes de comparar; si no, TODO Goldberg saldría discrepante (falso).
     p = _iris("gold.xlsx", "Cuestionario de Salud de Goldberg", [
-        ("11111111-1", 30, "Hombre", "Func Uno", "Psicólogo(a)", "Ingreso", 8, "Alto"),
-        ("22222222-2", 40, "Mujer",  "Func Dos", "Médico",       "Egreso",  3, "Medio"),  # RAYEN mal a propósito
+        ("11111111-1", 30, "Hombre", "Func Uno", "Psicólogo(a)", "Ingreso", 8,
+         "Indicativos de presencia de psicopatología"),   # 8->Alto ; canon Alto -> coinciden
+        ("22222222-2", 40, "Mujer",  "Func Dos", "Médico",       "Egreso",  8,
+         "Ausencia de psicopatología"),                   # RAYEN 'Ausencia'(Bajo) pero 8->Alto: DISCREPA
     ])
     out = _TMP / "gold_out.xlsx"
     res = scr.procesar(p, out, log=_quiet)
-    assert res["instrumento"] == "GHQ-12"
-    assert res["formato"] == "iris"
-    assert res["total"] == 2
+    assert res["instrumento"] == "GHQ-12" and res["formato"] == "iris" and res["total"] == 2
     _, filas = _dump(out)
     by = {f["RUT"]: f for f in filas}
     a = by["11111111-1"]
     assert a["Momento"] == "Ingreso" and a["Puntaje"] == 8
-    assert a["Resultado_RAYEN"] == "Alto" and a["Resultado_DISAM"] == "Alto"
-    assert a["Discrepancia"] in (None, "")    # coinciden (celda vacía)
+    assert a["Resultado_RAYEN"] == "Indicativos de presencia de psicopatología"
+    assert a["Banda_RAYEN"] == "Alto" and a["Resultado_DISAM"] == "Alto"
+    assert a["Discrepancia"] in (None, "")    # coinciden PESE a la redacción distinta
     assert a["Estamento"] == "Psicólogo(a)"
     b = by["22222222-2"]
-    assert b["Resultado_RAYEN"] == "Medio" and b["Resultado_DISAM"] == "Bajo"  # 3 -> Bajo
-    assert b["Discrepancia"] == "SI"          # RAYEN != DISAM
+    assert b["Banda_RAYEN"] == "Bajo" and b["Resultado_DISAM"] == "Alto"   # 8 -> Alto
+    assert b["Discrepancia"] == "SI"          # banda RAYEN != banda DISAM
     assert res["discrepancias"] == 1
 
 
