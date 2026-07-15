@@ -41,7 +41,7 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.2**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.3**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + dispatcher con perfiles y GUI de pestañas.
 
@@ -74,7 +74,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos (selector formato + tareas) y A03 screening (autodetección de instrumento). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez. CLI = solo A05. |
 | `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
-| `programas/estamentos.py` | **Lookup Funcionario→Estamento** desde el reporte 'Utilización de Cupos' (Admin). El screening Admin no trae estamento (solo nombre); esto lo rellena. `cargar_estamentos()` (dedup + aviso de conflictos) y `buscar_estamento()` (match normalizado). La TABLA de nombres queda LOCAL (no al repo). |
+| `programas/estamentos.py` | **Lookup Funcionario→Estamento (TRANSVERSAL a todo formato Administrativo).** El Admin no trae estamento (solo nombre); esto lo rellena desde el reporte 'Utilización de Cupos'. `cargar_estamentos()` (dedup + aviso conflictos), `buscar_estamento()` (match normalizado), y **failsafe**: `faltantes()` + `aplicar_resoluciones()` (resolver a mano o IGNORAR externos transitorios). GUI reutilizable en `autorem._bloque_estamentos` + diálogo `_resolver_estamentos`. La TABLA de nombres queda LOCAL (no al repo). |
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
 | `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; da resultado automático (col RESULTADO) + calculado DISAM (`clasificar_*(puntaje)`) + discrepancia + momento (`1.- Estado`) + estamento (IRIS). Core hecho; **falta integrar a la GUI** y v2 (lookup admin, conteos, popup). |
@@ -311,7 +311,7 @@ Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquem
 Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
 romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
 `rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
-La GUI la muestra en el título. Estado actual: **1.3.2**.
+La GUI la muestra en el título. Estado actual: **1.3.3**.
 (Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
 estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
 

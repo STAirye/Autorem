@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.2
+# Version: 1.3.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -22,14 +22,19 @@
 """
 estamentos.py — lookup Funcionario -> Estamento (desde 'Utilización de Cupos').
 
-El screening A03 D.3 en formato **Administrativo** NO trae el estamento de quien
-aplicó (solo el NOMBRE del funcionario). El reporte de RAYEN 'Utilización de
-Cupos' sí parea `Profesional` -> `Instrumento`, donde 'Instrumento' es —otra vez—
-el ESTAMENTO mal rotulado (Médico / Psicólogo(a) / Terapeuta Ocupacional /
-Trabajador(a) Social / etc.), NO un instrumento de screening.
+Módulo TRANSVERSAL: aplica a CUALQUIER carga en formato **Administrativo** (hoy el
+screening A03 D.3; a futuro cualquier módulo que reporte por estamento). El
+Administrativo NO trae el estamento de quien atendió, solo el NOMBRE del
+funcionario. El reporte de RAYEN 'Utilización de Cupos' sí parea `Profesional` ->
+`Instrumento`, donde 'Instrumento' es —otra vez— el ESTAMENTO mal rotulado
+(Médico / Psicólogo(a) / Terapeuta Ocupacional / Trabajador(a) Social / etc.).
 
 Como los profesionales cambian por centro, el lookup se arma DESDE el export de
 cada CESFAM. La TABLA (nombres de funcionarios) queda LOCAL — NO va al repo.
+
+FAILSAFE: si un funcionario del reporte no está en la tabla (p.ej. externo que
+presta servicios transitorios), `faltantes()` lo detecta y el flujo lo resuelve a
+mano (elegir estamento) o lo IGNORA (`aplicar_resoluciones`, None = ignorar).
 
 USO:
     from programas.estamentos import cargar_estamentos, buscar_estamento
@@ -125,3 +130,50 @@ def buscar_estamento(nombre, tabla):
     if not nombre or not tabla:
         return ""
     return tabla.get(norm(nombre), "")
+
+
+# ── Failsafe: resolución manual de funcionarios sin match ─────────────
+# Estamentos estándar del CESFAM (opciones del selector manual cuando un
+# profesional no aparece en 'Utilización de Cupos'). Superset de lo visto en el
+# reporte real; los 4 primeros son los que aplican screening.
+ESTAMENTOS = [
+    "Médico", "Psicólogo(a)", "Terapeuta Ocupacional", "Trabajador(a) Social",
+    "Enfermero(a)", "Matron(a)", "Nutricionista", "Kinesiólogo(a)",
+    "Odontólogo(a)", "Técnico Paramédico", "Fonoaudiólogo(a)",
+    "Educador(a) de Párvulos", "Otro",
+]
+
+
+def estamentos_conocidos(tabla=None):
+    """Opciones para el selector manual: los estamentos vistos en la tabla + el
+    estándar (sin duplicar, en ese orden)."""
+    vistos = list(dict.fromkeys(tabla.values())) if tabla else []
+    for e in ESTAMENTOS:
+        if e and e not in vistos:
+            vistos.append(e)
+    return vistos
+
+
+def faltantes(nombres, tabla):
+    """De una lista de nombres de funcionario, los que NO tienen match en `tabla`
+    (normalizado, sin duplicados, en orden de aparición). Ignora vacíos."""
+    out, seen = [], set()
+    for n in nombres:
+        if not n:
+            continue
+        k = norm(n)
+        if k in seen:
+            continue
+        seen.add(k)
+        if k not in tabla:
+            out.append(str(n).strip())
+    return out
+
+
+def aplicar_resoluciones(tabla, resoluciones):
+    """Mete las resoluciones manuales en `tabla` (la muta y la devuelve).
+    resoluciones = {nombre: estamento | None}; None = IGNORAR -> queda '' (ya no
+    se vuelve a preguntar; p.ej. externo que presta servicios transitorios)."""
+    for nombre, est in (resoluciones or {}).items():
+        tabla[norm(nombre)] = est or ""
+    return tabla

@@ -184,6 +184,25 @@ def test_admin_estamento_desde_lookup():
     assert by["44444444-4"]["Estamento"] in (None, "")       # sin match -> vacío
 
 
+def test_admin_estamento_resolver_manual():
+    """Failsafe: funcionario sin match se resuelve por callback (o se IGNORA)."""
+    p = _admin("psc_res.xlsx", "Cuestionario para padres PSC", [
+        ("33333333-3", "12 años", "Mujer",  "Ana Interna",  "Ingreso", 65, "Medio"),
+        ("44444444-4", "13 años", "Hombre", "Beto Externo", "Ingreso", 40, ""),
+    ])
+    out = _TMP / "psc_res_out.xlsx"
+    vistos = {}                                   # tabla vacía: ambos son "faltantes"
+    def resolver(faltantes, opciones):
+        assert "Médico" in opciones               # el selector ofrece los estamentos
+        return {n: ("Médico" if "ANA" in n.upper() else None) for n in faltantes}
+    res = scr.procesar(p, out, estamentos=vistos, resolver_estamento=resolver, log=_quiet)
+    _, filas = _dump(out)
+    by = {f["RUT"]: f for f in filas}
+    assert by["33333333-3"]["Estamento"] == "Médico"     # resuelto a mano
+    assert by["44444444-4"]["Estamento"] in (None, "")   # ignorado (externo) -> vacío
+    assert res["estam_rellenados"] == 1
+
+
 def test_deteccion_psc_y():
     p = _iris("pscy.xlsx", "Cuestionario para Adolescentes (PSC-Y) 10 a 14 años", [
         ("44444444-4", 12, "Hombre", "F", "Terapeuta Ocupacional", "Ingreso", 40, "Bajo"),

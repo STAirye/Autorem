@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.2
+# Version: 1.3.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,7 +48,8 @@ from programas.rem_utils import (
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
 )
-from programas.estamentos import cargar_estamentos, buscar_estamento
+from programas.estamentos import (cargar_estamentos, buscar_estamento,
+                                  faltantes, estamentos_conocidos, aplicar_resoluciones)
 
 # ╔═══════════════════════════════════════════════════════════════════╗
 # ║  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.║
@@ -221,11 +222,14 @@ def abrir_validado(entrada):
 
 
 # ── Núcleo ────────────────────────────────────────────────────────────
-def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
+def procesar(entrada, salida, instrumento=None, estamentos=None,
+             resolver_estamento=None, log=print):
     """Detecta formato + instrumento, arma la hoja de instrumentos y guarda.
     `instrumento` opcional fuerza el instrumento (si None, autodetecta).
     `estamentos` opcional (ruta al reporte 'Utilización de Cupos' o dict ya
     cargado): en Administrativo rellena el estamento por nombre de funcionario.
+    `resolver_estamento` opcional: callback (faltantes, opciones) -> {nombre:
+    estamento|None} para resolver a mano los que no matchean (None = IGNORAR).
     Devuelve un resumen."""
     wb, ws, formato, header_idx = abrir_validado(entrada)
 
@@ -270,8 +274,6 @@ def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
 
     filas = []
     no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
-    n_estam_lookup = 0    # estamentos rellenados desde la tabla (Administrativo)
-    sin_estam = set()     # funcionarios sin match en la tabla
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
         puntaje = solo_entero(fila[punt_col - 1]) if punt_col else None
@@ -284,13 +286,7 @@ def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
         sexo = fila[sexo_col - 1] if sexo_col else ""
         momento = fila[momento_col - 1] if momento_col else ""
         funcionario = fila[func_col - 1] if func_col else ""
-        estamento = fila[estam_col - 1] if estam_col else ""
-        if estamento in (None, "") and tabla_estam and funcionario:
-            e2 = buscar_estamento(funcionario, tabla_estam)
-            if e2:
-                estamento = e2; n_estam_lookup += 1
-            else:
-                sin_estam.add(str(funcionario))
+        estamento = fila[estam_col - 1] if estam_col else ""  # IRIS: en col; Admin: se rellena abajo
         resu_disam = clasificar(puntaje)
         banda_rayen = canon_resultado(resu_rayen)   # canoniza la redacción de RAYEN
         if resu_rayen not in (None, "") and banda_rayen is None:
@@ -309,6 +305,34 @@ def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
             "disc": disc, "estamento": estamento, "funcionario": funcionario,
             "fila": r,
         })
+
+    # ── Estamento (Administrativo): rellenar por nombre desde el lookup ──
+    # Failsafe: los funcionarios sin match se resuelven a mano (o se IGNORAN, p.ej.
+    # externos que prestan servicios transitorios) vía el callback resolver_estamento.
+    n_estam = 0
+    sin_estam = []
+    if tabla_estam is not None:
+        pend = [e["funcionario"] for e in filas if not e["estamento"] and e["funcionario"]]
+        falt = faltantes(pend, tabla_estam)
+        if falt:
+            log(f"[estamento] sin match en la tabla: {len(falt)} "
+                f"({', '.join(falt[:5])}{'…' if len(falt) > 5 else ''})")
+            if resolver_estamento is not None:
+                resol = resolver_estamento(falt, estamentos_conocidos(tabla_estam)) or {}
+                if resol:
+                    aplicar_resoluciones(tabla_estam, resol)
+                    n_ig = sum(1 for v in resol.values() if not v)
+                    log(f"[estamento] resueltos a mano: {sum(1 for v in resol.values() if v)}"
+                        + (f" | ignorados: {n_ig}" if n_ig else ""))
+        for e in filas:
+            if not e["estamento"] and e["funcionario"]:
+                v = buscar_estamento(e["funcionario"], tabla_estam)
+                if v:
+                    e["estamento"] = v; n_estam += 1
+        sin_estam = sorted({e["funcionario"] for e in filas
+                            if e["funcionario"] and not e["estamento"]})
+        log(f"[estamento] rellenados: {n_estam}"
+            + (f" | quedan sin estamento: {len(sin_estam)}" if sin_estam else ""))
 
     # ── hoja de salida ──
     if NOMBRE_HOJA_SALIDA in wb.sheetnames:
@@ -357,17 +381,12 @@ def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
         log("[aviso] RESULTADO de RAYEN con redacción NO reconocida (no se comparó "
             "con DISAM; agrégala a _MAP_RESULTADO): "
             + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
-    if tabla_estam is not None:
-        msg = f"[estamento] rellenados desde lookup: {n_estam_lookup}"
-        if sin_estam:
-            extra = ", ".join(sorted(sin_estam)[:5]) + ("…" if len(sin_estam) > 5 else "")
-            msg += f" | SIN match: {len(sin_estam)} ({extra})"
-        log(msg)
 
     return {
         "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,
         "total": len(filas), "discrepancias": n_disc, "por_momento": por_momento,
         "por_resultado": por_resultado, "hoja": NOMBRE_HOJA_SALIDA,
+        "estam_rellenados": n_estam, "estam_faltan": len(sin_estam),
     }
 
 

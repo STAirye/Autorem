@@ -87,6 +87,23 @@ def test_rechaza_no_reporte():
         assert e.categoria == "no_estamentos"
 
 
+def test_faltantes_conocidos_y_resoluciones():
+    """Failsafe: detectar sin-match, opciones del selector, y resolver/ignorar."""
+    from programas.rem_utils import norm
+    tabla = {norm("Ana Perez"): "Médico"}
+    # faltantes: Ana matchea (dedup, case-insensitive), vacíos se ignoran
+    falt = est.faltantes(["Ana Perez", "ana perez", "Beto Ruiz", "", None, "Beto Ruiz"], tabla)
+    assert falt == ["Beto Ruiz"]
+    # opciones del selector: lo visto primero + el estándar
+    ops = est.estamentos_conocidos(tabla)
+    assert ops[0] == "Médico" and "Psicólogo(a)" in ops and "Otro" in ops
+    # resolver: asignar uno, IGNORAR otro (None)
+    est.aplicar_resoluciones(tabla, {"Beto Ruiz": "Enfermero(a)", "Cyn Externa": None})
+    assert est.buscar_estamento("Beto Ruiz", tabla) == "Enfermero(a)"
+    assert est.buscar_estamento("Cyn Externa", tabla) == ""      # ignorado -> vacío
+    assert est.faltantes(["Cyn Externa", "Beto Ruiz"], tabla) == []  # ya ninguno falta
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

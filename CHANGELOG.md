@@ -12,6 +12,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.3.3] — 2026-07-15
+
+### Agregado
+- **Estamentos como capacidad TRANSVERSAL + failsafe.** El lookup
+  Funcionario→Estamento (`programas/estamentos.py`) pasa a ser reutilizable por
+  cualquier flujo en formato Administrativo (hoy screening; a futuro cualquier
+  módulo que reporte por estamento), con **instrucciones y el porqué** en la GUI
+  (`_bloque_estamentos`, reutilizable: de dónde bajar 'Utilización de Cupos' y
+  por qué se necesita).
+- **Failsafe de resolución manual** (`_resolver_estamentos` + `faltantes()` /
+  `estamentos_conocidos()` / `aplicar_resoluciones()`): tras cargar el reporte,
+  los funcionarios que NO están en la tabla se resuelven en un diálogo (elegir
+  estamento) o se **IGNORAN** (externos que prestan servicios transitorios; None
+  = ignorar, no se vuelve a preguntar). `procesar(..., resolver_estamento=cb)`.
+  Tests: estamentos 4/4, screening 9/9.
+
 ## [1.3.2] — 2026-07-15
 
 ### Agregado

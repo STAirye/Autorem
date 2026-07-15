@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.2
+# Version: 1.3.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -197,6 +197,66 @@ def _error_inesperado(e, log, messagebox):
         "Copia el texto del registro y pásaselo a Simón.")
 
 
+# ── Estamentos (REUTILIZABLE por cualquier flujo en formato Administrativo) ──
+def _bloque_estamentos(parent):
+    """Cuadro para cargar la tabla de estamentos ('Utilización de Cupos'), con el
+    porqué y las instrucciones. Reutilizable por cualquier módulo que procese
+    Administrativo. Devuelve get_ruta() -> str (ruta elegida, '' si nada)."""
+    import tkinter as tk
+    from tkinter import ttk
+    caja = ttk.LabelFrame(parent, text="Estamentos (para formato Administrativo)", padding=8)
+    caja.pack(fill="x", pady=(2, 6))
+    ttk.Label(caja, justify="left", foreground="#a05a00", text=(
+        "¿Por qué? El reporte Administrativo NO indica el estamento de quien atendió, "
+        "solo el nombre.\nPara poder reportar por estamento hay que cargar, una vez, "
+        "la tabla del equipo.")).pack(anchor="w")
+    ttk.Label(caja, justify="left", text=(
+        "En RAYEN Administrativo, descarga un reporte desde  Herramientas → Reportes "
+        "Estadísticos → Otros → Utilización de Cupos,\ncon fecha de un día en que hubo "
+        "atenciones de TODO tu equipo. Copia el reporte completo, pásalo a Excel y "
+        "cárgalo aquí.")).pack(anchor="w", pady=(4, 4))
+    var = tk.StringVar()
+    _fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
+    return lambda: (var.get() or "").strip().strip('"').strip("'")
+
+
+def _resolver_estamentos(root, faltantes, opciones):
+    """Failsafe modal: por cada funcionario SIN estamento en la tabla, elegir uno
+    o IGNORAR (externo que presta servicios transitorios). Devuelve
+    {nombre: estamento | None} (None = ignorar). {} si se cancela."""
+    import tkinter as tk
+    from tkinter import ttk
+    IGN = "— Ignorar (externo / transitorio) —"
+    top = tk.Toplevel(root)
+    top.title("Estamentos sin identificar")
+    top.transient(root); top.grab_set()
+    ttk.Label(top, padding=12, justify="left", text=(
+        f"{len(faltantes)} profesional(es) no están en la tabla «Utilización de Cupos».\n"
+        "Asigna su estamento, o Ignóralos si son externos que prestan servicios "
+        "transitorios.")).pack(anchor="w")
+    cont = ttk.Frame(top, padding=(12, 0)); cont.pack(fill="both", expand=True)
+    ops = [IGN] + list(opciones)
+    vars_ = {}
+    for i, nombre in enumerate(faltantes):
+        ttk.Label(cont, text=nombre).grid(row=i, column=0, sticky="w", padx=(0, 10), pady=2)
+        v = tk.StringVar(value=ops[0])
+        ttk.OptionMenu(cont, v, ops[0], *ops).grid(row=i, column=1, sticky="w", pady=2)
+        vars_[nombre] = v
+    res = {}
+
+    def aplicar():
+        for nombre, v in vars_.items():
+            val = v.get()
+            res[nombre] = None if val == IGN else val
+        top.destroy()
+
+    barra = ttk.Frame(top, padding=12); barra.pack(fill="x")
+    ttk.Button(barra, text="Aplicar", command=aplicar).pack(side="right")
+    ttk.Button(barra, text="Cancelar", command=top.destroy).pack(side="right", padx=6)
+    top.wait_window()
+    return res
+
+
 # ── Pestaña A05: Egresos / Ingresos ───────────────────────────────────
 def _tab_a05(nb, root, ruta_inicial=""):
     import tkinter as tk
@@ -322,14 +382,7 @@ def _tab_a03(nb, root):
     var_inst = tk.StringVar(value=opciones[0])
     ttk.OptionMenu(caja_inst, var_inst, opciones[0], *opciones).pack(anchor="w", pady=(4, 0))
 
-    caja_est = ttk.LabelFrame(tab, text="Estamentos (opcional · solo Administrativo)", padding=8)
-    caja_est.pack(fill="x", pady=(2, 6))
-    ttk.Label(caja_est, justify="left", text=(
-        "El Administrativo no trae el estamento de quien aplicó, solo el nombre.\n"
-        "Carga el reporte «Utilización de Cupos» y se rellena por nombre de funcionario.")
-        ).pack(anchor="w")
-    var_est = tk.StringVar()
-    _fila_archivo(caja_est, var_est, "Elige el reporte 'Utilización de Cupos' (opcional)")
+    get_est = _bloque_estamentos(tab)
 
     log, limpiar = _crear_log(tab, root)
 
@@ -339,7 +392,7 @@ def _tab_a03(nb, root):
         if entrada is None:
             return
         instrumento = None if var_inst.get() == "Auto-detectar" else var_inst.get()
-        est_ruta = (var_est.get() or "").strip().strip('"').strip("'")
+        est_ruta = get_est()
         estamentos = None
         if est_ruta:
             pe = _valida_ruta(est_ruta, messagebox)
@@ -349,8 +402,10 @@ def _tab_a03(nb, root):
         salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
         btn.configure(state="disabled")
         try:
-            res = screening.procesar(entrada, salida, instrumento=instrumento,
-                                     estamentos=estamentos, log=log)
+            res = screening.procesar(
+                entrada, salida, instrumento=instrumento, estamentos=estamentos,
+                resolver_estamento=lambda falt, ops: _resolver_estamentos(root, falt, ops),
+                log=log)
         except screening.ArchivoInvalido as e:
             log(f"[ARCHIVO] {e.categoria}")
             messagebox.showerror("No pude procesarlo", str(e))
@@ -365,9 +420,15 @@ def _tab_a03(nb, root):
         finally:
             btn.configure(state="normal")
         desglose = " · ".join(f"{k}: {v}" for k, v in res.get("por_resultado", {}).items())
+        est_line = ""
+        if estamentos:
+            est_line = f"Estamento: {res.get('estam_rellenados', 0)} rellenados"
+            if res.get("estam_faltan"):
+                est_line += f" · {res['estam_faltan']} sin identificar"
+            est_line += "\n"
         txt = (f"Listo. {res['instrumento']} ({res['formato']}).\n"
                f"{res['total']} aplicaciones · {res['discrepancias']} discrepancias RAYEN vs DISAM.\n"
-               f"Resultado DISAM → {desglose}\n\n"
+               f"Resultado DISAM → {desglose}\n{est_line}\n"
                f"Guardado en:\n{res['salida']}")
         log(""); log("✔ " + txt.replace("\n", " | "))
         if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
