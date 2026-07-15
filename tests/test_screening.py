@@ -166,6 +166,24 @@ def test_admin_psc_edad_texto_sin_estamento():
     assert f["Momento"] == "Ingreso"
 
 
+def test_admin_estamento_desde_lookup():
+    """Administrativo: sin columna estamento, se rellena por NOMBRE desde el lookup
+    (reporte 'Utilización de Cupos'). Nombre no encontrado -> queda vacío."""
+    from programas.rem_utils import norm
+    p = _admin("psc_est.xlsx", "Cuestionario para padres PSC", [
+        ("33333333-3", "12 años", "Mujer", "Catalina Andrea Mayorga Pino", "Ingreso", 65, "Medio"),
+        ("44444444-4", "13 años", "Hombre", "Fulano No Listado",            "Ingreso", 68, "Medio"),
+    ])
+    out = _TMP / "psc_est_out.xlsx"
+    tabla = {norm("Catalina Andrea Mayorga Pino"): "Psicólogo(a)"}
+    res = scr.procesar(p, out, estamentos=tabla, log=_quiet)
+    assert res["total"] == 2
+    _, filas = _dump(out)
+    by = {f["RUT"]: f for f in filas}
+    assert by["33333333-3"]["Estamento"] == "Psicólogo(a)"   # rellenado por nombre
+    assert by["44444444-4"]["Estamento"] in (None, "")       # sin match -> vacío
+
+
 def test_deteccion_psc_y():
     p = _iris("pscy.xlsx", "Cuestionario para Adolescentes (PSC-Y) 10 a 14 años", [
         ("44444444-4", 12, "Hombre", "F", "Terapeuta Ocupacional", "Ingreso", 40, "Bajo"),

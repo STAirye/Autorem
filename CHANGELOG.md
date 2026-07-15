@@ -12,6 +12,20 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.3.2] — 2026-07-15
+
+### Agregado
+- **Estamento en el screening Administrativo** (`programas/estamentos.py`): el
+  Admin no trae el estamento de quien aplicó, solo el nombre. Nuevo lookup que
+  lee el reporte RAYEN **'Utilización de Cupos'** (`Profesional` → `Instrumento`,
+  donde 'Instrumento' = estamento, otro mislabel) y rellena la columna Estamento
+  del screening por nombre de funcionario (match normalizado, tolerante a
+  mayúsculas/tildes). `cargar_estamentos()` deduplica y avisa si un nombre trae
+  >1 estamento. Opción en la pestaña de screening: cargar el reporte (opcional,
+  solo aplica al Admin). La **tabla de nombres queda LOCAL**, no se versiona.
+  Validado end-to-end sobre exports reales (4/4 y 11/11 estamentos rellenados,
+  0 sin match). Tests `tests/test_estamentos.py` (3/3).
+
 ## [1.3.1] — 2026-07-14
 
 ### Corregido

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.1
+# Version: 1.3.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -322,6 +322,15 @@ def _tab_a03(nb, root):
     var_inst = tk.StringVar(value=opciones[0])
     ttk.OptionMenu(caja_inst, var_inst, opciones[0], *opciones).pack(anchor="w", pady=(4, 0))
 
+    caja_est = ttk.LabelFrame(tab, text="Estamentos (opcional · solo Administrativo)", padding=8)
+    caja_est.pack(fill="x", pady=(2, 6))
+    ttk.Label(caja_est, justify="left", text=(
+        "El Administrativo no trae el estamento de quien aplicó, solo el nombre.\n"
+        "Carga el reporte «Utilización de Cupos» y se rellena por nombre de funcionario.")
+        ).pack(anchor="w")
+    var_est = tk.StringVar()
+    _fila_archivo(caja_est, var_est, "Elige el reporte 'Utilización de Cupos' (opcional)")
+
     log, limpiar = _crear_log(tab, root)
 
     def on_procesar():
@@ -330,10 +339,18 @@ def _tab_a03(nb, root):
         if entrada is None:
             return
         instrumento = None if var_inst.get() == "Auto-detectar" else var_inst.get()
+        est_ruta = (var_est.get() or "").strip().strip('"').strip("'")
+        estamentos = None
+        if est_ruta:
+            pe = _valida_ruta(est_ruta, messagebox)
+            if pe is None:
+                return
+            estamentos = str(pe)
         salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
         btn.configure(state="disabled")
         try:
-            res = screening.procesar(entrada, salida, instrumento=instrumento, log=log)
+            res = screening.procesar(entrada, salida, instrumento=instrumento,
+                                     estamentos=estamentos, log=log)
         except screening.ArchivoInvalido as e:
             log(f"[ARCHIVO] {e.categoria}")
             messagebox.showerror("No pude procesarlo", str(e))

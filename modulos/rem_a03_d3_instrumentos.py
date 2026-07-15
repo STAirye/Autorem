@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.1
+# Version: 1.3.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -35,9 +35,9 @@ egreso del Programa de Salud Mental) y, por cada aplicación, reporta:
 
 Dos formatos (perfiles), igual que el A05: IRIS y Administrativo. Se autodetectan.
 
-CORE (esta versión): 1 fila por aplicación con ambos resultados. PENDIENTE (v2):
-lookup funcionario→estamento para el Administrativo, conteos agregados por rango
-etario para pegar en el SA, y el popup GUI de confirmación/clasificación.
+CORE: 1 fila por aplicación con ambos resultados + estamento (IRIS directo, o
+Administrativo vía lookup 'Utilización de Cupos' → programas/estamentos.py).
+PENDIENTE (v2): conteos agregados por rango etario para pegar en el SA.
 
 Contexto completo: docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md
 """
@@ -48,6 +48,7 @@ from programas.rem_utils import (
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
 )
+from programas.estamentos import cargar_estamentos, buscar_estamento
 
 # ╔═══════════════════════════════════════════════════════════════════╗
 # ║  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.║
@@ -220,10 +221,12 @@ def abrir_validado(entrada):
 
 
 # ── Núcleo ────────────────────────────────────────────────────────────
-def procesar(entrada, salida, instrumento=None, log=print):
+def procesar(entrada, salida, instrumento=None, estamentos=None, log=print):
     """Detecta formato + instrumento, arma la hoja de instrumentos y guarda.
-    `instrumento` opcional fuerza el instrumento (para el 'confirmar/corregir'
-    del usuario); si es None se autodetecta. Devuelve un resumen."""
+    `instrumento` opcional fuerza el instrumento (si None, autodetecta).
+    `estamentos` opcional (ruta al reporte 'Utilización de Cupos' o dict ya
+    cargado): en Administrativo rellena el estamento por nombre de funcionario.
+    Devuelve un resumen."""
     wb, ws, formato, header_idx = abrir_validado(entrada)
 
     if instrumento is None:
@@ -257,12 +260,18 @@ def procesar(entrada, salida, instrumento=None, log=print):
     log(f"[cols] RUT=col{rut_col} Edad=col{edad_col} Sexo=col{sexo_col} "
         f"Puntaje=col{punt_col} Resultado=col{resu_col} Momento=col{momento_col} "
         f"Estamento=col{estam_col}")
-    if formato != "iris" and not estam_col:
-        log("[estamento] AUSENTE en este formato (Administrativo) -> vacío. "
-            "Lookup funcionario→estamento pendiente (v2).")
+    tabla_estam = None
+    if estamentos is not None:
+        tabla_estam = (estamentos if isinstance(estamentos, dict)
+                       else cargar_estamentos(estamentos, log=log)[0])
+    if formato != "iris" and not estam_col and tabla_estam is None:
+        log("[estamento] AUSENTE en Administrativo y sin tabla de estamentos -> "
+            "columna vacía. (Carga el reporte 'Utilización de Cupos' para rellenarlo.)")
 
     filas = []
     no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
+    n_estam_lookup = 0    # estamentos rellenados desde la tabla (Administrativo)
+    sin_estam = set()     # funcionarios sin match en la tabla
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
         puntaje = solo_entero(fila[punt_col - 1]) if punt_col else None
@@ -274,8 +283,14 @@ def procesar(entrada, salida, instrumento=None, log=print):
         edad = edad_anios(fila[edad_col - 1]) if edad_col else None
         sexo = fila[sexo_col - 1] if sexo_col else ""
         momento = fila[momento_col - 1] if momento_col else ""
-        estamento = fila[estam_col - 1] if estam_col else ""
         funcionario = fila[func_col - 1] if func_col else ""
+        estamento = fila[estam_col - 1] if estam_col else ""
+        if estamento in (None, "") and tabla_estam and funcionario:
+            e2 = buscar_estamento(funcionario, tabla_estam)
+            if e2:
+                estamento = e2; n_estam_lookup += 1
+            else:
+                sin_estam.add(str(funcionario))
         resu_disam = clasificar(puntaje)
         banda_rayen = canon_resultado(resu_rayen)   # canoniza la redacción de RAYEN
         if resu_rayen not in (None, "") and banda_rayen is None:
@@ -342,6 +357,12 @@ def procesar(entrada, salida, instrumento=None, log=print):
         log("[aviso] RESULTADO de RAYEN con redacción NO reconocida (no se comparó "
             "con DISAM; agrégala a _MAP_RESULTADO): "
             + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
+    if tabla_estam is not None:
+        msg = f"[estamento] rellenados desde lookup: {n_estam_lookup}"
+        if sin_estam:
+            extra = ", ".join(sorted(sin_estam)[:5]) + ("…" if len(sin_estam) > 5 else "")
+            msg += f" | SIN match: {len(sin_estam)} ({extra})"
+        log(msg)
 
     return {
         "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,
