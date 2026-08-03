@@ -305,19 +305,30 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
 
 ## 9. Convenciones de código
 
-### Versionado — `X.Y.Z` (¡respetar!)
-Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquema:
-- **X** = por cada **PROGRAMA** que se agregue. Hoy = **1** (autoREM).
-- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **4** (egresos, ingresos, screening A03 D.3, respiratorio A23).
-- **Z** = por cada **corrección del módulo que se está trabajando**. Reinicia a 0
-  al sumar un módulo nuevo (Y++).
+### Versionado — `X.Y.Z` versiona la HERRAMIENTA (¡respetar!)
+Nada de versiones monótonas feas. **El número versiona el SOFTWARE autoREM** (un
+solo binario, un solo `rem_utils.VERSION`):
+- **X** = cambio grande de arquitectura / incompatible.
+- **Y** = cada **módulo/reporte nuevo** (de cualquier programa de salud).
+- **Z** = **corrección** del módulo en curso. Reinicia a 0 al sumar un módulo (Y++).
 
-Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
-romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
-`rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
-La GUI la muestra en el título. Estado actual: **1.4.0**.
-(Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
-estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
+Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
+romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.4.0**.
+
+> ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
+> versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
+> Cardiovascular, SSR…) avanzan EN PARALELO y **NO caben en un número lineal** → se
+> trackean en la MATRIZ de abajo, NO en la versión. (Por eso A23 respiratorio es
+> `1.4.0` —4º módulo de la herramienta— y no `2.x`.)
+
+**Matriz de programas de salud (cobertura):**
+| Programa de salud | Módulos / reportes | Estado |
+|---|---|---|
+| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening | ✅ |
+| **Respiratorio** | A23 (indicadores mes · SALA · Sección G) | 🚧 falta agregación mensual + formato Admin |
+| Cardiovascular | — | pendiente |
+| Salud sexual/reproductiva, otros | — | pendiente |
 
 - **Header en cada archivo** (código y docs): bloque con
   *"This code/document was generated with the assistance of [modelo]. The human
