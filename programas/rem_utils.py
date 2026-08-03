@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.3
+# Version: 1.4.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.3.3"
+VERSION = "1.4.0"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -142,6 +142,60 @@ def encontrar_fila_encabezado(ws, ancla, usar_blanco_en_a=True,
             if norm(ws.cell(row=r, column=1).value) == "":
                 return r + 1, "blanco_en_A"
     return n_hardcode + 1, "hardcode"
+
+
+# ── Lectura + clasificación de reportes (compartido; usado por módulos pandas) ──
+def leer_xlsx(entrada, ancla=None, max_scan=40):
+    """Lee un .xlsx con openpyxl y devuelve (headers, filas_de_datos). ROBUSTO a
+    la 'dimension' rota de los exports copy-paste / de BD (con la que
+    pandas.read_excel leería 0 filas). `ancla` = nombres de columna que deben
+    estar TODOS en la fila de encabezado; si es None, toma la 1ª fila con >3
+    celdas llenas."""
+    ws = openpyxl.load_workbook(entrada, data_only=True, read_only=True).active
+    filas = list(ws.iter_rows(values_only=True))
+    ws.parent.close()
+    if ancla:
+        want = {norm(a) for a in ancla}
+        hi = next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), 0)
+    else:
+        hi = next((i for i, r in enumerate(filas[:max_scan]) if sum(v not in (None, "") for v in r) > 3), 0)
+    return list(filas[hi]), filas[hi + 1:]
+
+
+def resolver_columnas(headers, mapa):
+    """Mapea nombres canónicos -> columnas reales por nombre SEMÁNTICO. `mapa` =
+    {canonico: ('exact', 'NOMBRE') | ('subs', ['TOK1', 'TOK2'])}. Devuelve
+    {canonico: nombre_columna | None}. Match normalizado (robusto a tildes,
+    mayúsculas y a la renumeración 'N.- ' de RAYEN)."""
+    hn = [(c, norm(c)) for c in headers]
+    out = {}
+    for canon, (modo, obj) in mapa.items():
+        if modo == "exact":
+            t = norm(obj)
+            out[canon] = next((c for c, n in hn if n == t), None)
+        else:
+            toks = [norm(t) for t in obj]
+            out[canon] = next((c for c, n in hn if all(t in n for t in toks)), None)
+    return out
+
+
+def contiene_todos(serie, *subs):
+    """Máscara booleana pandas: la Serie (ya normalizada) contiene TODAS las
+    subcadenas (case/acento-insensible vía norm). Para clasificar reportes."""
+    m = None
+    for x in subs:
+        c = serie.str.contains(norm(x), regex=False, na=False)
+        m = c if m is None else (m & c)
+    return m
+
+
+def contiene_alguno(serie, subs):
+    """Máscara booleana pandas: la Serie contiene ALGUNA de las subcadenas."""
+    m = None
+    for x in subs:
+        c = serie.str.contains(norm(x), regex=False, na=False)
+        m = c if m is None else (m | c)
+    return m
 
 
 # ── Utilidad de SO ────────────────────────────────────────────────────

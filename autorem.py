@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.3.3
+# Version: 1.4.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -128,6 +128,7 @@ def lanzar_gui(ruta_inicial=""):
 
     _tab_a05(nb, root, ruta_inicial)
     _tab_a03(nb, root)
+    _tab_a23(nb, root)
 
     root.mainloop()
 
@@ -172,6 +173,27 @@ def _fila_archivo(parent, var_ruta, titulo):
             var_ruta.set(f)
 
     ttk.Button(fila, text="Examinar…", command=examinar).pack(side="left")
+
+
+def _fila_archivos(parent, etiqueta, titulo):
+    """Fila con selección de VARIOS archivos (histórico multi-año). Devuelve get()->list[str]."""
+    from tkinter import ttk, filedialog
+    fila = ttk.Frame(parent)
+    fila.pack(fill="x", pady=(3, 3))
+    ttk.Label(fila, text=etiqueta, width=26).pack(side="left")
+    lbl = ttk.Label(fila, text="(ninguno)", foreground="#666")
+    sel = []
+
+    def examinar():
+        fs = filedialog.askopenfilenames(title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
+        if fs:
+            sel[:] = list(fs)
+            nombres = ", ".join(Path(f).name for f in sel)
+            lbl.configure(text=f"{len(sel)}: " + (nombres[:70] + "…" if len(nombres) > 70 else nombres))
+
+    ttk.Button(fila, text="Examinar…", command=examinar).pack(side="left")
+    lbl.pack(side="left", padx=8)
+    return lambda: list(sel)
 
 
 def _valida_ruta(ruta, messagebox):
@@ -433,6 +455,99 @@ def _tab_a03(nb, root):
         log(""); log("✔ " + txt.replace("\n", " | "))
         if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
             _abrir_carpeta(Path(res["salida"]).parent)
+
+    barra = ttk.Frame(tab)
+    barra.pack(fill="x")
+    btn = ttk.Button(barra, text="Procesar", command=on_procesar)
+    btn.pack(side="left")
+
+
+# ── Pestaña A23 D · Respiratorio ──────────────────────────────────────
+def _tab_a23(nb, root):
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    from datetime import date
+    tab = ttk.Frame(nb, padding=12)
+    nb.add(tab, text="REM A23 · Respiratorio")
+
+    instr = (
+        "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII → quedan LOCALES.\n"
+        "1.  Atenciones / Diagnósticos / Actividades  →  indicadores del MES (IRA, neumonía, KTR,\n"
+        "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s).\n"
+        "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
+        "     ⚠ Carga VARIOS AÑOS (histórico): el inasistente real tiene su último control hace >1 año.\n"
+        "3.  Estratificación de Riesgo (opcional)  →  mejora la detección de asma/EPOC/FQ/SBOR.\n"
+        "\n"
+        "⚠ OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
+        "   «monitoreo de actividades» mensual — con MUCHO menos info que el export IRIS (y horrible de\n"
+        "   parsear). Para los indicadores del mes conviene el export completo de atenciones (IRIS / BD PowerBI).\n"
+        "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
+    )
+    caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
+    caja.pack(fill="x", pady=(0, 8))
+    ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
+
+    get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
+    get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
+    var_estrat = tk.StringVar()
+    _fila_archivo(tab, var_estrat, "Estratificación de Riesgo (opcional)")
+
+    hoy = date.today()
+    y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+    barra_mes = ttk.Frame(tab)
+    barra_mes.pack(fill="x", pady=(4, 4))
+    ttk.Label(barra_mes, text="Mes a reportar (año / mes):").pack(side="left")
+    var_anio = tk.StringVar(value=str(y0))
+    var_mes = tk.StringVar(value=str(m0))
+    ttk.Spinbox(barra_mes, from_=2020, to=2100, width=6, textvariable=var_anio).pack(side="left", padx=(6, 2))
+    ttk.Spinbox(barra_mes, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
+
+    log, limpiar = _crear_log(tab, root)
+
+    def on_procesar():
+        limpiar()
+        atens = get_aten()
+        if not atens:
+            messagebox.showwarning("Falta atenciones", "Carga al menos un archivo de atenciones.")
+            return
+        otros = get_otros()
+        est = None
+        er = (var_estrat.get() or "").strip().strip('"').strip("'")
+        if er:
+            pe = _valida_ruta(er, messagebox)
+            if pe is None:
+                return
+            est = str(pe)
+        try:
+            y, m = int(var_anio.get()), int(var_mes.get())
+        except ValueError:
+            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+            return
+        salida = Path(atens[0]).with_name(f"REM_A23_{y}_{m:02d}_procesado.xlsx")
+        btn.configure(state="disabled")
+        try:
+            import modulos.rem_a23_respiratorio as a23
+            fer = a23.procesar(atens, otros=(otros or None), estrat=est, mes=(y, m), log=log)
+            a23.escribir(fer, salida)
+        except ImportError as e:
+            messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
+            return
+        except PermissionError:
+            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
+            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
+            return
+        except Exception as e:
+            _error_inesperado(e, log, messagebox)
+            return
+        finally:
+            btn.configure(state="normal")
+        g = fer.attrs.get("seccion_g", {})
+        gtxt = " · ".join(f"{lbl.split()[0]}:{d['Total']}" for lbl, d in g.items() if d["Total"])
+        txt = (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
+               f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
+        log(""); log("✔ " + txt.replace("\n", " | "))
+        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+            _abrir_carpeta(salida.parent)
 
     barra = ttk.Frame(tab)
     barra.pack(fill="x")

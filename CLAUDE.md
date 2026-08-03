@@ -35,15 +35,17 @@ Control de Salud Mental"** y produce una tabla lista para tabular los **egresos
 del REM A05** (Salud Mental).
 
 - Corre **100% local, offline**. Sin nube. Consistente con Ley 20.584 y 21.719.
-- Única dependencia externa: **openpyxl**.
+- Dependencias externas: **openpyxl** y **pandas** (pandas desde v1.4.0, para los
+  módulos data-heavy tipo A23; ambas se empaquetan en el `.exe`). Se abandonó la
+  vieja regla "única dependencia = openpyxl": prima minimizar LÍNEAS de código.
 
 ---
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.3.3**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.4.0**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
-A03 D.3 + dispatcher con perfiles y GUI de pestañas.
+A03 D.3 + **REM A23 Respiratorio (pandas)** + dispatcher con perfiles y GUI de pestañas.
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -56,6 +58,7 @@ modulos/              módulos de tarea (paquete)
   rem_a05_o_egresos.py
   rem_a05_n_ingresos.py
   rem_a03_d3_instrumentos.py
+  rem_a23_respiratorio.py
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas
 refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas)
@@ -72,12 +75,13 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | Archivo | Rol |
 |---|---|
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos (selector formato + tareas) y A03 screening (autodetección de instrumento). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez. CLI = solo A05. |
-| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION` y la guarda de `openpyxl`. |
+| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION`, guarda de `openpyxl`, + **lectura/clasificación de reportes** (compartida, la usan los módulos pandas): `leer_xlsx` (robusto a la 'dimension' rota), `resolver_columnas` (semántico exact/subs), `contiene_todos`/`contiene_alguno` (match por norm). |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
 | `programas/estamentos.py` | **Lookup Funcionario→Estamento (TRANSVERSAL a todo formato Administrativo).** El Admin no trae estamento (solo nombre); esto lo rellena desde el reporte 'Utilización de Cupos'. `cargar_estamentos()` (dedup + aviso conflictos), `buscar_estamento()` (match normalizado), y **failsafe**: `faltantes()` + `aplicar_resoluciones()` (resolver a mano o IGNORAR externos transitorios). GUI reutilizable en `autorem._bloque_estamentos` + diálogo `_resolver_estamentos`. La TABLA de nombres queda LOCAL (no al repo). |
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
-| `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; da resultado automático (col RESULTADO) + calculado DISAM (`clasificar_*(puntaje)`) + discrepancia + momento (`1.- Estado`) + estamento (IRIS). Core hecho; **falta integrar a la GUI** y v2 (lookup admin, conteos, popup). |
+| `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; resultado automático (col RESULTADO) + calculado DISAM + discrepancia (compara BANDAS canónicas) + momento + estamento (IRIS directo, o Admin vía `estamentos.py`). Integrado a la GUI. |
+| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. Salida `escribir()` = hoja detalle + Sección G. **Solo IRIS/BD por ahora** (Admin = monitoreo + formulario admin, pendiente). |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
@@ -304,14 +308,14 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
 ### Versionado — `X.Y.Z` (¡respetar!)
 Nada de versiones monótonas (que terminan en "v200" y se ven horribles). Esquema:
 - **X** = por cada **PROGRAMA** que se agregue. Hoy = **1** (autoREM).
-- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **3** (egresos, ingresos, screening A03 D.3).
+- **Y** = por cada **MÓDULO de programa** acumulado. Hoy = **4** (egresos, ingresos, screening A03 D.3, respiratorio A23).
 - **Z** = por cada **corrección del módulo que se está trabajando**. Reinicia a 0
   al sumar un módulo nuevo (Y++).
 
 Se escribe con puntos (`1.2.0`, `1.2.1`, …, `1.2.10`) para que Z pase de 9 sin
 romperse. **Es una versión ÚNICA de proyecto:** fuente de verdad en
 `rem_utils.VERSION`; todos los `.py` la repiten en su header y se bumpean juntos.
-La GUI la muestra en el título. Estado actual: **1.3.3**.
+La GUI la muestra en el título. Estado actual: **1.4.0**.
 (Las etiquetas v1.2–v1.6 de §4 son el changelog previo a esta convención; el
 estado actual equivale a esas iteraciones acumuladas = 1.2.0.)
 

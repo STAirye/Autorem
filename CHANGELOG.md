@@ -12,6 +12,40 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.4.0] — 2026-08-03
+
+Cuarto **módulo** de programa (Y: 3→4): **REM A23 (Respiratorio)**. Primer módulo
+con **pandas** (queda como dependencia de primera clase; se abandona el "única
+dependencia = openpyxl", ver §1). Solo formato IRIS / BD PowerBI por ahora.
+
+### Agregado
+- **Módulo REM A23** (`modulos/rem_a23_respiratorio.py`), portado del visual
+  PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN):
+  - **27 indicadores REMA23 del mes** desde atenciones (IRA, neumonía, bronquitis,
+    influenza, coqueluche, EPOC exacerbado, KTR, espirometría, controles/consultas
+    de sala por profesión, rehab, educación, campaña invierno, compuestos Morbi /
+    Seguimiento…). Ventana de mes PARAMETRIZABLE (no `TODAY()`).
+  - **SALA bajo control** (asma/EPOC/SBOR/FQ/otras + gravedades) desde el formulario
+    'Otros y Respi' + Estratificación (patrón 'último formulario médico válido').
+  - **Sección G — inasistentes a control de crónicos** (def. REM del comentado):
+    Fecha del Próximo Control vencida más allá del umbral por edad (<1a 2m29d ·
+    12-23m 5m29d · ≥2a 11m29d) al corte = último día del mes reportado. NO usa el
+    reporte de inasistencias (NSP es moot: quien nunca tomó hora no aparece).
+  - Inputs (atenciones/otros) aceptan **LISTAS** (histórico multi-año, necesario
+    para lo crónico/12m). Salida `escribir()` = hoja detalle + hoja Sección G.
+  - **Pestaña GUI `REM A23 · Respiratorio`**: selector multi-archivo, mes a reportar,
+    y aviso claro de la limitación de RAYEN Admin (solo formulario + monitoreo pobre).
+  - Tests `tests/test_a23.py` (6/6). Validado sobre exports reales de jul-2026.
+- **`rem_utils`** gana la capa "leer + clasificar reportes" reutilizable: `leer_xlsx`
+  (robusto a la 'dimension' rota que dejaba a pandas en 0 filas), `resolver_columnas`
+  (semántico), `contiene_todos`/`contiene_alguno`.
+
+### Pendiente
+- Agregación de los indicadores mensuales por edad×sexo (celdas de actividades del REM).
+- Soporte formato **Administrativo** (monitoreo de actividades + formulario admin;
+  este último sin columna INSTRUMENTO → requiere el lookup `estamentos.py`).
+- Sección H (inasistentes a citación agendada, por profesional) + validación vs PowerBI.
+
 ## [1.3.3] — 2026-07-15
 
 ### Agregado
