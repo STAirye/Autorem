@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.4.0
+# Version: 1.4.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -164,19 +164,98 @@ def leer_xlsx(entrada, ancla=None, max_scan=40):
 
 def resolver_columnas(headers, mapa):
     """Mapea nombres canónicos -> columnas reales por nombre SEMÁNTICO. `mapa` =
-    {canonico: ('exact', 'NOMBRE') | ('subs', ['TOK1', 'TOK2'])}. Devuelve
-    {canonico: nombre_columna | None}. Match normalizado (robusto a tildes,
-    mayúsculas y a la renumeración 'N.- ' de RAYEN)."""
+    {canonico: opcion | [opcion, ...]} con opcion = ('exact','NOMBRE') |
+    ('subs',['TOK1','TOK2']). Una LISTA de opciones se prueba EN ORDEN (para
+    formatos alternativos, p.ej. IRIS vs Admin). Match normalizado (tildes,
+    mayúsculas, renumeración 'N.- '). Devuelve {canonico: nombre_columna | None}."""
     hn = [(c, norm(c)) for c in headers]
-    out = {}
-    for canon, (modo, obj) in mapa.items():
+
+    def _match(modo, obj):
         if modo == "exact":
             t = norm(obj)
-            out[canon] = next((c for c, n in hn if n == t), None)
-        else:
-            toks = [norm(t) for t in obj]
-            out[canon] = next((c for c, n in hn if all(t in n for t in toks)), None)
+            return next((c for c, n in hn if n == t), None)
+        toks = [norm(t) for t in obj]
+        return next((c for c, n in hn if all(t in n for t in toks)), None)
+
+    out = {}
+    for canon, spec in mapa.items():
+        opciones = spec if isinstance(spec, list) else [spec]
+        out[canon] = next((c for modo, obj in opciones if (c := _match(modo, obj)) is not None), None)
     return out
+
+
+# Mapa de columnas del reporte de ATENCIONES, compartido por los módulos que lo
+# consumen (respiratorio A23, y a futuro cualquier otro programa). Alternativas
+# IRIS | Admin ('Monitoreo de Actividades').
+# ⚠ El Monitoreo admin queda INCOMPLETO (IRIS es la fuente plena):
+#   (a) DEMOGRAFÍA: no trae nacionalidad/pueblo/fecha nac/nombres → origen-migrante
+#       y nombre completo salen vacíos; edad desde 'AÑOS'.
+#   (b) DIAGNÓSTICO EN TEXTO, sin código ICD → los indicadores que matchean por
+#       código (Ira Alta 'j0', Bronquitis 'J20', EPOC Exacerbado 'J44.1') salen 0.
+#       Los de texto (Neumonía/Influenza/Coqueluche) y los de ACTIVIDAD (KTR,
+#       espirometría, controles…) sí cuadran (verificado vs IRIS, jul-2026).
+#   (c) Estructura PADRE-HIJO -> forward-fill de cabecera en cargar_atenciones.
+MAPA_ATENCIONES = {
+    "RUN":     [("subs", ["NUMERO", "IDENTIFICACION"]), ("exact", "RUN")],
+    "FECHA":   [("exact", "FECHA ATENCION"), ("exact", "FECHA CONSULTA")],
+    "ACT":     [("exact", "ACTIVIDADES"), ("subs", ["ACTIVIDAD", "PROCEDIMIENTO"])],
+    "DIAG":    [("exact", "DIAGNOSTICOS"), ("exact", "DIAGNOSTICO")],
+    "INSTR":   ("exact", "INSTRUMENTO"),
+    "TIPO":    ("subs", ["TIPO", "ATENCION"]),          # 'TIPO ATENCION' | 'TIPO DE ATENCION'
+    "SEXO":    ("exact", "SEXO"),
+    "SECTOR":  ("exact", "SECTOR"),
+    "NACION":  ("exact", "NACIONALIDAD"),               # solo IRIS
+    "PUEBLO":  ("subs", ["PUEBLO", "ORIGINARIO"]),      # solo IRIS
+    "FNAC":    ("subs", ["FECHA", "NACIMIENTO"]),       # solo IRIS
+    "NOMBRES": ("exact", "NOMBRES"),                    # solo IRIS
+    "APAT":    ("subs", ["APELLIDO", "PATERNO"]),       # solo IRIS
+    "AMAT":    ("subs", ["APELLIDO", "MATERNO"]),       # solo IRIS
+    "ANOS":    ("exact", "AÑOS"),
+}
+
+
+def cargar_canonico(entrada, ancla, resolver):
+    """Lee UNO o VARIOS .xlsx (los reportes acumulativos necesitan varios años) y
+    arma el DataFrame canónico concatenado. `resolver(headers) -> {canon: columna}`.
+    Devuelve (df, col_del_primero)."""
+    import pandas as pd
+    partes, col0 = [], None
+    for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
+        hdr, filas = leer_xlsx(e, ancla=ancla)
+        col = resolver(hdr)
+        col0 = col0 or col
+        idx = {c: i for i, c in enumerate(hdr)}
+        partes.append(pd.DataFrame(
+            {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
+             for k, c in col.items()}))
+    d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
+    return d, col0
+
+
+def cargar_atenciones(entrada):
+    """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico +
+    textos normalizados (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
+    import pandas as pd
+    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES))
+    faltan = [k for k in ("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO") if not col[k]]
+    if faltan:
+        raise ValueError("No reconozco el export de atenciones (¿IRIS o Monitoreo "
+                         "admin?); faltan columnas: " + ", ".join(faltan))
+    # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
+    # de actividad, con RUN y datos de cabecera SOLO en la 1ª. Se rellena la cabecera
+    # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su
+    # paciente. En IRIS (sin filas hijas) NO se toca nada (evita contaminar campos
+    # vacíos legítimos entre pacientes distintos).
+    cab = ["RUN", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR",
+           "NACION", "PUEBLO", "FNAC", "NOMBRES", "APAT", "AMAT", "ANOS"]
+    child = d["RUN"].replace("", pd.NA).isna()
+    if child.any():
+        dd = d[cab].replace("", pd.NA)
+        d[cab] = dd.where(~child, dd.ffill())
+    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    for k in ("ACT", "DIAG", "INSTR", "TIPO"):
+        d[k + "_n"] = d[k].map(norm)
+    return d
 
 
 def contiene_todos(serie, *subs):

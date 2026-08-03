@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.4.0
+# Version: 1.4.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -28,8 +28,10 @@ subcadena = norm() en ambos lados (case- y acento-insensible), robusto ante
 'neumonía/neumonia'. Ventana de mes PARAMETRIZABLE (no TODAY()), para recalcular
 meses pasados.
 
-PENDIENTE: SALA bajo control (input 'Otros Crónicos' + Estratificación) cierra
-'VDI Respi' y las columnas SALA; Sección G inasistentes (ventana 12m); agregación.
+Lee atenciones IRIS o Monitoreo admin (rem_utils.cargar_atenciones). SALA bajo
+control + Sección G inasistentes ya integrados. PENDIENTE: agregación mensual por
+edad×sexo; admin es PARCIAL (los dx por código ICD no vienen → Ira Alta/Bronquitis/
+EPOC exac. = 0, ver rem_utils.MAPA_ATENCIONES) + formulario Otros Crónicos admin.
 """
 
 import calendar
@@ -38,58 +40,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from programas.rem_utils import (norm, leer_xlsx, resolver_columnas,
+from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  contiene_todos as _all, contiene_alguno as _any)
-
-# ── Resolución de columnas por nombre semántico ('exact' normalizado | 'subs') ──
-_MAP = {
-    "RUN":    ("subs", ["NUMERO", "IDENTIFICACION"]),   # NUMERO TIPO IDENTIFICACION
-    "FECHA":  ("exact", "FECHA ATENCION"),              # ≠ FECHA TERMINO/LLEGADA
-    "ACT":    ("exact", "ACTIVIDADES"),
-    "DIAG":   ("exact", "DIAGNOSTICOS"),
-    "INSTR":  ("exact", "INSTRUMENTO"),
-    "TIPO":   ("exact", "TIPO ATENCION"),
-    "SEXO":   ("exact", "SEXO"),
-    "SECTOR": ("exact", "SECTOR"),
-    "NACION": ("exact", "NACIONALIDAD"),
-    "PUEBLO": ("subs", ["PUEBLO", "ORIGINARIO"]),
-    "FNAC":   ("subs", ["FECHA", "NACIMIENTO"]),
-    "NOMBRES": ("exact", "NOMBRES"),
-    "APAT":   ("subs", ["APELLIDO", "PATERNO"]),
-    "AMAT":   ("subs", ["APELLIDO", "MATERNO"]),
-    "ANOS":   ("exact", "AÑOS"),                        # ≠ AÑOS ATENCION
-}
-
-
-def _df_canonico(entrada, ancla, resolver):
-    """Lee UNO o VARIOS .xlsx (los acumulativos —otros/atenciones— necesitan varios
-    años para la ventana crónica/12m) y arma el DataFrame canónico concatenado.
-    `resolver(headers) -> {canon: columna}`. Devuelve (df, col_del_primero)."""
-    partes, col0 = [], None
-    for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
-        hdr, filas = leer_xlsx(e, ancla=ancla)
-        col = resolver(hdr); col0 = col0 or col
-        idx = {c: i for i, c in enumerate(hdr)}
-        partes.append(pd.DataFrame(
-            {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
-             for k, c in col.items()}))
-    d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
-    return d, col0
-
-
-def cargar_atenciones(entrada):
-    """Export(s) de atenciones -> DataFrame canónico + textos normalizados + FECHA.
-    `entrada` puede ser una ruta o una lista (varios años)."""
-    d, col = _df_canonico(entrada, ["ACTIVIDADES", "FECHA ATENCION"],
-                          lambda h: resolver_columnas(h, _MAP))
-    faltan = [k for k in ("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO") if not col[k]]
-    if faltan:
-        raise ValueError("No reconozco el export de atenciones; faltan columnas: "
-                         + ", ".join(faltan))
-    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
-    for k in ("ACT", "DIAG", "INSTR", "TIPO"):
-        d[k + "_n"] = d[k].map(norm)
-    return d
+# cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
 _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
@@ -282,7 +235,7 @@ def _resolver_otros(cols):
 def cargar_otros(entrada):
     """Formulario(s) Otros y Respi -> DataFrame canónico + FECHA. `entrada` puede ser
     una ruta o una lista (varios años: la Sección G / SALA necesitan el histórico)."""
-    d, col = _df_canonico(entrada, None, _resolver_otros)
+    d, col = cargar_canonico(entrada, None, _resolver_otros)
     d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
     d["_med"] = d["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
     return d, col

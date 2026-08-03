@@ -81,7 +81,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
 | `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; resultado automático (col RESULTADO) + calculado DISAM + discrepancia (compara BANDAS canónicas) + momento + estamento (IRIS directo, o Admin vía `estamentos.py`). Integrado a la GUI. |
-| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. Salida `escribir()` = hoja detalle + Sección G. **Solo IRIS/BD por ahora** (Admin = monitoreo + formulario admin, pendiente). |
+| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. Salida `escribir()` = hoja detalle + Sección G. Lee atenciones **IRIS (pleno)** o **Monitoreo Admin (PARCIAL)**: el monitoreo trae el dx en texto sin código ICD → Ira Alta/Bronquitis/EPOC-exac. salen 0, y sin demografía (ver `rem_utils.MAPA_ATENCIONES`); tiene estructura padre-hijo (ffill en `cargar_atenciones`). Formulario Otros Crónicos admin: pendiente. |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
@@ -326,7 +326,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening | ✅ |
-| **Respiratorio** | A23 (indicadores mes · SALA · Sección G) | 🚧 falta agregación mensual + formato Admin |
+| **Respiratorio** | A23 (indicadores mes · SALA · Sección G) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · falta agregación mensual + formulario admin |
 | Cardiovascular | — | pendiente |
 | Salud sexual/reproductiva, otros | — | pendiente |
 

@@ -12,6 +12,25 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.4.1] — 2026-08-03
+
+### Agregado
+- **A23 lee atenciones desde ADMIN (Monitoreo de Actividades), PARCIAL.** El parser
+  de atenciones se movió a `rem_utils` (`cargar_atenciones` + `MAPA_ATENCIONES` +
+  `cargar_canonico`), reutilizable por cualquier programa, con **nombres de columna
+  alternativos IRIS | Admin** (`resolver_columnas` ahora acepta una lista de opciones).
+- Manejo de la estructura **PADRE-HIJO** del monitoreo (una atención en varias filas;
+  RUN/cabecera solo en la 1ª) → forward-fill de cabecera SOLO a filas hijas (no toca
+  IRIS ni contamina campos vacíos entre pacientes).
+
+### Limitaciones (documentadas)
+- El **Monitoreo admin es INCOMPLETO**: (a) sin demografía (nacionalidad/pueblo/fecha
+  nac/nombres → origen-migrante y nombre vacíos; edad de 'AÑOS'); (b) **diagnóstico en
+  TEXTO sin código ICD** → los indicadores por código (**Ira Alta**, **Bronquitis**,
+  **EPOC exacerbado**) salen **0**. Los de texto (Neumonía/Influenza/Coqueluche) y los
+  de actividad (KTR, espirometría, controles…) sí cuadran (verificado vs IRIS jul-2026:
+  Neumonía 71≈72, Influenza 30≈31, KTR 47≈48). **IRIS sigue siendo la fuente plena.**
+
 ## [1.4.0] — 2026-08-03
 
 Cuarto **módulo** de programa (Y: 3→4): **REM A23 (Respiratorio)**. Primer módulo
