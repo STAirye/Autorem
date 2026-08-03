@@ -13,6 +13,13 @@
 # Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
 # explícito: git add -f muestra_anonimizada.xlsx
 
+# --- CARPETA DE PII REAL — NUNCA al repo (regla dura §8) ---
+# Tablas reales con datos de pacientes (atenciones, formularios, inasistencias,
+# estratificación, citas, etc.) para correr los módulos LOCALMENTE. La carpeta
+# COMPLETA se ignora pase lo que pase (además del filtro por extensión de arriba),
+# así que aquí cae cualquier tipo de archivo, no solo .xlsx.
+SENSITIVE_PII/
+
 # --- Referencias versionadas (refs tablas/) — whitelist POR-ARCHIVO ---
 # Excepción a la regla anti-PII, pero ARCHIVO POR ARCHIVO (no el folder entero):
 # cada planilla se agrega abajo SOLO tras verificar que NO tiene datos reales de
