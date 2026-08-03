@@ -1,7 +1,10 @@
 # Dependencias de autoREM.
 # Instala con:  pip install -r requirements.txt
 #
-# openpyxl es la ÚNICA dependencia externa (lectura/escritura de .xlsx).
+# openpyxl : lectura/escritura de .xlsx (todos los módulos).
+# pandas   : módulos data-heavy (respiratorio A23; groupby por RUN, etc.).
 # tkinter (la GUI) viene incluido con el Python de Windows, no se instala aparte.
-# Probado con openpyxl 3.1.5 / Python 3.14.
+# En el .exe (PyInstaller) todo va empaquetado; el usuario final no instala nada.
+# Probado con openpyxl 3.1.5 / pandas 3.0.5 / Python 3.14.
 openpyxl>=3.1,<4
+pandas>=2.0
