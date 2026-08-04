@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.4.1
+# Version: 1.5.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -111,6 +111,18 @@ def _resumen_texto(resultados, salida):
 _MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
                 "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
 
+_AVISO_SIN_MODIFICAR = ("⚠  Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
+                        "sin abrirlos, editarlos ni re-guardarlos.\n"
+                        "     Un export modificado (cambio de formato, columnas, hojas) "
+                        "puede fallar en silencio o dar cifras erróneas.")
+
+
+def _aviso_sin_modificar(parent):
+    """Recordatorio (todas las pestañas) de cargar los exports SIN modificar."""
+    from tkinter import ttk
+    ttk.Label(parent, text=_AVISO_SIN_MODIFICAR, justify="left",
+              foreground="#a05a00").pack(anchor="w", pady=(0, 6))
+
 
 def lanzar_gui(ruta_inicial=""):
     import tkinter as tk
@@ -129,6 +141,7 @@ def lanzar_gui(ruta_inicial=""):
     _tab_a05(nb, root, ruta_inicial)
     _tab_a03(nb, root)
     _tab_a23(nb, root)
+    _tab_sm(nb, root)
 
     root.mainloop()
 
@@ -298,6 +311,7 @@ def _tab_a05(nb, root, ruta_inicial=""):
     caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(0, 8))
     ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
+    _aviso_sin_modificar(tab)
 
     caja_fmt = ttk.LabelFrame(tab, text="Formato del reporte", padding=8)
     caja_fmt.pack(fill="x", pady=(2, 6))
@@ -393,6 +407,7 @@ def _tab_a03(nb, root):
     caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(0, 8))
     ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
+    _aviso_sin_modificar(tab)
 
     var_ruta = tk.StringVar()
     _fila_archivo(tab, var_ruta, "Elige el export del instrumento de screening")
@@ -486,11 +501,11 @@ def _tab_a23(nb, root):
     caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja.pack(fill="x", pady=(0, 8))
     ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
+    _aviso_sin_modificar(tab)
 
     get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
     get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
-    var_estrat = tk.StringVar()
-    _fila_archivo(tab, var_estrat, "Estratificación de Riesgo (opcional)")
+    get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
 
     hoy = date.today()
     y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
@@ -511,13 +526,8 @@ def _tab_a23(nb, root):
             messagebox.showwarning("Falta atenciones", "Carga al menos un archivo de atenciones.")
             return
         otros = get_otros()
-        est = None
-        er = (var_estrat.get() or "").strip().strip('"').strip("'")
-        if er:
-            pe = _valida_ruta(er, messagebox)
-            if pe is None:
-                return
-            est = str(pe)
+        est_sel = get_estrat()
+        est = est_sel[0] if est_sel else None
         try:
             y, m = int(var_anio.get()), int(var_mes.get())
         except ValueError:
@@ -546,6 +556,91 @@ def _tab_a23(nb, root):
         txt = (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
                f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
         log(""); log("✔ " + txt.replace("\n", " | "))
+        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+            _abrir_carpeta(salida.parent)
+
+    barra = ttk.Frame(tab)
+    barra.pack(fill="x")
+    btn = ttk.Button(barra, text="Procesar", command=on_procesar)
+    btn.pack(side="left")
+
+
+# ── Pestaña SM Actividades: A04 / A06 / A19a / A26 / A27 / A32 ─────────
+def _tab_sm(nb, root):
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    from datetime import date
+    tab = ttk.Frame(nb, padding=12)
+    nb.add(tab, text="REM SM · Actividades")
+
+    instr = (
+        "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) → tablas\n"
+        "listas para copiar-pegar al template SA_26. Cubre A04·A24, A06·A.1 (controles +\n"
+        "psicosocial grupal), A19a·A.3 (consejerías familiares SM/demencia), A26 (VDI SM),\n"
+        "A27 (educación prev. SM) y A32·F (acciones/controles remotos SM).\n"
+        "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  →  casi todas las casillas.\n"
+        "2.  Atenciones Grupales  →  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
+        "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
+        "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia."
+    )
+    caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
+    caja.pack(fill="x", pady=(0, 8))
+    ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
+    _aviso_sin_modificar(tab)
+
+    get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
+    get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
+
+    hoy = date.today()
+    y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+    barra_mes = ttk.Frame(tab)
+    barra_mes.pack(fill="x", pady=(4, 4))
+    ttk.Label(barra_mes, text="Mes a reportar (año / mes):").pack(side="left")
+    var_anio = tk.StringVar(value=str(y0))
+    var_mes = tk.StringVar(value=str(m0))
+    ttk.Spinbox(barra_mes, from_=2020, to=2100, width=6, textvariable=var_anio).pack(side="left", padx=(6, 2))
+    ttk.Spinbox(barra_mes, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
+
+    log, limpiar = _crear_log(tab, root)
+
+    def on_procesar():
+        limpiar()
+        ada = get_ada()
+        if not ada:
+            messagebox.showwarning("Falta el ADA", "Carga al menos un archivo de "
+                                   "Atenciones / Diagnósticos / Actividades.")
+            return
+        grupal = get_grupal() or None
+        if grupal is None:
+            log("[sm] sin reporte grupal → A06 psicosocial, A19a grupal y A27 saldrán 0.")
+        try:
+            y, m = int(var_anio.get()), int(var_mes.get())
+        except ValueError:
+            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+            return
+        salida = Path(ada[0]).with_name(f"REM_SM_actividades_{y}_{m:02d}.xlsx")
+        btn.configure(state="disabled")
+        try:
+            import modulos.rem_sm_actividades as smact
+            E = smact.procesar(ada, grupal=grupal, mes=(y, m), log=log)
+            smact.escribir(E, salida)
+        except ImportError as e:
+            messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
+            return
+        except PermissionError:
+            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
+            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
+            return
+        except Exception as e:
+            _error_inesperado(e, log, messagebox)
+            return
+        finally:
+            btn.configure(state="normal")
+        res = E.attrs["tablas"]["SM_Resumen"]
+        rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in res.iterrows())
+        txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.\n\n"
+               f"{rtxt}\n\nGuardado en:\n{salida}")
+        log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
         if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
             _abrir_carpeta(salida.parent)
 

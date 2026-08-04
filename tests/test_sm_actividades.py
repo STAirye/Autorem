@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ==========================================================================
+# This code was generated with the assistance of Claude Opus 4.8 (Anthropic).
+# The human author reviewed, modified, and integrated the code.
+# Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
+# SPDX-License-Identifier: GPL-3.0-or-later
+# ==========================================================================
+"""Pruebas del módulo REM SM Actividades. Datos SINTÉTICOS. Correr:
+    python tests/test_sm_actividades.py"""
+
+import sys
+import tempfile
+from datetime import date
+from pathlib import Path
+
+import openpyxl
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+
+import modulos.rem_sm_actividades as sm   # noqa: E402
+
+_TMP = Path(tempfile.mkdtemp(prefix="autorem_sm_"))
+
+_ADA_HDR = ["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
+            "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "SEXO", "AÑOS ATENCION"]
+_GRP_HDR = ["NUMERO TIPO IDENTIFICACION", "FECHA ATENCION", "ACTIVIDADES",
+            "ASISTE (SI/NO)", "SEXO", "EDAD", "INSTRUMENTO", "FUNCIONARIO PRESTADOR"]
+
+# alias cortos -> nombre real de columna
+_ADA_K = {"run": 0, "id": 1, "fecha": 2, "act": 3, "dg": 4, "instr": 5, "tipo": 6, "sexo": 7, "edad": 8}
+_GRP_K = {"run": 0, "fecha": 1, "act": 2, "asiste": 3, "sexo": 4, "edad": 5, "instr": 6, "prest": 7}
+
+
+def _mk(hdr, keymap, rows, nombre):
+    p = _TMP / nombre
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(hdr)
+    for r in rows:
+        line = [""] * len(hdr)
+        for k, v in r.items():
+            line[keymap[k]] = v
+        ws.append(line)
+    wb.save(p)
+    return p
+
+
+def _mk_ada(rows):
+    return _mk(_ADA_HDR, _ADA_K, rows, "ada.xlsx")
+
+
+def _mk_grupal(rows):
+    return _mk(_GRP_HDR, _GRP_K, rows, "grupal.xlsx")
+
+
+def _quiet(*_a, **_k): pass
+
+
+def _run(ada_rows, grupal_rows=None, mes=(2026, 7)):
+    ada = _mk_ada(ada_rows)
+    grupal = _mk_grupal(grupal_rows) if grupal_rows is not None else None
+    E = sm.procesar(ada, grupal=grupal, mes=mes, log=_quiet)
+    return E, E.attrs["tablas"]
+
+
+def _n(E, casilla, sub=None):
+    m = E["casilla"] == casilla
+    if sub is not None:
+        m = m & (E["sub"] == sub)
+    return int(m.sum())
+
+
+def _cell(tabla, col_key, col_val, dato):
+    """Valor de `dato` en la fila donde tabla[col_key]==col_val."""
+    fila = tabla[tabla[col_key] == col_val].iloc[0]
+    return fila[dato]
+
+
+# ── A04: consultas médicas SM (solo médico) ──
+def test_a04_solo_medico():
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
+         "instr": "Médico", "sexo": "Mujer", "edad": 30},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "act": "Consulta De Salud Mental  ;",
+         "instr": "Psicólogo(a)", "sexo": "Hombre", "edad": 20},   # NO médico -> fuera de A04
+    ])
+    assert _n(E, "A04") == 1
+    assert _cell(t["A04_Consultas_Medicas"], "Consulta", "Salud Mental", "Ambos") == 1
+    assert _cell(t["A04_Consultas_Medicas"], "Consulta", "Salud Mental", "Mujeres") == 1
+
+
+# ── A06: controles por estamento + SENAME excluido ──
+def test_a06_controles_estamento_y_sename():
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "sexo": "Hombre", "edad": 40},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "sexo": "Mujer", "edad": 8},
+        {"run": "C", "id": "3", "fecha": date(2026, 7, 5), "act": "Control Salud Mental a Paciente SENAME  ;",
+         "instr": "Psicólogo(a)", "sexo": "Hombre", "edad": 12},   # SENAME -> string aparte, excluido
+    ])
+    assert _n(E, "A06") == 2
+    a06 = t["A06_Controles"]
+    assert _cell(a06, "Profesional", "Médico/a", "Ambos") == 1
+    assert _cell(a06, "Profesional", "Psicólogo/a", "Ambos") == 1
+    assert _cell(a06, "Profesional", "TOTAL", "Ambos") == 2
+    assert _cell(a06, "Profesional", "Psicólogo/a", "5-9 M") == 1   # edad 8, mujer
+
+
+# ── ADA cuenta por ATEN ID (distinct), no por fila ──
+def test_ada_conteo_por_atenid():
+    E, _ = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},  # MISMO ATEN ID
+        {"run": "A", "id": "2", "fecha": date(2026, 7, 9), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},  # otra atención
+    ])
+    assert _n(E, "A06") == 2   # dos ATEN ID distintos (la fila repetida NO suma)
+
+
+# ── Grupal cuenta por ASISTENCIA (sin dedup) + filtro Asiste=SI ──
+def test_grupal_por_asistencia():
+    E, t = _run([], grupal_rows=[
+        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": 30},
+        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": 30},  # mismo día, 2º taller -> cuenta 2
+        {"run": "Q", "fecha": date(2026, 7, 6), "act": "Intervencion psicosocial grupal.", "asiste": "NO", "sexo": "Hombre", "edad": 40},  # no asiste -> fuera
+    ])
+    assert _n(E, "A06PG") == 2
+    assert _cell(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal", "Ambos") == 2
+
+
+# ── Ventana de mes (por FECHA ATENCIÓN) ──
+def test_ventana_de_mes():
+    E, _ = _run(
+        [{"run": "A", "id": "1", "fecha": date(2026, 6, 30), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
+         {"run": "B", "id": "2", "fecha": date(2026, 7, 1), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}],
+        grupal_rows=[{"run": "P", "fecha": date(2026, 8, 1), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "edad": 30}],
+    )
+    assert _n(E, "A06") == 1        # solo la de julio
+    assert _n(E, "A06PG") == 0      # la grupal es de agosto
+
+
+# ── A19a: ADA (individual) + grupal, y el guion evita comerse las VDI de A26 ──
+def test_a19a_ada_mas_grupal_sin_vdi():
+    E, t = _run(
+        [{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Psicólogo(a)",
+          "act": "Consejerías familiares - Temas Prioridad - Con integrante con problema de salud mental (Ind)  ;", "edad": 40},
+         {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "instr": "Médico",
+          "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Primera visita  ;", "edad": 50}],
+        grupal_rows=[{"run": "C", "fecha": date(2026, 7, 5), "asiste": "SI", "edad": 35,
+                      "act": "Consejerías familiares - Temas Prioridad - Con integrante con problema de salud mental (Grp)"}],
+    )
+    assert _n(E, "A19a", "97") == 2          # 1 ADA + 1 grupal (la VDI NO cuenta acá)
+    assert _n(E, "A26") == 1                 # la VDI va a A26
+    a19 = t["A19a_Consejerias_Fam"]
+    fila = a19[a19["Tema prioridad (familiar)"] == "Con integrante con problema de salud mental"].iloc[0]
+    assert fila["Total Actividades"] == 2 and fila["  · desde ADA (individual)"] == 1 and fila["  · desde Grupal"] == 1
+
+
+# ── A26: split etario 5-9 (A.31) excluye de A.30, + secuencia de visita ──
+def test_a26_split_5a9_y_visita():
+    E, t = _run([
+        {"run": "K", "id": "1", "fecha": date(2026, 7, 3), "instr": "Médico", "edad": 7,
+         "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Primera visita  ;"},
+        {"run": "L", "id": "2", "fecha": date(2026, 7, 4), "instr": "Médico", "edad": 45,
+         "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Tercera o más visitas de seguimiento  ;"},
+    ])
+    a26 = t["A26_VDI_SM"]
+    r30 = a26[a26["Concepto"].str.startswith("A.30")].iloc[0]
+    r31 = a26[a26["Concepto"].str.startswith("A.31")].iloc[0]
+    assert r30["Total"] == 1 and r30["Tercera o más"] == 1     # adulto 45
+    assert r31["Total"] == 1 and r31["Primera Visita"] == 1     # niño 7
+
+
+# ── A32 F1: desagregado llamada / videollamada / mensaje (video ≠ llamada) ──
+def test_a32f1_desagregado():
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Psicólogo(a)", "edad": 30,
+         "act": "Acciones remotas de salud mental - Llamadas telefónicas  ;"},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "instr": "Psicólogo(a)", "edad": 20,
+         "act": "Acciones remotas de salud mental - Videollamadas  ;"},
+        {"run": "C", "id": "3", "fecha": date(2026, 7, 5), "instr": "Psicólogo(a)", "edad": 40,
+         "act": "Acciones remotas de salud mental - Mensajería de texto  ;"},
+    ])
+    f1 = t["A32_F1_Acciones_Remotas"]
+    assert _cell(f1, "Vía", "Llamadas Telefónicas", "Total") == 1
+    assert _cell(f1, "Vía", "Videollamadas", "Total") == 1
+    assert _cell(f1, "Vía", "Mensajería de Texto", "Total") == 1
+    assert _n(E, "A32F1") == 3
+
+
+# ── A27: A = asistentes (usuarios), B = sesiones (por prestador/fecha/actividad) ──
+def test_a27_asistentes_y_sesiones():
+    E, t = _run([], grupal_rows=[
+        {"run": "X", "fecha": date(2026, 7, 10), "asiste": "SI", "edad": 30, "prest": "Dra A",
+         "act": "Educación en grupo - Prevención de salud mental - Prevención trastorno mental"},
+        {"run": "Y", "fecha": date(2026, 7, 10), "asiste": "SI", "edad": 40, "prest": "Dra A",
+         "act": "Educación en grupo - Prevención de salud mental - Prevención trastorno mental"},  # misma sesión
+    ])
+    a27 = t["A27_Educacion_Prev"]
+    fila = a27[a27["Área temática"] == "Prevención trastorno mental"].iloc[0]
+    assert fila["A · Asistentes (usuarios)"] == 2
+    assert fila["B · Sesiones (actividades)"] == 1
+
+
+def _main():
+    pruebas = [v for k, v in sorted(globals().items())
+               if k.startswith("test_") and callable(v)]
+    fallos = 0
+    for fn in pruebas:
+        try:
+            fn(); print(f"PASS  {fn.__name__}")
+        except AssertionError as e:
+            fallos += 1; print(f"FAIL  {fn.__name__} -> {e or 'assert'}")
+        except Exception as e:  # noqa: BLE001
+            import traceback
+            fallos += 1; print(f"ERROR {fn.__name__} -> {type(e).__name__}: {e}")
+            traceback.print_exc()
+    print("-" * 50)
+    print(f"{len(pruebas) - fallos}/{len(pruebas)} OK" + (f" ({fallos} problemas)" if fallos else ""))
+    return 1 if fallos else 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+    sys.exit(_main())

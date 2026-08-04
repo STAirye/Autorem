@@ -12,6 +12,44 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.0] — 2026-08-04
+
+Quinto **módulo** de programa (Y: 4→5): **REM Salud Mental — Actividades**
+(`modulos/rem_sm_actividades.py`, pandas). Tabula la estadística de actividades de
+Salud Mental que hasta ahora se llenaba a mano con tablas dinámicas: **A04·A24,
+A06·A.1 (controles + psicosocial grupal), A19a·A.3 (consejerías familiares
+SM/demencia), A26 (VDI SM), A27 (educación prev. SM) y A32·F (acciones/controles
+remotos SM)**. Salida = tablas listas para copiar-pegar al template SA_26 (sin juicio
+clínico, solo conteo). Filtros **validados casilla por casilla** contra el REM manual
+de julio 2026 (A04=39 · A06=845 controles + 51 grupal · A19a=111/40 · A26=12 ·
+A32·F1=169/1/4 · A27/F2=0).
+
+### Agregado
+- **Módulo `rem_sm_actividades.py`** con dos fuentes: **ADA** ('Atenciones/Diagnósticos/
+  Actividades', vía `cargar_atenciones`) y un loader nuevo **`cargar_grupal`** para el
+  reporte 'Atenciones Grupales'. Salida `escribir()` = hoja **SM_Detalle** (auditable) +
+  una hoja por sección REM con la forma del template.
+- **Regla ADA = conteo por ATEN ID** (distinct); **grupal = conteo por ASISTENCIA**
+  (cada fila `Asiste=SI`, SIN deduplicar: misma persona 2 talleres = 2).
+- **Filtro de mes por FECHA ATENCIÓN** (parsea el texto `DD/MM/YYYY` del grupal): el
+  export puede venir del año completo y se recorta el mes reportado.
+- **Pestaña GUI 'REM SM · Actividades'** (ADA + Grupales multi-archivo + año/mes).
+- `rem_utils.MAPA_ATENCIONES`: +`ATENID` y +`ANOS_AT` (edad a la atención) — IRIS.
+- Tests `tests/test_sm_actividades.py` (9/9): por casilla, ATEN ID distinct, grupal
+  sin dedup, ventana de mes, split etario 5-9 (A26), desagregación A32·F1, consejerías
+  grupales sumadas en A19a, exclusión SENAME.
+
+### Cambiado
+- **GUI: aviso 'cargar los exports SIN modificar'** en TODAS las pestañas (un archivo
+  editado rompía el A23 en silencio). El 3er selector del A23 (Estratificación) pasó al
+  mismo estilo que los otros y se etiquetó explícitamente como opcional.
+
+### Notas
+- El guion en el filtro de A19a **importa**: `Prioridad - Con integrante con problema de
+  salud mental` evita capturar las VDI de A26 (que contienen la misma frase sin guion).
+- **SENAME se excluye solo**: 'Control Salud Mental a Paciente SENAME' es un string aparte
+  (ellos hacen su propio REM). A05 y las Consultorías A06·A.2 quedan fuera (módulo/manual).
+
 ## [1.4.1] — 2026-08-03
 
 ### Agregado

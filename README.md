@@ -25,7 +25,7 @@ de distintos **programas de salud**:
 
 | Programa de salud | Reportes REM | Estado |
 |---|---|---|
-| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) | ✅ |
+| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) · **Actividades** (A04·A06·A19a·A26·A27·A32) | ✅ |
 | **Respiratorio** | A23 (indicadores del mes · SALA bajo control · Sección G inasistentes crónicos) | 🚧 IRIS pleno · Admin parcial · falta agregación mensual |
 
 Cada reporte es una **pestaña** en la interfaz. La salida deja una planilla lista
@@ -81,6 +81,14 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   el **formulario Otros Crónicos** (histórico multi-año) y opcionalmente
   **Estratificación**; elige el **mes a reportar**. Salida: hoja *detalle* por
   paciente + hoja *Sección G* (inasistentes a control de crónicos).
+- **REM SM · Actividades** — estadística de actividades de Salud Mental (A04·A24,
+  A06 controles + psicosocial grupal, A19a consejerías familiares, A26 VDI SM, A27
+  educación, A32 remotas). Carga el export **ADA** (Atenciones/Diagnósticos/Actividades)
+  y el de **Atenciones Grupales**, elige el mes. Salida: hoja *SM_Detalle* (auditable)
+  + una hoja por sección REM, lista para **copiar-pegar al template SA_26**.
+
+> ⚠ Carga los exports **tal como los descargas** de RAYEN/IRIS: sin abrirlos ni
+> re-guardarlos. Un archivo modificado puede fallar en silencio o dar cifras erróneas.
 
 ### Línea de comandos (avanzado / automatización)
 
@@ -106,6 +114,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `modulos/rem_a05_o_egresos.py` · `rem_a05_n_ingresos.py` | Tareas A05: egresos (Alta/Traslado/Otras Causas) e ingresos. |
 | `modulos/rem_a03_d3_instrumentos.py` | Screening A03 D.3 (PSC/PSC-Y/GHQ-12), integrado a la GUI. |
 | `modulos/rem_a23_respiratorio.py` | REM A23 (Respiratorio), con pandas. |
+| `modulos/rem_sm_actividades.py` | REM SM Actividades (A04/A06/A19a/A26/A27/A32), con pandas. Tablas copy-paste al SA_26. |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 
@@ -120,6 +129,7 @@ python tests/test_autorem.py
 python tests/test_screening.py
 python tests/test_estamentos.py
 python tests/test_a23.py
+python tests/test_sm_actividades.py
 ```
 
 ---

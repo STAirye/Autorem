@@ -43,9 +43,10 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.4.0**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.5.0**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
-A03 D.3 + **REM A23 Respiratorio (pandas)** + dispatcher con perfiles y GUI de pestañas.
+A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
++ dispatcher con perfiles y GUI de pestañas.
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -59,6 +60,7 @@ modulos/              módulos de tarea (paquete)
   rem_a05_n_ingresos.py
   rem_a03_d3_instrumentos.py
   rem_a23_respiratorio.py
+  rem_sm_actividades.py
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas
 refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas)
@@ -74,7 +76,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 
 | Archivo | Rol |
 |---|---|
-| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos (selector formato + tareas) y A03 screening (autodetección de instrumento). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez. CLI = solo A05. |
+| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos, A03 screening, A23 respiratorio y **SM actividades**. Aviso "cargar exports SIN modificar" en todas las pestañas (`_aviso_sin_modificar`; un archivo tocado rompía el A23 en silencio). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez. CLI = solo A05. *(Pendiente v2: migrar a customtkinter + agrupar pestañas por Programa de salud + About.)* |
 | `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION`, guarda de `openpyxl`, + **lectura/clasificación de reportes** (compartida, la usan los módulos pandas): `leer_xlsx` (robusto a la 'dimension' rota), `resolver_columnas` (semántico exact/subs), `contiene_todos`/`contiene_alguno` (match por norm). |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, detección/validación de formato, **PERFILES IRIS/Admin** y el motor `marcar_eventos()`. |
 | `programas/estamentos.py` | **Lookup Funcionario→Estamento (TRANSVERSAL a todo formato Administrativo).** El Admin no trae estamento (solo nombre); esto lo rellena desde el reporte 'Utilización de Cupos'. `cargar_estamentos()` (dedup + aviso conflictos), `buscar_estamento()` (match normalizado), y **failsafe**: `faltantes()` + `aplicar_resoluciones()` (resolver a mano o IGNORAR externos transitorios). GUI reutilizable en `autorem._bloque_estamentos` + diálogo `_resolver_estamentos`. La TABLA de nombres queda LOCAL (no al repo). |
@@ -82,6 +84,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
 | `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; resultado automático (col RESULTADO) + calculado DISAM + discrepancia (compara BANDAS canónicas) + momento + estamento (IRIS directo, o Admin vía `estamentos.py`). Integrado a la GUI. |
 | `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. Salida `escribir()` = hoja detalle + Sección G. Lee atenciones **IRIS (pleno)** o **Monitoreo Admin (PARCIAL)**: el monitoreo trae el dx en texto sin código ICD → Ira Alta/Bronquitis/EPOC-exac. salen 0, y sin demografía (ver `rem_utils.MAPA_ATENCIONES`); tiene estructura padre-hijo (ffill en `cargar_atenciones`). Formulario Otros Crónicos admin: pendiente. |
+| `modulos/rem_sm_actividades.py` | **Módulo REM SM Actividades (estadística, pandas).** Tabula las casillas de actividades de Salud Mental (**A04·A24, A06·A.1 controles+psicosocial grupal, A19a·A.3 consejerías fam. SM/demencia, A26 VDI SM, A27 educación prev., A32·F remotas**) → tablas copy-paste al template SA_26. Dos fuentes: **ADA** (`cargar_atenciones`, conteo por **ATEN ID** distinct) y **Grupal** (`cargar_grupal`, conteo por **ASISTENCIA**, `Asiste=SI`, SIN dedup). Filtro de mes por **FECHA ATENCIÓN** (parsea `DD/MM/YYYY`; el export puede venir del año completo). SENAME se excluye solo (string aparte). El guion en A19a importa (evita capturar las VDI de A26). `escribir()` = hoja SM_Detalle (auditable) + 1 hoja por sección. Filtros **validados casilla-por-casilla vs REM manual jul-2026**. Pendiente: A27 y A32·F2 sin datos para validar el string (0 ese mes); A06·A.2 Consultorías = manual. |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
@@ -314,7 +317,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.4.0**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.5.0**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -325,7 +328,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 **Matriz de programas de salud (cobertura):**
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
-| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening | ✅ |
+| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening · **Actividades (A04·A06·A19a·A26·A27·A32)** | ✅ |
 | **Respiratorio** | A23 (indicadores mes · SALA · Sección G) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · falta agregación mensual + formulario admin |
 | Cardiovascular | — | pendiente |
 | Salud sexual/reproductiva, otros | — | pendiente |

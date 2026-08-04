@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.4.1
+# Version: 1.5.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.4.1"
+VERSION = "1.5.0"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -197,6 +197,7 @@ def resolver_columnas(headers, mapa):
 #   (c) Estructura PADRE-HIJO -> forward-fill de cabecera en cargar_atenciones.
 MAPA_ATENCIONES = {
     "RUN":     [("subs", ["NUMERO", "IDENTIFICACION"]), ("exact", "RUN")],
+    "ATENID":  [("subs", ["ATEN", "ID"]), ("subs", ["ATENCION", "ID"])],  # solo IRIS
     "FECHA":   [("exact", "FECHA ATENCION"), ("exact", "FECHA CONSULTA")],
     "ACT":     [("exact", "ACTIVIDADES"), ("subs", ["ACTIVIDAD", "PROCEDIMIENTO"])],
     "DIAG":    [("exact", "DIAGNOSTICOS"), ("exact", "DIAGNOSTICO")],
@@ -210,7 +211,8 @@ MAPA_ATENCIONES = {
     "NOMBRES": ("exact", "NOMBRES"),                    # solo IRIS
     "APAT":    ("subs", ["APELLIDO", "PATERNO"]),       # solo IRIS
     "AMAT":    ("subs", ["APELLIDO", "MATERNO"]),       # solo IRIS
-    "ANOS":    ("exact", "AÑOS"),
+    "ANOS":    ("exact", "AÑOS"),                        # edad a la DESCARGA
+    "ANOS_AT": [("subs", ["AÑOS", "ATENCION"]), ("subs", ["ANOS", "ATENCION"])],  # edad a la ATENCIÓN (REM)
 }
 
 
@@ -246,8 +248,8 @@ def cargar_atenciones(entrada):
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su
     # paciente. En IRIS (sin filas hijas) NO se toca nada (evita contaminar campos
     # vacíos legítimos entre pacientes distintos).
-    cab = ["RUN", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR",
-           "NACION", "PUEBLO", "FNAC", "NOMBRES", "APAT", "AMAT", "ANOS"]
+    cab = ["RUN", "ATENID", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR",
+           "NACION", "PUEBLO", "FNAC", "NOMBRES", "APAT", "AMAT", "ANOS", "ANOS_AT"]
     child = d["RUN"].replace("", pd.NA).isna()
     if child.any():
         dd = d[cab].replace("", pd.NA)
