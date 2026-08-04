@@ -26,7 +26,7 @@ de distintos **programas de salud**:
 | Programa de salud | Reportes REM | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) · **Actividades** (A04·A06·A19a·A26·A27·A32) | ✅ |
-| **Respiratorio** | A23 (indicadores del mes · SALA bajo control · Sección G inasistentes crónicos) | 🚧 IRIS pleno · Admin parcial · falta agregación mensual |
+| **Respiratorio** | A23 (indicadores del mes · SALA bajo control · Sección G inasistentes crónicos · Sección H inasistentes a citación) | 🚧 IRIS pleno · Admin parcial · falta agregación mensual |
 
 Cada reporte es una **pestaña** en la interfaz. La salida deja una planilla lista
 para tabular (**tu archivo original nunca se modifica**).
@@ -77,15 +77,23 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   instrumento por contenido; da el resultado automático (RAYEN) + calculado
   (cortes DISAM) + discrepancia. En formato Administrativo puede cargar la tabla
   *Utilización de Cupos* para rellenar el estamento por nombre de funcionario.
-- **REM A23 · Respiratorio** — carga el/los export(s) de **atenciones** (del mes),
-  el **formulario Otros Crónicos** (histórico multi-año) y opcionalmente
-  **Estratificación**; elige el **mes a reportar**. Salida: hoja *detalle* por
-  paciente + hoja *Sección G* (inasistentes a control de crónicos).
+- **REM A23 · Respiratorio** — carga el/los export(s) de **atenciones** (del mes), el
+  **formulario Otros Crónicos** (histórico: **cárgalo por varios años**, si no la Sección G
+  subcuenta) y, opcionalmente, **Estratificación** y el reporte de **Inasistentes NSP**
+  (para la Sección H); elige el **mes a reportar**. Salida: hoja *detalle* por paciente +
+  *Sección G* (inasistentes a control de crónicos) + *Sección H* (inasistentes a citación
+  Control/Ingreso IRA/ERA, por estamento × tramo etario).
 - **REM SM · Actividades** — estadística de actividades de Salud Mental (A04·A24,
   A06 controles + psicosocial grupal, A19a consejerías familiares, A26 VDI SM, A27
-  educación, A32 remotas). Carga el export **ADA** (Atenciones/Diagnósticos/Actividades)
-  y el de **Atenciones Grupales**, elige el mes. Salida: hoja *SM_Detalle* (auditable)
-  + una hoja por sección REM, lista para **copiar-pegar al template SA_26**.
+  educación, A32 remotas), **con desagregación demográfica** (pueblos originarios,
+  migrantes, SENAME, demencia, gestante…). Carga el export **ADA** (Atenciones/
+  Diagnósticos/Actividades), el de **Atenciones Grupales** y, opcionalmente, el
+  **Informe Inscritos y Adscritos** (solo para el flag **TRANS**); elige el mes. Salida:
+  hoja *SM_Detalle* (auditable) + una hoja por sección REM, lista para **copiar-pegar al
+  template SA_26**.
+
+Cada pestaña de datos (A23 y SM) deja elegir la **carpeta de salida** (por defecto, la
+carpeta del `.exe`), para no perder el resultado junto al input.
 
 > ⚠ Carga los exports **tal como los descargas** de RAYEN/IRIS: sin abrirlos ni
 > re-guardarlos. Un archivo modificado puede fallar en silencio o dar cifras erróneas.
@@ -108,7 +116,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | Ruta | Rol |
 |---|---|
 | `autorem.py` | **Entry point.** Dispatcher GUI (una pestaña por reporte) + CLI (solo A05). |
-| `programas/rem_utils.py` | Base genérica: normalización, búsqueda de columnas, **lectura robusta de reportes** (`leer_xlsx`, `resolver_columnas`, `cargar_atenciones`) reutilizable por los módulos. |
+| `programas/rem_utils.py` | Base genérica: normalización, búsqueda de columnas, **lectura robusta de reportes** (`leer_xlsx`, `resolver_columnas`, `cargar_atenciones`) + **demografía reutilizable** (`marcar_demografia`, `gestante_runs`, `trans_map`), usada por los módulos. |
 | `programas/rem_saludmental.py` | Capa compartida del formulario *Control de Salud Mental*: validación, diagnóstico/subtipo, demografía, perfiles IRIS/Admin, motor de marcado. |
 | `programas/estamentos.py` | Lookup Funcionario→Estamento (transversal a lo Administrativo), desde *Utilización de Cupos*, con failsafe de resolución manual. |
 | `modulos/rem_a05_o_egresos.py` · `rem_a05_n_ingresos.py` | Tareas A05: egresos (Alta/Traslado/Otras Causas) e ingresos. |
