@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.3
+# Version: 1.5.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -526,7 +526,8 @@ def _tab_a23(nb, root):
         "1.  Atenciones / Diagnósticos / Actividades  →  indicadores del MES (IRA, neumonía, KTR,\n"
         "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s).\n"
         "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
-        "     ⚠ Carga VARIOS AÑOS (histórico): el inasistente real tiene su último control hace >1 año.\n"
+        "     ⚠ Se bajan POR AÑO → carga VARIOS archivos (al menos el año actual + el anterior, ideal 5):\n"
+        "        el inasistente tiene su último control hace >1 año, así que con pocos meses G subcuenta.\n"
         "3.  Estratificación de Riesgo (opcional)  →  mejora la detección de asma/EPOC/FQ/SBOR.\n"
         "4.  Inasistentes NSP (opcional)  →  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
         "\n"

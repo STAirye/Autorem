@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.3
+# Version: 1.5.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -148,6 +148,16 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     # ── Fase 2: SALA bajo control (si se dieron los inputs) ──
     if otros is not None:
         od, _ = cargar_otros(otros)
+        # Sección G solo sirve con historial largo: el inasistente tiene su ÚLTIMO
+        # formulario/control hace >1 año. El PowerBI usa ~5 años; con pocos meses G
+        # subcuenta fuerte. Avisar si el span de formularios es corto.
+        if od["FECHA"].notna().any():
+            span_g = (od["FECHA"].max() - od["FECHA"].min()).days
+            if span_g < 365:
+                log(f"[a23] ⚠ Sección G: los formularios 'Otros y Respi' cubren solo "
+                    f"~{span_g} días. Los inasistentes suelen tener su último control hace "
+                    f">1 año → carga MÁS AÑOS de formularios (idealmente 5, como el PowerBI) "
+                    f"o G subcontará.")
         est = cargar_estrat(estrat) if estrat is not None else pd.Series(dtype="object")
         sala, _ing = _sala(fer.index, fer["Edad"], d, od, est)
         for c in sala.columns:

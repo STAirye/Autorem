@@ -12,6 +12,16 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.4] — 2026-08-04
+
+### Cambiado
+- **Sección G — aviso de span corto**: la Sección G solo sirve con historial largo
+  (los inasistentes tienen su último control hace >1 año; el PowerBI usa ~5 años).
+  Ahora avisa en el log si los formularios 'Otros y Respi' cubren <1 año → G subcontará.
+  Como los formularios se bajan POR AÑO, hay que cargar VARIOS archivos (mín. año actual
+  + anterior). Instrucción de la GUI actualizada. (No hay fix posible sin más input;
+  el conteo per-mes vs 5-años del PowerBI explica la diferencia de totales.)
+
 ## [1.5.3] — 2026-08-04
 
 REM A23: completa las **Secciones G y H** de inasistentes (P2).
