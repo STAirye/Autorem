@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.0
+# Version: 1.5.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -209,6 +209,32 @@ def _fila_archivos(parent, etiqueta, titulo):
     return lambda: list(sel)
 
 
+def _dir_salida_default():
+    """Carpeta de salida por defecto: donde está el .exe (empaquetado) o el cwd."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path.cwd()
+
+
+def _fila_carpeta_salida(parent):
+    """Fila 'Carpeta de salida: [___] [Examinar…]'. Devuelve get()->str (ruta)."""
+    import tkinter as tk
+    from tkinter import ttk, filedialog
+    fila = ttk.Frame(parent)
+    fila.pack(fill="x", pady=(3, 3))
+    ttk.Label(fila, text="Carpeta de salida:", width=26).pack(side="left")
+    var = tk.StringVar(value=str(_dir_salida_default()))
+    ttk.Entry(fila, textvariable=var).pack(side="left", fill="x", expand=True, padx=6)
+
+    def elegir():
+        d = filedialog.askdirectory(title="Elige dónde guardar el resultado")
+        if d:
+            var.set(d)
+
+    ttk.Button(fila, text="Examinar…", command=elegir).pack(side="left")
+    return lambda: (var.get() or "").strip().strip('"').strip("'")
+
+
 def _valida_ruta(ruta, messagebox):
     """Valida que la ruta exista. Devuelve Path o None (avisa con messagebox)."""
     ruta = (ruta or "").strip().strip('"').strip("'")
@@ -218,6 +244,16 @@ def _valida_ruta(ruta, messagebox):
     p = Path(ruta)
     if not p.exists():
         messagebox.showerror("No encontrado", f"No encuentro el archivo:\n{p}")
+        return None
+    return p
+
+
+def _valida_carpeta(ruta, messagebox):
+    """Valida (o cae al default) la carpeta de salida. Devuelve Path o None."""
+    ruta = (ruta or "").strip().strip('"').strip("'")
+    p = Path(ruta) if ruta else _dir_salida_default()
+    if not p.exists() or not p.is_dir():
+        messagebox.showerror("Carpeta inválida", f"No existe la carpeta de salida:\n{p}")
         return None
     return p
 
@@ -506,6 +542,7 @@ def _tab_a23(nb, root):
     get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
     get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
     get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
+    get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
     y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
@@ -533,7 +570,10 @@ def _tab_a23(nb, root):
         except ValueError:
             messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
             return
-        salida = Path(atens[0]).with_name(f"REM_A23_{y}_{m:02d}_procesado.xlsx")
+        carpeta = _valida_carpeta(get_salida(), messagebox)
+        if carpeta is None:
+            return
+        salida = carpeta / f"REM_A23_{y}_{m:02d}_procesado.xlsx"
         btn.configure(state="disabled")
         try:
             import modulos.rem_a23_respiratorio as a23
@@ -581,7 +621,8 @@ def _tab_sm(nb, root):
         "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  →  casi todas las casillas.\n"
         "2.  Atenciones Grupales  →  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
         "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
-        "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia."
+        "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
+        "⚠ Para el flag GESTANTE se usa una ventana de 3 MESES → carga el ADA de los últimos 3 meses."
     )
     caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja.pack(fill="x", pady=(0, 8))
@@ -590,6 +631,7 @@ def _tab_sm(nb, root):
 
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
+    get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
     y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
@@ -618,7 +660,10 @@ def _tab_sm(nb, root):
         except ValueError:
             messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
             return
-        salida = Path(ada[0]).with_name(f"REM_SM_actividades_{y}_{m:02d}.xlsx")
+        carpeta = _valida_carpeta(get_salida(), messagebox)
+        if carpeta is None:
+            return
+        salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
         btn.configure(state="disabled")
         try:
             import modulos.rem_sm_actividades as smact

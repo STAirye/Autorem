@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.0
+# Version: 1.5.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -69,8 +69,8 @@ class ArchivoInvalido(Exception):
 
 # ── Normalización y parsing de celdas ─────────────────────────────────
 def norm(v):
-    """Texto en MAYÚSCULA, sin tildes/ñ, con espacios colapsados. '' si es None."""
-    if v is None: return ""
+    """Texto en MAYÚSCULA, sin tildes/ñ, con espacios colapsados. '' si es None/NaN."""
+    if v is None or v != v: return ""   # v != v capta NaN (float) → '' (celda vacía)
     s = str(v).upper().strip()
     for a, b in zip("ÁÉÍÓÚÜÑ", "AEIOUUN"): s = s.replace(a, b)
     return re.sub(r"\s+", " ", s)
@@ -206,6 +206,9 @@ MAPA_ATENCIONES = {
     "SEXO":    ("exact", "SEXO"),
     "SECTOR":  ("exact", "SECTOR"),
     "NACION":  ("exact", "NACIONALIDAD"),               # solo IRIS
+    "EMIG":    [("subs", ["ES", "IMIGRANTE"]), ("subs", ["ES", "INMIGRANTE"])],  # flag migrante, IRIS
+    "ALERTAS": ("subs", ["ALERTAS", "ADMINISTRATIVAS"]),  # SENAME/Mejor Niñez/Cuidador…, IRIS
+    "FORMCLIN": ("subs", ["FORMULARIOS", "CLINICOS"]),  # para detectar gestante, IRIS
     "PUEBLO":  ("subs", ["PUEBLO", "ORIGINARIO"]),      # solo IRIS
     "FNAC":    ("subs", ["FECHA", "NACIMIENTO"]),       # solo IRIS
     "NOMBRES": ("exact", "NOMBRES"),                    # solo IRIS
@@ -248,8 +251,9 @@ def cargar_atenciones(entrada):
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su
     # paciente. En IRIS (sin filas hijas) NO se toca nada (evita contaminar campos
     # vacíos legítimos entre pacientes distintos).
-    cab = ["RUN", "ATENID", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR",
-           "NACION", "PUEBLO", "FNAC", "NOMBRES", "APAT", "AMAT", "ANOS", "ANOS_AT"]
+    cab = ["RUN", "ATENID", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR", "NACION",
+           "EMIG", "ALERTAS", "FORMCLIN", "PUEBLO", "FNAC", "NOMBRES", "APAT",
+           "AMAT", "ANOS", "ANOS_AT"]
     child = d["RUN"].replace("", pd.NA).isna()
     if child.any():
         dd = d[cab].replace("", pd.NA)
@@ -258,6 +262,60 @@ def cargar_atenciones(entrada):
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
     return d
+
+
+# ── Demografía por atención (columnas del REM: SENAME, migrante, pueblos…) ──
+# Fuente = ADA IRIS (ALERTAS ADMINISTRATIVAS / ES IMIGRANTE / PUEBLO / DIAG / ACT).
+# El grupal y el Monitoreo admin NO traen estos campos -> todos los flags quedan
+# en False (limitación conocida). Reutilizable por cualquier módulo (A23, SM…).
+_PUEBLO_VACIO = {"NINGUNO", "NO SABE", "NO CONTESTA", "NO INFORMADO", ""}
+
+
+def marcar_demografia(d):
+    """Agrega columnas booleanas `dem_*` por atención. Devuelve el mismo df.
+    dem_migrante · dem_originario · dem_sename · dem_mejorninez · dem_cuidador ·
+    dem_demencia · dem_campana. (Gestante es a nivel RUN -> `gestante_runs`.)"""
+    cols = ("dem_migrante", "dem_originario", "dem_sename", "dem_mejorninez",
+            "dem_cuidador", "dem_campana", "dem_demencia")
+    if len(d) == 0:                       # df vacío: columnas booleanas vacías
+        for c in cols:
+            d[c] = False
+        return d
+
+    def alerta(*subs):   # ALERTAS ADMIN contiene ALGUNA subcadena
+        s = d["ALERTAS"].map(norm) if "ALERTAS" in d else None
+        if s is None:
+            return d.get("RUN", d.index).map(lambda _: False)
+        m = None
+        for x in subs:
+            c = s.str.contains(norm(x), regex=False, na=False)
+            m = c if m is None else (m | c)
+        return m.fillna(False)
+
+    emig = d["EMIG"].map(norm) if "EMIG" in d else None
+    pueblo = d["PUEBLO"].map(norm) if "PUEBLO" in d else None
+    d["dem_migrante"] = ((emig == "SI") if emig is not None else False) | alerta("MIGRANTE")
+    d["dem_originario"] = (~pueblo.isin(_PUEBLO_VACIO)) if pueblo is not None else False
+    d["dem_sename"] = alerta("SENAME")
+    d["dem_mejorninez"] = alerta("MEJOR NINEZ", "SPE EX MEJOR")
+    d["dem_cuidador"] = alerta("CUIDADOR")
+    d["dem_campana"] = d["ACT_n"].str.contains(norm("campaña de invierno"), regex=False, na=False)
+    d["dem_demencia"] = d["DIAG_n"].str.contains(norm("demencia"), regex=False, na=False)
+    return d
+
+
+def gestante_runs(d, ini, fin):
+    """Set de RUNs GESTANTES (patrón PowerBI): atención de MATRONA con 'control
+    prenatal' (o formulario clínico 'gestante') en la ventana [ini, fin] (3 meses
+    terminando en el mes reportado). Requiere columnas del ADA IRIS."""
+    w = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]
+    if w.empty:
+        return set()
+    mat = w["INSTR_n"].str.contains(norm("matron"), regex=False, na=False)
+    prenatal = w["ACT_n"].str.contains(norm("control prenatal"), regex=False, na=False)
+    form = (w["FORMCLIN"].map(norm).str.contains(norm("gestante"), regex=False, na=False)
+            if "FORMCLIN" in w else prenatal & False)
+    return set(w.loc[mat & (prenatal | form), "RUN"])
 
 
 def contiene_todos(serie, *subs):

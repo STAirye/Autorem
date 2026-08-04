@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.0
+# Version: 1.5.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,30 @@ from datetime import date
 import pandas as pd
 
 from programas.rem_utils import (norm, cargar_atenciones, cargar_canonico,
-                                 resolver_columnas, contiene_todos as _all)
+                                 resolver_columnas, contiene_todos as _all,
+                                 marcar_demografia, gestante_runs)
+
+# Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
+# Ver rem_utils.marcar_demografia. dem_gestante se calcula por RUN en procesar().
+DEM_COLS = ["dem_originario", "dem_migrante", "dem_sename", "dem_mejorninez",
+            "dem_demencia", "dem_cuidador", "dem_campana", "dem_gestante"]
+
+# Bloque de columnas demográficas por sección (label template -> flag).
+#   '_total' = todos (Beneficiarios Fonasa) · '_zero' = no derivable del ADA (TRANS
+#   necesita el 'Informe inscritos y adscritos', que no cargamos). 'Espacios
+#   Amigables' y 'Familias en Riesgo' se OMITEN (no se usan en el centro).
+DEM_A04 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
+           ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
+           ("Campaña de Invierno", "dem_campana")]
+DEM_A06 = [("Beneficiarios", "_total"), ("SENAME", "dem_sename"),
+           ("Prot. Especializada", "dem_mejorninez"), ("Pueblos Originarios", "dem_originario"),
+           ("Migrantes", "dem_migrante"), ("Demencia", "dem_demencia"),
+           ("TRANS", "_zero"), ("Cuidadores demencia", "dem_cuidador")]
+DEM_A26 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
+           ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
+DEM_A32 = [("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
+           ("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
+           ("Demencia", "dem_demencia")]
 
 
 # ── Bandas etarias (inclusive). El último tramo (80,200) = '80 y más'. ──
@@ -162,7 +185,7 @@ def _grid(sub, bandas, lbls, con_sexo=True):
 
 
 def _empty_ev():
-    return pd.DataFrame({c: pd.Series(dtype="object") for c in _EV_COLS})
+    return pd.DataFrame({c: pd.Series(dtype="object") for c in _EV_COLS + DEM_COLS})
 
 
 def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente):
@@ -171,12 +194,28 @@ def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente):
         return None
     ids = (s["RUN"].astype(str) + "|" + s["FECHA"].dt.strftime("%Y%m%d") + "|" + s.index.astype(str)
            if id_col is None else s[id_col].astype(str))
-    return pd.DataFrame({
+    base = {
         "casilla": casilla, "sub": sub, "run": s["RUN"].astype(str), "id": ids,
         "estamento": s[est_col].astype(str),
         "edad": pd.to_numeric(s[edad_col], errors="coerce"),
         "sexo": s["SEXO"].astype(str), "fecha": s["FECHA"],
-        "actividad": s["ACT"].astype(str), "fuente": fuente})
+        "actividad": s["ACT"].astype(str), "fuente": fuente}
+    for c in DEM_COLS:   # flags demográficos (ADA los trae; grupal -> False)
+        base[c] = s[c].values if c in s.columns else False
+    return pd.DataFrame(base)
+
+
+def _demcols(sub, spec):
+    """Conteos demográficos en el orden del template. `_total`=todos, `_zero`=0."""
+    out = {}
+    for label, flag in spec:
+        if flag == "_total":
+            out[label] = len(sub)
+        elif flag == "_zero":
+            out[label] = 0
+        else:
+            out[label] = int(sub[flag].sum()) if (flag in sub.columns and len(sub)) else 0
+    return out
 
 
 def _ada_eventos(dm):
@@ -226,18 +265,20 @@ def _grupal_eventos(gm):
 
 def _tabla_a04(E):
     sub = E[E["casilla"] == "A04"]
-    return pd.DataFrame([{"Consulta": "Salud Mental", **_grid(sub, BANDAS_A04, LBL_A04)}])
+    return pd.DataFrame([{"Consulta": "Salud Mental",
+                          **_grid(sub, BANDAS_A04, LBL_A04), **_demcols(sub, DEM_A04)}])
 
 
 def _tabla_a06(E):
     filas = []
     for est in A06_ORDEN:
         s = E[(E["casilla"] == "A06") & (E["estamento_rem"] == est)]
-        filas.append({"Profesional": est, **_grid(s, BANDAS_A06, LBL_A06)})
+        filas.append({"Profesional": est, **_grid(s, BANDAS_A06, LBL_A06), **_demcols(s, DEM_A06)})
     tot = E[E["casilla"] == "A06"]
-    filas.append({"Profesional": "TOTAL", **_grid(tot, BANDAS_A06, LBL_A06)})
+    filas.append({"Profesional": "TOTAL", **_grid(tot, BANDAS_A06, LBL_A06), **_demcols(tot, DEM_A06)})
     pg = E[E["casilla"] == "A06PG"]
-    filas.append({"Profesional": "Intervención Psicosocial Grupal", **_grid(pg, BANDAS_A06, LBL_A06)})
+    filas.append({"Profesional": "Intervención Psicosocial Grupal",
+                  **_grid(pg, BANDAS_A06, LBL_A06), **_demcols(pg, DEM_A06)})
     return pd.DataFrame(filas)
 
 
@@ -274,7 +315,8 @@ def _tabla_a26(E):
         filas.append({"Concepto": lbl, "Total": len(ss),
                       "Primera Visita": int((ss["visita"] == "Primera").sum()),
                       "Segunda Visita": int((ss["visita"] == "Segunda").sum()),
-                      "Tercera o más": int((ss["visita"] == "Tercera o más").sum())})
+                      "Tercera o más": int((ss["visita"] == "Tercera o más").sum()),
+                      **_demcols(ss, DEM_A26)})
     return pd.DataFrame(filas)
 
 
@@ -293,7 +335,7 @@ def _tabla_a32f1(E):
     filas = []
     for via in ["Llamadas Telefónicas", "Videollamadas", "Mensajería de Texto"]:
         s = E[(E["casilla"] == "A32F1") & (E["sub"] == via)]
-        filas.append({"Vía": via, **_grid(s, BANDAS_A06, LBL_A06, con_sexo=False)})
+        filas.append({"Vía": via, **_grid(s, BANDAS_A06, LBL_A06, con_sexo=False), **_demcols(s, DEM_A32)})
     return pd.DataFrame(filas)
 
 
@@ -303,10 +345,8 @@ def _tabla_a32f2(E):
         base = E[(E["casilla"] == "A32F2") & (E["sub"] == via)]
         for est in A06_ORDEN:
             s = base[base["estamento_rem"] == est]
-            if len(s) == 0 and via == "Videollamadas" and est != A06_ORDEN[0]:
-                pass
             filas.append({"Control remoto por": via, "Profesional": est,
-                          **_grid(s, BANDAS_A06, LBL_A06)})
+                          **_grid(s, BANDAS_A06, LBL_A06), **_demcols(s, DEM_A32)})
     return pd.DataFrame(filas)
 
 
@@ -339,11 +379,19 @@ def procesar(ada, grupal=None, mes=None, log=print):
     `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
     Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0)."""
     d = cargar_atenciones(ada)
+    d = marcar_demografia(d)
     ini, fin = _rango_mes(mes)
+    # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.
+    ini3 = ini - pd.DateOffset(months=2)
+    gset = gestante_runs(d, ini3, fin)
+    d["dem_gestante"] = d["RUN"].isin(gset)
     dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
     log(f"[sm] ADA: {len(d)} atenciones ({span}) | mes reporte {ini:%Y-%m} -> {len(dm)} atenciones")
+    if d["FECHA"].notna().any() and d["FECHA"].min() > ini3:
+        log(f"[sm] ⚠ GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
+            f"arranca en {d['FECHA'].min():%Y-%m} → puede SUBCONTAR. Carga el ADA de los últimos 3 meses.")
     Ea = _ada_eventos(dm)
 
     if grupal is not None:
@@ -381,6 +429,7 @@ def escribir(E, salida):
     with pd.ExcelWriter(salida) as xw:
         for nombre, df in tablas.items():
             df.to_excel(xw, index=False, sheet_name=nombre[:31])
-        det = E[_EV_COLS].sort_values(["casilla", "sub", "fecha"])
+        cols = _EV_COLS + [c for c in DEM_COLS if c in E.columns]
+        det = E[cols].sort_values(["casilla", "sub", "fecha"])
         det.to_excel(xw, index=False, sheet_name="SM_Detalle")
     return str(salida)

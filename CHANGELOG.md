@@ -12,6 +12,40 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.1] — 2026-08-04
+
+Corrección del módulo en curso: **datos demográficos** en SM Actividades +
+selector de carpeta de salida + fix de `norm()` con NaN.
+
+### Agregado
+- **Bloque demográfico** en las tablas de SM Actividades (columnas AN–AV del
+  template SA_26 y equivalentes): **Pueblos Originarios, Migrantes, SENAME, Prot.
+  Especializada (ex Mejor Niñez), Demencia, Cuidador, Beneficiarios (=todos),
+  Campaña de Invierno, Gestante**. Extracción reutilizable en
+  `rem_utils.marcar_demografia()` (flags por atención desde ALERTAS ADMINISTRATIVAS
+  / ES IMIGRANTE / PUEBLO ORIGINARIO / DIAGNOSTICOS / ACTIVIDADES) + `gestante_runs()`
+  (patrón PowerBI: matrona + control prenatal / formulario gestante, ventana de 3
+  meses). Volcado por sección en `rem_sm_actividades`. `MAPA_ATENCIONES`: +ALERTAS,
+  +EMIG, +FORMCLIN.
+- **TRANS** y **Espacios Amigables / Familias en Riesgo** no derivables del ADA →
+  0 / omitidos (TRANS requiere el 'Informe inscritos y adscritos', no cargado).
+  El **grupal no trae demografía** (A27 etc. quedan en 0): known issue documentado.
+- **GUI: selector de carpeta de salida** en SM y A23 (default = carpeta del `.exe`),
+  para no perder el resultado junto al input. Aviso en el log si el ADA no cubre la
+  ventana de 3 meses del flag gestante.
+
+### Corregido
+- **`norm()` con NaN**: una celda vacía leída como `NaN` (float) daba `"NAN"` en vez
+  de `""` (porque `nan or ''` es *truthy*) → inflaba `dem_originario` (86→38 real) y
+  cualquier lógica que normalizara celdas vacías. Ahora `norm(NaN) == ""`.
+- **Bug de normalización** en dos búsquedas nuevas (`dem_demencia`, `gestante_runs`):
+  buscaban el término en minúscula contra series ya normalizadas en MAYÚSCULA →
+  nunca matcheaban (demencia y gestante salían 0). Corregido: todo `.str.contains`
+  normaliza el término (`norm(...)`); las búsquedas de texto van por `contiene_todos`/
+  `_all` o con `norm("literal")`.
+- Tests `test_sm_actividades.py` 9→11 (agregados `test_demografia_flags` y
+  `test_gestante_flag`, que blindan el bug de normalización).
+
 ## [1.5.0] — 2026-08-04
 
 Quinto **módulo** de programa (Y: 4→5): **REM Salud Mental — Actividades**

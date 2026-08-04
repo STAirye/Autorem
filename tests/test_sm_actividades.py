@@ -24,12 +24,14 @@ import modulos.rem_sm_actividades as sm   # noqa: E402
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_sm_"))
 
 _ADA_HDR = ["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
-            "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "SEXO", "AÑOS ATENCION"]
+            "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "SEXO", "AÑOS ATENCION",
+            "ALERTAS ADMINISTRATIVAS", "ES IMIGRANTE", "PUEBLO ORIGINARIO", "FORMULARIOS CLINICOS"]
 _GRP_HDR = ["NUMERO TIPO IDENTIFICACION", "FECHA ATENCION", "ACTIVIDADES",
             "ASISTE (SI/NO)", "SEXO", "EDAD", "INSTRUMENTO", "FUNCIONARIO PRESTADOR"]
 
 # alias cortos -> nombre real de columna
-_ADA_K = {"run": 0, "id": 1, "fecha": 2, "act": 3, "dg": 4, "instr": 5, "tipo": 6, "sexo": 7, "edad": 8}
+_ADA_K = {"run": 0, "id": 1, "fecha": 2, "act": 3, "dg": 4, "instr": 5, "tipo": 6, "sexo": 7, "edad": 8,
+          "alertas": 9, "emig": 10, "pueblo": 11, "formclin": 12}
 _GRP_K = {"run": 0, "fecha": 1, "act": 2, "asiste": 3, "sexo": 4, "edad": 5, "instr": 6, "prest": 7}
 
 
@@ -201,6 +203,46 @@ def test_a27_asistentes_y_sesiones():
     fila = a27[a27["Área temática"] == "Prevención trastorno mental"].iloc[0]
     assert fila["A · Asistentes (usuarios)"] == 2
     assert fila["B · Sesiones (actividades)"] == 1
+
+
+# ── Demografía: SENAME / Mejor Niñez / migrante / pueblo / demencia (Beneficiarios=todos) ──
+def test_demografia_flags():
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "edad": 40, "emig": "SI", "pueblo": "Mapuche"},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "edad": 30, "alertas": "Programa SENAME - Ambulatorio",
+         "dg": "F03.X-Demencia, No Especificada"},
+        {"run": "C", "id": "3", "fecha": date(2026, 7, 5), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "edad": 10, "alertas": "SPE ex Mejor Niñez- Ambulatorio", "pueblo": "Ninguno"},
+    ])
+    tot = _cell_row(t["A06_Controles"], "Profesional", "TOTAL")
+    assert tot["Beneficiarios"] == 3        # todos (Fonasa)
+    assert tot["Migrantes"] == 1            # A
+    assert tot["Pueblos Originarios"] == 1  # A (Mapuche); C=Ninguno no cuenta
+    assert tot["SENAME"] == 1               # B
+    assert tot["Prot. Especializada"] == 1  # C
+    assert tot["Demencia"] == 1             # B (norm: 'demencia' vs DIAG en MAYÚSCULA)
+    assert tot["TRANS"] == 0                # no derivable del ADA
+
+
+# ── Gestante: matrona + control prenatal en la ventana → flag en el evento SM ──
+def test_gestante_flag():
+    E, _ = _run([
+        {"run": "G", "id": "1", "fecha": date(2026, 7, 2), "act": "Control Prenatal  ;",
+         "instr": "Matron(a)", "edad": 25},
+        {"run": "G", "id": "2", "fecha": date(2026, 7, 10), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "edad": 25},
+        {"run": "H", "id": "3", "fecha": date(2026, 7, 11), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "edad": 40},
+    ])
+    a06 = E[E["casilla"] == "A06"]
+    assert bool(a06.loc[a06["run"] == "G", "dem_gestante"].iloc[0]) is True
+    assert bool(a06.loc[a06["run"] == "H", "dem_gestante"].iloc[0]) is False
+
+
+def _cell_row(tabla, col_key, col_val):
+    return tabla[tabla[col_key] == col_val].iloc[0]
 
 
 def _main():
