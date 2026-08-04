@@ -12,6 +12,25 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.3] — 2026-08-04
+
+REM A23: completa las **Secciones G y H** de inasistentes (P2).
+
+### Agregado
+- **Sección H (inasistentes a citación agendada)**: nuevo loader `cargar_inasistentes`
+  (reporte NSP) + `_seccion_h()` → cuenta citas **Control/Ingreso IRA/ERA** NO asistidas
+  del mes (por **FECHA HORA CITA**, NO fecha NSP), por **estamento** (Médico/Kinesiólogo/
+  Enfermera) × tramo (**<20 / ≥20 años**). Conteo por cita; excluye KTR (kinesioterapia
+  respiratoria sin control/ingreso). `procesar(..., inasistentes=None)` + hoja
+  `A23_Seccion_H` + selector opcional en la GUI. Test `test_seccion_h`.
+  Julio real: Médico 15 · Kinesiólogo 12 · Enfermera 0 · total 27.
+
+### Corregido
+- **Sección G alineada al DAX `REMA23 Inasistentes`**: el S.B.O. recurrente ahora exige
+  además **¿ES RECURRENTE? = sí** (antes contaba SBO no recurrentes). Julio: SBO 13→12.
+  El resto (umbrales por edad, FPC por patología, estado ingreso/seguimiento) ya cuadraba.
+  (Spec en `docs/A23_spec.md/.json` — la página PowerBI de A23.)
+
 ## [1.5.2] — 2026-08-04
 
 Completa el flag **TRANS** en SM Actividades usando el 'Informe Inscritos y Adscritos'.

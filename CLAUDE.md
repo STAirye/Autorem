@@ -43,7 +43,7 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.5.2**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.5.3**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + dispatcher con perfiles y GUI de pestañas.
@@ -83,7 +83,7 @@ módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
 | `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` + descriptor `TAREA` (`id: a05_o_egresos`). |
 | `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
 | `modulos/rem_a03_d3_instrumentos.py` | **Módulo screening A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + autodetección propios, self-contained). Autodetecta formato + instrumento por contenido; resultado automático (col RESULTADO) + calculado DISAM + discrepancia (compara BANDAS canónicas) + momento + estamento (IRIS directo, o Admin vía `estamentos.py`). Integrado a la GUI. |
-| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. Salida `escribir()` = hoja detalle + Sección G. Lee atenciones **IRIS (pleno)** o **Monitoreo Admin (PARCIAL)**: el monitoreo trae el dx en texto sin código ICD → Ira Alta/Bronquitis/EPOC-exac. salen 0, y sin demografía (ver `rem_utils.MAPA_ATENCIONES`); tiene estructura padre-hijo (ffill en `cargar_atenciones`). Formulario Otros Crónicos admin: pendiente. |
+| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. **Sección G** alineada al DAX `REMA23 Inasistentes` (SBO exige recurrente); **Sección H** (inasistentes a citación agendada) desde el reporte **NSP** (`cargar_inasistentes` + `_seccion_h`): citas Control/Ingreso IRA/ERA no asistidas por estamento (Méd/Kine/Enf) × tramo (<20/≥20), mes por FECHA HORA CITA, sin KTR. Salida `escribir()` = detalle + Sección G + Sección H. Lee atenciones **IRIS (pleno)** o **Monitoreo Admin (PARCIAL)**: el monitoreo trae el dx en texto sin código ICD → Ira Alta/Bronquitis/EPOC-exac. salen 0, y sin demografía (ver `rem_utils.MAPA_ATENCIONES`); tiene estructura padre-hijo (ffill en `cargar_atenciones`). Formulario Otros Crónicos admin: pendiente. |
 | `modulos/rem_sm_actividades.py` | **Módulo REM SM Actividades (estadística, pandas).** Tabula las casillas de actividades de Salud Mental (**A04·A24, A06·A.1 controles+psicosocial grupal, A19a·A.3 consejerías fam. SM/demencia, A26 VDI SM, A27 educación prev., A32·F remotas**) → tablas copy-paste al template SA_26. Dos fuentes: **ADA** (`cargar_atenciones`, conteo por **ATEN ID** distinct) y **Grupal** (`cargar_grupal`, conteo por **ASISTENCIA**, `Asiste=SI`, SIN dedup). Filtro de mes por **FECHA ATENCIÓN** (parsea `DD/MM/YYYY`; el export puede venir del año completo). SENAME se excluye solo (string aparte). El guion en A19a importa (evita capturar las VDI de A26). `escribir()` = hoja SM_Detalle (auditable) + 1 hoja por sección. Filtros **validados casilla-por-casilla vs REM manual jul-2026**. **Demografía** (cols AN–AV del SA_26): flags por atención en `rem_utils.marcar_demografia()` (Pueblos/Migrante/SENAME/Mejor Niñez/Cuidador/Demencia/Campaña) + `gestante_runs()` (matrona+prenatal, ventana 3 meses → carga el ADA de 3 meses) + `trans_map()` (TRANS por selección explícita de GÉNERO en el 'Informe Inscritos' opcional, split M/F). Espacios Amigables/Familias en Riesgo omitidos; el grupal no trae demografía (known issue). Pendiente: A27 y A32·F2 sin datos para validar el string (0 ese mes); A06·A.2 Consultorías = manual. |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
@@ -317,7 +317,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.5.2**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.5.3**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -329,7 +329,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening · **Actividades (A04·A06·A19a·A26·A27·A32)** | ✅ |
-| **Respiratorio** | A23 (indicadores mes · SALA · Sección G) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · falta agregación mensual + formulario admin |
+| **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · falta agregación mensual (P3) + formulario admin |
 | Cardiovascular | — | pendiente |
 | Salud sexual/reproductiva, otros | — | pendiente |
 

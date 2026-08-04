@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.2
+# Version: 1.5.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -528,6 +528,7 @@ def _tab_a23(nb, root):
         "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
         "     ⚠ Carga VARIOS AÑOS (histórico): el inasistente real tiene su último control hace >1 año.\n"
         "3.  Estratificación de Riesgo (opcional)  →  mejora la detección de asma/EPOC/FQ/SBOR.\n"
+        "4.  Inasistentes NSP (opcional)  →  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
         "\n"
         "⚠ OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
         "   «monitoreo de actividades» mensual — con MUCHO menos info que el export IRIS (y horrible de\n"
@@ -542,6 +543,7 @@ def _tab_a23(nb, root):
     get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
     get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
     get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
+    get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc, Sección H):", "Reporte de pacientes inasistentes (NSP) — Sección H")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -565,6 +567,8 @@ def _tab_a23(nb, root):
         otros = get_otros()
         est_sel = get_estrat()
         est = est_sel[0] if est_sel else None
+        nsp_sel = get_nsp()
+        nsp = nsp_sel[0] if nsp_sel else None
         try:
             y, m = int(var_anio.get()), int(var_mes.get())
         except ValueError:
@@ -577,7 +581,8 @@ def _tab_a23(nb, root):
         btn.configure(state="disabled")
         try:
             import modulos.rem_a23_respiratorio as a23
-            fer = a23.procesar(atens, otros=(otros or None), estrat=est, mes=(y, m), log=log)
+            fer = a23.procesar(atens, otros=(otros or None), estrat=est,
+                               inasistentes=nsp, mes=(y, m), log=log)
             a23.escribir(fer, salida)
         except ImportError as e:
             messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")

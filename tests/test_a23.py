@@ -165,6 +165,42 @@ def test_carga_multiarchivo():
     assert len(od) == 2
 
 
+_NSP_HDR = ["INSTRUMENTO", "TIPO DE ATENCION", "FECHA HORA CITA",
+            "NUMERO TIPO IDENTIFICACION", "AÑOS"]
+_NKEY = {"instr": 0, "tipo": 1, "fecha": 2, "run": 3, "anos": 4}
+
+
+def _mk_nsp(rows):
+    p = _TMP / "nsp.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active; ws.append(_NSP_HDR)
+    for r in rows:
+        line = [""] * len(_NSP_HDR)
+        for k, v in r.items():
+            line[_NKEY[k]] = v
+        ws.append(line)
+    wb.save(p)
+    return p
+
+
+def test_seccion_h():
+    """Sección H: citas Control/Ingreso IRA/ERA no asistidas, por estamento × tramo
+    (<20 / >=20), del mes por FECHA HORA CITA. Excluye KTR y otros meses/tipos."""
+    import pandas as pd
+    nsp = _mk_nsp([
+        {"instr": "Médico", "tipo": "Control IRA", "fecha": "10-07-2026 09:00:00", "run": "A", "anos": 40},
+        {"instr": "Médico", "tipo": "Ingreso ERA", "fecha": "12-07-2026 09:00:00", "run": "B", "anos": 15},
+        {"instr": "Kinesiólogo(a)", "tipo": "Control ERA", "fecha": "13-07-2026 09:00:00", "run": "C", "anos": 60},
+        {"instr": "Kinesiólogo(a)", "tipo": "kinesioterapia respiratoria IRA", "fecha": "14-07-2026 09:00:00", "run": "D", "anos": 30},  # KTR -> fuera
+        {"instr": "Médico", "tipo": "Control IRA", "fecha": "10-06-2026 09:00:00", "run": "E", "anos": 40},  # junio -> fuera
+        {"instr": "Médico", "tipo": "Consulta SAC", "fecha": "11-07-2026 09:00:00", "run": "F", "anos": 40},  # no IRA/ERA -> fuera
+    ])
+    d = a23.cargar_inasistentes(nsp)
+    h = a23._seccion_h(d, pd.Timestamp(2026, 7, 1), pd.Timestamp(2026, 7, 31)).set_index("Profesional")
+    assert h.loc["Médico/a", "Total"] == 2 and h.loc["Médico/a", "Menor de 20"] == 1 and h.loc["Médico/a", "20 y más"] == 1
+    assert h.loc["Kinesiólogo/a", "Total"] == 1        # Control ERA; KTR excluido
+    assert h.loc["TOTAL", "Total"] == 3                # junio y Consulta SAC fuera
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

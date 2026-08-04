@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.2
+# Version: 1.5.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -41,7 +41,8 @@ from pathlib import Path
 import pandas as pd
 
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
-                                 contiene_todos as _all, contiene_alguno as _any)
+                                 resolver_columnas, contiene_todos as _all,
+                                 contiene_alguno as _any)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -97,12 +98,13 @@ def _sino(index, runs):
     return pd.Series(index.isin(set(runs)), index=index).map({True: "SI", False: "NO"})
 
 
-def procesar(entrada, otros=None, estrat=None, mes=None, log=print):
+def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=print):
     """Devuelve el DataFrame DETALLE (1 fila por RUN) con los indicadores REMA23
     del `mes` (año, mes) — default mes anterior.
     `entrada` = export de atenciones. `otros`/`estrat` (opcionales) = formulario
-    'Otros y Respi' + 'Estratificación' → agregan las columnas SALA bajo control,
-    finalizan VDI Respi y la Encuesta de calidad de vida."""
+    'Otros y Respi' + 'Estratificación' → agregan SALA bajo control + Sección G.
+    `inasistentes` (opcional) = reporte NSP → Sección H (citas Control/Ingreso
+    IRA/ERA no asistidas, por estamento × tramo etario)."""
     d = cargar_atenciones(entrada)
     ini, fin = _rango_mes(mes)
     span_min, span_max = d["FECHA"].min(), d["FECHA"].max()
@@ -166,6 +168,16 @@ def procesar(entrada, otros=None, estrat=None, mes=None, log=print):
         fer.attrs["seccion_g"] = gcounts
         log("[a23] Sección G inasistentes crónicos: " + " · ".join(
             f"{lbl.split()[0]}={d['Total']}" for lbl, d in gcounts.items()))
+
+    # ── Sección H: inasistentes a citación agendada (reporte NSP, independiente) ──
+    if inasistentes is not None:
+        nsp = cargar_inasistentes(inasistentes)
+        h = _seccion_h(nsp, ini, fin)
+        fer.attrs["seccion_h"] = h
+        tot = int(h.loc[h["Profesional"] == "TOTAL", "Total"].iloc[0])
+        log(f"[a23] Sección H inasistentes a citación (Control/Ingreso IRA/ERA): total={tot} · "
+            + " · ".join(f"{r['Profesional'].split('/')[0]}={r['Total']}"
+                         for _, r in h.iterrows() if r["Profesional"] != "TOTAL"))
 
     log(f"[a23] listo: {len(fer)} pacientes, {sum(c.startswith('REMA23') for c in fer.columns)} indicadores REMA23")
     return fer.reset_index()
@@ -345,6 +357,8 @@ def _seccion_g(otros, corte):
     counts, flags = {}, {}
     for pref, lbl in _G_COND:
         valid = med & si(pref + "_p") & est(pref + "_est")
+        if pref == "SBOR":                       # S.B.O.: además exige recurrente (DAX)
+            valid = valid & si("SBOR_rec")
         prox = pd.to_datetime(o[pref + "_prox"], errors="coerce", dayfirst=True)
         ult = (o.loc[valid, ["RUN"]].assign(p=prox[valid]).dropna(subset=["p"])
                  .sort_values("p").groupby("RUN")["p"].last())
@@ -363,6 +377,49 @@ def _seccion_g(otros, corte):
     return counts, flags
 
 
+# ── Sección H: INASISTENTES A CITACIÓN AGENDADA (del reporte NSP) ──
+# Citas Control/Ingreso IRA/ERA (NO KTR) que el paciente NO asistió (NSP), por
+# estamento (Médico/Kinesiólogo/Enfermera) y tramo etario (<20 / >=20). Conteo por
+# CITA (cada fila = una inasistencia). Mes por FECHA HORA CITA (no fecha NSP).
+MAPA_NSP = {
+    "RUN":   [("subs", ["NUMERO", "IDENTIFICACION"])],
+    "INSTR": ("exact", "INSTRUMENTO"),
+    "TIPO":  ("subs", ["TIPO", "ATENCION"]),
+    "FECHA": ("subs", ["FECHA", "HORA", "CITA"]),
+    "ANOS":  ("exact", "AÑOS"),
+}
+_H_ESTAM = [("Médico/a", "MEDICO"), ("Kinesiólogo/a", "KINE"), ("Enfermera/o", "ENFERMER")]
+
+
+def cargar_inasistentes(entrada):
+    """Reporte NSP ('pacientes inasistentes') -> DataFrame + FECHA CITA parseada."""
+    d, _col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_NSP))
+    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    d["TIPO_n"] = d["TIPO"].map(norm)
+    d["INSTR_n"] = d["INSTR"].map(norm)
+    return d
+
+
+def _seccion_h(nsp, ini, fin):
+    """Inasistencias a citas Control/Ingreso IRA/ERA del mes, por estamento × tramo
+    (<20 / >=20). Devuelve DataFrame con la forma del template (Sección H)."""
+    m = nsp[(nsp["FECHA"] >= ini) & (nsp["FECHA"] <= fin)]
+    t = m["TIPO_n"]
+    resp = (t.str.contains(r"\b(?:CONTROL|INGRESO)\b", regex=True, na=False) &
+            t.str.contains(r"\b(?:IRA|ERA)\b", regex=True, na=False))    # excluye KTR (sin control/ingreso)
+    m = m[resp]
+    edad = pd.to_numeric(m["ANOS"], errors="coerce")
+    men20 = edad < 20
+    filas, tmen, tmay = [], 0, 0
+    for lbl, key in _H_ESTAM:
+        est = m["INSTR_n"].str.contains(key, regex=False, na=False)
+        nm, ny = int((est & men20).sum()), int((est & ~men20).sum())
+        filas.append({"Profesional": lbl, "Total": nm + ny, "Menor de 20": nm, "20 y más": ny})
+        tmen += nm; tmay += ny
+    filas.append({"Profesional": "TOTAL", "Total": tmen + tmay, "Menor de 20": tmen, "20 y más": tmay})
+    return pd.DataFrame(filas)
+
+
 def escribir_detalle(fer, salida):
     """Guarda la tabla detalle (paso intermedio, siempre disponible)."""
     fer.to_excel(salida, index=False, sheet_name="A23_Detalle")
@@ -370,12 +427,16 @@ def escribir_detalle(fer, salida):
 
 
 def escribir(fer, salida):
-    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + la
-    Sección G agregada (inasistentes a control de crónicos) en un solo .xlsx."""
+    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + las
+    Secciones G (inasistentes a control de crónicos) y H (inasistentes a citación
+    agendada) agregadas, en un solo .xlsx."""
     with pd.ExcelWriter(salida) as xw:
         fer.to_excel(xw, index=False, sheet_name="A23_Detalle")
         g = fer.attrs.get("seccion_g")
         if g:
             (pd.DataFrame(g).T.reset_index().rename(columns={"index": "Diagnóstico"})
              .to_excel(xw, index=False, sheet_name="A23_Seccion_G"))
+        h = fer.attrs.get("seccion_h")
+        if h is not None:
+            h.to_excel(xw, index=False, sheet_name="A23_Seccion_H")
     return str(salida)
