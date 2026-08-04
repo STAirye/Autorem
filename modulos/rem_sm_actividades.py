@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.5
+# Version: 1.5.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -41,9 +41,10 @@ from datetime import date
 
 import pandas as pd
 
-from programas.rem_utils import (norm, cargar_atenciones, cargar_canonico,
+from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
-                                 marcar_demografia, gestante_runs, trans_map)
+                                 marcar_demografia, gestante_runs, trans_map,
+                                 atenid_multiprofesional)
 
 # Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
 # Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
@@ -57,8 +58,8 @@ DEM_COLS = ["dem_originario", "dem_migrante", "dem_sename", "dem_mejorninez",
 #   TRANS sale del 'Informe Inscritos' (split M/F, opcional). 'Espacios Amigables' y
 #   'Familias en Riesgo' se OMITEN (no se usan en el centro).
 DEM_A04 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
-           ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
-           ("Campaña de Invierno", "dem_campana")]
+           ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
+# (Campaña de Invierno: write-protected en la hoja de Salud Mental → se omite.)
 DEM_A06 = [("Beneficiarios", "_total"), ("SENAME", "dem_sename"),
            ("Prot. Especializada", "dem_mejorninez"), ("Pueblos Originarios", "dem_originario"),
            ("Migrantes", "dem_migrante"), ("Demencia", "dem_demencia"),
@@ -115,6 +116,9 @@ def cargar_grupal(entrada):
     d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
+    # EDAD del grupal viene en TEXTO ('55 años 3 meses 1 día') → años (nº). Sin esto,
+    # la desagregación por banda etaria queda en 0 (pd.to_numeric del texto = NaN).
+    d["EDAD"] = d["EDAD"].map(edad_anios)
     return d
 
 
@@ -277,8 +281,7 @@ def _tabla_a06(E):
     for est in A06_ORDEN:
         s = E[(E["casilla"] == "A06") & (E["estamento_rem"] == est)]
         filas.append({"Profesional": est, **_grid(s, BANDAS_A06, LBL_A06), **_demcols(s, DEM_A06)})
-    tot = E[E["casilla"] == "A06"]
-    filas.append({"Profesional": "TOTAL", **_grid(tot, BANDAS_A06, LBL_A06), **_demcols(tot, DEM_A06)})
+    # (TOTAL: write-protected en el template — se calcula solo → se omite.)
     pg = E[E["casilla"] == "A06PG"]
     filas.append({"Profesional": "Intervención Psicosocial Grupal",
                   **_grid(pg, BANDAS_A06, LBL_A06), **_demcols(pg, DEM_A06)})
@@ -287,12 +290,15 @@ def _tabla_a06(E):
 
 def _tabla_a19a(E):
     filas = []
-    for cell, lbl in [("97", "Con integrante con problema de salud mental"),
-                      ("99", "Con integrante con demencia")]:
+    especs = [("97", "Con integrante con problema de salud mental"),
+              ("99", "Con integrante con demencia")]
+    for i, (cell, lbl) in enumerate(especs):
         s = E[(E["casilla"] == "A19a") & (E["sub"] == cell)]
         filas.append({"Tema prioridad (familiar)": lbl, "Total Actividades": len(s),
                       "  · desde ADA (individual)": int((s["fuente"] == "ADA").sum()),
                       "  · desde Grupal": int((s["fuente"] == "Grupal").sum())})
+        if i == 0:    # fila EN BLANCO entre 97 y 99 (en el template hay otra fila al medio)
+            filas.append({"Tema prioridad (familiar)": ""})
     return pd.DataFrame(filas)
 
 
@@ -307,18 +313,27 @@ def _visita(a):
     return "s/i"
 
 
-def _tabla_a26(E):
+def _tabla_a26(E, multi=None):
+    """`multi` = set de ATEN ID multiprofesionales (del reporte 'Monitoreo
+    Multiprofesional'). Sin él, todo se asume mono-profesional (Un Profesional)."""
+    multi = multi or set()
     s = E[E["casilla"] == "A26"].copy()
     s["visita"] = s["actividad"].map(_visita)
     s["r59"] = s["edad"].between(5, 9)
+    s["es_multi"] = s["id"].isin(multi)
     filas = []
     for lbl, msk in [("A.30 Familia con integrante con problema de salud mental", ~s["r59"]),
                      ("A.31 Familia con niños/as 5-9 años con problemas SM", s["r59"])]:
         ss = s[msk]
-        filas.append({"Concepto": lbl, "Total": len(ss),
+        n, n_dos = len(ss), int(ss["es_multi"].sum())
+        # Composición: 'Dos o Más' si la atención está en el Monitoreo Multiprofesional;
+        # el resto 'Un Profesional'. Sin ese reporte, n_dos=0 → todo mono (default).
+        filas.append({"Concepto": lbl, "Total": n,
+                      "Un Profesional": n - n_dos, "Dos o Más Prof.": n_dos,
+                      "Un Prof + Técnico": 0, "Técnico": 0, "Facilitador": 0, "Agente Comunitario": 0,
                       "Primera Visita": int((ss["visita"] == "Primera").sum()),
                       "Segunda Visita": int((ss["visita"] == "Segunda").sum()),
-                      "Tercera o más": int((ss["visita"] == "Tercera o más").sum()),
+                      "Tercera o Más": int((ss["visita"] == "Tercera o más").sum()),
                       **_demcols(ss, DEM_A26)})
     return pd.DataFrame(filas)
 
@@ -338,7 +353,10 @@ def _tabla_a32f1(E):
     filas = []
     for via in ["Llamadas Telefónicas", "Videollamadas", "Mensajería de Texto"]:
         s = E[(E["casilla"] == "A32F1") & (E["sub"] == via)]
-        filas.append({"Vía": via, **_grid(s, BANDAS_A06, LBL_A06, con_sexo=False), **_demcols(s, DEM_A32)})
+        g = _grid(s, BANDAS_A06, LBL_A06, con_sexo=False)   # Total + bandas etarias (sin sexo)
+        g["Hombres"] = _isum(s["sexo"].map(_hombre))         # el template agrupa por sexo al final
+        g["Mujeres"] = _isum(s["sexo"].map(_mujer))
+        filas.append({"Vía": via, **g, **_demcols(s, DEM_A32)})
     return pd.DataFrame(filas)
 
 
@@ -376,12 +394,14 @@ def _tabla_resumen(E, ini):
     return df
 
 
-def procesar(ada, grupal=None, inscritos=None, mes=None, log=print):
+def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print):
     """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
     `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
     `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
     Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0). `inscritos`
-    = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0)."""
+    = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0).
+    `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
+    A26 se asumen mono-profesional)."""
     d = cargar_atenciones(ada)
     d = marcar_demografia(d)
     ini, fin = _rango_mes(mes)
@@ -430,12 +450,21 @@ def procesar(ada, grupal=None, inscritos=None, mes=None, log=print):
     E = pd.concat([Ea, Eg], ignore_index=True)
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
 
+    # Composición profesional de A26 (opcional): Monitoreo Multiprofesional.
+    multi = set()
+    if multiprofesional is not None:
+        try:
+            multi = atenid_multiprofesional(multiprofesional)
+            log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
+        except ValueError as e:
+            log(f"[sm] ⚠⚠ Multiprofesional NO usado: {e}  → A26 queda todo mono-profesional.")
+
     E.attrs["tablas"] = {
         "SM_Resumen": _tabla_resumen(E, ini),
         "A04_Consultas_Medicas": _tabla_a04(E),
         "A06_Controles": _tabla_a06(E),
         "A19a_Consejerias_Fam": _tabla_a19a(E),
-        "A26_VDI_SM": _tabla_a26(E),
+        "A26_VDI_SM": _tabla_a26(E, multi),
         "A27_Educacion_Prev": _tabla_a27(E),
         "A32_F1_Acciones_Remotas": _tabla_a32f1(E),
         "A32_F2_Controles_Remotos": _tabla_a32f2(E),

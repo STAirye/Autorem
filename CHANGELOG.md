@@ -12,6 +12,37 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.6] — 2026-08-04
+
+Ajustes de las tablas de SM Actividades al traspasar al SA oficial + composición
+profesional de A26.
+
+### Corregido
+- **EDAD del grupal en TEXTO** (`'55 años 3 meses'`): `cargar_grupal` la parsea con
+  `edad_anios` → antes la desagregación por banda etaria de A06 Psicosocial Grupal
+  (y A19a/A27 grupal) salía **0** (el texto no era numérico). **URGENTE**, corregido.
+
+### Cambiado (formato copy-paste al template)
+- **A04**: se quita **Campaña de Invierno** (write-protected en la hoja de SM).
+- **A06**: se quita la fila **TOTAL** (write-protected, la calcula el template).
+- **A19a**: **fila en blanco** entre 'problema SM' y 'demencia' (en el template hay
+  otra fila al medio) → copy-paste directo.
+- **A32·F1**: se agregan las columnas **Hombres / Mujeres** (el template agrupa por
+  sexo al final de las bandas etarias).
+- **A26**: columnas en el orden del template (composición profesional + Primera/
+  Segunda/Tercera visita + demografía).
+
+### Agregado
+- **A26 composición profesional** vía nuevo input opcional **Monitoreo Multiprofesional**
+  (`rem_utils.atenid_multiprofesional`): las VDI cuya ATEN ID tiene un profesional
+  adicional pasan a **'Dos o Más Prof.'**; sin el reporte, todo se asume mono-profesional.
+  `procesar(..., multiprofesional=None)` + selector opcional en la GUI. Test
+  `test_a26_multiprofesional`.
+
+### Nota
+- **A03 (screening)** aún NO se integra a Actividades (la carga de archivos se vuelve
+  engorrosa) → se mantiene en su pestaña aparte por ahora.
+
 ## [1.5.5] — 2026-08-04
 
 ### Corregido

@@ -68,6 +68,16 @@ def _mk_inscritos(rows):
     return p
 
 
+def _mk_multi(rows):
+    """Monitoreo Multiprofesional sintético: [ATEN ID, Multiprofesional-1]."""
+    p = _TMP / "multi.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active; ws.append(["ATEN ID", "Multiprofesional-1"])
+    for r in rows:
+        ws.append([r.get("aten", ""), r.get("m1", "")])
+    wb.save(p)
+    return p
+
+
 def _quiet(*_a, **_k): pass
 
 
@@ -89,6 +99,13 @@ def _cell(tabla, col_key, col_val, dato):
     """Valor de `dato` en la fila donde tabla[col_key]==col_val."""
     fila = tabla[tabla[col_key] == col_val].iloc[0]
     return fila[dato]
+
+
+def _a06_tot(tabla, col):
+    """Suma `col` en las filas de estamento de A06 (ya no hay fila TOTAL; el grupal
+    'Intervención Psicosocial Grupal' se excluye)."""
+    ests = tabla[tabla["Profesional"] != "Intervención Psicosocial Grupal"]
+    return int(ests[col].sum())
 
 
 # ── A04: consultas médicas SM (solo médico) ──
@@ -118,7 +135,7 @@ def test_a06_controles_estamento_y_sename():
     a06 = t["A06_Controles"]
     assert _cell(a06, "Profesional", "Médico/a", "Ambos") == 1
     assert _cell(a06, "Profesional", "Psicólogo/a", "Ambos") == 1
-    assert _cell(a06, "Profesional", "TOTAL", "Ambos") == 2
+    assert _a06_tot(a06, "Ambos") == 2
     assert _cell(a06, "Profesional", "Psicólogo/a", "5-9 M") == 1   # edad 8, mujer
 
 
@@ -135,12 +152,15 @@ def test_ada_conteo_por_atenid():
 # ── Grupal cuenta por ASISTENCIA (sin dedup) + filtro Asiste=SI ──
 def test_grupal_por_asistencia():
     E, t = _run([], grupal_rows=[
-        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": 30},
-        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": 30},  # mismo día, 2º taller -> cuenta 2
-        {"run": "Q", "fecha": date(2026, 7, 6), "act": "Intervencion psicosocial grupal.", "asiste": "NO", "sexo": "Hombre", "edad": 40},  # no asiste -> fuera
+        # EDAD en TEXTO ('30 años…') como viene del export crudo del grupal
+        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": "30 años 2 meses 1 día"},
+        {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": "31 años"},  # mismo día, 2º taller -> cuenta 2
+        {"run": "Q", "fecha": date(2026, 7, 6), "act": "Intervencion psicosocial grupal.", "asiste": "NO", "sexo": "Hombre", "edad": "40 años"},  # no asiste -> fuera
     ])
     assert _n(E, "A06PG") == 2
-    assert _cell(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal", "Ambos") == 2
+    pg = _cell_row(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal")
+    assert pg["Ambos"] == 2 and pg["Mujeres"] == 2
+    assert pg["30-34 M"] == 2      # ambas mujeres 30/31 caen en la banda 30-34 (EDAD texto parseada)
 
 
 # ── Ventana de mes (por FECHA ATENCIÓN) ──
@@ -182,8 +202,25 @@ def test_a26_split_5a9_y_visita():
     a26 = t["A26_VDI_SM"]
     r30 = a26[a26["Concepto"].str.startswith("A.30")].iloc[0]
     r31 = a26[a26["Concepto"].str.startswith("A.31")].iloc[0]
-    assert r30["Total"] == 1 and r30["Tercera o más"] == 1     # adulto 45
+    assert r30["Total"] == 1 and r30["Tercera o Más"] == 1     # adulto 45
     assert r31["Total"] == 1 and r31["Primera Visita"] == 1     # niño 7
+    assert r30["Un Profesional"] == 1                          # default mono-profesional
+
+
+def test_a26_multiprofesional():
+    """Con el Monitoreo Multiprofesional, las VDI cuya ATEN ID está en el reporte
+    (Multiprofesional-1 no vacío) pasan a 'Dos o Más Prof.'; el resto queda mono."""
+    ada = _mk_ada([
+        {"run": "K", "id": "1", "fecha": date(2026, 7, 3), "instr": "Médico", "edad": 45,
+         "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Primera visita  ;"},
+        {"run": "L", "id": "2", "fecha": date(2026, 7, 4), "instr": "Médico", "edad": 50,
+         "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Primera visita  ;"},
+    ])
+    mp = _mk_multi([{"aten": "1", "m1": "Enfermero(a)"}, {"aten": "2", "m1": ""}])  # solo la 1 es multi
+    E = sm.procesar(ada, multiprofesional=str(mp), mes=(2026, 7), log=_quiet)
+    r30 = _cell_row(E.attrs["tablas"]["A26_VDI_SM"], "Concepto",
+                    "A.30 Familia con integrante con problema de salud mental")
+    assert r30["Total"] == 2 and r30["Dos o Más Prof."] == 1 and r30["Un Profesional"] == 1
 
 
 # ── A32 F1: desagregado llamada / videollamada / mensaje (video ≠ llamada) ──
@@ -228,14 +265,14 @@ def test_demografia_flags():
         {"run": "C", "id": "3", "fecha": date(2026, 7, 5), "act": "Controles Salud Mental  ;",
          "instr": "Médico", "edad": 10, "alertas": "SPE ex Mejor Niñez- Ambulatorio", "pueblo": "Ninguno"},
     ])
-    tot = _cell_row(t["A06_Controles"], "Profesional", "TOTAL")
-    assert tot["Beneficiarios"] == 3        # todos (Fonasa)
-    assert tot["Migrantes"] == 1            # A
-    assert tot["Pueblos Originarios"] == 1  # A (Mapuche); C=Ninguno no cuenta
-    assert tot["SENAME"] == 1               # B
-    assert tot["Prot. Especializada"] == 1  # C
-    assert tot["Demencia"] == 1             # B (norm: 'demencia' vs DIAG en MAYÚSCULA)
-    assert tot["TRANS Masculino"] == 0 and tot["TRANS Femenina"] == 0   # sin inscritos
+    a06 = t["A06_Controles"]
+    assert _a06_tot(a06, "Beneficiarios") == 3        # todos (Fonasa)
+    assert _a06_tot(a06, "Migrantes") == 1            # A
+    assert _a06_tot(a06, "Pueblos Originarios") == 1  # A (Mapuche); C=Ninguno no cuenta
+    assert _a06_tot(a06, "SENAME") == 1               # B
+    assert _a06_tot(a06, "Prot. Especializada") == 1  # C
+    assert _a06_tot(a06, "Demencia") == 1             # B (norm: 'demencia' vs DIAG en MAYÚSCULA)
+    assert _a06_tot(a06, "TRANS Masculino") == 0 and _a06_tot(a06, "TRANS Femenina") == 0   # sin inscritos
 
 
 # ── Gestante: matrona + control prenatal en la ventana → flag en el evento SM ──
@@ -269,8 +306,8 @@ def test_trans_inscritos_modificado():
     ada = _mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
                     "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}])
     E = sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet)   # no debe crashear
-    tot = _cell_row(E.attrs["tablas"]["A06_Controles"], "Profesional", "TOTAL")
-    assert tot["TRANS Masculino"] == 0 and tot["TRANS Femenina"] == 0
+    a06 = E.attrs["tablas"]["A06_Controles"]
+    assert _a06_tot(a06, "TRANS Masculino") == 0 and _a06_tot(a06, "TRANS Femenina") == 0
 
 
 def _cell_row(tabla, col_key, col_val):
@@ -290,9 +327,9 @@ def test_trans_flag():
         {"run": "V", "id": "3", "fecha": date(2026, 7, 5), "act": "Controles Salud Mental  ;", "instr": "Psicólogo(a)", "edad": 30},
     ])
     E = sm.procesar(ada, inscritos=ins, mes=(2026, 7), log=_quiet)
-    tot = _cell_row(E.attrs["tablas"]["A06_Controles"], "Profesional", "TOTAL")
-    assert tot["TRANS Masculino"] == 1   # T (Transgénero Masculino)
-    assert tot["TRANS Femenina"] == 1    # V (Femenino Trans)
+    a06 = E.attrs["tablas"]["A06_Controles"]
+    assert _a06_tot(a06, "TRANS Masculino") == 1   # T (Transgénero Masculino)
+    assert _a06_tot(a06, "TRANS Femenina") == 1    # V (Femenino Trans)
     assert not bool(E.loc[E["run"] == "U", "dem_trans_m"].iloc[0])   # U cis
     assert not bool(E.loc[E["run"] == "U", "dem_trans_f"].iloc[0])
 

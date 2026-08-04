@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.5
+# Version: 1.5.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -639,6 +639,7 @@ def _tab_sm(nb, root):
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
     get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
+    get_multi = _fila_archivos(tab, "Multiprofesional (opc, A26):", "Monitoreo Multiprofesional — composición de VDI en A26")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -665,6 +666,8 @@ def _tab_sm(nb, root):
             log("[sm] sin reporte grupal → A06 psicosocial, A19a grupal y A27 saldrán 0.")
         ins = get_inscritos()
         inscritos = ins[0] if ins else None
+        mp = get_multi()
+        multiprofesional = mp[0] if mp else None
         try:
             y, m = int(var_anio.get()), int(var_mes.get())
         except ValueError:
@@ -677,7 +680,8 @@ def _tab_sm(nb, root):
         btn.configure(state="disabled")
         try:
             import modulos.rem_sm_actividades as smact
-            E = smact.procesar(ada, grupal=grupal, inscritos=inscritos, mes=(y, m), log=log)
+            E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
+                               multiprofesional=multiprofesional, mes=(y, m), log=log)
             smact.escribir(E, salida)
         except ImportError as e:
             messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")

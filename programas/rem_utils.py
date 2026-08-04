@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.5
+# Version: 1.5.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -331,6 +331,24 @@ def trans_map(entrada):
         if "TRANS" in g:
             out[str(f[i_run]).strip()] = "M" if "MASCULIN" in g else "F" if "FEMENIN" in g else "X"
     return out
+
+
+def atenid_multiprofesional(entrada):
+    """Set de ATEN ID MULTIPROFESIONALES (2+ profesionales), del reporte 'Monitoreo
+    Multiprofesional': la columna 'Multiprofesional-1' no vacía = tuvo ≥1 profesional
+    adicional. Sirve para marcar composición (Un Profesional vs Dos o Más). Opcional:
+    sin este reporte, todo se asume mono-profesional."""
+    hdr, filas = leer_xlsx(entrada)
+    hn = [norm(h) for h in hdr]
+
+    def ci(*subs):
+        return next((i for i, n in enumerate(hn) if all(norm(s) in n for s in subs)), None)
+
+    i_aten, i_m1 = ci("ATEN", "ID"), ci("MULTIPROFESIONAL", "1")
+    if i_aten is None or i_m1 is None:
+        raise ValueError("el 'Monitoreo Multiprofesional' no trae ATEN ID / "
+                         "Multiprofesional-1. ¿Modificado o reporte equivocado?")
+    return {str(f[i_aten]).strip() for f in filas if i_m1 < len(f) and norm(f[i_m1])}
 
 
 def gestante_runs(d, ini, fin):
