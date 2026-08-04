@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.1
+# Version: 1.5.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,24 +43,27 @@ import pandas as pd
 
 from programas.rem_utils import (norm, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
-                                 marcar_demografia, gestante_runs)
+                                 marcar_demografia, gestante_runs, trans_map)
 
 # Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
-# Ver rem_utils.marcar_demografia. dem_gestante se calcula por RUN en procesar().
+# Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
+# el 'Informe Inscritos') se calculan en procesar().
 DEM_COLS = ["dem_originario", "dem_migrante", "dem_sename", "dem_mejorninez",
-            "dem_demencia", "dem_cuidador", "dem_campana", "dem_gestante"]
+            "dem_demencia", "dem_cuidador", "dem_campana", "dem_gestante",
+            "dem_trans_m", "dem_trans_f"]
 
 # Bloque de columnas demográficas por sección (label template -> flag).
-#   '_total' = todos (Beneficiarios Fonasa) · '_zero' = no derivable del ADA (TRANS
-#   necesita el 'Informe inscritos y adscritos', que no cargamos). 'Espacios
-#   Amigables' y 'Familias en Riesgo' se OMITEN (no se usan en el centro).
+#   '_total' = todos (Beneficiarios Fonasa) · '_zero' = no derivable (reservado).
+#   TRANS sale del 'Informe Inscritos' (split M/F, opcional). 'Espacios Amigables' y
+#   'Familias en Riesgo' se OMITEN (no se usan en el centro).
 DEM_A04 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
            ("Campaña de Invierno", "dem_campana")]
 DEM_A06 = [("Beneficiarios", "_total"), ("SENAME", "dem_sename"),
            ("Prot. Especializada", "dem_mejorninez"), ("Pueblos Originarios", "dem_originario"),
            ("Migrantes", "dem_migrante"), ("Demencia", "dem_demencia"),
-           ("TRANS", "_zero"), ("Cuidadores demencia", "dem_cuidador")]
+           ("TRANS Masculino", "dem_trans_m"), ("TRANS Femenina", "dem_trans_f"),
+           ("Cuidadores demencia", "dem_cuidador")]
 DEM_A26 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
 DEM_A32 = [("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
@@ -373,11 +376,12 @@ def _tabla_resumen(E, ini):
     return df
 
 
-def procesar(ada, grupal=None, mes=None, log=print):
+def procesar(ada, grupal=None, inscritos=None, mes=None, log=print):
     """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
     `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
     `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
-    Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0)."""
+    Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0). `inscritos`
+    = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0)."""
     d = cargar_atenciones(ada)
     d = marcar_demografia(d)
     ini, fin = _rango_mes(mes)
@@ -385,6 +389,15 @@ def procesar(ada, grupal=None, mes=None, log=print):
     ini3 = ini - pd.DateOffset(months=2)
     gset = gestante_runs(d, ini3, fin)
     d["dem_gestante"] = d["RUN"].isin(gset)
+    # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita).
+    if inscritos is not None:
+        tmap = trans_map(inscritos)
+        d["dem_trans_m"] = d["RUN"].map(lambda r: tmap.get(r) == "M")
+        d["dem_trans_f"] = d["RUN"].map(lambda r: tmap.get(r) == "F")
+        log(f"[sm] Inscritos: {len(tmap)} personas TRANS en el padrón del CESFAM")
+    else:
+        d["dem_trans_m"] = False
+        d["dem_trans_f"] = False
     dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")

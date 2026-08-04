@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.1
+# Version: 1.5.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -620,6 +620,7 @@ def _tab_sm(nb, root):
         "A27 (educación prev. SM) y A32·F (acciones/controles remotos SM).\n"
         "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  →  casi todas las casillas.\n"
         "2.  Atenciones Grupales  →  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
+        "3.  Inscritos y Adscritos (opcional, ENORME)  →  solo para el flag TRANS (género).\n"
         "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
         "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
         "⚠ Para el flag GESTANTE se usa una ventana de 3 MESES → carga el ADA de los últimos 3 meses."
@@ -631,6 +632,7 @@ def _tab_sm(nb, root):
 
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
+    get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -655,6 +657,8 @@ def _tab_sm(nb, root):
         grupal = get_grupal() or None
         if grupal is None:
             log("[sm] sin reporte grupal → A06 psicosocial, A19a grupal y A27 saldrán 0.")
+        ins = get_inscritos()
+        inscritos = ins[0] if ins else None
         try:
             y, m = int(var_anio.get()), int(var_mes.get())
         except ValueError:
@@ -667,7 +671,7 @@ def _tab_sm(nb, root):
         btn.configure(state="disabled")
         try:
             import modulos.rem_sm_actividades as smact
-            E = smact.procesar(ada, grupal=grupal, mes=(y, m), log=log)
+            E = smact.procesar(ada, grupal=grupal, inscritos=inscritos, mes=(y, m), log=log)
             smact.escribir(E, salida)
         except ImportError as e:
             messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")

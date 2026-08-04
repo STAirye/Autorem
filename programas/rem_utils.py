@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.1
+# Version: 1.5.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -302,6 +302,33 @@ def marcar_demografia(d):
     d["dem_campana"] = d["ACT_n"].str.contains(norm("campaña de invierno"), regex=False, na=False)
     d["dem_demencia"] = d["DIAG_n"].str.contains(norm("demencia"), regex=False, na=False)
     return d
+
+
+def trans_map(entrada):
+    """Lee el 'Informe Inscritos y Adscritos' -> dict RUN -> 'M' | 'F' | 'X' para
+    personas TRANS. RAYEN ahora permite seleccionar TRANS directamente en GÉNERO
+    ('Transgénero Masculino/Femenina', 'Femenino Trans'), así que se usa ESE campo
+    (la vieja heurística género≠sexo quedó obsoleta y era ruidosa). La dirección
+    (M/F) alimenta el split TRANS Masculino/Femenina del template. Archivo ENORME
+    (toda la población del CESFAM) → se carga solo si el usuario lo aporta."""
+    hdr, filas = leer_xlsx(entrada)
+    hn = [norm(h) for h in hdr]
+
+    def ci(*subs):
+        return next((i for i, n in enumerate(hn) if all(norm(s) in n for s in subs)), None)
+
+    i_run = ci("NUMERO", "IDENTIFICACION")
+    if i_run is None:
+        i_run = ci("RUN")
+    i_gen = ci("GENERO")
+    out = {}
+    if i_run is None or i_gen is None:
+        return out
+    for f in filas:
+        g = norm(f[i_gen]) if i_gen < len(f) else ""
+        if "TRANS" in g:
+            out[str(f[i_run]).strip()] = "M" if "MASCULIN" in g else "F" if "FEMENIN" in g else "X"
+    return out
 
 
 def gestante_runs(d, ini, fin):

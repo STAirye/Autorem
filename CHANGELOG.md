@@ -12,6 +12,25 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.2] — 2026-08-04
+
+Completa el flag **TRANS** en SM Actividades usando el 'Informe Inscritos y Adscritos'.
+
+### Agregado
+- **`rem_utils.trans_map()`**: lee el 'Informe Inscritos y Adscritos' (padrón completo
+  del CESFAM, ~55k filas) → `dict RUN → 'M'/'F'` para personas **TRANS** según la
+  **selección explícita en GÉNERO** ('Transgénero Masculino/Femenina', 'Femenino
+  Trans'). Se abandona la vieja heurística DAX `género≠sexo` (obsoleta desde que RAYEN
+  permite marcar TRANS directo, y ruidosa: 408 mismatches vs 43 explícitos reales).
+- `rem_sm_actividades.procesar(..., inscritos=None)` + flags `dem_trans_m`/`dem_trans_f`
+  → columnas **TRANS Masculino / TRANS Femenina** en A06 (split del template). Selector
+  opcional 'Inscritos' en la pestaña GUI (archivo ENORME → solo para TRANS).
+- Test `test_trans_flag`.
+
+### Corregido
+- **Bug de índice-cero** en `trans_map`: `ci(...) or ci("RUN")` caía a `ci("RUN")`
+  cuando la columna estaba en índice 0 (`0 or x` es falsy). Con check explícito de None.
+
 ## [1.5.1] — 2026-08-04
 
 Corrección del módulo en curso: **datos demográficos** en SM Actividades +
