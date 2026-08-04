@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.4
+# Version: 1.5.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -321,9 +321,11 @@ def trans_map(entrada):
     if i_run is None:
         i_run = ci("RUN")
     i_gen = ci("GENERO")
+    if i_run is None or i_gen is None:   # archivo modificado o reporte equivocado
+        falta = " y ".join(c for c, i in [("RUN", i_run), ("GÉNERO", i_gen)] if i is None)
+        raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {falta}. "
+                         "¿Está modificado o es otro reporte? Descárgalo de nuevo SIN tocar.")
     out = {}
-    if i_run is None or i_gen is None:
-        return out
     for f in filas:
         g = norm(f[i_gen]) if i_gen < len(f) else ""
         if "TRANS" in g:

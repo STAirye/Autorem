@@ -12,6 +12,15 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.5.5] — 2026-08-04
+
+### Corregido
+- **TRANS ya no falla en silencio**: si el 'Informe Inscritos' viene MODIFICADO o es
+  otro reporte (sin columna GÉNERO/RUN), `trans_map` ahora levanta un error claro y
+  `procesar` lo captura → avisa fuerte en el log y deja TRANS en 0, en vez de reportar
+  0 callado (que se daba por bueno). También avisa si el padrón COMPLETO arroja 0 TRANS
+  (sospechoso → archivo filtrado/modificado). Test `test_trans_inscritos_modificado`.
+
 ## [1.5.4] — 2026-08-04
 
 ### Cambiado

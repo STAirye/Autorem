@@ -253,6 +253,26 @@ def test_gestante_flag():
     assert bool(a06.loc[a06["run"] == "H", "dem_gestante"].iloc[0]) is False
 
 
+def test_trans_inscritos_modificado():
+    """Inscritos SIN columna GÉNERO (archivo modificado/otro reporte): trans_map
+    levanta ValueError y procesar NO crashea (TRANS queda en 0 con aviso)."""
+    from programas.rem_utils import trans_map
+    p = _TMP / "inscritos_malo.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["NUMERO TIPO IDENTIFICACION", "SEXO"]); ws.append(["T", "Mujer"])  # sin GÉNERO
+    wb.save(p)
+    try:
+        trans_map(p); raised = False
+    except ValueError:
+        raised = True
+    assert raised
+    ada = _mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
+                    "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}])
+    E = sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet)   # no debe crashear
+    tot = _cell_row(E.attrs["tablas"]["A06_Controles"], "Profesional", "TOTAL")
+    assert tot["TRANS Masculino"] == 0 and tot["TRANS Femenina"] == 0
+
+
 def _cell_row(tabla, col_key, col_val):
     return tabla[tabla[col_key] == col_val].iloc[0]
 

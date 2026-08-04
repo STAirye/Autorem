@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.4
+# Version: 1.5.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -391,10 +391,21 @@ def procesar(ada, grupal=None, inscritos=None, mes=None, log=print):
     d["dem_gestante"] = d["RUN"].isin(gset)
     # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita).
     if inscritos is not None:
-        tmap = trans_map(inscritos)
+        try:
+            tmap = trans_map(inscritos)
+        except ValueError as e:                       # archivo modificado / reporte equivocado
+            tmap = {}
+            log(f"[sm] ⚠⚠ TRANS NO calculado: {e}  → TRANS queda en 0.")
         d["dem_trans_m"] = d["RUN"].map(lambda r: tmap.get(r) == "M")
         d["dem_trans_f"] = d["RUN"].map(lambda r: tmap.get(r) == "F")
-        log(f"[sm] Inscritos: {len(tmap)} personas TRANS en el padrón del CESFAM")
+        if not tmap:
+            # 0 TRANS en el padrón COMPLETO es sospechoso -> avisar en vez de callar
+            log("[sm] ⚠⚠ El 'Informe Inscritos' arrojó 0 personas TRANS. En el padrón "
+                "COMPLETO del CESFAM eso casi seguro significa que el archivo está "
+                "MODIFICADO/filtrado o es otro reporte → descárgalo de nuevo SIN tocar. "
+                "(TRANS queda en 0.)")
+        else:
+            log(f"[sm] Inscritos: {len(tmap)} personas TRANS en el padrón del CESFAM")
     else:
         d["dem_trans_m"] = False
         d["dem_trans_f"] = False
