@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.0
+# Version: 1.6.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -193,7 +193,7 @@ def _fila_archivos(parent, etiqueta, titulo):
     from tkinter import ttk, filedialog
     fila = ttk.Frame(parent)
     fila.pack(fill="x", pady=(3, 3))
-    ttk.Label(fila, text=etiqueta, width=26).pack(side="left")
+    ttk.Label(fila, text=etiqueta, width=30, anchor="w").pack(side="left")
     lbl = ttk.Label(fila, text="(ninguno)", foreground="#666")
     sel = []
 
@@ -209,6 +209,14 @@ def _fila_archivos(parent, etiqueta, titulo):
     return lambda: list(sel)
 
 
+def _separador_opcionales(parent, texto="Opcionales"):
+    """Barra horizontal que separa visualmente los inputs OBLIGATORIOS (arriba) de
+    los OPCIONALES (abajo). Se llama entre unos y otros al armar la pestaña."""
+    from tkinter import ttk
+    ttk.Separator(parent, orient="horizontal").pack(fill="x", pady=(8, 3))
+    ttk.Label(parent, text=f"—  {texto}  —", foreground="#888").pack(anchor="w", pady=(0, 2))
+
+
 def _dir_salida_default():
     """Carpeta de salida por defecto: donde está el .exe (empaquetado) o el cwd."""
     if getattr(sys, "frozen", False):
@@ -222,7 +230,7 @@ def _fila_carpeta_salida(parent):
     from tkinter import ttk, filedialog
     fila = ttk.Frame(parent)
     fila.pack(fill="x", pady=(3, 3))
-    ttk.Label(fila, text="Carpeta de salida:", width=26).pack(side="left")
+    ttk.Label(fila, text="Carpeta de salida:", width=30, anchor="w").pack(side="left")
     var = tk.StringVar(value=str(_dir_salida_default()))
     ttk.Entry(fila, textvariable=var).pack(side="left", fill="x", expand=True, padx=6)
 
@@ -266,6 +274,122 @@ def _error_inesperado(e, log, messagebox):
         "Error inesperado",
         f"Ocurrió un error no previsto:\n\n{e}\n\n"
         "Copia el texto del registro y pásaselo a Simón.")
+
+
+def _manejar_error(e, log, messagebox):
+    """Despacha una excepción de procesamiento a un messagebox claro (hilo GUI).
+    Incluye ArchivoInvalido (p.ej. la guarda multi-hoja) sin volcar traceback feo."""
+    if isinstance(e, ImportError):
+        messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
+    elif isinstance(e, PermissionError):
+        log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
+        messagebox.showerror("Permiso denegado", _MSG_PERMISO)
+    elif isinstance(e, sm.ArchivoInvalido):
+        log(f"[archivo inválido] {e}")
+        messagebox.showerror("Archivo inválido", str(e))
+    else:
+        _error_inesperado(e, log, messagebox)
+
+
+def _slim_por_defecto():
+    """Ruta del Maestro SLIM que shippea el repo/exe (`maestro_slim.csv.gz`), o None.
+    Busca en el bundle de PyInstaller (si está congelado) y junto al código."""
+    cands = []
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        cands += [base / "refs tablas" / "maestro_slim.csv.gz",
+                  Path(sys.executable).parent / "maestro_slim.csv.gz"]
+    cands.append(Path(__file__).resolve().parent / "refs tablas" / "maestro_slim.csv.gz")
+    return next((str(c) for c in cands if c.exists()), None)
+
+
+_FIN = object()   # centinela de fin de trabajo en la cola del runner
+
+
+class _Reloj:
+    """Reloj de arena dibujado que GIRA: indicador indeterminado ('trabajando', sin
+    porcentajes que mienten). Se anima en el hilo de la GUI (`root.after`), por eso
+    sigue girando mientras el worker hace el trabajo pesado en OTRO hilo."""
+    def __init__(self, parent, root, size=26):
+        import tkinter as tk
+        self.root = root
+        self.size = size
+        self.cv = tk.Canvas(parent, width=size, height=size, highlightthickness=0)
+        self.ang = 0
+        self._job = None
+
+    def _dibujar(self):
+        import math
+        s, a = self.size, math.radians(self.ang)
+        c, r = s / 2, s * 0.34
+        self.cv.delete("all")
+
+        def pt(dx, dy):
+            return (c + dx * math.cos(a) - dy * math.sin(a),
+                    c + dx * math.sin(a) + dy * math.cos(a))
+        # Dos triángulos que se tocan en el centro = reloj de arena; al rotar, "gira".
+        for tri in ([pt(-r, -r), pt(r, -r), pt(0, 0)],
+                    [pt(-r, r), pt(r, r), pt(0, 0)]):
+            self.cv.create_polygon([v for p in tri for v in p], fill="#c8801a", outline="#5a3200")
+
+    def _tick(self):
+        self._dibujar()
+        self.ang = (self.ang + 15) % 360
+        self._job = self.root.after(70, self._tick)
+
+    def start(self, **pack):
+        self.cv.pack(**pack)
+        self._tick()
+        return self
+
+    def stop(self):
+        if self._job:
+            self.root.after_cancel(self._job)
+            self._job = None
+        self.cv.destroy()
+
+
+def _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar):
+    """Corre `trabajo(log)` en un HILO aparte para que la ventana NO se congele.
+    Muestra el reloj de arena girando + 'Procesando…' y vuelca el log en vivo. Al
+    terminar llama `al_terminar(resultado, error)` en el hilo de la GUI (uno es None).
+    `trabajo` debe usar SOLO el `log` que recibe (thread-safe); no tocar widgets."""
+    import threading
+    import queue
+    from tkinter import ttk
+    q = queue.Queue()
+    estado = {}
+
+    def log_seguro(msg=""):
+        q.put(str(msg))          # el worker solo encola; la GUI escribe el widget
+
+    def worker():
+        try:
+            estado["res"] = trabajo(log_seguro)
+        except Exception as e:   # noqa: BLE001  (se re-despacha en el hilo GUI)
+            estado["err"] = e
+        finally:
+            q.put(_FIN)
+
+    btn.configure(state="disabled")
+    reloj = _Reloj(barra, root).start(side="left", padx=(10, 4))
+    lbl = ttk.Label(barra, text="Procesando…  (puede tardar ~1 min)")
+    lbl.pack(side="left")
+    threading.Thread(target=worker, daemon=True).start()
+
+    def poll():
+        try:
+            while True:
+                item = q.get_nowait()
+                if item is _FIN:
+                    reloj.stop(); lbl.destroy(); btn.configure(state="normal")
+                    al_terminar(estado.get("res"), estado.get("err"))
+                    return
+                log(item)
+        except queue.Empty:
+            pass
+        root.after(80, poll)
+    root.after(80, poll)
 
 
 # ── Estamentos (REUTILIZABLE por cualquier flujo en formato Administrativo) ──
@@ -543,8 +667,9 @@ def _tab_a23(nb, root):
 
     get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
     get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
+    _separador_opcionales(tab)
     get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
-    get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc, Sección H):", "Reporte de pacientes inasistentes (NSP) — Sección H")
+    get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc):", "Reporte de pacientes inasistentes (NSP) — Sección H")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -566,6 +691,11 @@ def _tab_a23(nb, root):
             messagebox.showwarning("Falta atenciones", "Carga al menos un archivo de atenciones.")
             return
         otros = get_otros()
+        if not otros:
+            messagebox.showwarning("Falta Otros Crónicos",
+                                   "El formulario Otros Crónicos es OBLIGATORIO (SALA bajo control "
+                                   "+ Sección G). Cárgalo — ideal varios años para los inasistentes.")
+            return
         est_sel = get_estrat()
         est = est_sel[0] if est_sel else None
         nsp_sel = get_nsp()
@@ -579,31 +709,27 @@ def _tab_a23(nb, root):
         if carpeta is None:
             return
         salida = carpeta / f"REM_A23_{y}_{m:02d}_procesado.xlsx"
-        btn.configure(state="disabled")
-        try:
+
+        def trabajo(log):
             import modulos.rem_a23_respiratorio as a23
             fer = a23.procesar(atens, otros=(otros or None), estrat=est,
                                inasistentes=nsp, mes=(y, m), log=log)
             a23.escribir(fer, salida)
-        except ImportError as e:
-            messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
-            return
-        except PermissionError:
-            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
-            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
-            return
-        except Exception as e:
-            _error_inesperado(e, log, messagebox)
-            return
-        finally:
-            btn.configure(state="normal")
-        g = fer.attrs.get("seccion_g", {})
-        gtxt = " · ".join(f"{lbl.split()[0]}:{d['Total']}" for lbl, d in g.items() if d["Total"])
-        txt = (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
-               f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
-        log(""); log("✔ " + txt.replace("\n", " | "))
-        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
-            _abrir_carpeta(salida.parent)
+            return fer
+
+        def al_terminar(fer, err):
+            if err is not None:
+                _manejar_error(err, log, messagebox)
+                return
+            g = fer.attrs.get("seccion_g", {})
+            gtxt = " · ".join(f"{lbl.split()[0]}:{d['Total']}" for lbl, d in g.items() if d["Total"])
+            txt = (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
+                   f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
+            log(""); log("✔ " + txt.replace("\n", " | "))
+            if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+                _abrir_carpeta(salida.parent)
+
+        _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar)
 
     barra = ttk.Frame(tab)
     barra.pack(fill="x")
@@ -640,9 +766,10 @@ def _tab_sm(nb, root):
 
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
+    _separador_opcionales(tab)
     get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
     get_multi = _fila_archivos(tab, "Multiprofesional (opc, A26):", "Monitoreo Multiprofesional — composición de VDI en A26")
-    get_maestro = _fila_archivos(tab, "Maestro Actividades (opc, saco vacío):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
+    get_maestro = _fila_archivos(tab, "Maestro (opc, saco vacío):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -666,7 +793,10 @@ def _tab_sm(nb, root):
             return
         grupal = get_grupal() or None
         if grupal is None:
-            log("[sm] sin reporte grupal → A06 psicosocial, A19a grupal y A27 saldrán 0.")
+            messagebox.showwarning("Falta Atenciones Grupales",
+                                   "El reporte de Atenciones Grupales es OBLIGATORIO: de ahí "
+                                   "salen A06 psicosocial grupal, A19a grupal y A27.")
+            return
         ins = get_inscritos()
         inscritos = ins[0] if ins else None
         mp = get_multi()
@@ -680,42 +810,45 @@ def _tab_sm(nb, root):
         if carpeta is None:
             return
         salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
-        btn.configure(state="disabled")
-        try:
+        salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+        mtr = get_maestro()
+        maestro = mtr[0] if mtr else _slim_por_defecto()    # sin selección → Maestro slim del repo/exe
+
+        def trabajo(log):
+            from programas.rem_utils import cargar_atenciones
             import modulos.rem_sm_actividades as smact
+            d = cargar_atenciones(ada)          # el ADA se lee UNA sola vez y se comparte
             E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
-                               multiprofesional=multiprofesional, mes=(y, m), log=log)
+                               multiprofesional=multiprofesional, mes=(y, m), log=log, d=d)
             smact.escribir(E, salida)
-            # Reporte de TRABAJO PERDIDO (saco vacío): mismo ADA. Try propio para que un
+            n_tp = None
+            # Trabajo perdido (saco vacío): mismo ADA ya cargado. Try propio para que un
             # fallo acá (p.ej. Monitoreo admin sin 'PROFESIONAL ATENCION') no tumbe el SM.
             try:
                 import modulos.rem_sm_trabajo_perdido as tpmod
-                mtr = get_maestro()
-                Etp = tpmod.procesar(ada, maestro=(mtr[0] if mtr else None), mes=(y, m), log=log)
-                salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+                Etp = tpmod.procesar(ada, maestro=maestro, mes=(y, m), log=log, d=d)
                 tpmod.escribir(Etp, salida_tp)
-                log(f"✔ Trabajo perdido: {len(Etp)} atenciones a saco vacío → {salida_tp.name}")
+                n_tp = len(Etp)
+                log(f"✔ Trabajo perdido: {n_tp} atenciones a saco vacío → {salida_tp.name}")
             except Exception as e:   # noqa: BLE001
                 log(f"[tp] ⚠ no se generó el reporte de trabajo perdido: {e}")
-        except ImportError as e:
-            messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
-            return
-        except PermissionError:
-            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
-            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
-            return
-        except Exception as e:
-            _error_inesperado(e, log, messagebox)
-            return
-        finally:
-            btn.configure(state="normal")
-        res = E.attrs["tablas"]["SM_Resumen"]
-        rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in res.iterrows())
-        txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.\n\n"
-               f"{rtxt}\n\nGuardado en:\n{salida}")
-        log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
-        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
-            _abrir_carpeta(salida.parent)
+            return E, n_tp
+
+        def al_terminar(res, err):
+            if err is not None:
+                _manejar_error(err, log, messagebox)
+                return
+            E, n_tp = res
+            resu = E.attrs["tablas"]["SM_Resumen"]
+            rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
+            tptxt = f"\nTrabajo perdido: {n_tp} atenciones a saco vacío." if n_tp is not None else ""
+            txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}\n\n"
+                   f"{rtxt}\n\nGuardado en:\n{salida}")
+            log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
+            if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+                _abrir_carpeta(salida.parent)
+
+        _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar)
 
     barra = ttk.Frame(tab)
     barra.pack(fill="x")

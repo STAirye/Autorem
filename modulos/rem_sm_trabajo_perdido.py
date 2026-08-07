@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.0
+# Version: 1.6.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -168,11 +168,12 @@ def _por_funcionario(E):
     return pd.DataFrame(filas).sort_values("N a saco vacío", ascending=False, ignore_index=True)
 
 
-def procesar(ada, maestro=None, mes=None, log=print):
+def procesar(ada, maestro=None, mes=None, log=print, d=None):
     """Standalone: carga el ADA (+ Maestro opcional) y analiza. `ada` = ruta o lista.
     `maestro` = 'Maestro de Actividades' (opcional; sin él, todo por heurística).
-    `mes` = (año, mes) o None (mes anterior)."""
-    d = cargar_atenciones(ada)
+    `mes` = (año, mes) o None (mes anterior). `d` = ADA ya cargado (para leer el ADA
+    UNA sola vez cuando lo comparte con el módulo de actividades)."""
+    d = cargar_atenciones(ada) if d is None else d
     rem_map = None
     if maestro is not None:
         dfm = cargar_maestro(maestro)

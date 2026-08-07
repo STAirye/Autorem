@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.0
+# Version: 1.6.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -417,15 +417,16 @@ def _tabla_resumen(E, ini):
     return df
 
 
-def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print):
+def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print, d=None):
     """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
     `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
     `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
     Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0). `inscritos`
     = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0).
     `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
-    A26 se asumen mono-profesional)."""
-    d = cargar_atenciones(ada)
+    A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
+    sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga)."""
+    d = cargar_atenciones(ada) if d is None else d
     d = marcar_demografia(d)
     ini, fin = _rango_mes(mes)
     # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.

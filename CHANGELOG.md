@@ -12,6 +12,37 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.6.1] — 2026-08-07
+
+Feedback en la GUI (ventana ya no se congela) + wins de perf. Fallback seguro antes
+del overhaul a customtkinter (2.0.0).
+
+### Agregado
+- **Reloj de arena** (indicador indeterminado dibujado que gira, `_Reloj`) + **worker
+  en hilo** (`_correr_con_reloj`) en las pestañas lentas (SM y A23): el procesamiento
+  corre en un `threading.Thread`, la ventana **ya no se congela** ("No responde"), y el
+  log fluye en vivo (cola thread-safe volcada por `root.after`). Sin barras de progreso
+  (mienten): solo "estoy trabajando".
+- **Dispatch de errores** `_manejar_error`: ImportError/PermissionError/**ArchivoInvalido**
+  (p.ej. la guarda multi-hoja) → messagebox claro, sin traceback feo.
+
+### Corregido / UI
+- **Etiquetas truncadas** en los selectores de archivo (se cortaban "Inasistentes NSP…"
+  y "Maestro Actividades…"): ancho 26→30 + textos acortados.
+- **Separador visual** entre inputs OBLIGATORIOS y OPCIONALES en SM y A23
+  (`_separador_opcionales`, barrita horizontal + rótulo "Opcionales").
+- **Grupal (SM) y Otros Crónicos (A23) ahora son OBLIGATORIOS**: avisan y frenan si
+  faltan (antes seguían con casillas en 0). *(Otros Crónicos puede volverse opcional
+  según responda el referente.)*
+
+### Cambiado (rendimiento)
+- **El ADA se lee UNA sola vez** y se comparte entre SM Actividades y Trabajo Perdido
+  (antes se leía dos veces). `procesar(..., d=None)` en ambos módulos acepta el
+  DataFrame ya cargado → ~½ del tiempo del bloque SM.
+- **Trabajo perdido usa el Maestro slim por defecto**: si no eliges un Maestro en la
+  GUI, toma `maestro_slim.csv.gz` del repo/exe (`_slim_por_defecto`, busca también en el
+  bundle de PyInstaller) → clasificación precisa sin cargar nada.
+
 ## [1.6.0] — 2026-08-07
 
 Módulo nuevo (Y++): **REM SM · Trabajo perdido** ("saco vacío") + **Maestro de
