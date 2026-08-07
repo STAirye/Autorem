@@ -12,6 +12,17 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.1] — 2026-08-07
+
+### Corregido / UI
+- **Scroll vertical en la pestaña Actividades** (`_tab_scroll`): al desplegar los
+  cuestionarios A03·D.3 el contenido supera el alto de la ventana; ahora hay barra de
+  scroll para llegar al Registro y al botón (antes solo se veía agrandando la ventana).
+- **KNOWN ISSUE** (documentado, no se arregla): al DEStickear cuestionarios el
+  scrollregion no se encoge de vuelta (queda scroll sobrante). Es el baile
+  Canvas+scrollregion de tkinter; se resuelve gratis en la GUI 2.0 (customtkinter →
+  `CTkScrollableFrame`).
+
 ## [1.7.0] — 2026-08-07
 
 Módulo nuevo (Y++): **reporte A03·D.3 UNIFICADO** (cuestionarios PSC/PSC-Y/GHQ-12 →

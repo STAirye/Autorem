@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.0
+# Version: 1.7.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -122,6 +122,37 @@ def _aviso_sin_modificar(parent):
     from tkinter import ttk
     ttk.Label(parent, text=_AVISO_SIN_MODIFICAR, justify="left",
               foreground="#a05a00").pack(anchor="w", pady=(0, 6))
+
+
+def _tab_scroll(nb, texto):
+    """Pestaña con SCROLL vertical, para contenido más alto que la ventana (p.ej. al
+    desplegar los cuestionarios en Actividades). Reemplaza a `ttk.Frame(nb, padding=12)
+    + nb.add(...)`: devuelve el frame INTERNO donde se arma el contenido.
+
+    KNOWN ISSUE (no se arregla, a propósito): al DESPLEGAR crece y aparece el scroll OK,
+    pero al OCULTAR (destickear cuestionarios) el scrollregion NO se encoge de vuelta
+    (queda scroll sobrante). Es el clásico baile Canvas+scrollregion de tkinter; se
+    resuelve gratis en la GUI 2.0 con customtkinter (CTkScrollableFrame). No vale la
+    pena pelearlo acá."""
+    import tkinter as tk
+    from tkinter import ttk
+    outer = ttk.Frame(nb)
+    nb.add(outer, text=texto)
+    canvas = tk.Canvas(outer, highlightthickness=0)
+    vsb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=vsb.set)
+    vsb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    inner = ttk.Frame(canvas, padding=12)
+    win = canvas.create_window((0, 0), window=inner, anchor="nw")
+    inner.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfigure(win, width=e.width))
+
+    def _wheel(e):
+        canvas.yview_scroll(int(-(e.delta or 0) / 120), "units")
+    canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _wheel))
+    canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+    return inner
 
 
 def lanzar_gui(ruta_inicial=""):
@@ -742,8 +773,7 @@ def _tab_sm(nb, root):
     import tkinter as tk
     from tkinter import ttk, messagebox
     from datetime import date
-    tab = ttk.Frame(nb, padding=12)
-    nb.add(tab, text="REM SM · Actividades")
+    tab = _tab_scroll(nb, "REM SM · Actividades")   # scroll: al desplegar cuestionarios crece
 
     instr = (
         "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) → tablas\n"
