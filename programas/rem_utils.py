@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.6
+# Version: 1.6.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.5.6"
+VERSION = "1.6.0"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -162,6 +162,26 @@ def leer_xlsx(entrada, ancla=None, max_scan=40):
     return list(filas[hi]), filas[hi + 1:]
 
 
+def verificar_hoja_unica(entrada):
+    """Guarda de integridad de los exports RAYEN/IRIS: SIEMPRE bajan UNA hoja con
+    datos + 2 vacías. Si hay datos en más de una hoja, el archivo fue MODIFICADO
+    (típicamente se le agregó una tabla dinámica) y sus resultados no son confiables
+    → levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx:
+    itera celdas (corta en la 1ª no vacía), no confía en max_row."""
+    wb = openpyxl.load_workbook(entrada, data_only=True, read_only=True)
+    con_datos = [ws.title for ws in wb.worksheets
+                 if any(any(v not in (None, "") for v in row)
+                        for row in ws.iter_rows(values_only=True))]
+    wb.close()
+    if len(con_datos) > 1:
+        raise ArchivoInvalido(
+            "modificado",
+            f"El archivo trae datos en {len(con_datos)} hojas ({', '.join(con_datos)}). "
+            "RAYEN/IRIS siempre baja UNA hoja con datos + 2 vacías, así que esto significa "
+            "que el export fue MODIFICADO (¿le agregaste una tabla dinámica?). Vuelve a "
+            "descargarlo SIN tocar desde RAYEN/IRIS y cárgalo tal cual.")
+
+
 def resolver_columnas(headers, mapa):
     """Mapea nombres canónicos -> columnas reales por nombre SEMÁNTICO. `mapa` =
     {canonico: opcion | [opcion, ...]} con opcion = ('exact','NOMBRE') |
@@ -202,6 +222,7 @@ MAPA_ATENCIONES = {
     "ACT":     [("exact", "ACTIVIDADES"), ("subs", ["ACTIVIDAD", "PROCEDIMIENTO"])],
     "DIAG":    [("exact", "DIAGNOSTICOS"), ("exact", "DIAGNOSTICO")],
     "INSTR":   ("exact", "INSTRUMENTO"),
+    "PROF":    ("subs", ["PROFESIONAL", "ATENCION"]),   # NOMBRE del funcionario que atendió (IRIS)
     "TIPO":    ("subs", ["TIPO", "ATENCION"]),          # 'TIPO ATENCION' | 'TIPO DE ATENCION'
     "SEXO":    ("exact", "SEXO"),
     "SECTOR":  ("exact", "SECTOR"),
@@ -226,6 +247,7 @@ def cargar_canonico(entrada, ancla, resolver):
     import pandas as pd
     partes, col0 = [], None
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
+        verificar_hoja_unica(e)          # rechaza exports modificados (datos en >1 hoja)
         hdr, filas = leer_xlsx(e, ancla=ancla)
         col = resolver(hdr)
         col0 = col0 or col
@@ -251,7 +273,7 @@ def cargar_atenciones(entrada):
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su
     # paciente. En IRIS (sin filas hijas) NO se toca nada (evita contaminar campos
     # vacíos legítimos entre pacientes distintos).
-    cab = ["RUN", "ATENID", "FECHA", "INSTR", "TIPO", "SEXO", "SECTOR", "NACION",
+    cab = ["RUN", "ATENID", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACION",
            "EMIG", "ALERTAS", "FORMCLIN", "PUEBLO", "FNAC", "NOMBRES", "APAT",
            "AMAT", "ANOS", "ANOS_AT"]
     child = d["RUN"].replace("", pd.NA).isna()
@@ -262,6 +284,59 @@ def cargar_atenciones(entrada):
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
     return d
+
+
+# ── Maestro de Actividades (catálogo RAYEN: actividad ↔ estamento ↔ casilla REM) ──
+# Referencia transversal (no solo SM): mapea cada actividad a su NUM REM oficial. Una
+# fila por (actividad × instrumento). Banner en fila 1 → ancla en la fila de headers.
+# Se actualiza ~semestralmente. Usos: clasificar (¿tributa y a qué casilla?), validar
+# la clasificación RAYEN vs la nuestra (el referente técnico arbitra), y chequear que
+# cada estamento tenga las actividades que el exe reporta.
+MAPA_MAESTRO = {
+    "ACT":     ("exact", "ACTIVIDAD"),
+    "INSTR":   [("subs", ["INSTRUMENTO", "ASOCIADO"]), ("exact", "INSTRUMENTO")],
+    "NUMREM":  ("subs", ["NUM", "REM"]),
+    "SECCION": ("subs", ["NUM", "SECCION"]),
+    "REM":     ("exact", "REM"),
+}
+
+
+def cargar_maestro(entrada):
+    """Lee el 'Maestro de Actividades' -> DataFrame (ACT/INSTR/NUMREM/SECCION/REM) +
+    ACT_n y NUMREM_n normalizados. Una fila por (actividad × instrumento). Acepta el
+    Maestro COMPLETO (.xlsx, con banner) o el SLIM comprimido (.csv.gz que shippea el
+    repo, generado por tools/slim_maestro.py)."""
+    import pandas as pd
+    ent = str(entrada).lower()
+    if ent.endswith((".csv", ".gz", ".csv.gz")):
+        raw = pd.read_csv(entrada, dtype=str, keep_default_na=False)   # compresión inferida
+        hdr = list(raw.columns)
+        col = resolver_columnas(hdr, MAPA_MAESTRO)
+        _guard_maestro(col)
+        d = pd.DataFrame({k: (raw[c] if c is not None else "") for k, c in col.items()})
+    else:
+        hdr, filas = leer_xlsx(entrada, ancla=["ACTIVIDAD", "INSTRUMENTO ASOCIADO", "NUM REM"])
+        col = resolver_columnas(hdr, MAPA_MAESTRO)
+        _guard_maestro(col)
+        idx = {c: i for i, c in enumerate(hdr)}
+        d = pd.DataFrame({k: [f[idx[c]] if c is not None and idx[c] < len(f) else None
+                              for f in filas] for k, c in col.items()})
+    d = d[d["ACT"].map(lambda x: x not in (None, ""))].copy()
+    d["ACT_n"] = d["ACT"].map(norm)
+    d["NUMREM_n"] = d["NUMREM"].map(norm)
+    return d
+
+
+def _guard_maestro(col):
+    if not col["ACT"] or not col["NUMREM"]:
+        raise ValueError("No reconozco el Maestro de Actividades (faltan 'ACTIVIDAD' "
+                         "y/o 'NUM REM'). ¿Es el archivo correcto?")
+
+
+def maestro_rem_map(dfm):
+    """{ACT_n -> NUM REM normalizado} desde el Maestro (dedup por actividad; una
+    actividad tiene el mismo NUM REM en todas sus filas de instrumento)."""
+    return dict(zip(dfm["ACT_n"], dfm["NUMREM_n"]))
 
 
 # ── Demografía por atención (columnas del REM: SENAME, migrante, pueblos…) ──

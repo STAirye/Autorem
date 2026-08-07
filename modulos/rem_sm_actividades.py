@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.6
+# Version: 1.6.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -223,6 +223,29 @@ def _demcols(sub, spec):
         else:
             out[label] = int(sub[flag].sum()) if (flag in sub.columns and len(sub)) else 0
     return out
+
+
+# Substrings de ACTIVIDADES (normalizados) que SÍ tributan a algún REM SM desde el
+# ADA. Fuente única: la usan _ada_eventos (indirecto) y el detector de trabajo
+# perdido (rem_sm_trabajo_perdido): lo que trae 'mental'/'demencia' y NO cae acá es
+# candidato a saco vacío. 'controles salud mental' cubre también los remotos A32F2
+# ('… por llamada/videollamada'). SENAME se trata aparte (tributa a su propio REM).
+ADA_TRIBUTAN = [
+    "consulta de salud mental",                                            # A04
+    "controles salud mental",                                              # A06 + A32F2
+    "prioridad - con integrante con problema de salud mental",             # A19a·97
+    "prioridad - con integrante con demencia",                             # A19a·99
+    "visita domiciliaria integral familia con integrante con problema de salud mental",  # A26
+    "acciones remotas de salud mental",                                    # A32F1
+]
+
+
+def mask_tributa_ada(A):
+    """A = Serie ACT_n (ya normalizada). True si la actividad tributa a algún REM SM."""
+    m = pd.Series(False, index=A.index)
+    for pat in ADA_TRIBUTAN:
+        m |= _all(A, pat)
+    return m
 
 
 def _ada_eventos(dm):

@@ -12,6 +12,49 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.6.0] — 2026-08-07
+
+Módulo nuevo (Y++): **REM SM · Trabajo perdido** ("saco vacío") + **Maestro de
+Actividades** como catálogo de clasificación + **guarda de archivo modificado**.
+
+### Agregado
+- **Módulo `modulos/rem_sm_trabajo_perdido.py`** — reporte de auditoría (NO tributa al
+  REM). Detecta atenciones del ADA cuya ACTIVIDAD trae 'mental'/'demencia' pero **no
+  tributan** a las casillas SM que el exe reporta (A04/A06/19A/A26/A27/A32), y **nombra
+  al funcionario** (`PROFESIONAL ATENCION`) que las registra → apunta a disminuir el
+  trabajo a saco vacío. Salida: `Por_Actividad` (con NUM REM, para ver por qué) +
+  `Por_Funcionario` (a quién avisar) + `TP_Resumen` + `TP_Detalle`. Reciclado del módulo
+  de actividades (mismo ADA, `_rango_mes`, `mask_tributa_ada`). Reporte aparte, no fork.
+  Se genera junto al SM Actividades (mismo ADA) → `REM_SM_trabajo_perdido_AAAA_MM.xlsx`.
+- **Maestro de Actividades** (`rem_utils.cargar_maestro` + `maestro_rem_map`): catálogo
+  RAYEN actividad↔estamento↔casilla REM (217k filas). Es la **autoridad** para clasificar
+  qué tributa; para actividades que RAYEN agregue después y no estén en el Maestro, cae
+  la **heurística** substring (sigue siendo heurística, por diseño). Selector opcional en
+  la pestaña SM. Definición de "perdido" (elegida por el referente): **todo lo SM-ish que
+  no cae en A04/A06/19A/A26/A27/A32** (incluye REM-Gestion, A03, A28…); el NUM REM se
+  muestra para poder refinar.
+- **Maestro SLIM versionado** (`refs tablas/maestro_slim.csv.gz`, ~1.2 MB) + generador
+  `tools/slim_maestro.py`: el Maestro completo (7.7 MB) queda LOCAL; el script lo recorta a
+  actividad × estamento × clasificación REM (sin las 6 flags) y lo comprime. `cargar_maestro`
+  lee `.csv.gz` además de `.xlsx`. Whitelisteado en `.gitignore` (sin PII de paciente).
+- **`rem_utils.verificar_hoja_unica`** — guarda de integridad: los exports RAYEN/IRIS
+  siempre bajan 1 hoja con datos + 2 vacías; datos en **>1 hoja = archivo MODIFICADO**
+  (típico: se le agregó una tabla dinámica) → `ArchivoInvalido('modificado', …)`. Enchufada
+  en `cargar_canonico` → cubre ADA, grupal, A23 (otros/NSP). Robusta a la 'dimension' rota.
+- **`ADA_TRIBUTAN` + `mask_tributa_ada`** en `rem_sm_actividades` — fuente única de qué
+  actividades del ADA tributan a algún REM SM (la reciclan el módulo y el detector).
+- **`PROFESIONAL ATENCION`** agregado al `MAPA_ATENCIONES` (nombre del funcionario, IRIS).
+- **`tools/limpiar_refs.py`** + **skill `limpiar-refs`** — recorta a solo-header cualquier
+  export nuevo en `refs tablas/` (privacy-by-design, §8), **sin leer valores** (cuenta
+  celdas para ubicar el header). Denylist protege templates/`calculador`/`minimanual`/
+  `comentado`/`arsenal`/`maestro`.
+- Tests `tests/test_trabajo_perdido.py` (9/9): clasificación por Maestro, heurística de
+  actividad nueva, Por_Funcionario, sin-maestro, filtro de mes, y la guarda multi-hoja.
+
+### Seguridad / privacidad
+- La guarda multi-hoja + el recorte a header-only refuerzan que el repo nunca vea PII
+  aunque un export venga modificado o sin anonimizar.
+
 ## [1.5.6] — 2026-08-04
 
 Ajustes de las tablas de SM Actividades al traspasar al SA oficial + composición

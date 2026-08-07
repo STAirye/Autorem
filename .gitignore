@@ -10,6 +10,7 @@
 *.xlsm
 *.csv
 *.tsv
+*.gz
 # Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
 # explícito: git add -f muestra_anonimizada.xlsx
 
@@ -41,6 +42,9 @@ SENSITIVE_PII/
 !refs tablas/goldberg administrativo.xlsx
 !refs tablas/pscy 10 14 administrativo.xlsx
 !refs tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES iris.xlsx
+# Maestro de Actividades SLIM (catálogo actividad↔estamento↔REM, sin PII de paciente;
+# generado por tools/slim_maestro.py desde el Maestro completo local). Ver §8.
+!refs tablas/maestro_slim.csv.gz
 
 # --- Salidas del script ---
 *_procesado.xlsx

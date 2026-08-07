@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.5.6
+# Version: 1.6.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -627,6 +627,8 @@ def _tab_sm(nb, root):
         "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  →  casi todas las casillas.\n"
         "2.  Atenciones Grupales  →  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
         "3.  Inscritos y Adscritos (opcional, ENORME)  →  solo para el flag TRANS (género).\n"
+        "4.  Maestro de Actividades (opcional)  →  clasifica el reporte extra de TRABAJO PERDIDO:\n"
+        "     actividades con 'mental'/'demencia' que NO tributan al REM + qué funcionario las registra.\n"
         "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
         "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
         "⚠ Para el flag GESTANTE se usa una ventana de 3 MESES → carga el ADA de los últimos 3 meses."
@@ -640,6 +642,7 @@ def _tab_sm(nb, root):
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
     get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
     get_multi = _fila_archivos(tab, "Multiprofesional (opc, A26):", "Monitoreo Multiprofesional — composición de VDI en A26")
+    get_maestro = _fila_archivos(tab, "Maestro Actividades (opc, saco vacío):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -683,6 +686,17 @@ def _tab_sm(nb, root):
             E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
                                multiprofesional=multiprofesional, mes=(y, m), log=log)
             smact.escribir(E, salida)
+            # Reporte de TRABAJO PERDIDO (saco vacío): mismo ADA. Try propio para que un
+            # fallo acá (p.ej. Monitoreo admin sin 'PROFESIONAL ATENCION') no tumbe el SM.
+            try:
+                import modulos.rem_sm_trabajo_perdido as tpmod
+                mtr = get_maestro()
+                Etp = tpmod.procesar(ada, maestro=(mtr[0] if mtr else None), mes=(y, m), log=log)
+                salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+                tpmod.escribir(Etp, salida_tp)
+                log(f"✔ Trabajo perdido: {len(Etp)} atenciones a saco vacío → {salida_tp.name}")
+            except Exception as e:   # noqa: BLE001
+                log(f"[tp] ⚠ no se generó el reporte de trabajo perdido: {e}")
         except ImportError as e:
             messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
             return

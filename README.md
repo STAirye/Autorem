@@ -25,7 +25,7 @@ de distintos **programas de salud**:
 
 | Programa de salud | Reportes REM | Estado |
 |---|---|---|
-| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) · **Actividades** (A04·A06·A19a·A26·A27·A32) | ✅ |
+| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) · **Actividades** (A04·A06·A19a·A26·A27·A32) · **Trabajo perdido** | ✅ |
 | **Respiratorio** | A23 (indicadores del mes · SALA bajo control · Sección G inasistentes crónicos · Sección H inasistentes a citación) | 🚧 IRIS pleno · Admin parcial · falta agregación mensual |
 
 Cada reporte es una **pestaña** en la interfaz. La salida deja una planilla lista
@@ -91,9 +91,18 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   **Informe Inscritos y Adscritos** (solo para el flag **TRANS**); elige el mes. Salida:
   hoja *SM_Detalle* (auditable) + una hoja por sección REM, lista para **copiar-pegar al
   template SA_26**.
+- **REM SM · Trabajo perdido ("saco vacío")** — reporte de auditoría que se genera junto
+  al de Actividades (mismo ADA). Detecta atenciones cuya actividad trae *mental*/*demencia*
+  pero **no tributan** a ninguna casilla SM del REM, y **nombra al funcionario** que las
+  registra, para reducir el trabajo perdido. Usa el **Maestro de Actividades** (catálogo
+  RAYEN, opcional) como autoridad para clasificar; lo nuevo que RAYEN agregue cae a
+  heurística. Salida: *Por_Actividad* + *Por_Funcionario* + resumen + detalle.
 
 Cada pestaña de datos (A23 y SM) deja elegir la **carpeta de salida** (por defecto, la
 carpeta del `.exe`), para no perder el resultado junto al input.
+
+Los exports RAYEN/IRIS **modificados** (datos en más de una hoja, p.ej. con una tabla
+dinámica agregada) se **rechazan** con un aviso claro: cárgalos tal como los descargas.
 
 > ⚠ Carga los exports **tal como los descargas** de RAYEN/IRIS: sin abrirlos ni
 > re-guardarlos. Un archivo modificado puede fallar en silencio o dar cifras erróneas.
@@ -123,6 +132,8 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `modulos/rem_a03_d3_instrumentos.py` | Screening A03 D.3 (PSC/PSC-Y/GHQ-12), integrado a la GUI. |
 | `modulos/rem_a23_respiratorio.py` | REM A23 (Respiratorio), con pandas. |
 | `modulos/rem_sm_actividades.py` | REM SM Actividades (A04/A06/A19a/A26/A27/A32), con pandas. Tablas copy-paste al SA_26. |
+| `modulos/rem_sm_trabajo_perdido.py` | REM SM · Trabajo perdido: actividades SM que no tributan + qué funcionario las registra. |
+| `tools/limpiar_refs.py` | Recorta a solo-header los exports nuevos de `refs tablas/` (privacy-by-design, sin leer valores). |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 
