@@ -226,6 +226,49 @@ def test_rechaza_no_instrumento():
         assert e.categoria == "no_instrumento"
 
 
+def test_tabla_d3_excluye_sin_riesgo():
+    """La tabla A03·D.3 = 6 filas (ingreso/egreso × Bajo/Medio/Alto). 'Sin riesgo'
+    (bajo el corte) NO cuenta en la tabla, aunque sí esté en el detalle."""
+    import pandas as pd
+    det = pd.DataFrame([
+        dict(momento="Ingreso", resu_disam="Bajo", edad=7, sexo="Hombre"),
+        dict(momento="Ingreso", resu_disam="Alto", edad=8, sexo="Mujer"),
+        dict(momento="Ingreso", resu_disam="Sin riesgo", edad=6, sexo="Hombre"),  # fuera D.3
+        dict(momento="Egreso", resu_disam="Medio", edad=40, sexo="Mujer"),
+    ])
+    t = scr._tabla_d3(det)
+    assert len(t) == 6, f"esperaba 6 filas, hubo {len(t)}"
+
+    def cel(mom, niv, col):
+        f = t[t["Evaluación"].str.contains(mom) & (t["Resultado"] == niv)].iloc[0]
+        return int(f[col])
+    assert cel("ingreso", "Bajo", "Ambos") == 1 and cel("ingreso", "Bajo", "5-9 H") == 1
+    assert cel("ingreso", "Alto", "5-9 M") == 1
+    assert cel("egreso", "Medio", "40-44 M") == 1     # edad 40 → banda 40-44
+    assert int(t["Ambos"].sum()) == 3, "'Sin riesgo' no debe contar en el D.3"
+
+
+def test_procesar_unificado():
+    """3 instrumentos → 1 tabla D.3 + detalle auditable al final (con los 'Sin riesgo')."""
+    ppsc = _iris("u_psc.xlsx", "Cuestionario para Padres PSC", [
+        ("1-1", 7, "Hombre", "", "", "Ingreso", 40, "Bajo"),   # Bajo
+        ("2-2", 8, "Mujer",  "", "", "Ingreso", 72, "Alto"),   # Alto
+        ("3-3", 6, "Hombre", "", "", "Ingreso", 20, ""),       # <33 = Sin riesgo (fuera D.3)
+    ])
+    pghq = _iris("u_ghq.xlsx", "Cuestionario de Salud de Goldberg", [
+        ("4-4", 40, "Mujer", "", "", "Egreso", 5, ""),         # GHQ 5 = Medio
+    ])
+    salida = _TMP / "u_out.xlsx"
+    res = scr.procesar_unificado({"PSC": ppsc, "GHQ-12": pghq}, salida, log=_quiet)
+    assert res["total"] == 4
+    assert int(res["tabla"]["Ambos"].sum()) == 3        # Sin riesgo fuera de la tabla
+    wb = openpyxl.load_workbook(salida)
+    assert "A03_D3" in wb.sheetnames
+    assert wb.sheetnames[-1] == "A03_D3_Detalle"        # auditable, al final
+    assert wb["A03_D3_Detalle"].max_row - 1 == 4        # detalle incluye el Sin riesgo
+    wb.close()
+
+
 # ── Runner propio ─────────────────────────────────────────────────────
 def _main():
     pruebas = [v for k, v in sorted(globals().items())

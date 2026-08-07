@@ -12,6 +12,30 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.0] — 2026-08-07
+
+Módulo nuevo (Y++): **reporte A03·D.3 UNIFICADO** (cuestionarios PSC/PSC-Y/GHQ-12 →
+tabla lista para copiar-pegar al SA_26) + grilla `grid` compartida.
+
+### Agregado
+- **`rem_a03_d3_instrumentos.procesar_unificado`** — junta los 3 instrumentos de
+  monitoreo del PSM en la **tabla A03·D.3** del SA_26: 6 filas (Evaluación ingreso/
+  egreso × Bajo/Medio/Alto) × [Total(Ambos·H·M) + bandas etarias × sexo] +
+  hoja **DETALLE auditable al final** (una fila por aplicación). Solo INGRESADOS al
+  PSM; **'Sin riesgo'** (bajo el corte) va al detalle pero **NO** al D.3 (no es
+  categoría del REM). Tamizaje (PSC-17/PHQ-9…) = A03·H, fuera de alcance.
+- **GUI A03**: 3 slots (PSC / PSC-Y / GHQ-12), cargás los que existan (≥1); el slot
+  fija el instrumento (fuera la auto-detección + el dropdown). Reloj threaded +
+  carpeta de salida. Estamentos opcional (solo alimenta el detalle).
+- **Checkbox "¿Incluir cuestionarios?" en Actividades**: al marcarlo despliega los 3
+  slots del A03·D.3 y, al procesar, genera también `REM_A03_D3_AAAA_MM.xlsx` (mismo
+  botón). *(Duplicado a propósito con la pestaña A03 standalone; en la GUI 2.0 se
+  elimina la standalone y el A03 vive solo acá.)*
+- **`rem_utils.grid`** (+ bandas `BANDAS_A04/A06`) — grilla edad×sexo movida a la base
+  compartida; la usan SM, A03 (y A23 en P3). `procesar(salida=None)` del A03 devuelve
+  las filas sin escribir (para el reporte unificado).
+- Tests `test_tabla_d3_excluye_sin_riesgo` + `test_procesar_unificado` (screening 11/11).
+
 ## [1.6.1] — 2026-08-07
 
 Feedback en la GUI (ventana ya no se congela) + wins de perf. Fallback seguro antes

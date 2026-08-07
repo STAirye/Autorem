@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.1
+# Version: 1.7.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -37,7 +37,13 @@ Dos formatos (perfiles), igual que el A05: IRIS y Administrativo. Se autodetecta
 
 CORE: 1 fila por aplicación con ambos resultados + estamento (IRIS directo, o
 Administrativo vía lookup 'Utilización de Cupos' → programas/estamentos.py).
-PENDIENTE (v2): conteos agregados por rango etario para pegar en el SA.
+
+REPORTE UNIFICADO (procesar_unificado): junta los 3 instrumentos → tabla A03·D.3
+lista para copiar-pegar al SA_26 (Evaluación ingreso/egreso × Bajo/Medio/Alto ×
+banda etaria × sexo, con `rem_utils.grid`) + hoja de DETALLE auditable al final.
+Solo INGRESADOS al PSM; 'Sin riesgo' (bajo el corte) va al detalle pero NO al D.3
+(no es categoría del REM). Los instrumentos de TAMIZAJE (PSC-17/PHQ-9…) van al
+A03·H, hoy fuera de alcance. `procesar(salida=None)` devuelve las filas sin escribir.
 
 Contexto completo: docs/CONTEXTO_REM_A03_D3_INSTRUMENTOS.md
 """
@@ -47,6 +53,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
+    grid as _grid, BANDAS_A06, LBL_A06,
 )
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
                                   faltantes, estamentos_conocidos, aplicar_resoluciones)
@@ -222,9 +229,10 @@ def abrir_validado(entrada):
 
 
 # ── Núcleo ────────────────────────────────────────────────────────────
-def procesar(entrada, salida, instrumento=None, estamentos=None,
+def procesar(entrada, salida=None, instrumento=None, estamentos=None,
              resolver_estamento=None, log=print):
     """Detecta formato + instrumento, arma la hoja de instrumentos y guarda.
+    `salida` None = NO escribe (solo devuelve las filas, para el reporte unificado).
     `instrumento` opcional fuerza el instrumento (si None, autodetecta).
     `estamentos` opcional (ruta al reporte 'Utilización de Cupos' o dict ya
     cargado): en Administrativo rellena el estamento por nombre de funcionario.
@@ -334,35 +342,35 @@ def procesar(entrada, salida, instrumento=None, estamentos=None,
         log(f"[estamento] rellenados: {n_estam}"
             + (f" | quedan sin estamento: {len(sin_estam)}" if sin_estam else ""))
 
-    # ── hoja de salida ──
-    if NOMBRE_HOJA_SALIDA in wb.sheetnames:
-        del wb[NOMBRE_HOJA_SALIDA]
-    ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
-    cols = ["RUT", "Edad", "Sexo", "Instrumento", "Momento", "Puntaje",
-            "Resultado_RAYEN", "Banda_RAYEN", "Resultado_DISAM", "Discrepancia",
-            "Estamento", "Funcionario", "Fila_Origen"]
-    ws2.append(cols)
     orden_mom = {"INGRESO": 0, "EGRESO": 1}
     filas.sort(key=lambda e: (orden_mom.get(norm(e["momento"]), 9),
                               str(e["resu_disam"]), str(e["rut"])))
-    for e in filas:
-        ws2.append([e["rut"], e["edad"], e["sexo"], e["instrumento"], e["momento"],
-                    e["puntaje"], e["resu_rayen"], e["banda_rayen"], e["resu_disam"],
-                    e["disc"], e["estamento"], e["funcionario"], e["fila"]])
 
-    from openpyxl.styles import Font
-    for cell in ws2[1]:
-        cell.font = Font(bold=True)
-    ws2.freeze_panes = "A2"
-    if ws2.max_row >= 1:
-        ws2.auto_filter.ref = ws2.dimensions
-    from openpyxl.utils import get_column_letter
-    anchos = [13, 6, 8, 12, 10, 8, 30, 12, 16, 12, 22, 22, 11]
-    for i, w in enumerate(anchos, 1):
-        ws2.column_dimensions[get_column_letter(i)].width = w
-
-    wb.save(salida)
-    log(f"[ok] guardado: {salida}  (hoja '{NOMBRE_HOJA_SALIDA}')")
+    # ── hoja de salida (solo si hay `salida`; el reporte unificado no escribe acá) ──
+    if salida is not None:
+        if NOMBRE_HOJA_SALIDA in wb.sheetnames:
+            del wb[NOMBRE_HOJA_SALIDA]
+        ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
+        cols = ["RUT", "Edad", "Sexo", "Instrumento", "Momento", "Puntaje",
+                "Resultado_RAYEN", "Banda_RAYEN", "Resultado_DISAM", "Discrepancia",
+                "Estamento", "Funcionario", "Fila_Origen"]
+        ws2.append(cols)
+        for e in filas:
+            ws2.append([e["rut"], e["edad"], e["sexo"], e["instrumento"], e["momento"],
+                        e["puntaje"], e["resu_rayen"], e["banda_rayen"], e["resu_disam"],
+                        e["disc"], e["estamento"], e["funcionario"], e["fila"]])
+        from openpyxl.styles import Font
+        for cell in ws2[1]:
+            cell.font = Font(bold=True)
+        ws2.freeze_panes = "A2"
+        if ws2.max_row >= 1:
+            ws2.auto_filter.ref = ws2.dimensions
+        from openpyxl.utils import get_column_letter
+        anchos = [13, 6, 8, 12, 10, 8, 30, 12, 16, 12, 22, 22, 11]
+        for i, w in enumerate(anchos, 1):
+            ws2.column_dimensions[get_column_letter(i)].width = w
+        wb.save(salida)
+        log(f"[ok] guardado: {salida}  (hoja '{NOMBRE_HOJA_SALIDA}')")
 
     n_disc = sum(1 for e in filas if e["disc"] == "SI")
     por_momento = {}
@@ -383,17 +391,93 @@ def procesar(entrada, salida, instrumento=None, estamentos=None,
             + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
 
     return {
-        "salida": str(salida), "instrumento": inst["nombre"], "formato": formato,
+        "salida": (str(salida) if salida is not None else None),
+        "instrumento": inst["nombre"], "formato": formato,
         "total": len(filas), "discrepancias": n_disc, "por_momento": por_momento,
         "por_resultado": por_resultado, "hoja": NOMBRE_HOJA_SALIDA,
         "estam_rellenados": n_estam, "estam_faltan": len(sin_estam),
+        "filas": filas,
     }
 
 
-# ── Descriptor para el registro de tareas (lo consumirá autorem.py) ──
+# ╔═══════════════════════════════════════════════════════════════════╗
+# ║  REPORTE UNIFICADO A03·D.3 (tabla copy-paste al SA_26, pestaña A03)║
+# ╚═══════════════════════════════════════════════════════════════════╝
+# El D.3 registra el resultado del MONITOREO al ingreso/egreso del PSM (solo personas
+# INGRESADAS; los instrumentos de TAMIZAJE van al A03·H, hoy fuera de alcance). Los 3
+# instrumentos colapsan en UNA tabla: 6 filas (ingreso/egreso × Bajo/Medio/Alto) ×
+# [Total(Ambos·H·M) + bandas etarias × sexo]. 'Sin riesgo' (bajo el corte REM, la
+# mayoría) NO va al D.3: no es categoría válida del REM (ver clasificar_psc).
+_D3_MOMENTOS = [("Evaluación al ingreso", "INGRESO"), ("Evaluación al egreso", "EGRESO")]
+_D3_NIVELES = ["Bajo", "Medio", "Alto"]
+
+
+def _tabla_d3(det):
+    """DataFrame de aplicaciones (`det`, cols instrumento/momento/resu_disam/edad/sexo)
+    -> tabla A03·D.3 en el ORDEN del template SA_26."""
+    import pandas as pd
+    d = det.copy()
+    d["mom_n"] = d["momento"].map(norm)
+    d["edad"] = pd.to_numeric(d["edad"], errors="coerce")
+    filas = []
+    for lbl_mom, mom in _D3_MOMENTOS:
+        for niv in _D3_NIVELES:
+            sub = d[(d["mom_n"] == mom) & (d["resu_disam"] == niv)]
+            filas.append({"Evaluación": lbl_mom, "Resultado": niv,
+                          **_grid(sub, BANDAS_A06, LBL_A06)})
+    return pd.DataFrame(filas)
+
+
+def _escribir_unificado(det, tabla, salida):
+    """Escribe la tabla D.3 (copy-paste) + SIEMPRE el detalle auditable al FINAL (una
+    fila por aplicación, con RUT/puntaje/estamento/funcionario para auditorías)."""
+    import pandas as pd
+    # orden y rótulos del detalle (igual que la hoja del modo single-file)
+    ren = [("instrumento", "Instrumento"), ("momento", "Momento"),
+           ("resu_disam", "Resultado_DISAM"), ("banda_rayen", "Banda_RAYEN"),
+           ("resu_rayen", "Resultado_RAYEN"), ("disc", "Discrepancia"),
+           ("edad", "Edad"), ("sexo", "Sexo"), ("rut", "RUT"), ("puntaje", "Puntaje"),
+           ("estamento", "Estamento"), ("funcionario", "Funcionario"), ("fila", "Fila_Origen")]
+    cols = [(k, v) for k, v in ren if k in det.columns]
+    det2 = det[[k for k, _ in cols]].rename(columns=dict(cols))
+    orden = {"INGRESO": 0, "EGRESO": 1}
+    det2 = det2.assign(_o=det["momento"].map(lambda x: orden.get(norm(x), 9))) \
+               .sort_values(["_o", "Resultado_DISAM", "Instrumento"]).drop(columns="_o")
+    with pd.ExcelWriter(salida) as xw:
+        tabla.to_excel(xw, index=False, sheet_name="A03_D3")
+        det2.to_excel(xw, index=False, sheet_name="A03_D3_Detalle")   # auditable, al final
+    return str(salida)
+
+
+def procesar_unificado(por_instrumento, salida, estamentos=None,
+                       resolver_estamento=None, log=print):
+    """Reporte A03·D.3 UNIFICADO de los 3 instrumentos de monitoreo. `por_instrumento`
+    = dict {instrumento: ruta} (carga los que existan, ≥1; el slot fija el instrumento,
+    sin autodetección). Junta las aplicaciones, arma DETALLE + tabla D.3, y escribe UN
+    .xlsx. Devuelve resumen con `.attrs`-free tabla para el mensaje final."""
+    import pandas as pd
+    todas, resumen = [], {}
+    for inst, ruta in por_instrumento.items():
+        if not ruta:
+            continue
+        res = procesar(ruta, salida=None, instrumento=inst, estamentos=estamentos,
+                       resolver_estamento=resolver_estamento, log=log)
+        todas.extend(res["filas"])
+        resumen[res["instrumento"]] = res["total"]
+    if not todas:
+        raise ArchivoInvalido("sin_datos", "No hay aplicaciones en los archivos cargados.")
+    det = pd.DataFrame(todas)
+    tabla = _tabla_d3(det)
+    _escribir_unificado(det, tabla, salida)
+    log(f"[a03] D.3 unificado: {len(todas)} aplicaciones de {len(resumen)} instrumento(s) "
+        f"→ {salida}")
+    return {"salida": str(salida), "total": len(todas), "por_instrumento": resumen,
+            "tabla": tabla}
+
+
+# ── Descriptor para el registro de tareas (lo consume autorem.py) ──
 # OJO: es un REPORTE distinto al 'Control de Salud Mental' (otros perfiles y
-# autodetección propia). La integración a la GUI/dispatcher (con el paso de
-# confirmar el instrumento detectado) es el próximo paso.
+# autodetección propia). La GUI ahora usa `procesar_unificado` (3 slots → tabla D.3).
 TAREA = {
     "id": "a03_d3_instrumentos",
     "nombre": "A03 D.3 · Instrumentos (PSC/PSC-Y/GHQ-12)",

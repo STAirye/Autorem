@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.1
+# Version: 1.7.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.6.1"
+VERSION = "1.7.0"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -331,6 +331,61 @@ def _guard_maestro(col):
     if not col["ACT"] or not col["NUMREM"]:
         raise ValueError("No reconozco el Maestro de Actividades (faltan 'ACTIVIDAD' "
                          "y/o 'NUM REM'). ¿Es el archivo correcto?")
+
+
+# ── Grilla de agregación edad×sexo (tablas REM copy-paste; SM · A23 · A03) ──
+# Forma del template MINSAL: Ambos·Hombres·Mujeres + cada banda etaria × (H/M).
+# Bandas inclusive; el último tramo (80,200) = '80 y más'. A04 separa <1 y 1-4;
+# A06/A32/A03·D.3 agrupan 0-4. Compartido para no re-implementar en cada módulo.
+BANDAS_A04 = [(0, 0), (1, 4), (5, 9), (10, 14), (15, 19), (20, 24), (25, 29),
+              (30, 34), (35, 39), (40, 44), (45, 49), (50, 54), (55, 59),
+              (60, 64), (65, 69), (70, 74), (75, 79), (80, 200)]
+LBL_A04 = ["<1", "1-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34",
+           "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69",
+           "70-74", "75-79", "80+"]
+BANDAS_A06 = [(0, 4)] + BANDAS_A04[2:]
+LBL_A06 = ["0-4"] + LBL_A04[2:]
+
+
+def _mujer(s):
+    n = norm(s); return ("FEMENIN" in n) or ("MUJER" in n)
+
+
+def _hombre(s):
+    n = norm(s); return ("MASCULIN" in n) or ("HOMBRE" in n)
+
+
+def _band_idx(edad, bandas):
+    import pandas as pd
+    if pd.isna(edad):
+        return None
+    e = int(edad)
+    return next((i for i, (lo, hi) in enumerate(bandas) if lo <= e <= hi), None)
+
+
+def _isum(s):
+    """Suma robusta a Series vacías (evita el '' de una object-Series vacía)."""
+    return int(s.sum()) if len(s) else 0
+
+
+def grid(sub, bandas, lbls, con_sexo=True):
+    """Fila de conteos en el ORDEN del template: Ambos·Hombres·Mujeres y luego cada
+    banda × sexo (o solo total por banda si con_sexo=False). `sub` = DataFrame con
+    columnas 'sexo' y 'edad'."""
+    hom = sub["sexo"].map(_hombre)
+    muj = sub["sexo"].map(_mujer)
+    bi = sub["edad"].map(lambda x: _band_idx(x, bandas))
+    if con_sexo:
+        out = {"Ambos": len(sub), "Hombres": _isum(hom), "Mujeres": _isum(muj)}
+        for i, l in enumerate(lbls):
+            m = bi.eq(i)
+            out[f"{l} H"] = _isum(m & hom)
+            out[f"{l} M"] = _isum(m & muj)
+    else:
+        out = {"Total": len(sub)}
+        for i, l in enumerate(lbls):
+            out[l] = _isum(bi.eq(i))
+    return out
 
 
 def maestro_rem_map(dfm):

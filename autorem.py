@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.1
+# Version: 1.7.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -548,88 +548,88 @@ def _tab_a05(nb, root, ruta_inicial=""):
 
 
 # ── Pestaña A03 D.3: Screening (PSC / PSC-Y / GHQ-12) ──────────────────
+def _bloque_a03(parent):
+    """Los 3 slots de instrumentos A03·D.3 (carga los que existan, ≥1). El slot fija
+    el instrumento (sin autodetección). Devuelve get() -> dict {instrumento: ruta}."""
+    g = {
+        "PSC":    _fila_archivos(parent, "PSC (padres, 5-9):", "Cuestionario para Padres PSC"),
+        "PSC-Y":  _fila_archivos(parent, "PSC-Y (10-14):", "Cuestionario para Adolescentes (PSC-Y)"),
+        "GHQ-12": _fila_archivos(parent, "GHQ-12 (Goldberg, 15+):", "Cuestionario de Salud de Goldberg"),
+    }
+
+    def get():
+        out = {}
+        for inst, getf in g.items():
+            fs = getf()
+            if fs:
+                out[inst] = fs[0]
+        return out
+    return get
+
+
+def _correr_a03(root, barra, btn, log, por_inst, salida, est_ruta, messagebox):
+    """Corre el reporte A03·D.3 unificado en hilo (con reloj) y avisa al terminar.
+    Reutilizado por la pestaña A03 y por el checkbox 'cuestionarios' de Actividades."""
+    def trabajo(log):
+        # resolver_estamento=None: el diálogo Tk no puede abrirse desde el hilo worker;
+        # el estamento solo alimenta el DETALLE (no la tabla D.3), así que va best-effort
+        # (los funcionarios sin match quedan sin estamento en el detalle).
+        estamentos = str(est_ruta) if est_ruta else None
+        return screening.procesar_unificado(
+            por_inst, salida, estamentos=estamentos, resolver_estamento=None, log=log)
+
+    def al_terminar(res, err):
+        if err is not None:
+            _manejar_error(err, log, messagebox)
+            return
+        pit = " · ".join(f"{k}: {v}" for k, v in res["por_instrumento"].items())
+        txt = (f"Listo. A03·D.3 unificado.\n{res['total']} aplicaciones ({pit}).\n\n"
+               f"Guardado en:\n{res['salida']}")
+        log(""); log("✔ A03·D.3 " + txt.replace("\n", " | "))
+        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+            _abrir_carpeta(Path(res["salida"]).parent)
+
+    _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar)
+
+
 def _tab_a03(nb, root):
-    import tkinter as tk
     from tkinter import ttk, messagebox
     tab = ttk.Frame(nb, padding=12)
     nb.add(tab, text="REM A03 D.3 · Screening")
 
     instr = (
-        "Procesa un export de un instrumento de monitoreo del PSM (PSC / PSC-Y / GHQ-12),\n"
-        "aplicado al ingreso y egreso. Se baja UN archivo por instrumento (IRIS o Administrativo).\n"
-        "1.  Elige el archivo.\n"
-        "2.  El instrumento se detecta solo (por contenido, no por nombre); si sale mal,\n"
-        "     corrígelo en el desplegable.\n"
-        "3.  «Procesar» → «…_procesado.xlsx» con una fila por aplicación: puntaje, resultado\n"
-        "     automático (RAYEN) y calculado (cortes DISAM), discrepancia, momento y estamento.\n"
-        "⚠  El estamento (quién aplicó) solo viene en el formato IRIS."
+        "Monitoreo del PSM (PSC / PSC-Y / GHQ-12), aplicado al INGRESO y EGRESO del programa.\n"
+        "Carga UN archivo por instrumento (los que existan; el slot ya dice cuál es, sin\n"
+        "auto-detección). Salida UNIFICADA: la tabla A03·D.3 lista para copiar-pegar al SA_26\n"
+        "(Evaluación ingreso/egreso × Bajo/Medio/Alto × rango etario × sexo) + una hoja de\n"
+        "DETALLE auditable (una fila por aplicación: puntaje, DISAM vs RAYEN, discrepancia…).\n"
+        "Solo cuenta personas INGRESADAS al PSM; los 'Sin riesgo' (bajo el corte) van al\n"
+        "detalle pero NO a la tabla D.3 (no son categoría del REM). Tamizaje = A03·H (aparte)."
     )
     caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(0, 8))
     ttk.Label(caja_instr, text=instr, justify="left").pack(anchor="w")
     _aviso_sin_modificar(tab)
 
-    var_ruta = tk.StringVar()
-    _fila_archivo(tab, var_ruta, "Elige el export del instrumento de screening")
-
-    caja_inst = ttk.LabelFrame(tab, text="Instrumento", padding=8)
-    caja_inst.pack(fill="x", pady=(2, 6))
-    ttk.Label(caja_inst, text="Se detecta por contenido. Cámbialo solo si la detección sale mal:").pack(anchor="w")
-    opciones = ["Auto-detectar"] + list(screening.INSTRUMENTOS.keys())
-    var_inst = tk.StringVar(value=opciones[0])
-    ttk.OptionMenu(caja_inst, var_inst, opciones[0], *opciones).pack(anchor="w", pady=(4, 0))
-
-    get_est = _bloque_estamentos(tab)
+    get_a03 = _bloque_a03(tab)
+    _separador_opcionales(tab)
+    get_est = _bloque_estamentos(tab)     # opcional: solo rellena el Estamento del detalle (admin)
+    get_salida = _fila_carpeta_salida(tab)
 
     log, limpiar = _crear_log(tab, root)
 
     def on_procesar():
         limpiar()
-        entrada = _valida_ruta(var_ruta.get(), messagebox)
-        if entrada is None:
+        por_inst = get_a03()
+        if not por_inst:
+            messagebox.showwarning("Sin archivos", "Carga al menos un instrumento "
+                                   "(PSC / PSC-Y / GHQ-12).")
             return
-        instrumento = None if var_inst.get() == "Auto-detectar" else var_inst.get()
-        est_ruta = get_est()
-        estamentos = None
-        if est_ruta:
-            pe = _valida_ruta(est_ruta, messagebox)
-            if pe is None:
-                return
-            estamentos = str(pe)
-        salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
-        btn.configure(state="disabled")
-        try:
-            res = screening.procesar(
-                entrada, salida, instrumento=instrumento, estamentos=estamentos,
-                resolver_estamento=lambda falt, ops: _resolver_estamentos(root, falt, ops),
-                log=log)
-        except screening.ArchivoInvalido as e:
-            log(f"[ARCHIVO] {e.categoria}")
-            messagebox.showerror("No pude procesarlo", str(e))
+        carpeta = _valida_carpeta(get_salida(), messagebox)
+        if carpeta is None:
             return
-        except PermissionError:
-            log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
-            messagebox.showerror("Permiso denegado", _MSG_PERMISO)
-            return
-        except Exception as e:
-            _error_inesperado(e, log, messagebox)
-            return
-        finally:
-            btn.configure(state="normal")
-        desglose = " · ".join(f"{k}: {v}" for k, v in res.get("por_resultado", {}).items())
-        est_line = ""
-        if estamentos:
-            est_line = f"Estamento: {res.get('estam_rellenados', 0)} rellenados"
-            if res.get("estam_faltan"):
-                est_line += f" · {res['estam_faltan']} sin identificar"
-            est_line += "\n"
-        txt = (f"Listo. {res['instrumento']} ({res['formato']}).\n"
-               f"{res['total']} aplicaciones · {res['discrepancias']} discrepancias RAYEN vs DISAM.\n"
-               f"Resultado DISAM → {desglose}\n{est_line}\n"
-               f"Guardado en:\n{res['salida']}")
-        log(""); log("✔ " + txt.replace("\n", " | "))
-        if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
-            _abrir_carpeta(Path(res["salida"]).parent)
+        salida = carpeta / "REM_A03_D3.xlsx"
+        _correr_a03(root, barra, btn, log, por_inst, salida, get_est(), messagebox)
 
     barra = ttk.Frame(tab)
     barra.pack(fill="x")
@@ -782,6 +782,18 @@ def _tab_sm(nb, root):
     ttk.Spinbox(barra_mes, from_=2020, to=2100, width=6, textvariable=var_anio).pack(side="left", padx=(6, 2))
     ttk.Spinbox(barra_mes, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
 
+    # Checkbox opcional: incluir los cuestionarios A03·D.3 (se despliegan al marcarlo).
+    var_a03 = tk.BooleanVar(value=False)
+    ttk.Checkbutton(tab, text="¿Incluir cuestionarios?  (genera además la tabla A03·D.3)",
+                    variable=var_a03, command=lambda: _toggle_a03()).pack(anchor="w", pady=(6, 0))
+    holder_a03 = ttk.Frame(tab)
+    holder_a03.pack(fill="x")
+    frame_a03 = ttk.LabelFrame(holder_a03, text="Cuestionarios A03·D.3 (PSC / PSC-Y / GHQ-12)", padding=8)
+    get_a03_sm = _bloque_a03(frame_a03)
+
+    def _toggle_a03():
+        frame_a03.pack(fill="x", pady=(2, 4)) if var_a03.get() else frame_a03.pack_forget()
+
     log, limpiar = _crear_log(tab, root)
 
     def on_procesar():
@@ -813,6 +825,11 @@ def _tab_sm(nb, root):
         salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
         mtr = get_maestro()
         maestro = mtr[0] if mtr else _slim_por_defecto()    # sin selección → Maestro slim del repo/exe
+        # Cuestionarios A03·D.3 (opcional): resolver en el hilo GUI (Tk vars no son
+        # thread-safe) y pasar los valores capturados al worker.
+        incluir_a03 = var_a03.get()
+        por_inst_a03 = get_a03_sm() if incluir_a03 else {}
+        salida_a03 = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
 
         def trabajo(log):
             from programas.rem_utils import cargar_atenciones
@@ -832,17 +849,30 @@ def _tab_sm(nb, root):
                 log(f"✔ Trabajo perdido: {n_tp} atenciones a saco vacío → {salida_tp.name}")
             except Exception as e:   # noqa: BLE001
                 log(f"[tp] ⚠ no se generó el reporte de trabajo perdido: {e}")
-            return E, n_tp
+            n_a03 = None
+            if incluir_a03:
+                if por_inst_a03:
+                    try:
+                        r03 = screening.procesar_unificado(por_inst_a03, salida_a03,
+                                                           estamentos=None, resolver_estamento=None, log=log)
+                        n_a03 = r03["total"]
+                        log(f"✔ A03·D.3: {n_a03} aplicaciones → {salida_a03.name}")
+                    except Exception as e:   # noqa: BLE001
+                        log(f"[a03] ⚠ no se generó la tabla A03·D.3: {e}")
+                else:
+                    log("[a03] ⚠ 'Incluir cuestionarios' marcado pero sin archivos → se omite.")
+            return E, n_tp, n_a03
 
         def al_terminar(res, err):
             if err is not None:
                 _manejar_error(err, log, messagebox)
                 return
-            E, n_tp = res
+            E, n_tp, n_a03 = res
             resu = E.attrs["tablas"]["SM_Resumen"]
             rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
             tptxt = f"\nTrabajo perdido: {n_tp} atenciones a saco vacío." if n_tp is not None else ""
-            txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}\n\n"
+            a03txt = f"\nA03·D.3: {n_a03} aplicaciones." if n_a03 is not None else ""
+            txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
                    f"{rtxt}\n\nGuardado en:\n{salida}")
             log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
             if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):

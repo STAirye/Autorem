@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.6.1
+# Version: 1.7.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,7 +44,9 @@ import pandas as pd
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  marcar_demografia, gestante_runs, trans_map,
-                                 atenid_multiprofesional)
+                                 atenid_multiprofesional,
+                                 grid as _grid, _mujer, _hombre, _band_idx, _isum,
+                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06)
 
 # Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
 # Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
@@ -72,15 +74,7 @@ DEM_A32 = [("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
            ("Demencia", "dem_demencia")]
 
 
-# ── Bandas etarias (inclusive). El último tramo (80,200) = '80 y más'. ──
-BANDAS_A04 = [(0, 0), (1, 4), (5, 9), (10, 14), (15, 19), (20, 24), (25, 29),
-              (30, 34), (35, 39), (40, 44), (45, 49), (50, 54), (55, 59),
-              (60, 64), (65, 69), (70, 74), (75, 79), (80, 200)]
-LBL_A04 = ["<1", "1-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34",
-           "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69",
-           "70-74", "75-79", "80+"]
-BANDAS_A06 = [(0, 4)] + BANDAS_A04[2:]     # A06/A32 agrupan 0-4 (A04 separa <1 y 1-4)
-LBL_A06 = ["0-4"] + LBL_A04[2:]
+# Bandas etarias + grilla edad×sexo (`_grid`) viven en rem_utils (compartidas SM/A23/A03).
 
 # Orden de filas de estamento en A06·A.1 (template SA_26).
 A06_ORDEN = ["Médico/a", "Psicólogo/a", "Enfermera/o", "Matrona/ón",
@@ -132,21 +126,6 @@ def _rango_mes(mes):
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
-def _mujer(s):
-    n = norm(s); return ("FEMENIN" in n) or ("MUJER" in n)
-
-
-def _hombre(s):
-    n = norm(s); return ("MASCULIN" in n) or ("HOMBRE" in n)
-
-
-def _band_idx(edad, bandas):
-    if pd.isna(edad):
-        return None
-    e = int(edad)
-    return next((i for i, (lo, hi) in enumerate(bandas) if lo <= e <= hi), None)
-
-
 def _estamento_rem(instr):
     """INSTRUMENTO del reporte -> fila de estamento del template A06."""
     n = norm(instr)
@@ -165,30 +144,6 @@ def _estamento_rem(instr):
     if "GESTOR" in n:
         return "Gestor Comunitario"
     return "Otros Profesionales Capacitados (Salud Mental)"
-
-
-def _isum(s):
-    """Suma robusta a Series vacías (evita el '' de object-Series vacía)."""
-    return int(s.sum()) if len(s) else 0
-
-
-def _grid(sub, bandas, lbls, con_sexo=True):
-    """Fila de conteos en el ORDEN del template: Ambos·Hombres·Mujeres y luego
-    cada banda × sexo (o solo total por banda si con_sexo=False)."""
-    hom = sub["sexo"].map(_hombre)
-    muj = sub["sexo"].map(_mujer)
-    bi = sub["edad"].map(lambda x: _band_idx(x, bandas))
-    if con_sexo:
-        out = {"Ambos": len(sub), "Hombres": _isum(hom), "Mujeres": _isum(muj)}
-        for i, l in enumerate(lbls):
-            m = bi.eq(i)
-            out[f"{l} H"] = _isum(m & hom)
-            out[f"{l} M"] = _isum(m & muj)
-    else:
-        out = {"Total": len(sub)}
-        for i, l in enumerate(lbls):
-            out[l] = _isum(bi.eq(i))
-    return out
 
 
 def _empty_ev():

@@ -25,7 +25,7 @@ de distintos **programas de salud**:
 
 | Programa de salud | Reportes REM | Estado |
 |---|---|---|
-| **Salud Mental** | A05 egresos · A05 ingresos · A03 D.3 screening (PSC/PSC-Y/GHQ-12) · **Actividades** (A04·A06·A19a·A26·A27·A32) · **Trabajo perdido** | ✅ |
+| **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3** (PSC/PSC-Y/GHQ-12 → tabla) · **Actividades** (A04·A06·A19a·A26·A27·A32) · **Trabajo perdido** | ✅ |
 | **Respiratorio** | A23 (indicadores del mes · SALA bajo control · Sección G inasistentes crónicos · Sección H inasistentes a citación) | 🚧 IRIS pleno · Admin parcial · falta agregación mensual |
 
 Cada reporte es una **pestaña** en la interfaz. La salida deja una planilla lista
@@ -91,6 +91,11 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   **Informe Inscritos y Adscritos** (solo para el flag **TRANS**); elige el mes. Salida:
   hoja *SM_Detalle* (auditable) + una hoja por sección REM, lista para **copiar-pegar al
   template SA_26**.
+- **REM A03 · D.3 (cuestionarios)** — junta los 3 instrumentos de monitoreo del PSM
+  (PSC / PSC-Y / GHQ-12) en la **tabla A03·D.3** lista para copiar-pegar al SA_26
+  (Evaluación ingreso/egreso × Bajo/Medio/Alto × rango etario × sexo) + hoja de detalle
+  auditable. Se puede correr en su pestaña, o desde Actividades con el check **"¿Incluir
+  cuestionarios?"**. Solo cuenta ingresados al PSM; los "sin riesgo" quedan en el detalle.
 - **REM SM · Trabajo perdido ("saco vacío")** — reporte de auditoría que se genera junto
   al de Actividades (mismo ADA). Detecta atenciones cuya actividad trae *mental*/*demencia*
   pero **no tributan** a ninguna casilla SM del REM, y **nombra al funcionario** que las
