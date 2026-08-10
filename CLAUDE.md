@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # CLAUDE.md — Proyecto autoREM (Salud Mental, SSMC)
 
 Contexto de proyecto para Claude Code. Este archivo se carga automáticamente al
-abrir el repo. Compila el estado a **julio 2026**, tras migrar el desarrollo de
+abrir el repo. Compila el estado a **agosto 2026**, tras migrar el desarrollo de
 Cowork a Claude Code (para usar git y crear módulos nuevos).
 
 ---
@@ -43,10 +43,11 @@ del REM A05** (Salud Mental).
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.7.0**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.7.2**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
-+ dispatcher con perfiles y GUI de pestañas.
++ **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
+(`programas/formatos.py`)** + dispatcher con perfiles y GUI de pestañas.
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -323,7 +324,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.7.0**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.7.2**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
