@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -46,9 +46,10 @@ import re
 from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
     ArchivoInvalido,
-    norm, solo_entero, buscar_col, num_pregunta,
+    norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
 )
+from programas import formatos
 
 # ── Diagnósticos con subtipo (clave = N.- diagnóstico, valor = N.- subtipo) ──
 # La numeración de preguntas es IDÉNTICA en IRIS y en el Administrativo.
@@ -129,15 +130,10 @@ OVERRIDE_SUBTIPO = {
     ],
 }
 
-# ── Detección de columnas de identificación (varía por formato) ──
-# QUIRK RAYEN (IRIS): 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la EDAD a la
-# fecha de LLENADO. En el Administrativo el equivalente es 'Edad de registro
-# formulario', pero con formato '99 años 12 meses 31 días' (edad_anios lo parsea).
-RUT_TOKENS_IRIS  = ["NUMERO", "IDENTIFICACION"]      # IRIS: 'NUMERO TIPO IDENTIFICACION'
-RUT_EXACTO_ADMIN = "RUT"                             # Admin: columna 'RUT' pelada
-EDAD_TOKENS_IRIS  = ["AÑO", "APLICACION", "FORMULARIO"]
-EDAD_TOKENS_ADMIN = ["EDAD", "REGISTRO", "FORMULARIO"]
-SEXO_HEADER = "SEXO"                                 # igual en ambos
+# ── Detección de columnas de identificación (RUT/edad/sexo, ambos formatos) ──
+# El eje IRIS/Admin y la resolución de identidad viven en `programas.formatos`
+# (compartidos con A03/estamentos). El QUIRK de 'AÑO APLICACIÓN FORMULARIO' (que
+# trae la EDAD, no el año) está documentado allá.
 
 # Caracterización demográfica (devuelve "SI"/"" salvo Trans). Validado jul-2026
 # contra valores reales de 'ALERTAS ADMINISTRATIVAS' (IRIS). En el Administrativo
@@ -155,13 +151,7 @@ NEGATIVOS_DEMO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION"
 # ── Config técnica compartida ──
 HOJA = None
 ANIO_COL_FALLBACK = 11                 # último recurso para la edad (layout IRIS)
-MAX_FILAS_BUSQUEDA_HEADER = 60
-
-# ── Firmas de formato (para detectar/validar) ──
-ANCLA_IRIS  = ["AÑO", "APLICACION", "FORMULARIO"]     # encabezado IRIS
-ANCLA_ADMIN = ["EDAD", "REGISTRO", "FORMULARIO"]      # encabezado Administrativo (fila 9)
-ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
-ADMIN_BANNER  = "SERVICIO DE SALUD"
+MAX_FILAS_BUSQUEDA_HEADER = formatos.MAX_FILAS_HEADER
 
 # ── Layout de salida (compartido por egresos/ingresos) ──
 ANCHOS_BASE = [14, 8, 8, 13, 44, 26, 13]   # RUT, Edad, Sexo, Tipo, Patologia, Subtipo, Falta
@@ -235,29 +225,12 @@ def encontrar_diagnostico(headers, c0):
 
 
 # ── DETECCIÓN Y VALIDACIÓN DE FORMATO ─────────────────────────────────
+# La detección del eje IRIS/Admin vive en `formatos.detectar_eje` (compartida con
+# A03/estamentos, con las firmas RAYEN estándar). Acá solo los validadores con los
+# mensajes específicos del formulario 'Control de Salud Mental'.
 def detectar_formato(ws):
-    """Devuelve 'iris' | 'administrativo' | 'desconocido' mirando las firmas."""
-    tope = min(ws.max_row, MAX_FILAS_BUSQUEDA_HEADER)
-    ancla = [norm(t) for t in ANCLA_IRIS]
-    rut_tok = [norm(t) for t in RUT_TOKENS_IRIS]
-    iris_ancla = iris_rut = False
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
-        if all(any(tok in v for v in vals) for tok in ancla):
-            iris_ancla = True
-        if any(all(t in v for t in rut_tok) for v in vals):
-            iris_rut = True
-    if iris_ancla and iris_rut:
-        return "iris"
-
-    if norm(ws.cell(row=1, column=1).value) == ADMIN_BANNER:
-        return "administrativo"
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
-        for m in ADMIN_MARKERS:
-            if any(norm(m) in v for v in vals):
-                return "administrativo"
-    return "desconocido"
+    """'iris' | 'administrativo' | 'desconocido' (firmas RAYEN estándar)."""
+    return formatos.detectar_eje(ws)
 
 
 _MSG_DESCONOCIDO = (
@@ -314,7 +287,7 @@ _DISCLAIMER_ADMIN = (
 PERFIL_IRIS = {
     "id": "iris",
     "nombre": "IRIS · Formularios Clinicos Control de Salud Mental  (recomendado)",
-    "ancla": ANCLA_IRIS,
+    "ancla": formatos.ANCLA_IRIS,
     "usar_blanco_en_a": True,
     "n_hardcode": 16,
     "validar": validar_iris,
@@ -323,9 +296,9 @@ PERFIL_IRIS = {
 PERFIL_ADMIN = {
     "id": "administrativo",
     "nombre": "RAYEN · Reporte Administrativo",
-    "ancla": ANCLA_ADMIN,
-    "usar_blanco_en_a": False,   # el banner tiene filas con col A vacía -> no fiarse del blanco
-    "n_hardcode": 8,             # encabezado en fila 9 (= n_hardcode + 1) como último recurso
+    "ancla": formatos.ANCLA_ADMIN,
+    "usar_blanco_en_a": formatos.HEADER_ADMIN["usar_blanco_en_a"],   # col A con blancos -> no fiarse
+    "n_hardcode": formatos.HEADER_ADMIN["n_hardcode"],               # encabezado en fila 9 (n_hardcode+1)
     "validar": validar_admin,
     "disclaimer": _DISCLAIMER_ADMIN,
 }
@@ -370,14 +343,10 @@ def _preparar(ws, perfil, log):
     headers_norm = [norm(h) for h in headers]
     num2col = {num_pregunta(h): i for i, h in enumerate(headers) if num_pregunta(h) is not None}
 
-    # RUT/edad: se aceptan los nombres de AMBOS formatos (robusto ante mala elección)
-    rut_col = (buscar_col(headers_norm, tokens=[norm(t) for t in RUT_TOKENS_IRIS])
-               or buscar_col(headers_norm, exacto=RUT_EXACTO_ADMIN))
-    edad_col = (buscar_col(headers_norm, tokens=[norm(t) for t in EDAD_TOKENS_IRIS])
-                or buscar_col(headers_norm, tokens=[norm(t) for t in EDAD_TOKENS_ADMIN]))
+    # RUT/edad/sexo: se aceptan los nombres de AMBOS formatos (robusto ante mala elección)
+    rut_col, edad_col, sexo_col = formatos.resolver_identidad(headers_norm)
     if edad_col is None or edad_col > ncols:
         edad_col = ANIO_COL_FALLBACK if ANIO_COL_FALLBACK <= ncols else None
-    sexo_col = buscar_col(headers_norm, exacto=SEXO_HEADER)
     log(f"[cols] RUT=col{rut_col} | Edad=col{edad_col} | Sexo=col{sexo_col}")
 
     demo_cols = {flag: (buscar_col(headers_norm, tokens=[norm(t) for t in src]), regla)
@@ -415,6 +384,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
     genero_col = ctx["genero_col"]; demo_cols = ctx["demo_cols"]
 
     busq = {k: [norm(t) for t in v] for k, v in busquedas.items()}
+    estado_idx = [c0 for c0 in range(ncols) if es_estado(headers[c0])]   # fijo: precomputado
     eventos = []
 
     for r in range(header_idx + 1, ws.max_row + 1):
@@ -432,9 +402,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
                 trans = str(g)
 
         for k, toks in busq.items():
-            for c0 in range(ncols):
-                if not es_estado(headers[c0]):
-                    continue
+            for c0 in estado_idx:
                 if not all(t in fila_n[c0] for t in toks):
                     continue
                 d = encontrar_diagnostico(headers, c0)

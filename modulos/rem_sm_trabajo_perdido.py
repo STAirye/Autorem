@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,8 +43,9 @@ REM) + Por_Funcionario (a quién avisar) + TP_Detalle (auditable).
 
 import pandas as pd
 
-from programas.rem_utils import norm, cargar_atenciones, cargar_maestro, maestro_rem_map
-from modulos.rem_sm_actividades import _rango_mes, mask_tributa_ada
+from programas.rem_utils import (norm, cargar_atenciones, cargar_maestro, maestro_rem_map,
+                                 _rango_mes)
+from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
 _SMISH = ("mental", "demencia")

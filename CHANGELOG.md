@@ -12,6 +12,34 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.2] — 2026-08-10
+
+### Cambiado / Arquitectura
+- **Nuevo módulo compartido `programas/formatos.py`**: se extrajo el **eje de
+  formato IRIS vs Administrativo** (firmas RAYEN, `detectar_eje`, resolución
+  RUT/edad/sexo `resolver_identidad`, y los params de encabezado del lado ADMIN
+  `HEADER_ADMIN`, transversales a A05/A03/Utilización de Cupos). Antes estaba
+  **duplicado** entre `rem_saludmental` y `rem_a03_d3_instrumentos` (firmas +
+  `detectar_formato` copiados verbatim) y con literales sueltos en `estamentos`.
+  Ahora el MECANISMO vive una sola vez; cada reporte aporta solo SUS firmas.
+  Cadena de dependencias: `rem_utils` (primitivas) ← `formatos` (eje) ← módulos.
+  - `rem_saludmental.detectar_formato` pasa a ser wrapper de `formatos.detectar_eje`.
+  - `a03` deja de reimplementar detección/encabezado; unifica la confirmación por
+    RUT (antes solo verificaba el ancla → ahora ancla + RUT, más robusto).
+  - `estamentos._fila_encabezado` toma los params admin de `formatos.HEADER_ADMIN`.
+  - Preparado para que **cada módulo nuevo con entrada RAYEN** enchufe sus firmas
+    acá en vez de recopiar la lógica (grupo pandas —atenciones/NSP— en 2ª fase).
+
+### Cambiado / Limpieza (`/simplify`)
+- **`_rango_mes` unificado** a `rem_utils` (estaba duplicado en A23 y SM
+  Actividades; Trabajo Perdido lo importaba cruzado). `_mujer`/`_hombre` de
+  `rem_utils` reutilizados en la Sección G del A23.
+- **Eficiencia**: A23 hace una sola pasada de `sort_values/groupby` sobre el
+  histórico (se eliminó un groupby redundante); `marcar_eventos` precomputa las
+  columnas ESTADO fuera del loop de filas; TRANS de SM Actividades vectorizado.
+- **Código/imports muertos** eliminados: `escribir_detalle` (A23), `solo_entero`
+  (rem_saludmental), `calendar`/`date`/`Path` sin uso.
+
 ## [1.7.1] — 2026-08-07
 
 ### Corregido / UI

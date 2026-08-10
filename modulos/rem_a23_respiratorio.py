@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -34,15 +34,11 @@ edad×sexo; admin es PARCIAL (los dx por código ICD no vienen → Ira Alta/Bron
 EPOC exac. = 0, ver rem_utils.MAPA_ATENCIONES) + formulario Otros Crónicos admin.
 """
 
-import calendar
-from datetime import date
-from pathlib import Path
-
 import pandas as pd
 
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
-                                 contiene_alguno as _any)
+                                 contiene_alguno as _any, _rango_mes, _mujer, _hombre)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -80,18 +76,6 @@ def _masks_simples(d):
 
 _RESP_BASE = ["REMA23 Ira Alta", "REMA23 Influenza", "REMA23 Neumonia",
               "REMA23 Bronquitis Aguda", "REMA23 EPOC Exacerbado", "REMA23 Coqueluche"]
-
-
-def _rango_mes(mes):
-    """(inicio, fin) del mes de reporte. mes=(año,mes) o None -> mes anterior."""
-    if mes is None:
-        hoy = date.today()
-        y, m = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
-    else:
-        y, m = mes
-    ini = pd.Timestamp(y, m, 1)
-    fin = pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
-    return ini, fin
 
 
 def _sino(index, runs):
@@ -133,12 +117,10 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     fer["REMA23 Seguimiento Kine"] = _sino(fer.index, set(seg_ki) & resp)
     fer["¿Atendido 1 mes?"] = _sino(fer.index, dm["RUN"].unique())
 
-    # última atención (instrumento) — de toda la historia, no del mes
-    ult = d.sort_values("FECHA").groupby("RUN")["INSTR"].last()
-    fer["Última atención (instrumento)"] = ult.reindex(fer.index).fillna("")
-
-    # demografía: fila más reciente por RUN
+    # fila más reciente por RUN (una sola pasada: instrumento + demografía).
+    # De toda la historia, no del mes. groupby.last() = último no-nulo por columna.
     dem = d.sort_values("FECHA").groupby("RUN").last()
+    fer["Última atención (instrumento)"] = dem["INSTR"].reindex(fer.index).fillna("")
     fer["Nombre completo"] = (dem["NOMBRES"] + " " + dem["APAT"] + " " + dem["AMAT"]).str.strip().reindex(fer.index)
     for c in ("SEXO", "SECTOR", "NACION", "PUEBLO"):
         fer[c.title()] = dem[c].reindex(fer.index)
@@ -381,8 +363,8 @@ def _seccion_g(otros, corte):
             if corte > p + pd.DateOffset(months=m, days=dd):
                 s.add(run)
         flags[pref] = s
-        muj = sum(1 for r in s if "FEMENIN" in norm(sexo_run.get(r, "")) or "MUJER" in norm(sexo_run.get(r, "")))
-        hom = sum(1 for r in s if "MASCULIN" in norm(sexo_run.get(r, "")) or "HOMBRE" in norm(sexo_run.get(r, "")))
+        muj = sum(1 for r in s if _mujer(sexo_run.get(r, "")))
+        hom = sum(1 for r in s if _hombre(sexo_run.get(r, "")))
         counts[lbl] = {"Hombre": hom, "Mujer": muj, "Total": len(s)}
     return counts, flags
 
@@ -428,12 +410,6 @@ def _seccion_h(nsp, ini, fin):
         tmen += nm; tmay += ny
     filas.append({"Profesional": "TOTAL", "Total": tmen + tmay, "Menor de 20": tmen, "20 y más": tmay})
     return pd.DataFrame(filas)
-
-
-def escribir_detalle(fer, salida):
-    """Guarda la tabla detalle (paso intermedio, siempre disponible)."""
-    fer.to_excel(salida, index=False, sheet_name="A23_Detalle")
-    return str(salida)
 
 
 def escribir(fer, salida):

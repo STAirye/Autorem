@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.7.1"
+VERSION = "1.7.2"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -386,6 +386,21 @@ def grid(sub, bandas, lbls, con_sexo=True):
         for i, l in enumerate(lbls):
             out[l] = _isum(bi.eq(i))
     return out
+
+
+def _rango_mes(mes):
+    """(inicio, fin) Timestamp del mes de reporte. mes=(año,mes) o None -> mes
+    anterior. Compartido por los módulos pandas (A23, SM Actividades, Trabajo
+    Perdido); los cálculos van hacia atrás desde el mes reportado, NO TODAY()."""
+    import calendar
+    from datetime import date
+    import pandas as pd
+    if mes is None:
+        hoy = date.today()
+        y, m = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+    else:
+        y, m = mes
+    return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
 def maestro_rem_map(dfm):

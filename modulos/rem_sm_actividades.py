@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -36,15 +36,12 @@ excluye solo (es un string aparte: 'Control Salud Mental a Paciente SENAME' — 
 hacen su propio REM). A05 y las Consultorías A06·A.2 quedan fuera (módulo/manual).
 """
 
-import calendar
-from datetime import date
-
 import pandas as pd
 
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  marcar_demografia, gestante_runs, trans_map,
-                                 atenid_multiprofesional,
+                                 atenid_multiprofesional, _rango_mes,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06)
 
@@ -114,16 +111,6 @@ def cargar_grupal(entrada):
     # la desagregación por banda etaria queda en 0 (pd.to_numeric del texto = NaN).
     d["EDAD"] = d["EDAD"].map(edad_anios)
     return d
-
-
-def _rango_mes(mes):
-    """(inicio, fin) del mes de reporte. mes=(año,mes) o None -> mes anterior."""
-    if mes is None:
-        hoy = date.today()
-        y, m = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
-    else:
-        y, m = mes
-    return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
 def _estamento_rem(instr):
@@ -395,8 +382,9 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         except ValueError as e:                       # archivo modificado / reporte equivocado
             tmap = {}
             log(f"[sm] ⚠⚠ TRANS NO calculado: {e}  → TRANS queda en 0.")
-        d["dem_trans_m"] = d["RUN"].map(lambda r: tmap.get(r) == "M")
-        d["dem_trans_f"] = d["RUN"].map(lambda r: tmap.get(r) == "F")
+        gen = d["RUN"].map(tmap)                       # M/F/X por RUN (NaN si no TRANS)
+        d["dem_trans_m"] = gen.eq("M")
+        d["dem_trans_f"] = gen.eq("F")
         if not tmap:
             # 0 TRANS en el padrón COMPLETO es sospechoso -> avisar en vez de callar
             log("[sm] ⚠⚠ El 'Informe Inscritos' arrojó 0 personas TRANS. En el padrón "

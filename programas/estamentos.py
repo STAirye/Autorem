@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,19 +44,21 @@ USO:
 
 from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
-    ArchivoInvalido, norm, buscar_col, encontrar_fila_encabezado,
+    ArchivoInvalido, norm, buscar_col,
 )
+from programas import formatos
 
 # ── Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) ──
 # Header en fila 9 (banner Comuna/Establecimiento/Mes/Año/'Utilización de Cupos'
 # arriba). Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento).
+# Es un export Administrativo → comparte los params de encabezado con A05/A03
+# (`formatos.HEADER_ADMIN`), pero con su PROPIA ancla (Profesional/Instrumento).
 ANCLA = ["PROFESIONAL", "INSTRUMENTO"]
 MAX_FILAS_HEADER = 40
 
 
 def _fila_encabezado(ws):
-    return encontrar_fila_encabezado(ws, ANCLA, usar_blanco_en_a=False,
-                                     n_hardcode=8, max_filas=MAX_FILAS_HEADER)
+    return formatos.fila_encabezado_admin(ws, ancla=ANCLA, max_filas=MAX_FILAS_HEADER)
 
 
 def detectar(ws):

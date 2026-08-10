@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.1
+# Version: 1.7.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -55,6 +55,7 @@ from programas.rem_utils import (
     encontrar_fila_encabezado, edad_anios,
     grid as _grid, BANDAS_A06, LBL_A06,
 )
+from programas import formatos
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
                                   faltantes, estamentos_conocidos, aplicar_resoluciones)
 
@@ -128,47 +129,20 @@ INSTRUMENTOS = {
 }
 _ORDEN_DETECCION = ["PSC-Y", "GHQ-12", "PSC"]
 
-# ── Firmas de formato (RAYEN genérico; igual que el A05) ──
-ANCLA_IRIS   = ["AÑO", "APLICACION", "FORMULARIO"]
-ANCLA_ADMIN  = ["EDAD", "REGISTRO", "FORMULARIO"]
-ADMIN_BANNER = "SERVICIO DE SALUD"
-ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
-MAX_FILAS_HEADER = 60
-
-# Detección de columnas (nombres de ambos formatos)
-RUT_TOKENS_IRIS  = ["NUMERO", "IDENTIFICACION"]
-RUT_EXACTO_ADMIN = "RUT"
-EDAD_TOKENS_IRIS  = ["AÑO", "APLICACION", "FORMULARIO"]
-EDAD_TOKENS_ADMIN = ["EDAD", "REGISTRO", "FORMULARIO"]
-
+# El eje IRIS/Admin (firmas, detección, resolución de identidad) vive en
+# `programas.formatos`, compartido con A05/estamentos. El export de instrumentos
+# es el MISMO formulario RAYEN que el A05, así que usa las firmas estándar.
 NOMBRE_HOJA_SALIDA = "A03_D3_Instrumentos"
 
 
-# ── Detección de formato / encabezado / instrumento ───────────────────
-def detectar_formato(ws):
-    """'iris' | 'administrativo' | 'desconocido' (mismas firmas RAYEN que A05)."""
-    tope = min(ws.max_row, MAX_FILAS_HEADER)
-    ancla = [norm(t) for t in ANCLA_IRIS]
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
-        if all(any(tok in v for v in vals) for tok in ancla):
-            return "iris"
-    if norm(ws.cell(row=1, column=1).value) == ADMIN_BANNER:
-        return "administrativo"
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
-        for m in ADMIN_MARKERS:
-            if any(norm(m) in v for v in vals):
-                return "administrativo"
-    return "desconocido"
-
-
+# ── Localización de encabezado / detección de instrumento ─────────────
 def _fila_encabezado(ws, formato):
+    """Ubica el header. Admin comparte params (`formatos.HEADER_ADMIN`); el IRIS
+    de instrumentos NO trae banner (n_hardcode=0), distinto al A05."""
     if formato == "administrativo":
-        return encontrar_fila_encabezado(ws, ANCLA_ADMIN, usar_blanco_en_a=False,
-                                         n_hardcode=8, max_filas=MAX_FILAS_HEADER)
-    return encontrar_fila_encabezado(ws, ANCLA_IRIS, usar_blanco_en_a=True,
-                                     n_hardcode=0, max_filas=MAX_FILAS_HEADER)
+        return formatos.fila_encabezado_admin(ws)
+    return encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, usar_blanco_en_a=True,
+                                     n_hardcode=0, max_filas=formatos.MAX_FILAS_HEADER)
 
 
 def detectar_instrumento(ws, formato, header_idx, headers_norm):
@@ -208,7 +182,7 @@ def abrir_validado(entrada):
             f"(detalle: {OPENPYXL_ERR})")
     wb = openpyxl.load_workbook(entrada)
     ws = wb.active
-    formato = detectar_formato(ws)
+    formato = formatos.detectar_eje(ws)
     if formato == "desconocido":
         raise ArchivoInvalido(
             "desconocido",
@@ -258,11 +232,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     headers = [ws.cell(row=header_idx, column=c).value for c in range(1, ncols + 1)]
     hn = [norm(h) for h in headers]
 
-    rut_col   = (buscar_col(hn, tokens=[norm(t) for t in RUT_TOKENS_IRIS])
-                 or buscar_col(hn, exacto=RUT_EXACTO_ADMIN))
-    edad_col  = (buscar_col(hn, tokens=[norm(t) for t in EDAD_TOKENS_IRIS])
-                 or buscar_col(hn, tokens=[norm(t) for t in EDAD_TOKENS_ADMIN]))
-    sexo_col  = buscar_col(hn, exacto="SEXO")
+    rut_col, edad_col, sexo_col = formatos.resolver_identidad(hn)
     punt_col  = buscar_col(hn, tokens=["PUNTAJE"])
     resu_col  = buscar_col(hn, tokens=["RESULTADO"])
     func_col  = buscar_col(hn, exacto="FUNCIONARIO")
