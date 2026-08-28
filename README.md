@@ -18,6 +18,15 @@ Corre **100% local y offline**. Sin nube. Consistente con las Leyes 20.584 y
 > técnico profundo (decisiones de diseño, quirks de RAYEN) está en
 > [CLAUDE.md](CLAUDE.md); el detalle de cambios en [CHANGELOG.md](CHANGELOG.md).
 
+## ⬇️ Descargar
+
+**[Descargar autoREM.exe (última versión)](https://github.com/STAirye/Autorem/releases/latest/download/autoREM.exe)** — Windows, doble-clic, sin instalar nada.
+
+Ese enlace **siempre** apunta a la versión más reciente. Si tu antivirus o
+SmartScreen advierte "editor desconocido", es un exe sin firmar: procesa todo
+**local, no sube nada** (ver [CLAUDE.md](CLAUDE.md) §11). Todas las versiones y
+sus notas están en **[Releases](https://github.com/STAirye/Autorem/releases/latest)**.
+
 ## Qué cubre hoy
 
 La herramienta es **una sola** (un binario, una versión), y va sumando reportes
