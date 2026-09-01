@@ -395,7 +395,8 @@ Meta: colega no técnico hace doble-clic, sin instalar Python.
 ```bash
 # Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
 # programas/ y modulos/):
-pyinstaller --onefile --windowed --name "autoREM" autorem.py
+pyinstaller --onefile --windowed --name "autoREM" \
+  --add-data "refs tablas/maestro_slim.csv.gz;refs tablas" autorem.py
 # -> dist/autoREM.exe
 ```
 
@@ -404,6 +405,12 @@ pyinstaller --onefile --windowed --name "autoREM" autorem.py
   estar junto a él; PyInstaller sigue los `import programas.x` / `from modulos
   import x` solo y los empaqueta. Si por algún motivo no los encuentra, agregar
   `--paths .` (la raíz al path de búsqueda).
+- **`--add-data` del Maestro slim (¡importante!):** el `maestro_slim.csv.gz` NO se
+  empaqueta solo (no es un `import`, es un dato) → hay que pasarlo con `--add-data`
+  (separador **`;`** en Windows, `:` en Linux/Mac). Sin esto, `_slim_por_defecto()`
+  devuelve None y el **Trabajo Perdido corre en heurística** (avisa ruidoso en el log).
+  Alternativa: dejar el `.gz` junto al `.exe`. Ruta destino dentro del bundle:
+  `refs tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
   desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede

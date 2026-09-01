@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.6
+# Version: 1.7.7
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -929,6 +929,11 @@ def _tab_sm(nb, root):
                                multiprofesional=multiprofesional, mes=(y, m), log=log, d=d)
             smact.escribir(E, salida)
             n_tp = None
+            if not maestro:
+                log("[tp] ⚠⚠ Maestro de Actividades NO encontrado (ni cargado a mano, ni "
+                    "embebido en el .exe): el Trabajo Perdido usa SOLO la heurística "
+                    "(mask_tributa_ada), menos preciso. Para embeberlo, reconstruye el .exe "
+                    "con --add-data del maestro_slim.csv.gz (CLAUDE.md §11) o déjalo junto al .exe.")
             # Trabajo perdido (saco vacío): mismo ADA ya cargado. Try propio para que un
             # fallo acá (p.ej. Monitoreo admin sin 'PROFESIONAL ATENCION') no tumbe el SM.
             try:

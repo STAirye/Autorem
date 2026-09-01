@@ -12,6 +12,24 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.7] — 2026-09-01
+
+### Agregado (fail loud)
+- **Aviso ruidoso si el Maestro NO está disponible**: si no se cargó a mano ni se
+  encontró embebido/junto al `.exe`, el log avisa que el Trabajo Perdido corre en
+  heurística (antes fallaba en silencio a heurística sin avisar).
+- **Aviso ruidoso si el Monitoreo Multiprofesional no cubre el mes**: como el
+  reporte se cruza por ATEN ID (no se filtra por mes), si NINGUNA VDI de A26 del mes
+  coincide con el padrón, probablemente es de otro período → A26 saldría todo "Un
+  Profesional". Ahora se avisa en el log.
+
+### Corregido (empaquetado)
+- **Build del `.exe`**: el comando de PyInstaller (CLAUDE.md §11 + README) ahora
+  incluye `--add-data "refs tablas/maestro_slim.csv.gz;refs tablas"` para EMBEBER el
+  Maestro slim. Sin esto el `.exe` no lo traía y el Trabajo Perdido caía a heurística.
+
+---
+
 ## [1.7.6] — 2026-09-01
 
 ### Cambiado

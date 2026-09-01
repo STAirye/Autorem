@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.6
+# Version: 1.7.7
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -418,11 +418,19 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
 
     # Composición profesional de A26 (opcional): Monitoreo Multiprofesional.
+    # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del mes.
+    # Debe CUBRIR el mes reportado (bajarlo del año completo sirve). Si no coincide con
+    # ninguna VDI del mes, probablemente es de otro período → avisamos RUIDOSO (fail loud).
     multi = set()
     if multiprofesional is not None:
         try:
             multi = atenid_multiprofesional(multiprofesional)
             log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
+            a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
+            if a26_ids and not (a26_ids & multi):
+                log("[sm] ⚠⚠ el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
+                    f"{len(a26_ids)} VDI de A26 del mes → parece de OTRO período. A26 saldría "
+                    "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
         except ValueError as e:
             log(f"[sm] ⚠⚠ Multiprofesional NO usado: {e}  → A26 queda todo mono-profesional.")
 

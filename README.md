@@ -187,12 +187,15 @@ python tests/test_sm_actividades.py
 Para que un colega no técnico lo use con doble-clic, sin instalar Python:
 
 ```bash
-pyinstaller --onefile --windowed --name "autoREM" autorem.py
+pyinstaller --onefile --windowed --name "autoREM" \
+  --add-data "refs tablas/maestro_slim.csv.gz;refs tablas" autorem.py
 ```
 
 Correr desde la raíz del repo (con `programas/` y `modulos/` al lado de
-`autorem.py`); PyInstaller sigue los `import` solo. Gotchas (SmartScreen,
-antivirus institucional) en [CLAUDE.md](CLAUDE.md) §11.
+`autorem.py`); PyInstaller sigue los `import` solo. El `--add-data` embebe el
+**Maestro de Actividades** (dato, no `import`): sin él, el Trabajo Perdido corre
+en heurística (avisa en el log). Gotchas (SmartScreen, antivirus institucional)
+en [CLAUDE.md](CLAUDE.md) §11.
 
 ---
 
