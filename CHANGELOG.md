@@ -12,6 +12,15 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.6] — 2026-09-01
+
+### Cambiado
+- **La pestaña A05 ahora también tiene el cuadro «Carpeta de salida»** (era la
+  única sin él). Vacío = junto al archivo de entrada (el comportamiento clásico del
+  A05 vía `with_name`), consistente con A23/SM/A03. `_correr_tareas` acepta `carpeta`.
+
+---
+
 ## [1.7.5] — 2026-09-01
 
 ### Agregado

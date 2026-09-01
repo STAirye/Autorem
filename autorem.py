@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.5
+# Version: 1.7.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -73,10 +73,11 @@ def _forzar_utf8_stdout():
 
 
 # ── Orquestación (compartida GUI/CLI) ─────────────────────────────────
-def _correr_tareas(tareas, entrada, perfil, log=print, mes=None):
+def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
     """Carga el workbook UNA vez (validando contra `perfil`), cada tarea agrega
     su hoja, y guarda UN solo «…_procesado.xlsx». Devuelve (resultados, salida).
-    `mes`=(año,mes) filtra por FECHA FORMULARIO; None = archivo completo."""
+    `mes`=(año,mes) filtra por FECHA FORMULARIO; None = archivo completo.
+    `carpeta`=dónde guardar; None = junto al archivo de entrada (comportamiento clásico)."""
     wb, ws = sm.abrir_validado(entrada, perfil)
     resultados = []
     for tarea in tareas:
@@ -85,7 +86,8 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None):
         resultados.append((tarea, res))
 
     sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""   # mes elegido -> …_procesado_2026_07.xlsx
-    salida = entrada.with_name(entrada.stem + "_procesado" + sufijo + ".xlsx")
+    destino = Path(carpeta) if carpeta else entrada.parent
+    salida = destino / (entrada.stem + "_procesado" + sufijo + ".xlsx")
     wb.save(salida)
     log(f"[ok] guardado: {salida}")
     return resultados, str(salida)
@@ -566,6 +568,8 @@ def _tab_a05(nb, root, ruta_inicial=""):
         ttk.Checkbutton(caja_tareas, text=t["nombre"], variable=var).pack(anchor="w")
         checks[t["id"]] = (t, var)
 
+    get_salida = _fila_carpeta_salida(tab)
+
     log, limpiar = _crear_log(tab, root)
 
     def on_procesar():
@@ -587,12 +591,16 @@ def _tab_a05(nb, root, ruta_inicial=""):
             if not (1 <= mes[1] <= 12):
                 messagebox.showwarning("Mes inválido", "El mes debe estar entre 1 y 12.")
                 return
+        carpeta = _valida_carpeta(get_salida(), messagebox, defecto=entrada.parent)
+        if carpeta is None:
+            return
         perfil = sm.perfil_por_id(var_perfil.get())
         if perfil["disclaimer"]:
             log(perfil["disclaimer"]); log("")
         btn.configure(state="disabled")
         try:
-            resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, log, mes=mes)
+            resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, log,
+                                                mes=mes, carpeta=carpeta)
         except sm.ArchivoInvalido as e:
             titulo = {"administrativo": "Parece Administrativo, no IRIS",
                       "iris": "Parece IRIS, no Administrativo",
