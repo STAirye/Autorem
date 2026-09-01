@@ -19,6 +19,10 @@ del delta mes-a-mes del P** (además de la vía directa por formulario del módu
 actual). Cuadre cruzado a futuro: los ingresos/egresos del A05 deberían conciliar con
 ese delta del P.
 
+**La lógica de la matriz YA está implementada** en `refs tablas/CALCULADOR A05 DESDE
+P 2.1 junio.xlsx` (versionado). Al implementar, portar ESA lógica del delta P(mes) −
+P(mes−1) → N/O en vez de reinventarla; es el referente validado.
+
 ## Fuente
 - **Población PSM desde PowerBI** (tiene todo un DAX propio — conseguirlo al implementar).
 - Se arma como una **tabla dinámica**:
