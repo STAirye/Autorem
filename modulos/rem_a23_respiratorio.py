@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.13
+# Version: 1.8.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -566,7 +566,11 @@ def escribir(fer, salida):
     hoja POR SECCIÓN del REM A23 (forma copy-paste al SA_26) + las Secciones G y H
     agregadas, en un solo .xlsx."""
     with pd.ExcelWriter(salida) as xw:
-        fer.to_excel(xw, index=False, sheet_name="A23_Detalle")
+        # Detalle: RUN, luego 'Pertenece a SALA' y '¿Atendido 1 mes?' al frente (col 2 y
+        # 3) para revisar de un vistazo, y el resto en su orden.
+        frente = [c for c in ("Pertenece a SALA", "¿Atendido 1 mes?") if c in fer.columns]
+        orden = [fer.columns[0]] + frente + [c for c in fer.columns[1:] if c not in frente]
+        fer[orden].to_excel(xw, index=False, sheet_name="A23_Detalle")
         # Una hoja por sección (edad×sexo), forma copy-paste al SA_26.
         for nombre, df in _tablas_a23(fer).items():
             df.to_excel(xw, index=False, sheet_name=nombre[:31])

@@ -10,6 +10,26 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.8.0] — 2026-09-01
+
+### Agregado (módulo/reporte — Y++)
+- **A23 tabulado por sección = reporte de verdad** (deja de ser prototipo). El
+  `…_procesado.xlsx` trae una hoja copy-paste por sección (A/D/E/F/I/M.1/N) + detalle
+  + G/H, con el filtro base **«Pertenece a SALA»** alineado al PowerBI. Validado
+  contra el PowerBI: **~1679 vs 1585** (target real, filtrado activo+inscrito+
+  validado) con span de 3 años — converge al cargar más histórico. Los 7 flags SALA
+  replican los DAX 1:1 (verificado SBOR/ASMA/EPOC/FQ/OTRAS/O2/AV).
+
+### Cambiado
+- Detalle A23: `Pertenece a SALA` (col 2) y `¿Atendido 1 mes?` (col 3) al frente,
+  para revisar de un vistazo.
+
+### Pendiente (afinar con el RT / validar 1:1)
+- A (semántica ingreso-a-sala), I espirometría basal vs post BD, sección O (EPOC A/B),
+  y el filtro activo+inscrito+validado. B/C/P/Q/M.2/J/K/L fuera de alcance.
+
+---
+
 ## [1.7.13] — 2026-09-01
 
 ### Corregido (alineación con PowerBI)

@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.7.13**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.8.0**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -323,7 +323,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.7.13**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.8.0**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -335,7 +335,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · falta agregación mensual (P3) + formulario admin |
+| **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
 | Cardiovascular | — | pendiente |
 | Salud sexual/reproductiva, otros | — | pendiente |
 
