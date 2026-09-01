@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.4
+# Version: 1.7.5
 #
 # Distributed WITHOUT ANY WARRANTY. GPL-3.0-or-later:
 # <https://www.gnu.org/licenses/>.

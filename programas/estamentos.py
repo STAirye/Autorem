@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.4
+# Version: 1.7.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -30,7 +30,10 @@ funcionario. El reporte de RAYEN 'Utilización de Cupos' sí parea `Profesional`
 (Médico / Psicólogo(a) / Terapeuta Ocupacional / Trabajador(a) Social / etc.).
 
 Como los profesionales cambian por centro, el lookup se arma DESDE el export de
-cada CESFAM. La TABLA (nombres de funcionarios) queda LOCAL — NO va al repo.
+cada CESFAM. La TABLA (nombres de funcionarios) queda LOCAL — NO va al repo — y
+PERSISTE entre corridas en `~/.autorem/estamentos.json` (ver `tabla_efectiva`):
+se carga una vez y los meses siguientes se autocompleta; cargar un reporte nuevo
+fusiona (el fresco gana, lo solo-en-caché se conserva).
 
 FAILSAFE: si un funcionario del reporte no está en la tabla (p.ej. externo que
 presta servicios transitorios), `faltantes()` lo detecta y el flujo lo resuelve a
@@ -41,6 +44,9 @@ USO:
     tabla, meta = cargar_estamentos("Utilizacion de Cupos.xlsx")
     est = buscar_estamento("Catalina Andrea Mayorga Pino", tabla)  # -> 'Psicólogo(a)'
 """
+
+import json
+from pathlib import Path
 
 from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
@@ -178,4 +184,62 @@ def aplicar_resoluciones(tabla, resoluciones):
     se vuelve a preguntar; p.ej. externo que presta servicios transitorios)."""
     for nombre, est in (resoluciones or {}).items():
         tabla[norm(nombre)] = est or ""
+    return tabla
+
+
+# ── Persistencia entre corridas (caché local) ─────────────────────────
+# La tabla funcionario->estamento se guarda en el HOME del usuario (no en el repo,
+# no junto al .exe) para que persista entre meses/carpetas: cargar 'Utilización de
+# Cupos' una vez y que el mes siguiente se autocomplete sin volver a cargarlo.
+# Nombres de funcionario NO son PII de paciente -> cachearlos es aceptable.
+RUTA_CACHE = Path.home() / ".autorem" / "estamentos.json"
+
+
+def cargar_cache(log=print):
+    """Tabla cacheada del disco. {} si no existe o está corrupta (robusto: nunca
+    revienta la corrida por un caché malo)."""
+    try:
+        if RUTA_CACHE.exists():
+            with open(RUTA_CACHE, encoding="utf-8") as f:
+                d = json.load(f)
+            if isinstance(d, dict):
+                return {str(k): ("" if v is None else str(v)) for k, v in d.items()}
+    except Exception as e:   # noqa: BLE001
+        log(f"[estamentos] no pude leer el caché ({e}); sigo sin él")
+    return {}
+
+
+def guardar_cache(tabla, log=print):
+    """Escribe la tabla al caché (crea ~/.autorem si falta). Falla silenciosa con
+    aviso: no arruina la corrida si el disco/permisos fallan."""
+    try:
+        RUTA_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        with open(RUTA_CACHE, "w", encoding="utf-8") as f:
+            json.dump(tabla, f, ensure_ascii=False, sort_keys=True, indent=0)
+    except Exception as e:   # noqa: BLE001
+        log(f"[estamentos] no pude guardar el caché ({e})")
+
+
+def tabla_efectiva(entrada=None, log=print):
+    """Tabla funcionario->estamento combinando el CACHÉ persistente con el reporte
+    'Utilización de Cupos' recién cargado (si se pasa `entrada`, ruta al .xlsx).
+
+    - El reporte fresco GANA sobre el caché (los profesionales cambian).
+    - Los nombres que solo están en el caché se CONSERVAN (funcionarios de meses
+      previos + resoluciones manuales) → un mes sin cargar el reporte igual rellena.
+    - Persiste el merge de vuelta al caché.
+    Devuelve la tabla (dict); {} si no hay ni caché ni archivo."""
+    cache = cargar_cache(log=log)
+    if entrada:
+        nueva, _meta = cargar_estamentos(entrada, log=log)
+        tabla = {**cache, **nueva}                  # reporte fresco pisa al caché
+        guardar_cache(tabla, log=log)
+        solo_cache = len(tabla) - len(nueva)
+        log(f"[estamentos] caché actualizado: {len(tabla)} funcionarios "
+            f"({len(nueva)} del reporte + {solo_cache} sólo en caché) -> {RUTA_CACHE}")
+    else:
+        tabla = cache
+        if tabla:
+            log(f"[estamentos] usando SOLO el caché ({len(tabla)} funcionarios, {RUTA_CACHE}): "
+                "no cargaste 'Utilización de Cupos' esta vez")
     return tabla

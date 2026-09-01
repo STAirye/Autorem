@@ -88,7 +88,9 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
 - **REM A03 D.3 · Screening** — instrumentos PSC / PSC-Y / GHQ-12. Autodetecta el
   instrumento por contenido; da el resultado automático (RAYEN) + calculado
   (cortes DISAM) + discrepancia. En formato Administrativo puede cargar la tabla
-  *Utilización de Cupos* para rellenar el estamento por nombre de funcionario.
+  *Utilización de Cupos* para rellenar el estamento por nombre de funcionario; esa
+  tabla **queda guardada** (en `~/.autorem/`), así que se carga una vez y los meses
+  siguientes se autocompleta — solo la recargas cuando cambia el equipo.
 - **REM A23 · Respiratorio** — carga el/los export(s) de **atenciones** (del mes), el
   **formulario Otros Crónicos** (histórico: **cárgalo por varios años**, si no la Sección G
   subcuenta) y, opcionalmente, **Estratificación** y el reporte de **Inasistentes NSP**

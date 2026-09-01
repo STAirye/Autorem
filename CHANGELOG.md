@@ -12,6 +12,25 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.5] — 2026-09-01
+
+### Agregado
+- **La tabla Funcionario→Estamento ahora PERSISTE entre corridas.** Antes había que
+  cargar el reporte *Utilización de Cupos* en cada corrida (y un mes después de
+  nuevo). Ahora se cachea en `~/.autorem/estamentos.json` (por usuario, fuera del
+  repo): se carga una vez y los meses siguientes se autocompleta sola. Cargar un
+  *Utilización de Cupos* nuevo **fusiona** con lo guardado (el reporte fresco gana;
+  los funcionarios que solo estaban en caché se conservan). Nuevas funciones en
+  `programas/estamentos.py`: `cargar_cache` / `guardar_cache` / `tabla_efectiva`
+  (robustas: un caché corrupto o sin permisos NO tumba la corrida, solo avisa).
+  Nombres de funcionario NO son PII de paciente → cachearlos es aceptable.
+
+### Corregido
+- Texto engañoso en la GUI (decía cargar la tabla "una vez" dando a entender que
+  quedaba guardada; ahora sí queda, y el texto lo refleja).
+
+---
+
 ## [1.7.4] — 2026-09-01
 
 ### Cambiado

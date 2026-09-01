@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.4
+# Version: 1.7.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,6 +42,7 @@ from pathlib import Path
 
 from programas.rem_utils import VERSION
 import programas.rem_saludmental as sm
+import programas.estamentos as estam
 
 # ── Registro de módulos de tarea ──────────────────────────────────────
 from modulos import rem_a05_o_egresos
@@ -442,13 +443,15 @@ def _bloque_estamentos(parent):
     caja.pack(fill="x", pady=(2, 6))
     ttk.Label(caja, justify="left", foreground="#a05a00", text=(
         "¿Por qué? El reporte Administrativo NO indica el estamento de quien atendió, "
-        "solo el nombre.\nPara poder reportar por estamento hay que cargar, una vez, "
-        "la tabla del equipo.")).pack(anchor="w")
+        "solo el nombre.\nLa tabla del equipo QUEDA GUARDADA (caché en ~/.autorem): "
+        "cárgala una vez y los meses siguientes se autocompleta sola.\nVuelve a cargar "
+        "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).")
+        ).pack(anchor="w")
     ttk.Label(caja, justify="left", text=(
         "En RAYEN Administrativo, descarga un reporte desde  Herramientas → Reportes "
         "Estadísticos → Otros → Utilización de Cupos,\ncon fecha de un día en que hubo "
         "atenciones de TODO tu equipo. Copia el reporte completo, pásalo a Excel y "
-        "cárgalo aquí.")).pack(anchor="w", pady=(4, 4))
+        "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(anchor="w", pady=(4, 4))
     var = tk.StringVar()
     _fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
     return lambda: (var.get() or "").strip().strip('"').strip("'")
@@ -651,9 +654,11 @@ def _correr_a03(root, barra, btn, log, por_inst, salida, est_ruta, messagebox):
         # resolver_estamento=None: el diálogo Tk no puede abrirse desde el hilo worker;
         # el estamento solo alimenta el DETALLE (no la tabla D.3), así que va best-effort
         # (los funcionarios sin match quedan sin estamento en el detalle).
-        estamentos = str(est_ruta) if est_ruta else None
+        # Tabla efectiva = caché PERSISTENTE (~/.autorem) + 'Utilización de Cupos' si se
+        # cargó (merge y re-guarda). Así un mes sin cargar el reporte igual rellena.
+        tabla = estam.tabla_efectiva(str(est_ruta) if est_ruta else None, log=log)
         return screening.procesar_unificado(
-            por_inst, salida, estamentos=estamentos, resolver_estamento=None, log=log)
+            por_inst, salida, estamentos=(tabla or None), resolver_estamento=None, log=log)
 
     def al_terminar(res, err):
         if err is not None:

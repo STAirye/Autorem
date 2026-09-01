@@ -104,6 +104,36 @@ def test_faltantes_conocidos_y_resoluciones():
     assert est.faltantes(["Cyn Externa", "Beto Ruiz"], tabla) == []  # ya ninguno falta
 
 
+def test_cache_persiste_y_merge():
+    """El caché persiste entre corridas y el reporte fresco pisa al caché,
+    conservando los funcionarios que solo estaban guardados."""
+    est.RUTA_CACHE = _TMP / "cache_estam.json"   # no ensuciar el HOME real
+    if est.RUTA_CACHE.exists():
+        est.RUTA_CACHE.unlink()
+    p1 = _reporte("mes1.xlsx", [
+        ("Ana Perez",  "Médico",       "A", "Rojo"),
+        ("Beto Ruiz",  "Psicólogo(a)", "B", "Verde"),
+    ])
+    t1 = est.tabla_efectiva(str(p1), log=_quiet)
+    assert est.buscar_estamento("Ana Perez", t1) == "Médico"
+    assert est.RUTA_CACHE.exists()                         # se guardó
+
+    # corrida sin archivo: autocarga del caché
+    t2 = est.tabla_efectiva(None, log=_quiet)
+    assert est.buscar_estamento("Beto Ruiz", t2) == "Psicólogo(a)"
+
+    # mes siguiente con reporte nuevo: Ana cambia de estamento, Caro es nueva,
+    # Beto NO viene en el reporte -> se conserva del caché.
+    p2 = _reporte("mes2.xlsx", [
+        ("Ana Perez",  "Enfermero(a)",  "A", "Rojo"),      # cambió
+        ("Caro Díaz",  "Odontólogo(a)", "C", "Azul"),      # nueva
+    ])
+    t3 = est.tabla_efectiva(str(p2), log=_quiet)
+    assert est.buscar_estamento("Ana Perez", t3) == "Enfermero(a)"   # reporte fresco gana
+    assert est.buscar_estamento("Caro Díaz", t3) == "Odontólogo(a)"  # nueva
+    assert est.buscar_estamento("Beto Ruiz", t3) == "Psicólogo(a)"   # conservada del caché
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]
