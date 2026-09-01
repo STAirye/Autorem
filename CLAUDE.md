@@ -412,6 +412,14 @@ pyinstaller --onefile --windowed --name "autoREM" \
   Alternativa: dejar el `.gz` junto al `.exe`. Ruta destino dentro del bundle:
   `refs tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
+- **`--onefile` vs `--onedir` (trade-off, oficial = `--onefile`):** `--onefile` da UN
+  solo `.exe` (cómodo de distribuir) pero cada arranque **descomprime ~37 MB a una
+  carpeta temporal** → lag de arranque en máquinas viejas/lentas (es disco, NO RAM;
+  el pico de RAM en una corrida es ~200-300 MB, no es la limitante). `--onedir` deja
+  una CARPETA (exe + libs sueltas) que **arranca más rápido** (no re-descomprime) y a
+  veces molesta menos al antivirus, a costa de distribuir una carpeta en vez de un
+  archivo. **Se compila oficialmente a `--onefile`**; quien quiera optimizar arranque
+  puede clonar el repo y compilar `--onedir` por su cuenta (recordando el `--add-data`).
 - **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
   desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede
   requerir whitelist de IT. Alternativa: `--onedir` (a veces molesta menos).
