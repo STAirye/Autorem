@@ -80,8 +80,11 @@ Doble-clic a `autorem.py` (o al `.exe`), o desde IDLE abrir `autorem.py` y
 apretar **F5**. La ventana tiene **una pestaña por reporte**:
 
 - **REM A05 · Egresos / Ingresos** — formulario *Control de Salud Mental*. Elige
-  el **formato** (IRIS o Administrativo), el **archivo** y la(s) **tarea(s)**
-  (Egresos / Ingresos). Salida: `…_procesado.xlsx` con una hoja por tarea.
+  el **formato** (IRIS o Administrativo), el **archivo**, el **período** (todo el
+  archivo o un mes puntual, por *FECHA FORMULARIO*) y la(s) **tarea(s)** (Egresos /
+  Ingresos). Salida: `…_procesado.xlsx` (o `…_procesado_AAAA_MM.xlsx` si eliges un
+  mes) con una hoja por tarea. Si el mes elegido no tiene formularios, avisa y no
+  genera un archivo vacío.
 - **REM A03 D.3 · Screening** — instrumentos PSC / PSC-Y / GHQ-12. Autodetecta el
   instrumento por contenido; da el resultado automático (RAYEN) + calculado
   (cortes DISAM) + discrepancia. En formato Administrativo puede cargar la tabla
@@ -126,11 +129,12 @@ dinámica agregada) se **rechazan** con un aviso claro: cárgalos tal como los d
 Solo para el A05:
 
 ```bash
-python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID[,ID2]]
+python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID[,ID2]] [--mes AAAA-MM]
 ```
 
 - Sin `--formato`: asume **iris**. Sin `--tarea`: corre la primera.
 - IDs de tarea: `a05_o_egresos`, `a05_n_ingresos`.
+- `--mes AAAA-MM`: filtra por *FECHA FORMULARIO* (sin él, procesa el archivo completo).
 
 ---
 

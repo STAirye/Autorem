@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.2
+# Version: 1.7.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -53,15 +53,17 @@ _CFG = dict(
 )
 
 
-def agregar_hoja(wb, ws, perfil, log=print):
-    """Agrega la hoja de ingresos al workbook ya abierto (NO guarda)."""
-    return sm.marcar_eventos(wb, ws, perfil, log=log, **_CFG)
+def agregar_hoja(wb, ws, perfil, log=print, mes=None):
+    """Agrega la hoja de ingresos al workbook ya abierto (NO guarda). `mes`=(año,mes)
+    filtra por FECHA FORMULARIO; None = archivo completo."""
+    return sm.marcar_eventos(wb, ws, perfil, log=log, mes=mes, **_CFG)
 
 
-def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print):
-    """Conveniencia standalone: abre + valida + marca + guarda."""
+def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print, mes=None):
+    """Conveniencia standalone: abre + valida + marca + guarda. `mes`=(año,mes) o
+    None (todo el archivo)."""
     wb, ws = sm.abrir_validado(entrada, perfil)
-    res = agregar_hoja(wb, ws, perfil, log=log)
+    res = agregar_hoja(wb, ws, perfil, log=log, mes=mes)
     wb.save(salida)
     log(f"[ok] guardado: {salida}  (hoja '{NOMBRE_HOJA_SALIDA}')")
     res = dict(res)

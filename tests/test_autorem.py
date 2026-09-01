@@ -88,6 +88,24 @@ def _admin_fixture():
     return p
 
 
+def _iris_fecha_fixture():
+    """Export IRIS con columna FECHA FORMULARIO: 2 egresos en 07/2026, 1 en 08/2026.
+    Fecha en texto DD/MM/YYYY (formato ambiguo -> prueba el dayfirst)."""
+    p = _TMP / "iris_fecha.xlsx"
+    if p.exists():
+        return p
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO",
+               "20.- TIPO DE DEPRESIÓN"])
+    ws.append(["11111111-1", 45, "Mujer", "06/07/2026", "SI", "EGRESO ALTA", "Depresión Moderada"])
+    ws.append(["22222222-2", 30, "Hombre", "20/07/2026", "SI", "EGRESO ALTA", "Depresión Severa"])
+    ws.append(["33333333-3", 60, "Mujer", "05/08/2026", "SI", "EGRESO ALTA", "Depresión Leve"])
+    wb.save(p)
+    return p
+
+
 def _dump(path, hoja):
     ws = openpyxl.load_workbook(path)[hoja]
     return [tuple(c.value for c in row) for row in ws.iter_rows()]
@@ -205,6 +223,43 @@ def test_validacion_cruzada():
             return e.categoria
     assert categoria(_admin_fixture(), sm.PERFIL_IRIS) == "administrativo"
     assert categoria(_iris_fixture(), sm.PERFIL_ADMIN) == "iris"
+
+
+def test_mes_de_celda():
+    """Parseo de fecha: datetime directo, texto DD/MM/YYYY (dayfirst), y basura."""
+    from datetime import datetime
+    from programas.rem_utils import mes_de_celda
+    assert mes_de_celda(datetime(2026, 7, 6)) == (2026, 7)
+    assert mes_de_celda("06/07/2026") == (2026, 7)     # dayfirst: 6 de julio
+    assert mes_de_celda("2026/07/06") == (2026, 7)     # ISO-ish
+    assert mes_de_celda("") is None
+    assert mes_de_celda(None) is None
+    assert mes_de_celda("no es fecha") is None
+
+
+def test_filtro_mes():
+    """mes=(año,mes) filtra por FECHA FORMULARIO; mes ausente -> ArchivoInvalido."""
+    fx = _iris_fecha_fixture()
+    # Julio: 2 egresos
+    out = _TMP / "mes_jul.xlsx"
+    egresos.procesar(fx, out, log=_quiet, mes=(2026, 7))
+    ruts = {r[0] for r in _dump(out, "A05_Egresos")[1:]}
+    assert ruts == {"11111111-1", "22222222-2"}
+    # Agosto: 1 egreso
+    out = _TMP / "mes_ago.xlsx"
+    egresos.procesar(fx, out, log=_quiet, mes=(2026, 8))
+    ruts = {r[0] for r in _dump(out, "A05_Egresos")[1:]}
+    assert ruts == {"33333333-3"}
+    # Archivo completo: los 3
+    out = _TMP / "mes_todo.xlsx"
+    egresos.procesar(fx, out, log=_quiet, mes=None)
+    assert len(_dump(out, "A05_Egresos")) == 4         # header + 3
+    # Mes sin formularios -> error ruidoso, NO archivo con 0 filas
+    try:
+        egresos.procesar(fx, _TMP / "mes_vacio.xlsx", log=_quiet, mes=(2026, 1))
+        assert False, "debió levantar ArchivoInvalido por mes vacío"
+    except sm.ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio"
 
 
 def test_dispatcher_multisheet():

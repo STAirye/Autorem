@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.2
+# Version: 1.7.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.7.2"
+VERSION = "1.7.3"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -401,6 +401,35 @@ def _rango_mes(mes):
     else:
         y, m = mes
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
+
+
+def mes_de_celda(v):
+    """(año, mes) desde una celda de fecha RAYEN, o None si no se puede parsear.
+    Acepta datetime/date (lo que openpyxl entrega en celdas con formato fecha) y
+    texto en las DOS formas que usa RAYEN: 'YYYY/MM/DD' (Admin/monitoreo) y
+    'DD/MM/YYYY' (formularios clínicos), con '-', '/' o '.' y hora opcional.
+
+    Distingue las dos formas por ESTRUCTURA (año de 4 dígitos adelante = ISO),
+    NO por dayfirst a ciegas: 'YYYY/MM/DD' con dayyfirst se lee como el mes
+    equivocado en silencio (justo lo que no queremos). Cualquier otra cosa -> None
+    (se excluye y se avisa; nunca se adivina un mes plausible pero errado)."""
+    if v is None:
+        return None
+    from datetime import datetime as _dt, date as _date
+    if isinstance(v, (_dt, _date)):
+        return (v.year, v.month)
+    s = str(v).strip()
+    if not s:
+        return None
+    m = re.match(r"^(\d{4})[-/.](\d{1,2})[-/.]\d{1,2}", s)      # YYYY/MM/DD
+    if m:
+        y, mo = int(m.group(1)), int(m.group(2))
+    else:
+        m = re.match(r"^\d{1,2}[-/.](\d{1,2})[-/.](\d{4})", s)  # DD/MM/YYYY
+        if not m:
+            return None
+        mo, y = int(m.group(1)), int(m.group(2))
+    return (y, mo) if 1 <= mo <= 12 else None
 
 
 def maestro_rem_map(dfm):

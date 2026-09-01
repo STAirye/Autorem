@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.2
+# Version: 1.7.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -47,7 +47,7 @@ from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
-    encontrar_fila_encabezado, edad_anios,
+    encontrar_fila_encabezado, edad_anios, mes_de_celda,
 )
 from programas import formatos
 
@@ -352,6 +352,7 @@ def _preparar(ws, perfil, log):
     demo_cols = {flag: (buscar_col(headers_norm, tokens=[norm(t) for t in src]), regla)
                  for flag, (src, regla) in DEMOGRAFIA.items()}
     genero_col = buscar_col(headers_norm, tokens=[norm(t) for t in COL_GENERO_TOKENS])
+    fecha_col = buscar_col(headers_norm, tokens=["FECHA", "FORMULARIO"])   # mes: FECHA FORMULARIO (IRIS y Admin)
     faltantes = [f for f, (c, _) in demo_cols.items() if not c]
     log("[demo] " + " ".join(f"{f}=col{c}" for f, (c, _) in demo_cols.items()) +
         f" Trans(Genero)=col{genero_col}")
@@ -362,35 +363,60 @@ def _preparar(ws, perfil, log):
         "header_idx": header_idx, "ncols": ncols, "headers": headers,
         "headers_norm": headers_norm, "num2col": num2col,
         "rut_col": rut_col, "edad_col": edad_col, "sexo_col": sexo_col,
-        "genero_col": genero_col, "demo_cols": demo_cols,
+        "genero_col": genero_col, "demo_cols": demo_cols, "fecha_col": fecha_col,
     }
 
 
 # ── MOTOR DE MARCADO (compartido egresos/ingresos, agnóstico al formato) ──
 def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_salida,
                    tipo_col_header, avisar_sin_subtipo=frozenset(), etiqueta="evento",
-                   log=print):
+                   mes=None, log=print):
     """Recorre las filas, detecta eventos por token de ESTADO (`busquedas`), les
     agrega patología + subtipo + demografía y escribe la hoja `hoja_salida`
     (formato largo: 1 fila por evento). NO guarda el workbook.
 
     `perfil` fija la ubicación de encabezado/columnas (formato IRIS o admin).
+    `mes` = (año, mes) filtra los formularios por FECHA FORMULARIO a ese mes; None
+    procesa el archivo completo. Si se pide un mes sin ningún formulario en el
+    archivo, levanta ArchivoInvalido (fail loud, no cuenta silenciosa en 0).
     Devuelve {'total','por_tipo','falta_subtipo','hoja'}.
     """
     ctx = _preparar(ws, perfil, log)
     headers = ctx["headers"]; ncols = ctx["ncols"]; num2col = ctx["num2col"]
     header_idx = ctx["header_idx"]
     rut_col = ctx["rut_col"]; edad_col = ctx["edad_col"]; sexo_col = ctx["sexo_col"]
-    genero_col = ctx["genero_col"]; demo_cols = ctx["demo_cols"]
+    genero_col = ctx["genero_col"]; demo_cols = ctx["demo_cols"]; fecha_col = ctx["fecha_col"]
+
+    mes_activo = mes is not None
+    if mes_activo and not fecha_col:
+        raise ArchivoInvalido(
+            "sin_fecha",
+            "Pediste filtrar por un mes, pero no encuentro la columna «FECHA "
+            "FORMULARIO» en este export.\n\nCarga el archivo tal como lo descargas "
+            "de RAYEN/IRIS (sin borrar columnas), o procesa el archivo completo.")
+    if mes_activo:
+        log(f"[mes] filtrando por FECHA FORMULARIO = {mes[1]:02d}/{mes[0]}")
 
     busq = {k: [norm(t) for t in v] for k, v in busquedas.items()}
     estado_idx = [c0 for c0 in range(ncols) if es_estado(headers[c0])]   # fijo: precomputado
     eventos = []
+    filas_en_mes = 0        # formularios que caen en el mes pedido
+    filas_fecha_mala = 0    # formularios con RUT pero fecha ilegible (se excluyen)
 
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
         fila_n = [norm(v) for v in fila]
         rut  = fila[rut_col - 1]  if rut_col  else ""
+        if mes_activo:
+            if not str(rut or "").strip():
+                continue   # fila vacía de relleno: no cuenta
+            ym = mes_de_celda(fila[fecha_col - 1])
+            if ym is None:
+                filas_fecha_mala += 1
+                continue
+            if ym != mes:
+                continue
+            filas_en_mes += 1
         edad = edad_anios(fila[edad_col - 1]) if edad_col else None
         sexo = fila[sexo_col - 1] if sexo_col else ""
         demo = {flag: (flag_demo(fila[c - 1], regla) if c else "")
@@ -427,6 +453,18 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
                       "trans": trans, "fila": r}
                 ev.update(demo)
                 eventos.append(ev)
+
+    if mes_activo:
+        if filas_fecha_mala:
+            log(f"[mes] AVISO: {filas_fecha_mala} formulario(s) con fecha ilegible "
+                f"quedaron FUERA del filtro (revisa la columna FECHA FORMULARIO).")
+        if filas_en_mes == 0:
+            raise ArchivoInvalido(
+                "mes_vacio",
+                f"No hay formularios de {mes[1]:02d}/{mes[0]} en este archivo.\n\n"
+                "Revisa el mes/año elegido, o que el export cubra ese período. "
+                "Si querías todo, elige «Archivo completo».")
+        log(f"[mes] {filas_en_mes} formulario(s) en {mes[1]:02d}/{mes[0]}")
 
     # ── hoja nueva (la original intacta) ──
     if hoja_salida in wb.sheetnames:

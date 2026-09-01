@@ -12,6 +12,30 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.3] — 2026-08-28
+
+### Agregado
+- **Filtro de mes en A05 (Egresos / Ingresos)**: la pestaña deja elegir **Archivo
+  completo** o **un mes puntual** (año/mes), filtrando los formularios por **FECHA
+  FORMULARIO**. En la GUI es una caja «Período» con radio + spinboxes; en el CLI,
+  el flag `--mes AAAA-MM` (por defecto, archivo completo).
+  - **Fail loud**: si se pide un mes SIN formularios en el archivo, levanta
+    `ArchivoInvalido("mes_vacio")` con aviso claro (no genera un archivo con 0
+    filas en silencio). Sin columna de fecha → `ArchivoInvalido("sin_fecha")`.
+    Formularios con fecha ilegible se excluyen **y se avisa** en el log.
+  - Nuevo helper `rem_utils.mes_de_celda`: `(año, mes)` desde la celda, distingue
+    por ESTRUCTURA **IRIS `DD/MM/YYYY`** vs **Admin `YYYY/MM/DD`** (NO `dayfirst`
+    a ciegas — leía `2026/07/06` como junio). Acepta datetime de openpyxl y texto.
+  - Nombre de salida: al elegir mes, `…_procesado_AAAA_MM.xlsx` (archivo completo
+    sigue siendo `…_procesado.xlsx`).
+
+### Corregido
+- **Scroll vertical en la pestaña A05**: con la caja «Período» ya no cabía todo;
+  ahora usa `_tab_scroll` (como Actividades). Contenido de altura fija → no aplica
+  el known-issue del encoger.
+
+---
+
 ## [1.7.2] — 2026-08-10
 
 ### Cambiado / Arquitectura

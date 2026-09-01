@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.2
+# Version: 1.7.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -72,17 +72,19 @@ def _forzar_utf8_stdout():
 
 
 # ── Orquestación (compartida GUI/CLI) ─────────────────────────────────
-def _correr_tareas(tareas, entrada, perfil, log=print):
+def _correr_tareas(tareas, entrada, perfil, log=print, mes=None):
     """Carga el workbook UNA vez (validando contra `perfil`), cada tarea agrega
-    su hoja, y guarda UN solo «…_procesado.xlsx». Devuelve (resultados, salida)."""
+    su hoja, y guarda UN solo «…_procesado.xlsx». Devuelve (resultados, salida).
+    `mes`=(año,mes) filtra por FECHA FORMULARIO; None = archivo completo."""
     wb, ws = sm.abrir_validado(entrada, perfil)
     resultados = []
     for tarea in tareas:
         log(f"▶ {tarea['nombre']}   ({perfil['nombre']})")
-        res = tarea["agregar"](wb, ws, perfil, log=log)
+        res = tarea["agregar"](wb, ws, perfil, log=log, mes=mes)
         resultados.append((tarea, res))
 
-    salida = entrada.with_name(entrada.stem + "_procesado.xlsx")
+    sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""   # mes elegido -> …_procesado_2026_07.xlsx
+    salida = entrada.with_name(entrada.stem + "_procesado" + sufijo + ".xlsx")
     wb.save(salida)
     log(f"[ok] guardado: {salida}")
     return resultados, str(salida)
@@ -487,17 +489,16 @@ def _resolver_estamentos(root, faltantes, opciones):
 def _tab_a05(nb, root, ruta_inicial=""):
     import tkinter as tk
     from tkinter import ttk, messagebox
-    tab = ttk.Frame(nb, padding=12)
-    nb.add(tab, text="REM A05 · Egresos / Ingresos")
+    tab = _tab_scroll(nb, "REM A05 · Egresos / Ingresos")
 
     instr = (
         "1.  Descarga el Excel del formulario «Control de Salud Mental»:\n"
         "     A) IRIS: Formularios RAYEN → Control de Salud Mental → todos los metacampos, Situación TODOS, Estado AMBOS.\n"
         "     B) RAYEN: Herramientas → Informe Estadístico → Impresión Formularios Clínicos → Reporte Administrativo.\n"
         "2.  Elige el FORMATO que descargaste y el archivo.\n"
-        "3.  Marca la(s) TAREA(s) y «Procesar» → «…_procesado.xlsx» con una hoja por tarea.\n"
-        "     Tu archivo original NO se modifica.\n"
-        "⚠  No discrimina fecha: debe seleccionarse bien al bajar el reporte."
+        "3.  Elige el PERÍODO: archivo completo, o un mes puntual (por FECHA FORMULARIO).\n"
+        "4.  Marca la(s) TAREA(s) y «Procesar» → «…_procesado.xlsx» con una hoja por tarea.\n"
+        "     Tu archivo original NO se modifica."
     )
     caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(0, 8))
@@ -521,6 +522,33 @@ def _tab_a05(nb, root, ruta_inicial=""):
     var_ruta = tk.StringVar(value=ruta_inicial)
     _fila_archivo(tab, var_ruta, "Elige el export de Control de Salud Mental")
 
+    # ── Período: archivo completo vs. un mes (por FECHA FORMULARIO) ──
+    from datetime import date as _date
+    _hoy = _date.today()
+    _y0, _m0 = (_hoy.year, _hoy.month - 1) if _hoy.month > 1 else (_hoy.year - 1, 12)
+    caja_per = ttk.LabelFrame(tab, text="Período", padding=8)
+    caja_per.pack(fill="x", pady=(2, 6))
+    var_periodo = tk.StringVar(value="todo")   # "todo" | "mes"
+    ttk.Radiobutton(caja_per, text="Archivo completo", value="todo",
+                    variable=var_periodo).pack(anchor="w")
+    fila_mes = ttk.Frame(caja_per)
+    fila_mes.pack(anchor="w", fill="x")
+    ttk.Radiobutton(fila_mes, text="Un mes (año / mes):", value="mes",
+                    variable=var_periodo).pack(side="left")
+    var_anio = tk.StringVar(value=str(_y0))
+    var_mes = tk.StringVar(value=str(_m0))
+    spin_anio = ttk.Spinbox(fila_mes, from_=2020, to=2100, width=6, textvariable=var_anio)
+    spin_anio.pack(side="left", padx=(6, 2))
+    spin_mes = ttk.Spinbox(fila_mes, from_=1, to=12, width=4, textvariable=var_mes)
+    spin_mes.pack(side="left")
+
+    def _on_periodo():
+        estado = "normal" if var_periodo.get() == "mes" else "disabled"
+        spin_anio.configure(state=estado)
+        spin_mes.configure(state=estado)
+    var_periodo.trace_add("write", lambda *_: _on_periodo())
+    _on_periodo()
+
     caja_tareas = ttk.LabelFrame(tab, text="Tareas a ejecutar", padding=8)
     caja_tareas.pack(fill="x", pady=(2, 6))
     checks = {}
@@ -540,15 +568,27 @@ def _tab_a05(nb, root, ruta_inicial=""):
         if not seleccionadas:
             messagebox.showwarning("Sin tareas", "Marca al menos una tarea.")
             return
+        mes = None
+        if var_periodo.get() == "mes":
+            try:
+                mes = (int(var_anio.get()), int(var_mes.get()))
+            except ValueError:
+                messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+                return
+            if not (1 <= mes[1] <= 12):
+                messagebox.showwarning("Mes inválido", "El mes debe estar entre 1 y 12.")
+                return
         perfil = sm.perfil_por_id(var_perfil.get())
         if perfil["disclaimer"]:
             log(perfil["disclaimer"]); log("")
         btn.configure(state="disabled")
         try:
-            resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, log)
+            resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, log, mes=mes)
         except sm.ArchivoInvalido as e:
             titulo = {"administrativo": "Parece Administrativo, no IRIS",
-                      "iris": "Parece IRIS, no Administrativo"}.get(
+                      "iris": "Parece IRIS, no Administrativo",
+                      "mes_vacio": "Sin formularios en ese mes",
+                      "sin_fecha": "No encuentro la fecha"}.get(
                           e.categoria, "Formato no reconocido")
             log(f"[ARCHIVO EQUIVOCADO] {e.categoria}")
             messagebox.showerror(titulo, str(e))
@@ -950,13 +990,30 @@ def main_cli(args):
         tarea_ids = [s for s in args[i + 1].split(",") if s]
         args = args[:i] + args[i + 2:]
 
+    mes = None
+    if "--mes" in args:
+        i = args.index("--mes")
+        if i + 1 >= len(args):
+            print("ERROR: --mes requiere un valor AAAA-MM (ej. 2026-07).")
+            return 2
+        try:
+            y_s, m_s = args[i + 1].split("-")
+            mes = (int(y_s), int(m_s))
+            if not (1 <= mes[1] <= 12):
+                raise ValueError
+        except ValueError:
+            print("ERROR: --mes debe ser AAAA-MM con mes 1-12 (ej. 2026-07).")
+            return 2
+        args = args[:i] + args[i + 2:]
+
     if not args:
         ids = ", ".join(t["id"] for t in TAREAS)
         fmts = ", ".join(p["id"] for p in PERFILES)
         print("USO: python autorem.py --cli entrada.xlsx "
-              "[--formato iris|administrativo] [--tarea ID[,ID2,...]]")
+              "[--formato iris|administrativo] [--tarea ID[,ID2,...]] [--mes AAAA-MM]")
         print(f"Formatos: {fmts}  (por defecto: {PERFILES[0]['id']})")
         print(f"Tareas:   {ids}  (por defecto: la primera)")
+        print("--mes:    filtra por FECHA FORMULARIO (por defecto: archivo completo)")
         print("(El screening A03 por ahora solo desde la GUI, pestaña 'Screening'.)")
         return 2
 
@@ -980,7 +1037,7 @@ def main_cli(args):
     if perfil["disclaimer"]:
         print(perfil["disclaimer"] + "\n")
     try:
-        resultados, salida = _correr_tareas(seleccionadas, entrada, perfil)
+        resultados, salida = _correr_tareas(seleccionadas, entrada, perfil, mes=mes)
     except sm.ArchivoInvalido as e:
         print(f"\n[ARCHIVO EQUIVOCADO — {e.categoria}]\n{e}")
         return 1
