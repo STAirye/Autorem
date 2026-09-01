@@ -98,11 +98,19 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
 - **REM SM · Actividades** — estadística de actividades de Salud Mental (A04·A24,
   A06 controles + psicosocial grupal, A19a consejerías familiares, A26 VDI SM, A27
   educación, A32 remotas), **con desagregación demográfica** (pueblos originarios,
-  migrantes, SENAME, demencia, gestante…). Carga el export **ADA** (Atenciones/
-  Diagnósticos/Actividades), el de **Atenciones Grupales** y, opcionalmente, el
-  **Informe Inscritos y Adscritos** (solo para el flag **TRANS**); elige el mes. Salida:
-  hoja *SM_Detalle* (auditable) + una hoja por sección REM, lista para **copiar-pegar al
-  template SA_26**.
+  migrantes, SENAME, demencia, gestante…). Carga (obligatorios) el export **ADA**
+  (Atenciones/Diagnósticos/Actividades) y el de **Atenciones Grupales**; y hasta
+  tres **opcionales**:
+    - **Informe Inscritos y Adscritos** — solo para el flag **TRANS** (split M/F por
+      selección explícita de GÉNERO).
+    - **Monitoreo Multiprofesional** — composición de profesionales de las VDI en
+      **A26** (una / dos o más).
+    - **Maestro de Actividades** — catálogo RAYEN que sirve de autoridad para
+      clasificar el reporte de **Trabajo perdido** (si no lo cargas, se usa el
+      *Maestro slim* que viene incluido).
+
+  Elige el mes. Salida: hoja *SM_Detalle* (auditable) + una hoja por sección REM,
+  lista para **copiar-pegar al template SA_26**.
 - **REM A03 · D.3 (cuestionarios)** — junta los 3 instrumentos de monitoreo del PSM
   (PSC / PSC-Y / GHQ-12) en la **tabla A03·D.3** lista para copiar-pegar al SA_26
   (Evaluación ingreso/egreso × Bajo/Medio/Alto × rango etario × sexo) + hoja de detalle
