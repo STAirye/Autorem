@@ -763,7 +763,8 @@ def _tab_a23(nb, root):
     instr = (
         "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII → quedan LOCALES.\n"
         "1.  Atenciones / Diagnósticos / Actividades  →  indicadores del MES (IRA, neumonía, KTR,\n"
-        "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s).\n"
+        "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s);\n"
+        "     puede venir del AÑO COMPLETO → se filtra al mes elegido por FECHA ATENCIÓN.\n"
         "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
         "     ⚠ Se bajan POR AÑO → carga VARIOS archivos (al menos el año actual + el anterior, ideal 5):\n"
         "        el inasistente tiene su último control hace >1 año, así que con pocos meses G subcuenta.\n"
@@ -780,7 +781,7 @@ def _tab_a23(nb, root):
     ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
     _aviso_sin_modificar(tab)
 
-    get_aten = _fila_archivos(tab, "Atenciones (del mes):", "Atenciones / Diagnósticos / Actividades")
+    get_aten = _fila_archivos(tab, "Atenciones (mes o año):", "Atenciones / Diagnósticos / Actividades (se filtra al mes elegido por FECHA ATENCIÓN)")
     get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
     _separador_opcionales(tab)
     get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
