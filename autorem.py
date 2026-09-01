@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.8
+# Version: 1.7.9
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -710,8 +710,7 @@ def _correr_a03(root, barra, btn, log, por_inst, salida, est_ruta, messagebox):
 
 def _tab_a03(nb, root):
     from tkinter import ttk, messagebox
-    tab = ttk.Frame(nb, padding=12)
-    nb.add(tab, text="REM A03 D.3 · Screening")
+    tab = _tab_scroll(nb, "REM A03 D.3 · Screening")
 
     instr = (
         "Monitoreo del PSM (PSC / PSC-Y / GHQ-12), aplicado al INGRESO y EGRESO del programa.\n"
@@ -759,8 +758,7 @@ def _tab_a23(nb, root):
     import tkinter as tk
     from tkinter import ttk, messagebox
     from datetime import date
-    tab = ttk.Frame(nb, padding=12)
-    nb.add(tab, text="REM A23 · Respiratorio")
+    tab = _tab_scroll(nb, "REM A23 · Respiratorio")
 
     instr = (
         "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII → quedan LOCALES.\n"

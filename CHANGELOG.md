@@ -12,6 +12,16 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.9] — 2026-09-01
+
+### Corregido
+- **Scroll vertical en las pestañas A03 y A23** (antes solo A05 y SM lo tenían): en
+  pantallas chicas el contenido se dibujaba fuera de la ventana sin barra. Ahora las
+  **4 pestañas** usan `_tab_scroll`. Contenido de altura fija → no aplica el
+  known-issue del encoger (ese es solo del toggle de cuestionarios en SM).
+
+---
+
 ## [1.7.8] — 2026-09-01
 
 ### Agregado (fail loud)
