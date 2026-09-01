@@ -1,0 +1,1272 @@
+{
+ "page": "Respiratorio",
+ "visuals": [
+  {
+   "id": "0398dfdaa515adddd052",
+   "type": "slicer",
+   "title": "EPOC Control",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Control",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA EPOC Control"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "086210bdf1a6696bf7b8",
+   "type": "clusteredColumnChart",
+   "title": "Número de controles y consultas (por actividad) por mes en los últimos 12 meses",
+   "roles": {
+    "Category": [
+     {
+      "entity": "?",
+      "prop": "Año",
+      "agg": null,
+      "kind": "hierarchy",
+      "label": "FECHA ATENCION Año"
+     },
+     {
+      "entity": "?",
+      "prop": "Mes",
+      "agg": null,
+      "kind": "hierarchy",
+      "label": "FECHA ATENCION Mes"
+     }
+    ],
+    "Series": [
+     {
+      "entity": "Atenciones",
+      "prop": "Respiratorio (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Respiratorio (act)"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Atenciones",
+      "prop": "FECHA ATENCION",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Primera fecha: FECHA ATENCION"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Atenciones",
+      "prop": "Respiratorio (act)",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Respiratorio (act)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0912b77d5ede722ab4d8",
+   "type": "slicer",
+   "title": "SBOR Grado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "SBOR Gravedad"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0991ccfea5e600cd6283",
+   "type": "slicer",
+   "title": "ASMA Control",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Control",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA ASMA Control"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "18d9edcc36b21b25be39",
+   "type": "slicer",
+   "title": "¿Activo 12m?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido en 12m?",
+      "agg": null,
+      "kind": "column",
+      "label": "Atendido en 12m?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "200e8494480188a96e57",
+   "type": "card",
+   "title": "Total de personas",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Nº de personas"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "4bb9d6c2adcd8d01a511",
+   "type": "slicer",
+   "title": "Migr o Origin",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "4daf643f105baaf9c540",
+   "type": "slicer",
+   "title": "O2 depen",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA O2 Dependiente",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA O2 Dependiente"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "5b6b1cdf05d108315499",
+   "type": "slicer",
+   "title": "Asisten Vent",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Asistencia Ventilatoria",
+      "agg": null,
+      "kind": "column",
+      "label": "Asistencia Vent?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "62326974e269647751c6",
+   "type": "slicer",
+   "title": "Estado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "63cac2b8397bda51f3c7",
+   "type": "slicer",
+   "title": "ASMA Grado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA Gravedad"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "675d2f0b0fb9a38e1a8f",
+   "type": "slicer",
+   "title": "Sexo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "6c8f4c85065d26b7ee40",
+   "type": "slicer",
+   "title": "Años",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Años"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "6d94a4092889c633e041",
+   "type": "slicer",
+   "title": "Sector",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "7508c451a38b23b1e25d",
+   "type": "slicer",
+   "title": "Situación",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "75310a7aaf13dadb3c6c",
+   "type": "slicer",
+   "title": "¿Ingresado?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Ingresado?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "760f8e4f08232f503e4e",
+   "type": "slicer",
+   "title": "Otras Respi",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Otras Respi",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Otras Respi"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "7b63f4b32d209b72128a",
+   "type": "slicer",
+   "title": "SBOR",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR",
+      "agg": null,
+      "kind": "column",
+      "label": "SBOR"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "7e9c65f4be2c118b7a4e",
+   "type": "slicer",
+   "title": "EPOC Tipo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Tipo",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC T Otros"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "854d1e89f1e0fd8fadee",
+   "type": "slicer",
+   "title": "Fibrosis Q",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA FQ",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA FQ"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "88cec44c1d80e0b91164",
+   "type": "slicer",
+   "title": "Meses",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Meses",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Meses"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "8a95a41ca5b91f4fb2c2",
+   "type": "esriVisual",
+   "title": "Mapa de Georreferenciación",
+   "roles": {
+    "Color": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ],
+    "Location": [
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "9e2b09d809e7aec1fd11",
+   "type": "slicer",
+   "title": "ASMA",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "bd61804a9f5f2a8d3be0",
+   "type": "pieChart",
+   "title": null,
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Control",
+      "agg": null,
+      "kind": "column",
+      "label": "Control EPOC"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Recuento de RUN1"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "bfd4b1e04bb163cccbe7",
+   "type": "slicer",
+   "title": "¿Activo SALA?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Activo 12m (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Activo 12m (act)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "e7e52915d832314e987d",
+   "type": "slicer",
+   "title": "EPOC",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "f70df612eac6facaa75a",
+   "type": "pieChart",
+   "title": null,
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Control",
+      "agg": null,
+      "kind": "column",
+      "label": "Control ASMA"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Recuento de RUN1"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "f8d2976a457a3900ee7e",
+   "type": "tableEx",
+   "title": "Población Respiratorio",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Tipo de identificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Tipo de identificación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "Número"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Meses",
+      "agg": null,
+      "kind": "column",
+      "label": "Meses"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Días",
+      "agg": null,
+      "kind": "column",
+      "label": "Días"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Motivo Pasivación",
+      "agg": null,
+      "kind": "column",
+      "label": "Motivo Pasivación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Pasivación",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Pasivación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Ingresado?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Activo 12m (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Activo SALA 12m?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR",
+      "agg": null,
+      "kind": "column",
+      "label": "SBOR"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "SBOR Gravedad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA Gravedad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Control",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA Control"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Tipo",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC T"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Control",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC Control"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Otras Respi",
+      "agg": null,
+      "kind": "column",
+      "label": "Otras Respi"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA O2 Dependiente",
+      "agg": null,
+      "kind": "column",
+      "label": "O2 Dependiente"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Asistencia Ventilatoria",
+      "agg": null,
+      "kind": "column",
+      "label": "Asistencia Ventilatoria"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Asistencia Ventilatoria (Tipo)",
+      "agg": null,
+      "kind": "column",
+      "label": "Asistencia Ventilatoria (Tipo)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA FQ",
+      "agg": null,
+      "kind": "column",
+      "label": "FQ"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Espirometría Vigente 12m (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Espirometría Vigente 12m (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA/OTROS Encuesta Calidad de vida resultado",
+      "agg": null,
+      "kind": "column",
+      "label": "Encuesta Calidad de vida resultado (histórico)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Budesonida",
+      "agg": null,
+      "kind": "column",
+      "label": "Budesonida1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SM Fluticasona",
+      "agg": null,
+      "kind": "column",
+      "label": "Fluticasona"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Bromuro",
+      "agg": null,
+      "kind": "column",
+      "label": "Bromuro1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Salbutamol",
+      "agg": null,
+      "kind": "column",
+      "label": "Salbutamol"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Desloratadina",
+      "agg": null,
+      "kind": "column",
+      "label": "Desloratadina"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Loratadina",
+      "agg": null,
+      "kind": "column",
+      "label": "Loratadina"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Prednisona",
+      "agg": null,
+      "kind": "column",
+      "label": "Prednisona"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Control último (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Último control (fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Control último (Instrumento)",
+      "agg": null,
+      "kind": "column",
+      "label": "Último control (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Trans",
+      "agg": "SUM",
+      "kind": "column",
+      "label": "Suma de Trans"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  }
+ ],
+ "pageFilters": [
+  {
+   "entity": "Ferrada",
+   "prop": "Pertenece a SALA",
+   "type": "Categorical",
+   "values": [
+    "SI"
+   ]
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sexo",
+   "type": "Categorical",
+   "values": [
+    "Hombre",
+    "Mujer"
+   ]
+  }
+ ],
+ "fields": [
+  {
+   "entity": "Atenciones",
+   "prop": "FECHA ATENCION",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Atenciones",
+   "prop": "Respiratorio (act)",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"kinesioter\"),\"KTR\",\n    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control sala (ira\"),\"Control\",\n    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"consulta sala (ira\"),\"Consulta\",\n    BLANK())",
+   "explanation": "Clasifica la atención respiratoria: «KTR» (kinesioterapia), «Control» (control sala IRA), «Consulta» (consulta sala IRA); si no, BLANK."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Celular",
+   "calculated": true,
+   "dax": "IF(\n    LEN(\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]))<8,\n        BLANK(),\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]\n    )\n)",
+   "explanation": "Número de celular desde «Inscritos»; se descartan valores con menos de 8 dígitos (BLANK)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Desloratadina",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Recetas Vigentes'[RUN]),\n        FILTER(\n            'Recetas Vigentes',\n            'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"desloratadina\"\n            )\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: existe receta vigente cuya descripción contiene «desloratadina»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Dirección Completa",
+   "calculated": true,
+   "dax": "VAR Calle     = LOOKUPVALUE(Inscritos[CALLE RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR TipoVia   = LOOKUPVALUE(Inscritos[TIPO VIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Numero    = LOOKUPVALUE(Inscritos[NUMERO RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Comuna    = LOOKUPVALUE(Inscritos[COMUNA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Provincia = LOOKUPVALUE(Inscritos[PROVINCIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Region    = LOOKUPVALUE(Inscritos[REGIÓN RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Pais      = LOOKUPVALUE(Inscritos[PAIS], Inscritos[RUN], 'Ferrada'[RUN])\n\nVAR CamposFaltantes =\n    Calle IN {BLANK(), \"\"} ||\n    TipoVia IN {BLANK(), \"\"} ||\n    Numero IN {BLANK(), \"\"} ||\n    Comuna IN {BLANK(), \"\"}\n\nRETURN\nIF(\n    CamposFaltantes,\n    BLANK(),\n    TRIM(\n        TipoVia & \" \" & Calle & \" \" & Numero & \", \" &\n        Comuna & \", \" & Provincia & \", \" & Region & \", \" & Pais\n    )\n)",
+   "explanation": "Dirección completa concatenada desde «Inscritos» (tipo de vía + calle + número, comuna, provincia, región, país). BLANK si falta calle, tipo de vía, número o comuna."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Días",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiaActual = DAY(Hoy)\nVAR MesActual = MONTH(Hoy)\nVAR AnioActual = YEAR(Hoy)\nVAR DiaNacimiento = DAY(Nacimiento)\nVAR MesNacimiento = MONTH(Nacimiento)\nVAR AnioNacimiento = YEAR(Nacimiento)\nVAR DiasDelMesActual = \n    IF(\n        ISBLANK(Nacimiento),\n        BLANK(),\n        IF(\n            MesActual = MesNacimiento && AnioActual = AnioNacimiento,\n            DiaActual - DiaNacimiento,\n            IF(\n                DiaActual >= DiaNacimiento,\n                DiaActual - DiaNacimiento,\n                DiaActual + (DAY(EOMONTH(Hoy, -1)) - DiaNacimiento)\n            )\n        )\n    )\nRETURN\n\nIF(ISBLANK(DiasDelMesActual),\nLOOKUPVALUE(Inscritos[EDAD DIAS],Inscritos[RUN],'Ferrada'[RUN]),\nDiasDelMesActual)",
+   "explanation": "Componente «días» de la edad (para lactantes). Con respaldo en EDAD DIAS de «Inscritos»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Edad",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiasTotales = DATEDIFF(Nacimiento, Hoy, DAY)\nVAR EdadExacta = \n    INT(DiasTotales / 365.25)\nRETURN\n\nIF(ISBLANK(EdadExacta),\nLOOKUPVALUE(Inscritos[EDAD AÑOS],Inscritos[RUN],'Ferrada'[RUN]),\nEdadExacta)",
+   "explanation": "Edad en años cumplidos: días entre nacimiento y hoy divididos por 365,25 (truncado). Si no hay fecha de nacimiento usa EDAD AÑOS de «Inscritos». Al usar TODAY(), cambia con cada actualización del modelo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estado",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[ESTADO],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «ESTADO» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Fecha Nacimiento",
+   "calculated": true,
+   "dax": "VAR FechaInscrito = \nLOOKUPVALUE(Inscritos[FECHA DE NACIMIENTO], Inscritos[RUN], 'Ferrada'[RUN])\n\nVAR FechaPVI = \nLOOKUPVALUE('PVI actualizada'[FECHA_NACIMIENTO], 'PVI actualizada'[RUN], 'Ferrada'[RUN])\n\nRETURN \n\nIF(ISBLANK(FechaInscrito),FechaPVI,FechaInscrito)",
+   "explanation": "Fecha de nacimiento: primero «Inscritos», con respaldo en «PVI actualizada»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Fecha Pasivación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[FECHA PASIVACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «FECHA PASIVACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Mail",
+   "calculated": true,
+   "dax": "var _Inscripcion = \nLOOKUPVALUE(Inscritos[EMAIL],Inscritos[RUN],'Ferrada'[RUN])\n\nRETURN\n\nIF(\n    _Inscripcion=\"\",BLANK(),_Inscripcion\n)",
+   "explanation": "Correo electrónico desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Meses",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR MesActual = MONTH(Hoy)\nVAR MesNacimiento = MONTH(Nacimiento)\nVAR AnioActual = YEAR(Hoy)\nVAR AnioNacimiento = YEAR(Nacimiento)\nVAR DiaActual = DAY(Hoy)\nVAR DiaNacimiento = DAY(Nacimiento)\nVAR MesesDelAnioActual = \n    IF(\n        ISBLANK(Nacimiento),\n        BLANK(),\n        IF(\n            MesActual > MesNacimiento || (MesActual = MesNacimiento && DiaActual >= DiaNacimiento),\n            MesActual - MesNacimiento,\n            MesActual - MesNacimiento + 12\n        ) - IF(DiaActual < DiaNacimiento, 1, 0)\n    )\nRETURN\n\nIF(ISBLANK(MesesDelAnioActual),\nLOOKUPVALUE(Inscritos[EDAD MESES],Inscritos[RUN],'Ferrada'[RUN]),\nMesesDelAnioActual)",
+   "explanation": "Componente «meses» de la edad (para lactantes: edad expresada en años, meses y días). Con respaldo en EDAD MESES de «Inscritos»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Motivo Pasivación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[MOTIVO PASIVACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «MOTIVO PASIVACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre Social",
+   "calculated": true,
+   "dax": "IF(\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN]))=\"\",BLANK(),\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN])))",
+   "explanation": "Nombre social desde «Inscritos» (campo NOMBRE RESPONDE). BLANK si está vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre completo",
+   "calculated": true,
+   "dax": "CONCATENATE('Ferrada'[Nombres] & \" \" & 'Ferrada'[Apellido Paterno] & \" \",'Ferrada'[Apellido Materno])",
+   "explanation": "Nombre completo: concatena [Nombres] + [Apellido Paterno] + [Apellido Materno]."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pertenece a SALA",
+   "calculated": true,
+   "dax": "IF('Ferrada'[SALA ASMA]=\"SI\" || \n'Ferrada'[SALA SBOR]=\"SI\" || \n'Ferrada'[SALA EPOC]=\"SI\" || \n'Ferrada'[SALA Otras Respi]=\"SI\" || \n'Ferrada'[SALA Asistencia Ventilatoria]=\"SI\" || \n'Ferrada'[SALA FQ]=\"SI\" || \n'Ferrada'[SALA O2 Dependiente]=\"SI\",\n\"SI\",\"NO\")",
+   "explanation": "Pertenencia a sala respiratoria: «SI» si cualquiera de [SALA ASMA], [SALA SBOR], [SALA EPOC], [SALA Otras Respi], [SALA Asistencia Ventilatoria], [SALA FQ] o [SALA O2 Dependiente] es «SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Prednisona",
+   "calculated": true,
+   "dax": "IF(CALCULATE(count('Recetas Vigentes'[RUN]),\nFILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"predniso\"))),\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el paciente tiene al menos una receta vigente del establecimiento (tabla «Recetas Vigentes») cuya descripción de artículo contiene «predniso»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "RUN",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA",
+   "calculated": true,
+   "dax": "var _SBOR = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\",\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\n    CALCULATE(count(Atenciones[RUN]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"J45\") &&\n    CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion =\nIF(\n    CONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J45\"),\n     \"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"Si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "Asma en sala SI/NO: requiere no ser SBOR ([SALA SBOR]=«NO») y cumplir alguna de: diagnóstico J45 en atención médica, J45 en Estratificación, o último formulario «Otros y Respi» de asma válido (asma=«sí», gravedad y estado de control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA Control",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\")))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[13.- ESTADO DE CONTROL ASMA]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha)),\n'Otros y Respi'[13.- ESTADO DE CONTROL ASMA],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios\n)\n\nRETURN\n\nIF(\n    _Resultado=\"\",BLANK(),_Resultado)",
+   "explanation": "Estado de control del asma (pregunta 13) según el último formulario «Otros y Respi» médico con asma=«sí». BLANK si no hay."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA Gravedad",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\")))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha)),\n'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios\n)\n\nRETURN\n\nIF(\n    'Ferrada'[SALA ASMA]=\"SI\",\nIF(\n    _Resultado=\"\",BLANK(),_Resultado))",
+   "explanation": "Gravedad del asma bronquial según el último formulario «Otros y Respi» médico con asma=«sí» y gravedad registrada. Solo se muestra si [SALA ASMA]=«SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Activo 12m (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    (DATEDIFF(Atenciones[FECHA ATENCION],TODAY(),MONTH) > 0 &&\n    DATEDIFF(Atenciones[FECHA ATENCION],TODAY(),MONTH) <= 12) &&\n    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\"))),\n    \"SI\",\"NO\")",
+   "explanation": "Actividad en sala 12m: «SI» si tuvo control de sala IRA/ERA en los últimos 12 meses (DATEDIFF 1-12 meses hacia atrás)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Asistencia Ventilatoria",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n    'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))))\n\nvar _Formularios = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n(CONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))),\n\"SI\",\"NO\")\n\n\nRETURN\nIF(\n    _Formularios=\"SI\",\n\"SI\",\"NO\")",
+   "explanation": "Asistencia ventilatoria SI/NO: último formulario «Otros y Respi» con pregunta 26 («¿necesita asistencia ventilatoria?») marcada «sí», tipo registrado y estado ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Asistencia Ventilatoria (Tipo)",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))))\n\nvar _Formularios = \nCALCULATETABLE(VALUES('Otros y Respi'[27.- ASISTENCIA VENTILATORIA]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\"))))\n\nvar _Resultado = \nIF(\n    _Formularios=\"\",BLANK(),_Formularios)\n\nRETURN\n\nIF(\n    _Resultado=\"\",BLANK(),_Resultado)",
+   "explanation": "Tipo de asistencia ventilatoria (pregunta 27) del último formulario médico válido. BLANK si no hay."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Bromuro",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"bromuro\"))),\n    \"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: existe al menos una receta vigente (tabla «Recetas Vigentes») cuya descripción de artículo contiene «bromuro»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Budesonida",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"budesonid\"))),\n    \"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: existe al menos una receta vigente (tabla «Recetas Vigentes») cuya descripción de artículo contiene «budesonid»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Control último (Instrumento)",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES(Atenciones[FECHA ATENCION]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control sala (ira\"))))\n\nRETURN\nTOPN(1,\n    CALCULATETABLE(VALUES('Atenciones'[INSTRUMENTO]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    Atenciones[FECHA ATENCION]=_Fecha &&\n    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala\"))),\n    Atenciones[INSTRUMENTO],DESC)",
+   "explanation": "Instrumento del último control de sala IRA/ERA."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Control último (fecha)",
+   "calculated": true,
+   "dax": "LASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\"))))",
+   "explanation": "Fecha del último control de sala IRA/ERA."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]>=40,\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"J44\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J44\"),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Edad=\"si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "EPOC en sala SI/NO: requiere ≥40 años y alguna de: diagnóstico J44 médico, J44 en Estratificación, o último formulario EPOC válido (padece=«sí», tipo y control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC Control",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[19.- ESTADO DE CONTROL EPOC]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n'Otros y Respi'[19.- ESTADO DE CONTROL EPOC],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios)\n\nRETURN\n\nIF(\n    'Ferrada'[SALA EPOC]=\"SI\",\nIF(\n    _Resultado=\"\",BLANK(),_Resultado))",
+   "explanation": "Del último formulario «Otros y Respi» médico válido de EPOC (padece EPOC=«sí», tipo y estado de control no vacíos, estado ingreso/seguimiento) devuelve «19.- ESTADO DE CONTROL EPOC». Solo se muestra si [SALA EPOC]=«SI»; si no, BLANK."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC Tipo",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[16.- TIPO EPOC]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n'Otros y Respi'[16.- TIPO EPOC],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios)\n\nRETURN\n\nIF(\n    'Ferrada'[SALA EPOC]=\"SI\",\nIF(\n    _Resultado=\"\",BLANK(),_Resultado))",
+   "explanation": "Del último formulario «Otros y Respi» médico válido de EPOC (padece EPOC=«sí», tipo y estado de control no vacíos, estado ingreso/seguimiento) devuelve «16.- TIPO EPOC». Solo se muestra si [SALA EPOC]=«SI»; si no, BLANK."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Espirometría Vigente 12m (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(COUNT('Atenciones'[RUN]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    (DATEDIFF(Atenciones[FECHA ATENCION],TODAY(),MONTH) > 0 &&\n    DATEDIFF(Atenciones[FECHA ATENCION],TODAY(),MONTH) <= 12 ) &&\n    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"espirometr\"))),\n    \"SI\",\"NO\")",
+   "explanation": "Espirometría vigente SI/NO: actividad de espirometría dentro de los últimos 12 meses."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA FQ",
+   "calculated": true,
+   "dax": "var _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"E84\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCALCULATETABLE(VALUES(Estratificacion[Diagnósticos]),\nFILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING(Estratificacion[Diagnósticos],\"E84\"))),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Fibrosis quística SI/NO: diagnóstico E84 en atención médica o Estratificación, o último formulario FQ válido en ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Ingresado",
+   "calculated": true,
+   "dax": "var _FechaASMA = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioASMA = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaASMA &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaEPOC = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioEPOC = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaEPOC &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaSBOR = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioSBOR = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _FechaSBOR &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaAV = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))))\n\nvar _FormularioAV = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaAV &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaOtrosR = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioOtrosRespi = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaOtrosR &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaO2 = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioO2 = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaO2 &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaFQ = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioFQ = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaFQ &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _ASMA = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\" &&\n    _FormularioASMA=\"SI\",\n    \"SI\",\"NO\")\n\nvar _SBOR = \nIF(\n    'Ferrada'[Edad]<5 &&\n    _FormularioSBOR=\"SI\",\n    \"SI\",\"NO\")\n\nvar _EPOC = \nIF(\n    'Ferrada'[Edad]>=40 &&\n    _FormularioEPOC=\"SI\",\n    \"SI\",\"NO\")\n\nvar _OTROS = \nIF(\n    _FormularioOtrosRespi=\"SI\",\n    \"SI\",\"NO\")\n\nvar _O2 = \nIF(\n    _FormularioO2=\"SI\",\n    \"SI\",\"NO\")\n\nvar _AV = \nIF(\n    _FormularioAV=\"SI\",\n    \"SI\",\"NO\")\n\nvar _FQ = \nIF(\n    _FormularioFQ=\"SI\",\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"SI\" ||\n    _ASMA=\"SI\" ||\n    _EPOC=\"SI\" ||\n    _OTROS=\"SI\" ||\n    _AV=\"SI\" ||\n    _O2=\"SI\" ||\n    _FQ=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Ingreso a sala respiratoria SI/NO: consolida los formularios «Otros y Respi» válidos de las siete líneas (SBOR si <5 años, asma si no es SBOR, EPOC si ≥40 años, otras respiratorias, asistencia ventilatoria, O2 dependiente y fibrosis quística). Basta una línea válida. A diferencia de las columnas SALA por patología, aquí solo cuenta el formulario (no diagnósticos ni estratificación)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Loratadina",
+   "calculated": true,
+   "dax": "IF(CALCULATE(count('Recetas Vigentes'[RUN]),\nFILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"loratadina\"))),\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el paciente tiene al menos una receta vigente del establecimiento (tabla «Recetas Vigentes») cuya descripción de artículo contiene «loratadina»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA O2 Dependiente",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n(CONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Formulario=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Oxígeno-dependiente SI/NO: último formulario «Otros y Respi» con pregunta 23 marcada «sí» en ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Otras Respi",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Otros y Respi'[53.- ¿PADECE OTRAS ENFERMEDADES RESPIRATORIAS?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Otros y Respi'[53.- ¿PADECE OTRAS ENFERMEDADES RESPIRATORIAS?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Formulario=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Otras enfermedades respiratorias SI/NO: último formulario «Otros y Respi» médico con la pregunta 53 marcada «sí» en ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA SBOR",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]<5,\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"bronquial obstructivo recurrente\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"bronquial obstructivo recurrente\"),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Edad=\"si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "SBOR en sala SI/NO: requiere <5 años y alguna de: diagnóstico «bronquial obstructivo recurrente» en atención médica o Estratificación, o último formulario SBOR válido (SBO=«sí», recurrente=«sí», gravedad registrada)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA SBOR Gravedad",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]<5,\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \n    CALCULATETABLE(VALUES('Otros y Respi'[4.- GRAVEDAD SBOR]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\"))))\n\nvar _Resultado = \nIF(\n    _Formulario=\"\",BLANK(),_Formulario)\n\nRETURN\nIF(\n    _Edad=\"SI\" && 'Ferrada'[SALA SBOR]=\"SI\",\nIF(_Resultado=\"\",BLANK(),_Resultado)    )",
+   "explanation": "Gravedad del SBOR según el último formulario «Otros y Respi» médico válido (padece SBO=«sí», recurrente=«sí», gravedad no vacía, estado ingreso/seguimiento). Solo se muestra si el paciente tiene <5 años y [SALA SBOR]=«SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA/OTROS Encuesta Calidad de vida resultado",
+   "calculated": true,
+   "dax": "VAR _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n        FILTER(\n            'Otros y Respi',\n            'Otros y Respi'[RUN] = Ferrada[RUN] &&\n            'Otros y Respi'[99.- RESULTADO ENCUESTA CALIDAD DE VIDA]<>\"\"\n        )\n    )\n)\n\nVAR _Resultado = \nTOPN(1,\n    CALCULATETABLE(VALUES('Otros y Respi'[99.- RESULTADO ENCUESTA CALIDAD DE VIDA]),\n        FILTER(\n            'Otros y Respi',\n            'Otros y Respi'[RUN] = Ferrada[RUN] &&\n            'Otros y Respi'[FECHA ATENCION] = _Fecha\n        )\n    ),'Otros y Respi'[99.- RESULTADO ENCUESTA CALIDAD DE VIDA]\n)\n\nRETURN\n\nIF(\n    _Resultado=\"\",BLANK(),_Resultado\n)",
+   "explanation": "Resultado más reciente de la encuesta de calidad de vida (pregunta 99 de «Otros y Respi»), sin límite de tiempo. BLANK si nunca."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SM Fluticasona",
+   "calculated": true,
+   "dax": "IF(CALCULATE(count('Recetas Vigentes'[RUN]),\nFILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"fluticasona\"))),\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el paciente tiene al menos una receta vigente del establecimiento (tabla «Recetas Vigentes») cuya descripción de artículo contiene «fluticasona»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Salbutamol",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN]),\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"Salbutamol\")),\n    \"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: existe receta vigente cuya descripción contiene «Salbutamol»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sector",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN])=\"\",BLANK(),\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sector de inscripción desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sexo",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN])=\"\",\n\"No informado\",\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sexo registral desde «Inscritos»; si está vacío devuelve «No informado»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Situación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[SITUACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «SITUACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Tipo de identificación",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Trans",
+   "calculated": true,
+   "dax": "VAR _Sexo = LOOKUPVALUE(Inscritos[SEXO], Inscritos[RUN], 'Ferrada'[RUN])\nVAR _Genero = LOOKUPVALUE(Inscritos[GENERO], Inscritos[RUN], 'Ferrada'[RUN])\nVAR _SexoInformado = NOT(ISBLANK(_Sexo) || _Sexo = \"\" || _Sexo IN {\"Desconocido\", \"No informado\"})\nVAR _GeneroInformado = NOT(_Genero IN {\"\", \"Sin registro\", \"No revelado\"})\nRETURN\nIF(\n    _SexoInformado && _GeneroInformado,\n    IF(\n        (_Sexo = \"Hombre\" && _Genero = \"Masculino\") || (_Sexo = \"Mujer\" && _Genero = \"Femenina\"),\n        0, 1\n    ),\n    BLANK()\n)",
+   "explanation": "Marcador de identidad trans: 1 si el sexo registral y el género informado no coinciden (hombre/masculino, mujer/femenina); 0 si coinciden; BLANK si falta información."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Atendido en 12m?",
+   "calculated": true,
+   "dax": "VAR _FechaInicio = \nEOMONTH(TODAY(),-13) + 1\n\nVAR _FechaFinal =\nEOMONTH(TODAY(),-1)\n\nRETURN\n\nIF(\n    CALCULATE(COUNT(Atenciones[RUN]),\n        FILTER(\n            Atenciones,\n            Atenciones[RUN]='Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= _FechaInicio &&\n            Atenciones[FECHA ATENCION] <= _FechaFinal\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: tuvo al menos una atención dentro de los 12 meses cerrados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Originario o Migrante?",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    'Ferrada'[Nacionalidad] <> \"Chilena\" && 'Ferrada'[Nacionalidad] <> \"\" && Ferrada[Nacionalidad] <> \"desconocido\", \n    \"Migrante\",\n    (\n        'Ferrada'[Nacionalidad] = \"Chilena\" && \n        'Ferrada'[Pueblo Originario] <> \"Ninguno\" && \n        'Ferrada'[Pueblo Originario] <> \"No Contesta\" && \n        'Ferrada'[Pueblo Originario] <> \"No Sabe\" && \n        'Ferrada'[Pueblo Originario] <> \"\"\n    ), \n        \"Originario\",\n        \"NO\"\n    )",
+   "explanation": "Clasificación intercultural: «Migrante» si la nacionalidad no es chilena (ni vacía ni desconocida); «Originario» si es chilena y declara pueblo originario válido; «NO» en otro caso."
+  }
+ ]
+}

@@ -1,0 +1,1167 @@
+{
+ "page": "Preventivos",
+ "visuals": [
+  {
+   "id": "005e10958fe104f94f69",
+   "type": "pieChart",
+   "title": "CLAP",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a CLAP",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a CLAP"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a CLAP",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Citar a CLAP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "01188847f14bb9f65d99",
+   "type": "slicer",
+   "title": "Situación",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "05281fb4c3e0237dd7e3",
+   "type": "slicer",
+   "title": "Meses",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Meses",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Meses"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0953e954bb37541d4aea",
+   "type": "slicer",
+   "title": "Validado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Validado",
+      "agg": null,
+      "kind": "column",
+      "label": "Validado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0b7a681d676f94c48d3c",
+   "type": "tableEx",
+   "title": "1º EMPA (próximo mes)",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Años"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular Inscripción"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0fb4158e508ba8fa6d74",
+   "type": "tableEx",
+   "title": "1º PAP (próximo mes)",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Años"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular Inscripción"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "1126d1fbddf8bdde0332",
+   "type": "pieChart",
+   "title": "EMPAM",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPAM",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a EMPAM"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPAM",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Citar a EMPAM"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "16aecc66d7d0820efe5f",
+   "type": "slicer",
+   "title": "EMPA",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPA",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a EMPA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "182649f2928274a64ab2",
+   "type": "slicer",
+   "title": "Años",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Años"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "1caa4d6d3271b04de517",
+   "type": "clusteredColumnChart",
+   "title": "Número de preventivos realizados por mes en los últimos 12 meses",
+   "roles": {
+    "Category": [
+     {
+      "entity": "?",
+      "prop": "Año",
+      "agg": null,
+      "kind": "hierarchy",
+      "label": "FECHA ATENCION Año"
+     },
+     {
+      "entity": "?",
+      "prop": "Mes",
+      "agg": null,
+      "kind": "hierarchy",
+      "label": "FECHA ATENCION Mes"
+     }
+    ],
+    "Series": [
+     {
+      "entity": "Atenciones",
+      "prop": "Preventivo",
+      "agg": null,
+      "kind": "column",
+      "label": "Preventivo"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Atenciones",
+      "prop": "FECHA ATENCION",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Primera fecha: FECHA ATENCION"
+     },
+     {
+      "entity": "Atenciones",
+      "prop": "AÑOS ATENCION",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Mín. de AÑOS ATENCION"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Atenciones",
+      "prop": "Preventivo",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Preventivo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "3e5496daf367326cc13c",
+   "type": "pieChart",
+   "title": "EMPA",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPA",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a EMPA"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPA",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Citar a EMPA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "60b5200f61ef893acc68",
+   "type": "slicer",
+   "title": "Embarazada",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Embarazada?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Embarazada?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "6236a2cf4ea15621301b",
+   "type": "tableEx",
+   "title": "Runificado Preventivo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a Preventivo",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a Preventivo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Última Atención (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Última Atención (fecha)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "634b77c7365e8371a136",
+   "type": "slicer",
+   "title": "EMPAM",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a EMPAM",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a EMPAM"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "6c86be00e777141502d1",
+   "type": "slicer",
+   "title": "¿Activo 1m?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido 1 mes?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Atendido 1 mes?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "6c9895b284d682b9376d",
+   "type": "slicer",
+   "title": "Estado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "86f3cc074232809a1060",
+   "type": "slicer",
+   "title": "¿Activo 12m?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido en 12m?",
+      "agg": null,
+      "kind": "column",
+      "label": "Atendido en 12m?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "9116220be98650b8fa7d",
+   "type": "slicer",
+   "title": "CLAP",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a CLAP",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a CLAP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "a364238bd10cc811d148",
+   "type": "slicer",
+   "title": "PAP",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a PAP",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a PAP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "ad5d65efdeb641e468a0",
+   "type": "slicer",
+   "title": "Sexo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "bc7fb47d73ba8fbe8a95",
+   "type": "slicer",
+   "title": "Días",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Días",
+      "agg": null,
+      "kind": "column",
+      "label": "Días"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "c59b4ea294787bed20c4",
+   "type": "tableEx",
+   "title": "1º EMPAM (próximo mes)",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Años"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular Inscripción"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "c8b63e596844f1a9fcc4",
+   "type": "slicer",
+   "title": "Sector",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d3561473e8c676357cde",
+   "type": "slicer",
+   "title": "Migr o Origin",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d8fcb4d078c1d969239a",
+   "type": "card",
+   "title": "Total de personas",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Nº de personas"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "e41e143b18f15449765a",
+   "type": "esriVisual",
+   "title": "Mapa de Georreferenciación",
+   "roles": {
+    "Color": [
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     }
+    ],
+    "Location": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad1"
+     }
+    ],
+    "Time": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "ea2a97ae8dd0cd01d9e6",
+   "type": "pieChart",
+   "title": "PAP",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a PAP",
+      "agg": null,
+      "kind": "column",
+      "label": "Citar a PAP"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Citar a PAP",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Citar a PAP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "f98be0f283c765989318",
+   "type": "tableEx",
+   "title": "1º CLAP (próximo mes)",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Años"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Nacimiento",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Nacimiento"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular Inscripción"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  }
+ ],
+ "pageFilters": [],
+ "fields": [
+  {
+   "entity": "Atenciones",
+   "prop": "AÑOS ATENCION",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Atenciones",
+   "prop": "FECHA ATENCION",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Atenciones",
+   "prop": "Preventivo",
+   "calculated": true,
+   "dax": "VAR _EMPA =\n    IF(\n        Atenciones[AÑOS ATENCION] >= 20 &&\n        Atenciones[AÑOS ATENCION] < 65 &&\n        CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"emp -\"),\n        \"EMPA\"\n    )\n\nVAR _EMPAM =\n    IF(\n        Atenciones[AÑOS ATENCION] >= 65 &&\n        CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"emp -\"),\n        \"EMPAM\"\n    )\n\nVAR _CLAP =\n    IF(\n        Atenciones[AÑOS ATENCION] >= 10 &&\n        Atenciones[AÑOS ATENCION] < 20 &&\n        CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"clap modi\"),\n        \"CLAP\"\n    )\n\nVAR _PAP = \n    IF(\n        Atenciones[AÑOS ATENCION] >= 25 &&\n        Atenciones[AÑOS ATENCION] < 65 &&\n        (CONTAINSSTRING(Atenciones[ACTIVIDADES], \"examen pap\") ||\n        CONTAINSSTRING(Atenciones[DIAGNOSTICOS], \"z12.4\")),\n        \"PAP\")\n\nVAR Lista =\n    FILTER(\n        {\n            ( _EMPA ),\n            ( _EMPAM ),\n            ( _CLAP ),\n            ( _PAP )\n        },\n        NOT ISBLANK([Value])\n    )\n\nVAR Resultado =\n    IF(\n        COUNTROWS(Lista) = 0,\n        BLANK(),\n        CONCATENATEX(Lista, [Value], \" | \")\n    )\n\nRETURN\nResultado",
+   "explanation": "Etiqueta la atención preventiva según edad y registro: EMPA (20-64 años, formulario «emp -»), EMPAM (≥65, formulario «emp -»), CLAP (10-19, formulario «clap modi»), PAP (mujeres 25-64 por actividad «examen pap» o dx z12.4). Si aplica más de una, las concatena con « | »; si ninguna, BLANK."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Celular",
+   "calculated": true,
+   "dax": "IF(\n    LEN(\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]))<8,\n        BLANK(),\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]\n    )\n)",
+   "explanation": "Número de celular desde «Inscritos»; se descartan valores con menos de 8 dígitos (BLANK)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Citar a CLAP",
+   "calculated": true,
+   "dax": "VAR _CLAPFecha = \nCALCULATE(\n    MAX(\n        Atenciones[FECHA ATENCION].[Date]),\n        FILTER(Atenciones,\n        Atenciones[RUN]='Ferrada'[RUN] &&\n        CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS],\"clap modifica\")))\n\nRETURN\nSWITCH(\n    TRUE(),\n    'Ferrada'[Edad] < 10 || 'Ferrada'[Edad] >= 20,BLANK(),\n    ISBLANK(_CLAPFecha) || \n    DATEDIFF(_CLAPFecha,EOMONTH(TODAY(),-1),DAY) > 365,\"Rescatar\",\n    DATEDIFF(_CLAPFecha,EOMONTH(TODAY(),-1),DAY) <= 365,\"Vigente\",\n    BLANK()\n)",
+   "explanation": "Estado CLAP (10-19 años): «Rescatar» si no tiene CLAP en los últimos 365 días; «Vigente» si lo tiene. BLANK fuera del rango etario."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Citar a EMPA",
+   "calculated": true,
+   "dax": "VAR FechaReferencia = EOMONTH(TODAY(), -1)\nVAR FechaInicioVigencia = EOMONTH(FechaReferencia,-12) + 1 \n\nVAR FechaEMPA =\n    CALCULATE(\n        MAX(Atenciones[FECHA ATENCION]),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"emp -\")\n        )\n    )\n\nRETURN\nSWITCH(\n    TRUE(),\n    'Ferrada'[¿Embarazada?] = \"si\" || 'Ferrada'[Edad] < 20 || 'Ferrada'[Edad] >= 65, BLANK(),\n    ISBLANK(FechaEMPA) || FechaEMPA < FechaInicioVigencia, \"Rescatar\",\n    FechaEMPA >= FechaInicioVigencia, \"Vigente\",\n    BLANK()\n)",
+   "explanation": "Estado EMPA (20-64 años, no embarazada): «Rescatar» si el último EMP es anterior a la ventana de 12 meses cerrados; «Vigente» si está dentro. BLANK si no corresponde."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Citar a EMPAM",
+   "calculated": true,
+   "dax": "VAR FechaReferencia = EOMONTH(TODAY(), -1) // Último día del mes anterior\nVAR FechaInicioVigencia = FechaReferencia - 365\n\nVAR FechaEMPA =\n    CALCULATE(\n        MAX(Atenciones[FECHA ATENCION]),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"emp -\")\n        )\n    )\n\nRETURN\nSWITCH(\n    TRUE(),\n    'Ferrada'[Edad] < 65, BLANK(),\n    ISBLANK(FechaEMPA) || FechaEMPA < FechaInicioVigencia, \"Rescatar\",\n    FechaEMPA >= FechaInicioVigencia, \"Vigente\",\n    BLANK()\n)",
+   "explanation": "Estado EMPAM (≥65 años): «Rescatar» si el último EMP tiene más de 365 días al cierre del mes anterior; «Vigente» si no. BLANK en menores."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Citar a PAP",
+   "calculated": true,
+   "dax": "VAR FechaReferencia = EOMONTH(TODAY(), -1)\nVAR FechaInicioVigencia = FechaReferencia - 1095 \n\nVAR FechaAtencion =\n    CALCULATE(\n        MAX(Atenciones[FECHA ATENCION]),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING(Atenciones[ACTIVIDADES], \"examen pap\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS], \"z12.4\")\n            )\n        )\n    )\n\nVAR FechaFormulario =\n    CALCULATE(\n        MAX('PAP Histórico'[1.- Fecha Examen PAP]),\n        FILTER(\n            ALL('PAP Histórico'),\n            'PAP Histórico'[RUN] = 'Ferrada'[RUN]\n        )\n    )\n\nVAR FechaPAP = MAXX({FechaAtencion, FechaFormulario}, [Value])\n\nRETURN\nSWITCH(\n    TRUE(),\n    'Ferrada'[Sexo] <> \"mujer\" ||\n    'Ferrada'[Edad] < 25 ||\n    'Ferrada'[Edad] >= 65, BLANK(),\n    ISBLANK(FechaPAP) || FechaPAP < FechaInicioVigencia, \"Rescatar\",\n    FechaPAP >= FechaInicioVigencia, \"Vigente\",\n    BLANK()\n)",
+   "explanation": "Estado PAP (mujeres 25-64): vigencia de 3 años (1095 días) considerando actividades PAP, diagnóstico z12.4 y el PAP histórico. «Rescatar» / «Vigente» / BLANK si no corresponde."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Citar a Preventivo",
+   "calculated": true,
+   "dax": "VAR Preventivos =\n    UNION(\n        SELECTCOLUMNS(\n            {\"CNS\"}, \"Nombre\", \"CNS\", \"Estado\", 'Ferrada'[Citar a CNS]\n        ),\n        SELECTCOLUMNS(\n            {\"CLAP\"}, \"Nombre\", \"CLAP\", \"Estado\", 'Ferrada'[Citar a CLAP]\n        ),\n        SELECTCOLUMNS(\n            {\"EMPA\"}, \"Nombre\", \"EMPA\", \"Estado\", 'Ferrada'[Citar a EMPA]\n        ),\n        SELECTCOLUMNS(\n            {\"EMPAM\"}, \"Nombre\", \"EMPAM\", \"Estado\", 'Ferrada'[Citar a EMPAM]\n        ),\n        SELECTCOLUMNS(\n            {\"PAP\"}, \"Nombre\", \"PAP\", \"Estado\", 'Ferrada'[Citar a PAP]\n        )\n    )\n\nVAR Filtrados =\n    FILTER(Preventivos, [Estado] = \"rescatar\")\n\nVAR TextoFinal =\n    CONCATENATEX(Filtrados, [Nombre], \" | \")\n\nRETURN\n    IF(TextoFinal = \"\", BLANK(), TextoFinal)",
+   "explanation": "Resumen de preventivos pendientes: concatena con « | » los programas en estado «Rescatar» entre CNS, CLAP, EMPA, EMPAM y PAP. BLANK si no debe nada."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Dirección Completa",
+   "calculated": true,
+   "dax": "VAR Calle     = LOOKUPVALUE(Inscritos[CALLE RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR TipoVia   = LOOKUPVALUE(Inscritos[TIPO VIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Numero    = LOOKUPVALUE(Inscritos[NUMERO RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Comuna    = LOOKUPVALUE(Inscritos[COMUNA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Provincia = LOOKUPVALUE(Inscritos[PROVINCIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Region    = LOOKUPVALUE(Inscritos[REGIÓN RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Pais      = LOOKUPVALUE(Inscritos[PAIS], Inscritos[RUN], 'Ferrada'[RUN])\n\nVAR CamposFaltantes =\n    Calle IN {BLANK(), \"\"} ||\n    TipoVia IN {BLANK(), \"\"} ||\n    Numero IN {BLANK(), \"\"} ||\n    Comuna IN {BLANK(), \"\"}\n\nRETURN\nIF(\n    CamposFaltantes,\n    BLANK(),\n    TRIM(\n        TipoVia & \" \" & Calle & \" \" & Numero & \", \" &\n        Comuna & \", \" & Provincia & \", \" & Region & \", \" & Pais\n    )\n)",
+   "explanation": "Dirección completa concatenada desde «Inscritos» (tipo de vía + calle + número, comuna, provincia, región, país). BLANK si falta calle, tipo de vía, número o comuna."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Días",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiaActual = DAY(Hoy)\nVAR MesActual = MONTH(Hoy)\nVAR AnioActual = YEAR(Hoy)\nVAR DiaNacimiento = DAY(Nacimiento)\nVAR MesNacimiento = MONTH(Nacimiento)\nVAR AnioNacimiento = YEAR(Nacimiento)\nVAR DiasDelMesActual = \n    IF(\n        ISBLANK(Nacimiento),\n        BLANK(),\n        IF(\n            MesActual = MesNacimiento && AnioActual = AnioNacimiento,\n            DiaActual - DiaNacimiento,\n            IF(\n                DiaActual >= DiaNacimiento,\n                DiaActual - DiaNacimiento,\n                DiaActual + (DAY(EOMONTH(Hoy, -1)) - DiaNacimiento)\n            )\n        )\n    )\nRETURN\n\nIF(ISBLANK(DiasDelMesActual),\nLOOKUPVALUE(Inscritos[EDAD DIAS],Inscritos[RUN],'Ferrada'[RUN]),\nDiasDelMesActual)",
+   "explanation": "Componente «días» de la edad (para lactantes). Con respaldo en EDAD DIAS de «Inscritos»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Edad",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiasTotales = DATEDIFF(Nacimiento, Hoy, DAY)\nVAR EdadExacta = \n    INT(DiasTotales / 365.25)\nRETURN\n\nIF(ISBLANK(EdadExacta),\nLOOKUPVALUE(Inscritos[EDAD AÑOS],Inscritos[RUN],'Ferrada'[RUN]),\nEdadExacta)",
+   "explanation": "Edad en años cumplidos: días entre nacimiento y hoy divididos por 365,25 (truncado). Si no hay fecha de nacimiento usa EDAD AÑOS de «Inscritos». Al usar TODAY(), cambia con cada actualización del modelo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estado",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[ESTADO],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «ESTADO» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Fecha Nacimiento",
+   "calculated": true,
+   "dax": "VAR FechaInscrito = \nLOOKUPVALUE(Inscritos[FECHA DE NACIMIENTO], Inscritos[RUN], 'Ferrada'[RUN])\n\nVAR FechaPVI = \nLOOKUPVALUE('PVI actualizada'[FECHA_NACIMIENTO], 'PVI actualizada'[RUN], 'Ferrada'[RUN])\n\nRETURN \n\nIF(ISBLANK(FechaInscrito),FechaPVI,FechaInscrito)",
+   "explanation": "Fecha de nacimiento: primero «Inscritos», con respaldo en «PVI actualizada»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Mail",
+   "calculated": true,
+   "dax": "var _Inscripcion = \nLOOKUPVALUE(Inscritos[EMAIL],Inscritos[RUN],'Ferrada'[RUN])\n\nRETURN\n\nIF(\n    _Inscripcion=\"\",BLANK(),_Inscripcion\n)",
+   "explanation": "Correo electrónico desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Meses",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR MesActual = MONTH(Hoy)\nVAR MesNacimiento = MONTH(Nacimiento)\nVAR AnioActual = YEAR(Hoy)\nVAR AnioNacimiento = YEAR(Nacimiento)\nVAR DiaActual = DAY(Hoy)\nVAR DiaNacimiento = DAY(Nacimiento)\nVAR MesesDelAnioActual = \n    IF(\n        ISBLANK(Nacimiento),\n        BLANK(),\n        IF(\n            MesActual > MesNacimiento || (MesActual = MesNacimiento && DiaActual >= DiaNacimiento),\n            MesActual - MesNacimiento,\n            MesActual - MesNacimiento + 12\n        ) - IF(DiaActual < DiaNacimiento, 1, 0)\n    )\nRETURN\n\nIF(ISBLANK(MesesDelAnioActual),\nLOOKUPVALUE(Inscritos[EDAD MESES],Inscritos[RUN],'Ferrada'[RUN]),\nMesesDelAnioActual)",
+   "explanation": "Componente «meses» de la edad (para lactantes: edad expresada en años, meses y días). Con respaldo en EDAD MESES de «Inscritos»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre Social",
+   "calculated": true,
+   "dax": "IF(\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN]))=\"\",BLANK(),\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN])))",
+   "explanation": "Nombre social desde «Inscritos» (campo NOMBRE RESPONDE). BLANK si está vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre completo",
+   "calculated": true,
+   "dax": "CONCATENATE('Ferrada'[Nombres] & \" \" & 'Ferrada'[Apellido Paterno] & \" \",'Ferrada'[Apellido Materno])",
+   "explanation": "Nombre completo: concatena [Nombres] + [Apellido Paterno] + [Apellido Materno]."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "RUN",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sector",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN])=\"\",BLANK(),\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sector de inscripción desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sexo",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN])=\"\",\n\"No informado\",\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sexo registral desde «Inscritos»; si está vacío devuelve «No informado»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Situación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[SITUACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «SITUACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Validado",
+   "calculated": true,
+   "dax": "IF(LOOKUPVALUE('PVI actualizada'[RUN],'PVI actualizada'[RUN],'Ferrada'[RUN]) <> \"\",\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el RUN del paciente aparece en la tabla «PVI actualizada»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Atendido 1 mes?",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO: tuvo al menos una atención durante el mes anterior completo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Atendido en 12m?",
+   "calculated": true,
+   "dax": "VAR _FechaInicio = \nEOMONTH(TODAY(),-13) + 1\n\nVAR _FechaFinal =\nEOMONTH(TODAY(),-1)\n\nRETURN\n\nIF(\n    CALCULATE(COUNT(Atenciones[RUN]),\n        FILTER(\n            Atenciones,\n            Atenciones[RUN]='Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= _FechaInicio &&\n            Atenciones[FECHA ATENCION] <= _FechaFinal\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: tuvo al menos una atención dentro de los 12 meses cerrados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Embarazada?",
+   "calculated": true,
+   "dax": "VAR FechaInicio = EOMONTH(TODAY(), -3) + 1\nVAR FechaFin = EOMONTH(TODAY(), -1)\nVAR AtencionesGestante =\nCALCULATE(\n    COUNTROWS(Atenciones),\n    FILTER(\n        ALL(Atenciones),\n        Atenciones[RUN] = 'Ferrada'[RUN] &&\n        Atenciones[FECHA ATENCION] >= FechaInicio &&\n        Atenciones[FECHA ATENCION] <= FechaFin &&\n        CONTAINSSTRING(Atenciones[INSTRUMENTO], \"matron\") &&\n        (\n            CONTAINSSTRING(Atenciones[ACTIVIDADES], \"control prenatal\") ||\n            CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], \"gestante\")\n        )\n    )\n)\n\nRETURN\nIF(AtencionesGestante > 0, \"SI\", \"NO\")",
+   "explanation": "Embarazo probable SI/NO: control prenatal o formulario de gestante con matrona/matrón dentro de los últimos 3 meses cerrados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Originario o Migrante?",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    'Ferrada'[Nacionalidad] <> \"Chilena\" && 'Ferrada'[Nacionalidad] <> \"\" && Ferrada[Nacionalidad] <> \"desconocido\", \n    \"Migrante\",\n    (\n        'Ferrada'[Nacionalidad] = \"Chilena\" && \n        'Ferrada'[Pueblo Originario] <> \"Ninguno\" && \n        'Ferrada'[Pueblo Originario] <> \"No Contesta\" && \n        'Ferrada'[Pueblo Originario] <> \"No Sabe\" && \n        'Ferrada'[Pueblo Originario] <> \"\"\n    ), \n        \"Originario\",\n        \"NO\"\n    )",
+   "explanation": "Clasificación intercultural: «Migrante» si la nacionalidad no es chilena (ni vacía ni desconocida); «Originario» si es chilena y declara pueblo originario válido; «NO» en otro caso."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Última Atención (fecha)",
+   "calculated": true,
+   "dax": "LASTDATE(\n    CALCULATETABLE(VALUES(Atenciones[FECHA ATENCION]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN])))",
+   "explanation": "Fecha de la última atención registrada del paciente (cualquier tipo)."
+  }
+ ]
+}

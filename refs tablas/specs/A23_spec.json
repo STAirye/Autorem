@@ -1,0 +1,827 @@
+{
+ "page": "A23",
+ "visuals": [
+  {
+   "id": "0a5499ded006bdb0aaf5",
+   "type": "tableEx",
+   "title": "REM A23",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Autocuidado",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Autocuidado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Bronquitis Aguda",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Bronquitis Aguda"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Campaña Invierno",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Campaña Invierno"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Consulta SALA Kine (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Consulta SALA Kine (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Control SALA Kine (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Control SALA Kine (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Control SALA Med (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Control SALA Med (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Coqueluche",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Coqueluche"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Edu Integral Sala",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Edu Integral Sala"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Educación Antitabaco",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Educación Antitabaco"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Encuesta calidad de vida",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Encuesta calidad de vida"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 EPOC Exacerbado",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 EPOC Exacerbado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Espirometría (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Espirometría (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Influenza",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Influenza"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Inhaloterapia",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Inhaloterapia"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 KTR",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 KTR"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Ira Alta",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Ira Alta"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Morbi respiratoria",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Morbi respiratoria"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Otras",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Otras"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Neumonia",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Neumonia"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Seguimiento Eu",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Seguimiento Eu"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Seguimiento Kine",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Seguimiento Kine"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 VDI Respi",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 VDI Respi"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Vida Saludable",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Vida Saludable"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nacionalidad",
+      "agg": null,
+      "kind": "column",
+      "label": "Nacionalidad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pueblo Originario",
+      "agg": null,
+      "kind": "column",
+      "label": "Pueblo Originario"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Motivo Pasivación",
+      "agg": null,
+      "kind": "column",
+      "label": "Motivo Pasivación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Última atención (instrumento)",
+      "agg": null,
+      "kind": "column",
+      "label": "Última atención (instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Ingresado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA SBOR"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA SBOR Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA SBOR Gravedad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA ASMA"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA Gravedad",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA ASMA Gravedad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA EPOC"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC Tipo",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA EPOC Tipo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA FQ",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA FQ"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Otras Respi",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Otras Respi"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Mín. de Edad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Rehab Conti",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Rehab Conti"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Rehab Ses Act Fca",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Rehab Ses Act Fca"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Rehab Ses Educ",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Rehab Ses Educ"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido 1 mes?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Atendido 1 mes?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "REMA23 Inasistentes",
+      "agg": null,
+      "kind": "column",
+      "label": "REMA23 Inasistentes"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "66bc7dc76a95d7d1a460",
+   "type": "slicer",
+   "title": null,
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Pertenece a SALA",
+      "agg": null,
+      "kind": "column",
+      "label": "Pertenece a SALA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "76061a036008182ebda6",
+   "type": "slicer",
+   "title": null,
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "88c0e9c2cd3eb3a85176",
+   "type": "slicer",
+   "title": null,
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido 1 mes?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Atendido 1 mes?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d30634289daec4a594fa",
+   "type": "slicer",
+   "title": null,
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "e0cf89e00a40b0126ee2",
+   "type": "slicer",
+   "title": null,
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Validado",
+      "agg": null,
+      "kind": "column",
+      "label": "Validado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "e2265b0723b8710ace57",
+   "type": "card",
+   "title": "Total de personas",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Nº de personas"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  }
+ ],
+ "pageFilters": [],
+ "fields": [
+  {
+   "entity": "Ferrada",
+   "prop": "Edad",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiasTotales = DATEDIFF(Nacimiento, Hoy, DAY)\nVAR EdadExacta = \n    INT(DiasTotales / 365.25)\nRETURN\n\nIF(ISBLANK(EdadExacta),\nLOOKUPVALUE(Inscritos[EDAD AÑOS],Inscritos[RUN],'Ferrada'[RUN]),\nEdadExacta)",
+   "explanation": "Edad en años cumplidos: días entre nacimiento y hoy divididos por 365,25 (truncado). Si no hay fecha de nacimiento usa EDAD AÑOS de «Inscritos». Al usar TODAY(), cambia con cada actualización del modelo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estado",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[ESTADO],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «ESTADO» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Motivo Pasivación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[MOTIVO PASIVACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «MOTIVO PASIVACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nacionalidad",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[NACIONALIDAD],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «NACIONALIDAD» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre completo",
+   "calculated": true,
+   "dax": "CONCATENATE('Ferrada'[Nombres] & \" \" & 'Ferrada'[Apellido Paterno] & \" \",'Ferrada'[Apellido Materno])",
+   "explanation": "Nombre completo: concatena [Nombres] + [Apellido Paterno] + [Apellido Materno]."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pertenece a SALA",
+   "calculated": true,
+   "dax": "IF('Ferrada'[SALA ASMA]=\"SI\" || \n'Ferrada'[SALA SBOR]=\"SI\" || \n'Ferrada'[SALA EPOC]=\"SI\" || \n'Ferrada'[SALA Otras Respi]=\"SI\" || \n'Ferrada'[SALA Asistencia Ventilatoria]=\"SI\" || \n'Ferrada'[SALA FQ]=\"SI\" || \n'Ferrada'[SALA O2 Dependiente]=\"SI\",\n\"SI\",\"NO\")",
+   "explanation": "Pertenencia a sala respiratoria: «SI» si cualquiera de [SALA ASMA], [SALA SBOR], [SALA EPOC], [SALA Otras Respi], [SALA Asistencia Ventilatoria], [SALA FQ] o [SALA O2 Dependiente] es «SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pueblo Originario",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[PUEBLO INDIG],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «PUEBLO INDIG» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Autocuidado",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"autocuidado\") && \n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala\"))))\n\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: actividad de autocuidado en control de sala durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Bronquitis Aguda",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"J20\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [DIAGNOSTICOS] contiene «J20»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Campaña Invierno",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"ira alta\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"s.b.o\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"neumon\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"exacerbación asma\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"epoc\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"otras respir\")\n            )\n        )\n    )\n\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: actividad de campaña de invierno (IRA alta, SBO, neumonía, exacerbación de asma, EPOC, otras respiratorias) durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Consulta SALA Kine (act)",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"consulta sala (ira\") && \n            CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"kine\"))\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): atención del mes anterior donde [ACTIVIDADES] contiene «consulta sala (ira» y [INSTRUMENTO] contiene «kine»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Control SALA Kine (act)",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\") && \n            CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"kine\"))\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): atención del mes anterior donde [ACTIVIDADES] contiene «control sala (ira» y [INSTRUMENTO] contiene «kine»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Control SALA Med (act)",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\") && \n            CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"médico\") &&\n            NOT CONTAINSSTRING(Atenciones[INSTRUMENTO],\"técnico\"))\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: control de sala IRA/ERA realizado por médico (no técnico) durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Coqueluche",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"coquelu\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [DIAGNOSTICOS] contiene «coquelu»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 EPOC Exacerbado",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"J44.1\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [DIAGNOSTICOS] contiene «J44.1»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Edu Integral Sala",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"educación integral en salud respiratoria\") &&\n            (\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control sala (ira\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"consulta sala (ira\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"kinesioterapi\")\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: educación integral en salud respiratoria en contexto de sala durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Educación Antitabaco",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"tabaco\") && \n                (\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control sala (ira\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"consulta sala (ira\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"kinesioterapi\")\n                )\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: educación/consejería antitabaco en contexto de sala (control, consulta o kinesioterapia) durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Encuesta calidad de vida",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\n\nvar _Resultado = \nTOPN(1,\n    CALCULATETABLE(VALUES('Otros y Respi'[99.- RESULTADO ENCUESTA CALIDAD DE VIDA]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] >= FechaInicioMesAnterior &&\n    'Otros y Respi'[FECHA ATENCION] <= FechaFinMesAnterior)),\n    'Otros y Respi'[99.- RESULTADO ENCUESTA CALIDAD DE VIDA],DESC)\n\nRETURN\n\nIF(\n    _Resultado=\"\",\n    BLANK(),\n    _Resultado)",
+   "explanation": "Resultado de la encuesta de calidad de vida (pregunta 99 de «Otros y Respi») registrada durante el mes anterior. BLANK si no hubo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Espirometría (act)",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"espirometr\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [ACTIVIDADES] contiene «espirometr»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Inasistentes",
+   "calculated": true,
+   "dax": "VAR _Hoy = TODAY()\n\nVAR _FpcSBO =\n    CALCULATE(MAX('Otros y Respi'[5.- FECHA DEL PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n            CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\"))))\n\nVAR _FpcASMA =\n    CALCULATE(MAX('Otros y Respi'[12.- FECHA DEL PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\"))))\n\nVAR _FpcEPOC =\n    CALCULATE(MAX('Otros y Respi'[18.- FECHA DEL PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\"))))\n\nVAR _FpcFQ =\n    CALCULATE(MAX('Otros y Respi'[32.- FECHA DEL PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\"))))\n\nVAR _FpcDBP =\n    CALCULATE(MAX('Otros y Respi'[52.- FECHA PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[50.- ¿PADECE DE DISPLASIA BRONCOPULMONAR?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[51.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[51.- ESTADO],\"seguimiento\"))))\n\nVAR _FpcOTR =\n    CALCULATE(MAX('Otros y Respi'[56.- FECHA PRÓXIMO CONTROL]),\n        FILTER(ALL('Otros y Respi'),\n            'Otros y Respi'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Otros y Respi'[53.- ¿PADECE OTRAS ENFERMEDADES RESPIRATORIAS?],\"si\") &&\n            (CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"ingreso\") ||\n             CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"seguimiento\"))))\n\nVAR _TieneDx =\n    NOT ISBLANK(_FpcSBO) || NOT ISBLANK(_FpcASMA) || NOT ISBLANK(_FpcEPOC) ||\n    NOT ISBLANK(_FpcFQ)  || NOT ISBLANK(_FpcDBP)  || NOT ISBLANK(_FpcOTR) ||\n    'Ferrada'[SALA Ingresado] = \"SI\"\n\nVAR _FPC =\n    MAXX(FILTER({_FpcSBO, _FpcASMA, _FpcEPOC, _FpcFQ, _FpcDBP, _FpcOTR},\n        NOT ISBLANK([Value])), [Value])\n\nVAR _Limite =\n    SWITCH(TRUE(),\n        'Ferrada'[Edad] < 1, EDATE(_FPC, 2)  + 29,\n        'Ferrada'[Edad] < 2, EDATE(_FPC, 5)  + 29,\n        EDATE(_FPC, 11) + 29)\n\nRETURN\nSWITCH(TRUE(),\n    NOT _TieneDx, BLANK(),\n    ISBLANK(_FPC), \"Sin Fecha formulario\",\n    _Hoy > _Limite, \"Si\",\n    \"No\")",
+   "explanation": "Inasistencia a control respiratorio según REM A23 sección G. Toma la última «fecha del próximo control» registrada en formularios «Otros y Respi» válidos (padece=sí, estado ingreso/seguimiento) de las seis patologías (SBO recurrente, asma, EPOC, fibrosis quística, displasia broncopulmonar, otras respiratorias crónicas) y aplica el umbral por edad: <1 año 2 meses 29 días; 1 año 5m29d; ≥2 años 11m29d. Devuelve BLANK si no tiene diagnóstico respiratorio, «Sin Fecha formulario» si está ingresado pero nunca se registró próximo control (indicador de calidad de registro — no sumar al conteo REM), «Si» si superó el umbral, «No» si está al día."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Influenza",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"influenz\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [DIAGNOSTICOS] contiene «influenz»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Inhaloterapia",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"inhalatoria\") && \n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala\")\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): al menos una atención del mes anterior cuyas actividades cumplen [ACTIVIDADES] contiene «inhalatoria» y [ACTIVIDADES] contiene «control sala»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Ira Alta",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"j0\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [DIAGNOSTICOS] contiene «j0»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 KTR",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"kinesioterapia res\")\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): tuvo al menos una atención durante el mes anterior completo donde [ACTIVIDADES] contiene «kinesioterapia res»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Morbi respiratoria",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"médic\") && \n                (\n                    CONTAINSSTRING(Atenciones[TIPO ATENCION],\"morbilida\") ||\n                    CONTAINSSTRING(Atenciones[TIPO ATENCION],\"consulta sac\") ||\n                    CONTAINSSTRING(Atenciones[TIPO ATENCION],\"teletriage\")\n                ) \n                &&\n                (\n                    'Ferrada'[REMA23 Ira Alta]=\"SI\" || \n                    'Ferrada'[REMA23 Influenza]=\"SI\" ||\n                    'Ferrada'[REMA23 Neumonia]=\"SI\" || \n                    'Ferrada'[REMA23 Bronquitis Aguda]=\"SI\" || \n                    'Ferrada'[REMA23 EPOC Exacerbado]=\"SI\" || \n                    'Ferrada'[REMA23 Coqueluche]=\"SI\"\n                )\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: consulta médica de morbilidad, SAC o teletriage en el mes anterior en paciente con algún evento respiratorio REMA23 activo (IRA alta, influenza, neumonía, bronquitis, EPOC exacerbado o coqueluche)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Neumonia",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"neumonía\") ||\n                CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"neumonia\")\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: diagnóstico de neumonía en alguna atención del mes anterior completo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Otras",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Consejerias individuales otras areas\") && \n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala\")\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): al menos una atención del mes anterior cuyas actividades cumplen [ACTIVIDADES] contiene «Consejerias individuales otras areas» y [ACTIVIDADES] contiene «control sala»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Rehab Conti",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Rehabilitación Pulmonar - Artic\")  \n            ))\n\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): al menos una atención en el mes anterior completo cuya actividad contiene «Rehabilitación Pulmonar - Artic»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Rehab Ses Act Fca",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Rehabilitación Pulmonar - Sesión Act\")  \n            ))\n\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): al menos una atención en el mes anterior completo cuya actividad contiene «Rehabilitación Pulmonar - Sesión Act»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Rehab Ses Educ",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Rehabilitación Pulmonar - Sesión Educ\")  \n            ))\n\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): al menos una atención en el mes anterior completo cuya actividad contiene «Rehabilitación Pulmonar - Sesión Educ»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Seguimiento Eu",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"enfermer\") && \n                NOT CONTAINSSTRING(Atenciones[INSTRUMENTO],\"técnic\")\n            )\n            &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\") ||\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"consulta sala (ira\")\n            )\n            &&\n            (\n                'Ferrada'[REMA23 Ira Alta]=\"SI\" || \n                'Ferrada'[REMA23 Influenza]=\"SI\" ||\n                'Ferrada'[REMA23 Neumonia]=\"SI\" || \n                'Ferrada'[REMA23 Bronquitis Aguda]=\"SI\" || \n                'Ferrada'[REMA23 EPOC Exacerbado]=\"SI\" || \n                'Ferrada'[REMA23 Coqueluche]=\"SI\"\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): en el mes anterior tuvo control o consulta de sala IRA/ERA atendida por enfermería (excluyendo técnicos), y además tiene activo algún evento respiratorio REMA23 del mismo mes (IRA alta, influenza, neumonía, bronquitis aguda, EPOC exacerbado o coqueluche)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Seguimiento Kine",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[INSTRUMENTO],\"kine\") && \n                NOT CONTAINSSTRING(Atenciones[INSTRUMENTO],\"técnic\")\n            )\n            &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\") ||\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"consulta sala (ira\")\n            )\n            &&\n            (\n                'Ferrada'[REMA23 Ira Alta]=\"SI\" || \n                'Ferrada'[REMA23 Influenza]=\"SI\" ||\n                'Ferrada'[REMA23 Neumonia]=\"SI\" || \n                'Ferrada'[REMA23 Bronquitis Aguda]=\"SI\" || \n                'Ferrada'[REMA23 EPOC Exacerbado]=\"SI\" || \n                'Ferrada'[REMA23 Coqueluche]=\"SI\"\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO mensual (REMA): en el mes anterior tuvo control o consulta de sala IRA/ERA atendida por kinesiólogo/a (excluyendo técnicos), y además tiene activo algún evento respiratorio REMA23 del mismo mes (IRA alta, influenza, neumonía, bronquitis aguda, EPOC exacerbado o coqueluche)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 VDI Respi",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            CONTAINSSTRING('Atenciones'[TIPO ATENCION],\"domiciliaria\") &&\n            Ferrada[SALA Ingresado]=\"si\"\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: atención domiciliaria en el mes anterior en paciente ingresado en sala respiratoria."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "REMA23 Vida Saludable",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Consejer\") &&\n                (\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"activi\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"aliment\")\n                )\n                &&\n                (\n                    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control sala (ira\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"consulta sala (ira\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"kinesioterapi\")\n                )\n            )\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador REMA mensual: consejería en vida saludable (actividad física o alimentación) en contexto de sala durante el mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "RUN",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA",
+   "calculated": true,
+   "dax": "var _SBOR = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\",\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\n    CALCULATE(count(Atenciones[RUN]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"J45\") &&\n    CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion =\nIF(\n    CONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J45\"),\n     \"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"Si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "Asma en sala SI/NO: requiere no ser SBOR ([SALA SBOR]=«NO») y cumplir alguna de: diagnóstico J45 en atención médica, J45 en Estratificación, o último formulario «Otros y Respi» de asma válido (asma=«sí», gravedad y estado de control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA Gravedad",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\")))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha)),\n'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios\n)\n\nRETURN\n\nIF(\n    'Ferrada'[SALA ASMA]=\"SI\",\nIF(\n    _Resultado=\"\",BLANK(),_Resultado))",
+   "explanation": "Gravedad del asma bronquial según el último formulario «Otros y Respi» médico con asma=«sí» y gravedad registrada. Solo se muestra si [SALA ASMA]=«SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]>=40,\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"J44\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J44\"),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Edad=\"si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "EPOC en sala SI/NO: requiere ≥40 años y alguna de: diagnóstico J44 médico, J44 en Estratificación, o último formulario EPOC válido (padece=«sí», tipo y control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC Tipo",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formularios =\nTOPN(1,\nCALCULATETABLE(VALUES('Otros y Respi'[16.- TIPO EPOC]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n'Otros y Respi'[16.- TIPO EPOC],DESC)\n\nvar _Resultado = \nIF(_Formularios=\"\",BLANK(),_Formularios)\n\nRETURN\n\nIF(\n    'Ferrada'[SALA EPOC]=\"SI\",\nIF(\n    _Resultado=\"\",BLANK(),_Resultado))",
+   "explanation": "Del último formulario «Otros y Respi» médico válido de EPOC (padece EPOC=«sí», tipo y estado de control no vacíos, estado ingreso/seguimiento) devuelve «16.- TIPO EPOC». Solo se muestra si [SALA EPOC]=«SI»; si no, BLANK."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA FQ",
+   "calculated": true,
+   "dax": "var _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"E84\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCALCULATETABLE(VALUES(Estratificacion[Diagnósticos]),\nFILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING(Estratificacion[Diagnósticos],\"E84\"))),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Fibrosis quística SI/NO: diagnóstico E84 en atención médica o Estratificación, o último formulario FQ válido en ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Ingresado",
+   "calculated": true,
+   "dax": "var _FechaASMA = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioASMA = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaASMA &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaEPOC = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioEPOC = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaEPOC &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaSBOR = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioSBOR = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _FechaSBOR &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaAV = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))))\n\nvar _FormularioAV = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaAV &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaOtrosR = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioOtrosRespi = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaOtrosR &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaO2 = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioO2 = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaO2 &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaFQ = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioFQ = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaFQ &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _ASMA = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\" &&\n    _FormularioASMA=\"SI\",\n    \"SI\",\"NO\")\n\nvar _SBOR = \nIF(\n    'Ferrada'[Edad]<5 &&\n    _FormularioSBOR=\"SI\",\n    \"SI\",\"NO\")\n\nvar _EPOC = \nIF(\n    'Ferrada'[Edad]>=40 &&\n    _FormularioEPOC=\"SI\",\n    \"SI\",\"NO\")\n\nvar _OTROS = \nIF(\n    _FormularioOtrosRespi=\"SI\",\n    \"SI\",\"NO\")\n\nvar _O2 = \nIF(\n    _FormularioO2=\"SI\",\n    \"SI\",\"NO\")\n\nvar _AV = \nIF(\n    _FormularioAV=\"SI\",\n    \"SI\",\"NO\")\n\nvar _FQ = \nIF(\n    _FormularioFQ=\"SI\",\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"SI\" ||\n    _ASMA=\"SI\" ||\n    _EPOC=\"SI\" ||\n    _OTROS=\"SI\" ||\n    _AV=\"SI\" ||\n    _O2=\"SI\" ||\n    _FQ=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Ingreso a sala respiratoria SI/NO: consolida los formularios «Otros y Respi» válidos de las siete líneas (SBOR si <5 años, asma si no es SBOR, EPOC si ≥40 años, otras respiratorias, asistencia ventilatoria, O2 dependiente y fibrosis quística). Basta una línea válida. A diferencia de las columnas SALA por patología, aquí solo cuenta el formulario (no diagnósticos ni estratificación)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Otras Respi",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Otros y Respi'[53.- ¿PADECE OTRAS ENFERMEDADES RESPIRATORIAS?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Otros y Respi'[53.- ¿PADECE OTRAS ENFERMEDADES RESPIRATORIAS?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[55.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Formulario=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Otras enfermedades respiratorias SI/NO: último formulario «Otros y Respi» médico con la pregunta 53 marcada «sí» en ingreso/seguimiento."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA SBOR",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]<5,\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"bronquial obstructivo recurrente\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"bronquial obstructivo recurrente\"),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Edad=\"si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "SBOR en sala SI/NO: requiere <5 años y alguna de: diagnóstico «bronquial obstructivo recurrente» en atención médica o Estratificación, o último formulario SBOR válido (SBO=«sí», recurrente=«sí», gravedad registrada)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA SBOR Gravedad",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]<5,\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \n    CALCULATETABLE(VALUES('Otros y Respi'[4.- GRAVEDAD SBOR]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\"))))\n\nvar _Resultado = \nIF(\n    _Formulario=\"\",BLANK(),_Formulario)\n\nRETURN\nIF(\n    _Edad=\"SI\" && 'Ferrada'[SALA SBOR]=\"SI\",\nIF(_Resultado=\"\",BLANK(),_Resultado)    )",
+   "explanation": "Gravedad del SBOR según el último formulario «Otros y Respi» médico válido (padece SBO=«sí», recurrente=«sí», gravedad no vacía, estado ingreso/seguimiento). Solo se muestra si el paciente tiene <5 años y [SALA SBOR]=«SI»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sector",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN])=\"\",BLANK(),\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sector de inscripción desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sexo",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN])=\"\",\n\"No informado\",\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sexo registral desde «Inscritos»; si está vacío devuelve «No informado»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Situación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[SITUACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «SITUACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Validado",
+   "calculated": true,
+   "dax": "IF(LOOKUPVALUE('PVI actualizada'[RUN],'PVI actualizada'[RUN],'Ferrada'[RUN]) <> \"\",\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el RUN del paciente aparece en la tabla «PVI actualizada»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Atendido 1 mes?",
+   "calculated": true,
+   "dax": "VAR FechaInicioMesAnterior = EOMONTH(TODAY(), -2) + 1\nVAR FechaFinMesAnterior = EOMONTH(TODAY(), -1)\nVAR AtencionesMesAnterior = \n    CALCULATE(\n        COUNTROWS(Atenciones),\n        FILTER(\n            ALL(Atenciones),\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= FechaInicioMesAnterior &&\n            Atenciones[FECHA ATENCION] <= FechaFinMesAnterior\n        )\n    )\nRETURN\n    IF(AtencionesMesAnterior > 0, \"SI\", \"NO\")",
+   "explanation": "Indicador SI/NO: tuvo al menos una atención durante el mes anterior completo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Originario o Migrante?",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    'Ferrada'[Nacionalidad] <> \"Chilena\" && 'Ferrada'[Nacionalidad] <> \"\" && Ferrada[Nacionalidad] <> \"desconocido\", \n    \"Migrante\",\n    (\n        'Ferrada'[Nacionalidad] = \"Chilena\" && \n        'Ferrada'[Pueblo Originario] <> \"Ninguno\" && \n        'Ferrada'[Pueblo Originario] <> \"No Contesta\" && \n        'Ferrada'[Pueblo Originario] <> \"No Sabe\" && \n        'Ferrada'[Pueblo Originario] <> \"\"\n    ), \n        \"Originario\",\n        \"NO\"\n    )",
+   "explanation": "Clasificación intercultural: «Migrante» si la nacionalidad no es chilena (ni vacía ni desconocida); «Originario» si es chilena y declara pueblo originario válido; «NO» en otro caso."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Última atención (instrumento)",
+   "calculated": true,
+   "dax": "var _Fecha =\nLASTDATE(\n    CALCULATETABLE(VALUES(Atenciones[FECHA ATENCION]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN])))\n\nvar _Instrumento =\nTOPN(1,\nCALCULATETABLE(VALUES(Atenciones[INSTRUMENTO]),\nFILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN]),\nAtenciones[FECHA ATENCION]=_Fecha),Atenciones[INSTRUMENTO],DESC)\n\nRETURN\n\n_Instrumento",
+   "explanation": "Instrumento (profesional) de la última atención registrada."
+  }
+ ]
+}

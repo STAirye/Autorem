@@ -1,0 +1,2032 @@
+{
+ "page": "ECICEP",
+ "visuals": [
+  {
+   "id": "07cd889689cbd8ca3b13",
+   "type": "slicer",
+   "title": "Estratificacion",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "0c074195ba6302a16724",
+   "type": "slicer",
+   "title": "Seguimiento",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Seguimiento a distancia (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP Seguimiento G3? (12m)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "108f1549843f073a9e13",
+   "type": "slicer",
+   "title": "EPOC",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA EPOC",
+      "agg": null,
+      "kind": "column",
+      "label": "EPOC"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "1d434af810ffd7d03891",
+   "type": "slicer",
+   "title": "Artrosis",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "OTROS Artrosis C/R",
+      "agg": null,
+      "kind": "column",
+      "label": "Artrosis C/R"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "272026a1c7ba2b31580e",
+   "type": "slicer",
+   "title": "Años",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Años"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "2b45bebff7713ad6e7e5",
+   "type": "slicer",
+   "title": "ECV",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ECV",
+      "agg": null,
+      "kind": "column",
+      "label": "ECV"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "361d08dbf9d5ab783dee",
+   "type": "slicer",
+   "title": "DM",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM",
+      "agg": null,
+      "kind": "column",
+      "label": "DM"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "37949fd2e9d4be10ab23",
+   "type": "slicer",
+   "title": "Migr o Origin",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "38115742b07b011a794e",
+   "type": "tableEx",
+   "title": "Población ECICEP",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Género",
+      "agg": null,
+      "kind": "column",
+      "label": "Género"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nacionalidad",
+      "agg": null,
+      "kind": "column",
+      "label": "Nacionalidad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pueblo Originario",
+      "agg": null,
+      "kind": "column",
+      "label": "Pueblo Originario"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Motivo Pasivación",
+      "agg": null,
+      "kind": "column",
+      "label": "Motivo Pasivación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Fecha Pasivación",
+      "agg": null,
+      "kind": "column",
+      "label": "Fecha Pasivación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Estratificación última (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación (Fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Cuenta Condiciones Crónicas",
+      "agg": null,
+      "kind": "column",
+      "label": "Cuenta Condiciones Crónicas"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pertenece a ECICEP",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Pertenece ECICEP?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Ingreso",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Ingresado?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Ingreso Fecha",
+      "agg": null,
+      "kind": "column",
+      "label": "Ingreso (Fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Ingreso Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Ingreso Act (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Plan Consensuado",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Plan Consensuado?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Plan Consensuado (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Plan Consensuado (fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Plan Consensuado Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Plan Consensuado (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Formulario llenado",
+      "agg": null,
+      "kind": "column",
+      "label": "Plan Consensuado (Formulario)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Control (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Control? (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Control último (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Ultimo Control (Fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Control instrumento 12m (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Control (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Seguimiento a distancia (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Seguimiento? (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Seguimiento a distancia última (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Seguimiento (Fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Seguimiento a distancia (instrumento)",
+      "agg": null,
+      "kind": "column",
+      "label": "Seguimiento (Intrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Ingreso (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Gestión de ingreso? (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Ingreso Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Gestión de Ingreso (Profesional)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Egreso (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Gestión de Egreso? (12m)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Egreso Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Gestión de Egreso (Profesional)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP EGRESO (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP EGRESO (act)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pertenece a PAD",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PAD?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ¿Ingresado?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PSCV?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SM Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PSM?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Respiratorio?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA",
+      "agg": null,
+      "kind": "column",
+      "label": "HTA"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿HTA compensada?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA (primera)",
+      "agg": null,
+      "kind": "column",
+      "label": "PA (primera)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA (última)",
+      "agg": null,
+      "kind": "column",
+      "label": "PA (última)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM",
+      "agg": null,
+      "kind": "column",
+      "label": "DM"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿DM Compensada?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HbA1c (primera)",
+      "agg": null,
+      "kind": "column",
+      "label": "HbA1c (primera)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HbA1c (última)",
+      "agg": null,
+      "kind": "column",
+      "label": "HbA1c (última)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV Insulina",
+      "agg": null,
+      "kind": "column",
+      "label": "Insulina"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DLP",
+      "agg": null,
+      "kind": "column",
+      "label": "DLP"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HDL",
+      "agg": null,
+      "kind": "column",
+      "label": "HDL"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV LDL",
+      "agg": null,
+      "kind": "column",
+      "label": "LDL"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV TG",
+      "agg": null,
+      "kind": "column",
+      "label": "TG"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA/Hba1c/LDL alta",
+      "agg": null,
+      "kind": "column",
+      "label": "PA/Hba1c/LDL ¿alta?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ECV",
+      "agg": null,
+      "kind": "column",
+      "label": "ECV"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ACV",
+      "agg": null,
+      "kind": "column",
+      "label": "ACV"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV IAM",
+      "agg": null,
+      "kind": "column",
+      "label": "IAM"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ERC",
+      "agg": null,
+      "kind": "column",
+      "label": "ERC"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Trans",
+      "agg": "SUM",
+      "kind": "column",
+      "label": "Suma de Trans"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "3be3f3a91933285adb23",
+   "type": "slicer",
+   "title": "Situación",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "530e364c1ad8af84a157",
+   "type": "slicer",
+   "title": "Meses",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Meses",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad Meses"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "5600deb2e86ffff1aef3",
+   "type": "slicer",
+   "title": "¿Ingresado?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Ingreso",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP Ingreso"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "58a3531a3f56c2967df3",
+   "type": "slicer",
+   "title": "¿Respi?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "SALA Ingresado?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "5d6d57332686a110d15e",
+   "type": "slicer",
+   "title": "Sexo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "629a55f28626827362ab",
+   "type": "slicer",
+   "title": "Formulario",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Formulario llenado",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP Formulario?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "650a14403bdc6dd10aeb",
+   "type": "slicer",
+   "title": "DLP",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DLP",
+      "agg": null,
+      "kind": "column",
+      "label": "DLP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "664afc24302e07f19981",
+   "type": "card",
+   "title": "Total de personas",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": "DISTINCTCOUNT",
+      "kind": "column",
+      "label": "Recuento de RUN"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "674b55245d9939017c89",
+   "type": "slicer",
+   "title": "Epilepsia",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "OTROS Epilepsia",
+      "agg": null,
+      "kind": "column",
+      "label": "Epilepsia"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "7bcc0bfb2d785f62166a",
+   "type": "slicer",
+   "title": "Compensado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "Compensado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "7fa758788d69ab890770",
+   "type": "hundredPercentStackedColumnChart",
+   "title": "Distribución % según rango etario y estratificación",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad rango 5",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad rango 5"
+     }
+    ],
+    "Series": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Mín. de Edad"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Estratificación"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "8b9c33410a5a06873d36",
+   "type": "slicer",
+   "title": "Parkinson",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "OTROS Parkinson",
+      "agg": null,
+      "kind": "column",
+      "label": "Parkinson"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "903d36b7ce884df2003c",
+   "type": "slicer",
+   "title": "HTA",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA",
+      "agg": null,
+      "kind": "column",
+      "label": "HTA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "b6fa8a16b4943a62bc4c",
+   "type": "slicer",
+   "title": "Sector",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "b78cdebda44bf044af6d",
+   "type": "slicer",
+   "title": "¿PSM?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SM Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "SM Ingresado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "bffd3a0fc7709815d44c",
+   "type": "slicer",
+   "title": "Estado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "c41efafd83e7e4aa3538",
+   "type": "funnel",
+   "title": "Usuarios por estratificación",
+   "roles": {
+    "Category": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación Orden",
+      "agg": "MIN",
+      "kind": "column",
+      "label": "Primera fecha: Estratificación Orden"
+     }
+    ],
+    "Y": [
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": "COUNT",
+      "kind": "column",
+      "label": "Recuento de Estratificación1"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "c971726418c499d0124b",
+   "type": "slicer",
+   "title": "¿Activo?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "Pertenece a ECICEP",
+      "agg": null,
+      "kind": "column",
+      "label": "Pertenece ECICEP"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "cbe73397c70ab83fd186",
+   "type": "slicer",
+   "title": "Hipotiroidismo",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "OTROS Hipotiroidismo",
+      "agg": null,
+      "kind": "column",
+      "label": "Hipotiroidismo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "cc54dea552b02b379268",
+   "type": "slicer",
+   "title": "¿Plan?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Plan Consensuado",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP Plan Consensuado? (12m)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d3cb0c7b129fb094e51c",
+   "type": "slicer",
+   "title": "Compensado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "HbA1c Alta?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d498e4a1f5942d64de8e",
+   "type": "esriVisual",
+   "title": "Mapa de Georreferenciación",
+   "roles": {
+    "Color": [
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     }
+    ],
+    "Location": [
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     }
+    ],
+    "Tooltips": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d612f8d0b070814029bd",
+   "type": "tableEx",
+   "title": "Población potencial ECICEP",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "RUN",
+      "agg": null,
+      "kind": "column",
+      "label": "RUN"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre Social",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre Social"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nombre completo",
+      "agg": null,
+      "kind": "column",
+      "label": "Nombre completo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sexo",
+      "agg": null,
+      "kind": "column",
+      "label": "Sexo"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Género",
+      "agg": null,
+      "kind": "column",
+      "label": "Género"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Edad",
+      "agg": null,
+      "kind": "column",
+      "label": "Edad1"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Sector",
+      "agg": null,
+      "kind": "column",
+      "label": "Sector"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "¿Originario o Migrante?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Originario o Migrante?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Nacionalidad",
+      "agg": null,
+      "kind": "column",
+      "label": "Nacionalidad"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pueblo Originario",
+      "agg": null,
+      "kind": "column",
+      "label": "Pueblo Originario"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Dirección Completa",
+      "agg": null,
+      "kind": "column",
+      "label": "Dirección Completa"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Celular",
+      "agg": null,
+      "kind": "column",
+      "label": "Celular"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Mail",
+      "agg": null,
+      "kind": "column",
+      "label": "Mail"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Situación",
+      "agg": null,
+      "kind": "column",
+      "label": "Situación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estado",
+      "agg": null,
+      "kind": "column",
+      "label": "Estado"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Estratificación",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Estratificación última (fecha)",
+      "agg": null,
+      "kind": "column",
+      "label": "Estratificación (Fecha)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Cuenta Condiciones Crónicas",
+      "agg": null,
+      "kind": "column",
+      "label": "Cuenta Condiciones Crónicas"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Ingreso",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Ingresado?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Ingreso (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Gestión de ingreso?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Ingreso Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Gestión de Ingreso (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Egreso (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Gestión de Egreso?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Egreso Instrumento (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "Gestión de Egreso (Instrumento)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "Pertenece a PAD",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PAD?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ¿Ingresado?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PSCV?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "SM Ingresado",
+      "agg": null,
+      "kind": "column",
+      "label": "¿PSM?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA",
+      "agg": null,
+      "kind": "column",
+      "label": "HTA"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HTA ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿HTA compensada?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA (primera)",
+      "agg": null,
+      "kind": "column",
+      "label": "PA (primera)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA (última)",
+      "agg": null,
+      "kind": "column",
+      "label": "PA (última)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM",
+      "agg": null,
+      "kind": "column",
+      "label": "DM"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DM ¿compensada?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿DM Compensada?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HbA1c (primera)",
+      "agg": null,
+      "kind": "column",
+      "label": "HbA1c (primera)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HbA1c (última)",
+      "agg": null,
+      "kind": "column",
+      "label": "HbA1c (última)"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV Insulina",
+      "agg": null,
+      "kind": "column",
+      "label": "Insulina"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV DLP",
+      "agg": null,
+      "kind": "column",
+      "label": "DLP"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV HDL",
+      "agg": null,
+      "kind": "column",
+      "label": "HDL"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV LDL",
+      "agg": null,
+      "kind": "column",
+      "label": "LDL"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV TG",
+      "agg": null,
+      "kind": "column",
+      "label": "TG"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV PA/Hba1c/LDL alta",
+      "agg": null,
+      "kind": "column",
+      "label": "PA/Hba1c/LDL ¿alta?"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ECV",
+      "agg": null,
+      "kind": "column",
+      "label": "ECV"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ACV",
+      "agg": null,
+      "kind": "column",
+      "label": "ACV"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV IAM",
+      "agg": null,
+      "kind": "column",
+      "label": "IAM"
+     },
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ERC",
+      "agg": null,
+      "kind": "column",
+      "label": "ERC"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "d81d81c367580666fc3e",
+   "type": "slicer",
+   "title": "Gest. Ingreso",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP Gestión de Ingreso (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP Gestión de Ingreso G3? (12m)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "db1877bffe3894916c84",
+   "type": "slicer",
+   "title": "¿Activo 12m?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "¿Atendido en 12m?",
+      "agg": null,
+      "kind": "column",
+      "label": "Atendido en 12m?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "de85e3c22ac11684ab37",
+   "type": "slicer",
+   "title": "Egreso",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "ECICEP EGRESO (act)",
+      "agg": null,
+      "kind": "column",
+      "label": "ECICEP EGRESO (act)"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "dfbbd4c320dd60b60385",
+   "type": "slicer",
+   "title": "ASMA",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "SALA ASMA",
+      "agg": null,
+      "kind": "column",
+      "label": "ASMA"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "f361170bcf41567ae821",
+   "type": "slicer",
+   "title": "Compensado",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV LDL >160",
+      "agg": null,
+      "kind": "column",
+      "label": "LDL >100"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  },
+  {
+   "id": "fcf6195ac6ff9cd2a3f9",
+   "type": "slicer",
+   "title": "¿PSCV?",
+   "roles": {
+    "Values": [
+     {
+      "entity": "Ferrada",
+      "prop": "PSCV ¿Ingresado?",
+      "agg": null,
+      "kind": "column",
+      "label": "¿Ingresado PSCV?"
+     }
+    ]
+   },
+   "filters": [],
+   "hidden": false
+  }
+ ],
+ "pageFilters": [
+  {
+   "entity": "Ferrada",
+   "prop": "Estratificación",
+   "type": "Categorical",
+   "values": [
+    "null"
+   ]
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Edad",
+   "type": "Advanced",
+   "values": [
+    "15"
+   ]
+  }
+ ],
+ "fields": [
+  {
+   "entity": "Ferrada",
+   "prop": "Celular",
+   "calculated": true,
+   "dax": "IF(\n    LEN(\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]))<8,\n        BLANK(),\n        LOOKUPVALUE(Inscritos[MOVIL CONTACTO],Inscritos[RUN],'Ferrada'[RUN]\n    )\n)",
+   "explanation": "Número de celular desde «Inscritos»; se descartan valores con menos de 8 dígitos (BLANK)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Cuenta Condiciones Crónicas",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Estratificacion[Cantidad de Condiciones Crónicas],Estratificacion[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «Cantidad de Condiciones Crónicas» desde la tabla «Estratificacion» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Dirección Completa",
+   "calculated": true,
+   "dax": "VAR Calle     = LOOKUPVALUE(Inscritos[CALLE RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR TipoVia   = LOOKUPVALUE(Inscritos[TIPO VIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Numero    = LOOKUPVALUE(Inscritos[NUMERO RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Comuna    = LOOKUPVALUE(Inscritos[COMUNA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Provincia = LOOKUPVALUE(Inscritos[PROVINCIA RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Region    = LOOKUPVALUE(Inscritos[REGIÓN RESIDENCIAL], Inscritos[RUN], 'Ferrada'[RUN])\nVAR Pais      = LOOKUPVALUE(Inscritos[PAIS], Inscritos[RUN], 'Ferrada'[RUN])\n\nVAR CamposFaltantes =\n    Calle IN {BLANK(), \"\"} ||\n    TipoVia IN {BLANK(), \"\"} ||\n    Numero IN {BLANK(), \"\"} ||\n    Comuna IN {BLANK(), \"\"}\n\nRETURN\nIF(\n    CamposFaltantes,\n    BLANK(),\n    TRIM(\n        TipoVia & \" \" & Calle & \" \" & Numero & \", \" &\n        Comuna & \", \" & Provincia & \", \" & Region & \", \" & Pais\n    )\n)",
+   "explanation": "Dirección completa concatenada desde «Inscritos» (tipo de vía + calle + número, comuna, provincia, región, país). BLANK si falta calle, tipo de vía, número o comuna."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Control (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n        FILTER('Atenciones',\n            'Atenciones'[RUN] = 'Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control integral con riesgo\") ||\n                (\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"multimorbili\") &&\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control\")\n                )\n            )\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Control ECICEP en actividades: «SI» si existe atención con actividad «control integral con riesgo» o combinación multimorbilidad+control."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Control instrumento 12m (act)",
+   "calculated": true,
+   "dax": "var _Instrumento = \n\nCALCULATETABLE(VALUES('Atenciones'[INSTRUMENTO]),\n    FILTER('Atenciones',\n    'Atenciones'[RUN]='Ferrada'[RUN] &&\n        Atenciones[FECHA ATENCION] >= EOMONTH(TODAY(),-13) + 1 &&\n        Atenciones[FECHA ATENCION] <= EOMONTH(TODAY(),-1) &&\n        (\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control integral con riesgo\") ||\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control médico multimorbili\")\n        )\n    )\n)\n\nRETURN\n\nCONCATENATEX(_Instrumento,'Atenciones'[INSTRUMENTO],\", \",'Atenciones'[INSTRUMENTO],ASC)",
+   "explanation": "Instrumentos de los controles integrales ECICEP dentro de los 12 meses cerrados, concatenados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Control último (fecha)",
+   "calculated": true,
+   "dax": "LASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control integral con riesgo\") ||\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"control médico multimorbili\")\n            )\n        )\n    )\n)",
+   "explanation": "Fecha del último control integral ECICEP (control integral con riesgo o control médico multimorbilidad)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP EGRESO (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n        FILTER('Atenciones',\n            'Atenciones'[RUN] = 'Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Egreso riesgo alto \")\n                                 \n            )\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Egreso ECICEP en actividades SI/NO: atención con actividad «Egreso riesgo alto»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Estratificación última (fecha)",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Estratificacion[Fecha de Actualización de Estratificación],Estratificacion[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «Fecha de Actualización de Estratificación» desde la tabla «Estratificacion» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Formulario llenado",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(COUNT('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[FORMULARIOS CLINICOS],\"plan de interven\")\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: existe alguna atención cuya actividad contiene «plan de interven»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Gestión de Egreso (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - Egreso\")\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: existe alguna atención cuya actividad contiene «Gestión de casos - Egreso»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Gestión de Egreso Instrumento (act)",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - Egreso\")\n        )\n    )\n)\n\nvar _Instrumento = \nCALCULATETABLE(VALUES('Atenciones'[INSTRUMENTO]),\n    FILTER(\n        'Atenciones',\n        'Atenciones'[RUN]='Ferrada'[RUN] &&\n        'Atenciones'[FECHA ATENCION]=_Fecha &&\n        CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - Egreso\")\n    )\n)\n\nRETURN\n\nCONCATENATEX(_Instrumento,'Atenciones'[INSTRUMENTO],\", \")",
+   "explanation": "Instrumento(s) de la última gestión de casos - egreso ECICEP, concatenados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Gestión de Ingreso (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - Ingreso\")\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: existe alguna atención cuya actividad contiene «Gestión de casos - Ingreso»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Gestión de Ingreso Instrumento (act)",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - ingreso\")\n        )\n    )\n)\n\nvar _Instrumento = \nCALCULATETABLE(VALUES('Atenciones'[INSTRUMENTO]),\n    FILTER(\n        'Atenciones','Atenciones'[RUN]='Ferrada'[RUN] &&\n        'Atenciones'[FECHA ATENCION]=_Fecha &&\n        CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"Gestión de casos - ingreso\")\n    )\n)\n\nRETURN\n\nCONCATENATEX(_Instrumento,'Atenciones'[INSTRUMENTO],\", \")",
+   "explanation": "Instrumento(s) de la última gestión de casos - ingreso ECICEP, concatenados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Ingreso",
+   "calculated": true,
+   "dax": "IF(\n    NOT ISBLANK(Ferrada[ECICEP Ingreso Fecha]),\n    \"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: la columna [ECICEP Ingreso Fecha] no está vacía."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Ingreso Fecha",
+   "calculated": true,
+   "dax": "VAR _FechaFinal =\nEOMONTH(TODAY(),-1)\n\nVAR _Atenciones = \nFIRSTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION].[Date]),\n        FILTER('Atenciones',\n            'Atenciones'[RUN] = 'Ferrada'[RUN] &&\n            Atenciones[INSTRUMENTO] = \"Médico\" &&\n            (\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"ingreso control integral\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"ingreso integral\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control médico multimorbili\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"gestión de casos - ingreso riesgo\") ||\n                CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control integral con riesgo\") ||\n                (\n                    CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"multimorbilid\") &&\n                    (\n                        CONTAINSSTRING(Atenciones[ACTIVIDADES],\"multimor\") ||\n                        CONTAINSSTRING(Atenciones[ACTIVIDADES],\"control\")\n                    )\n                )\n            )\n        )\n    )\n)\n\nVAR _Drive = \nFerrada[ECICEP Ingreso Fecha (drive)]\n\nVAR _FechaIngreso = \nIF(\n    ISBLANK(_Atenciones),_Drive,_Atenciones\n)\n\nRETURN\n\nIF(\n    _FechaIngreso <= _FechaFinal,_FechaIngreso,BLANK()\n)",
+   "explanation": "Fecha de ingreso a ECICEP: primera atención médica con actividad de ingreso (ingreso integral, control multimorbilidad, gestión de casos-ingreso riesgo, control integral con riesgo); si no hay, usa la fecha del drive histórico. Solo se muestra si es anterior al cierre del mes anterior."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Ingreso Instrumento (act)",
+   "calculated": true,
+   "dax": "var _Instrumento =\nCALCULATETABLE(VALUES('Atenciones'[INSTRUMENTO]),\n    FILTER(\n        'Atenciones',\n        'Atenciones'[RUN]='Ferrada'[RUN] &&\n        CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"ingreso integral\")\n    )\n)\n\nRETURN\n\nCONCATENATEX(_Instrumento,Atenciones[INSTRUMENTO],\", \",Atenciones[INSTRUMENTO],ASC)",
+   "explanation": "Instrumentos (profesionales) que registraron actividad «ingreso integral» ECICEP, concatenados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Plan Consensuado",
+   "calculated": true,
+   "dax": "var _Actividad = \nIF(\n    CALCULATE(COUNT('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"plan de cuidado elabora\")\n        )\n    ),\"SI\",\"NO\"\n)\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[FORMULARIOS CLINICOS],\"formulario de plan de interven\")\n        )\n    ),\"SI\",\"NO\"\n)\n\nvar _Revision = \nIF(\n    CALCULATE(COUNT('ECICEP revisión'[RUN]),\n        FILTER(\n            'ECICEP revisión',\n            'ECICEP revisión'[RUN]='Ferrada'[RUN])\n    ),\"SI\",\"NO\"\n)\n\nRETURN\n\nIF(\n    _Actividad=\"SI\" ||\n    _Formulario=\"SI\" ||\n    _Revision=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Plan consensuado ECICEP SI/NO: actividad «plan de cuidado elaborado», formulario de plan de intervención, o figura en la planilla de revisión ECICEP."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Plan Consensuado (fecha)",
+   "calculated": true,
+   "dax": "var _Actividad = \nLASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION].[Date]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"plan de cuidado elabora\")\n        )\n    )\n)\n\nvar _Formulario = \nLASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION].[Date]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[FORMULARIOS CLINICOS],\"formulario de plan de interven\")\n        )\n    )\n)\n\nvar _Revision = \nLASTDATE(\n    CALCULATETABLE(VALUES('ECICEP revisión'[Fecha atencion ]),\n        FILTER(\n            'ECICEP revisión',\n            'ECICEP revisión'[RUN]='Ferrada'[RUN])\n    )\n)\n\nRETURN\n\nMAXX(\n    {\n        _Actividad,\n        _Formulario,\n        _Revision\n    },\n    [Value]\n)",
+   "explanation": "Fecha del plan consensuado ECICEP: máximo entre la actividad, el formulario de plan de intervención y la planilla de revisión."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Plan Consensuado Instrumento (act)",
+   "calculated": true,
+   "dax": "var _FechaActividad = \nLASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION].[Date]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"plan de cuidado elabora\")\n        )\n    )\n)\n\nvar _Actividad = \nCALCULATE(\n    FIRSTNONBLANK('Atenciones'[INSTRUMENTO],1),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            'Atenciones'[FECHA ATENCION] = _FechaActividad &&\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"plan de cuidado elabora\")\n        )\n)\n\nvar _FechaFormulario = \nLASTDATE(CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION].[Date]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING('Atenciones'[FORMULARIOS CLINICOS],\"formulario de plan de interven\"))))\n\nvar _Formulario = \nCALCULATE(FIRSTNONBLANK('Atenciones'[INSTRUMENTO],1),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\nAtenciones[FECHA ATENCION] = _FechaFormulario &&\nCONTAINSSTRING('Atenciones'[FORMULARIOS CLINICOS],\"formulario de plan de interven\")))\n\nvar _FechaFinal = \nMAXX(\n    {_FechaActividad,\n    _FechaFormulario},\n    [Value])\n\nvar _Resultado = \nSWITCH(\n    TRUE(),\n    _FechaFinal = _FechaActividad,_Actividad,\n    _FechaFinal = _FechaFormulario,_Formulario,\n    BLANK())\n\nRETURN\n\n_Resultado",
+   "explanation": "Instrumento que registró el plan consensuado ECICEP más reciente (compara actividad vs formulario y toma el más nuevo)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Seguimiento a distancia (act)",
+   "calculated": true,
+   "dax": "IF(\n    CALCULATE(count('Atenciones'[RUN]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"seguimiento a distancia\") &&\n                (\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"riesgo\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"multimorbi\")\n                )\n            )\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Seguimiento a distancia ECICEP SI/NO: atención con actividad «seguimiento a distancia» asociada a riesgo o multimorbilidad."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Seguimiento a distancia (instrumento)",
+   "calculated": true,
+   "dax": "CALCULATE(\n    FIRSTNONBLANK('Atenciones'[INSTRUMENTO],1),\n    FILTER(\n        ALL('Atenciones'),\n        'Atenciones'[RUN] = Ferrada[RUN] &&\n        'Atenciones'[FECHA ATENCION] = Ferrada[ECICEP Seguimiento a distancia última (fecha)] &&\n        CONTAINSSTRING('Atenciones'[ACTIVIDADES], \"seguimiento a distancia\") &&\n        (\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES], \"riesgo\") ||\n            CONTAINSSTRING('Atenciones'[ACTIVIDADES], \"multimorbi\")\n        )\n    )\n)",
+   "explanation": "Instrumento del último seguimiento a distancia ECICEP (cruza con [ECICEP Seguimiento a distancia última (fecha)])."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "ECICEP Seguimiento a distancia última (fecha)",
+   "calculated": true,
+   "dax": "LASTDATE(\n    CALCULATETABLE(VALUES('Atenciones'[FECHA ATENCION]),\n        FILTER(\n            'Atenciones',\n            'Atenciones'[RUN]='Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING('Atenciones'[ACTIVIDADES],\"seguimiento a distancia\") &&\n                (\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"riesgo\") ||\n                    CONTAINSSTRING(Atenciones[ACTIVIDADES],\"multimorbi\")\n                )\n            )\n        )\n    )\n)",
+   "explanation": "Fecha del último seguimiento a distancia ECICEP."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Edad",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR DiasTotales = DATEDIFF(Nacimiento, Hoy, DAY)\nVAR EdadExacta = \n    INT(DiasTotales / 365.25)\nRETURN\n\nIF(ISBLANK(EdadExacta),\nLOOKUPVALUE(Inscritos[EDAD AÑOS],Inscritos[RUN],'Ferrada'[RUN]),\nEdadExacta)",
+   "explanation": "Edad en años cumplidos: días entre nacimiento y hoy divididos por 365,25 (truncado). Si no hay fecha de nacimiento usa EDAD AÑOS de «Inscritos». Al usar TODAY(), cambia con cada actualización del modelo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Edad rango 5",
+   "calculated": true,
+   "dax": "var _Edad = 'Ferrada'[Edad]\nRETURN\nSWITCH(\n    TRUE(),\n    ISBLANK(_Edad),BLANK(),\n    _Edad >=0 && _Edad <5,\"0 a 4\",\n    _Edad >=5 && _Edad <10,\"5 a 9\",\n    _Edad >=10 && _Edad <15,\"10 a 14\",\n    _Edad >=15 && _Edad <20,\"15 a 19\",\n    _Edad >=20 && _Edad <25,\"20 a 24\",\n    _Edad >=25 && _Edad <30,\"25 a 29\",\n    _Edad >=30 && _Edad <35,\"30 a 34\",\n    _Edad >=35 && _Edad <40,\"35 a 39\",\n    _Edad >=40 && _Edad <45,\"40 a 44\",\n    _Edad >=45 && _Edad <50,\"45 a 49\",\n    _Edad >=50 && _Edad <55,\"50 a 54\",\n    _Edad >=55 && _Edad <60,\"55 a 59\",\n    _Edad >=60 && _Edad <65,\"60 a 64\",\n    _Edad >=65 && _Edad <70,\"65 a 69\",\n    _Edad >=70 && _Edad <75,\"70 a 74\",\n    _Edad >=75 && _Edad <80,\"75 a 79\",\n    _Edad >=80 && _Edad <85,\"80 a 84\",\n    _Edad >=85 && _Edad <90,\"85 a 89\",\n    _Edad >=90 && _Edad <95,\"90 a 94\",\n    _Edad >=95 && _Edad <100,\"95 a 99\",\n    \"100 o >\")",
+   "explanation": "Tramo etario quinquenal («0 a 4», «5 a 9», … «100 o >»). BLANK si no hay edad."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estado",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[ESTADO],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «ESTADO» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estratificación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Estratificacion[Estratificación de Riesgo Actual],Estratificacion[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «Estratificación de Riesgo Actual» desde la tabla «Estratificacion» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Estratificación Orden",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    'Ferrada'[Estratificación]=\"G0\",\"1\",\n    'Ferrada'[Estratificación]=\"G1\",\"2\",\n    'Ferrada'[Estratificación]=\"G2\",\"3\",\n    'Ferrada'[Estratificación]=\"G3\",\"4\",\n    BLANK())",
+   "explanation": "Orden numérico de la estratificación de riesgo (G0→1, G1→2, G2→3, G3→4) para ordenar tablas."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Fecha Pasivación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[FECHA PASIVACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «FECHA PASIVACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Género",
+   "calculated": true,
+   "dax": "IF(ISBLANK(LOOKUPVALUE(Inscritos[GENERO],Inscritos[RUN],'Ferrada'[RUN])),BLANK(),LOOKUPVALUE(Inscritos[GENERO],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Género registrado en «Inscritos». BLANK si no hay."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Mail",
+   "calculated": true,
+   "dax": "var _Inscripcion = \nLOOKUPVALUE(Inscritos[EMAIL],Inscritos[RUN],'Ferrada'[RUN])\n\nRETURN\n\nIF(\n    _Inscripcion=\"\",BLANK(),_Inscripcion\n)",
+   "explanation": "Correo electrónico desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Meses",
+   "calculated": true,
+   "dax": "VAR Hoy = TODAY()\nVAR Nacimiento = [Fecha Nacimiento].[Date]\nVAR MesActual = MONTH(Hoy)\nVAR MesNacimiento = MONTH(Nacimiento)\nVAR AnioActual = YEAR(Hoy)\nVAR AnioNacimiento = YEAR(Nacimiento)\nVAR DiaActual = DAY(Hoy)\nVAR DiaNacimiento = DAY(Nacimiento)\nVAR MesesDelAnioActual = \n    IF(\n        ISBLANK(Nacimiento),\n        BLANK(),\n        IF(\n            MesActual > MesNacimiento || (MesActual = MesNacimiento && DiaActual >= DiaNacimiento),\n            MesActual - MesNacimiento,\n            MesActual - MesNacimiento + 12\n        ) - IF(DiaActual < DiaNacimiento, 1, 0)\n    )\nRETURN\n\nIF(ISBLANK(MesesDelAnioActual),\nLOOKUPVALUE(Inscritos[EDAD MESES],Inscritos[RUN],'Ferrada'[RUN]),\nMesesDelAnioActual)",
+   "explanation": "Componente «meses» de la edad (para lactantes: edad expresada en años, meses y días). Con respaldo en EDAD MESES de «Inscritos»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Motivo Pasivación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[MOTIVO PASIVACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «MOTIVO PASIVACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nacionalidad",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[NACIONALIDAD],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «NACIONALIDAD» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre Social",
+   "calculated": true,
+   "dax": "IF(\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN]))=\"\",BLANK(),\nTRIM(LOOKUPVALUE(Inscritos[NOMBRE RESPONDE],Inscritos[RUN],'Ferrada'[RUN])))",
+   "explanation": "Nombre social desde «Inscritos» (campo NOMBRE RESPONDE). BLANK si está vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Nombre completo",
+   "calculated": true,
+   "dax": "CONCATENATE('Ferrada'[Nombres] & \" \" & 'Ferrada'[Apellido Paterno] & \" \",'Ferrada'[Apellido Materno])",
+   "explanation": "Nombre completo: concatena [Nombres] + [Apellido Paterno] + [Apellido Materno]."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "OTROS Artrosis C/R",
+   "calculated": true,
+   "dax": "var _Atenciones = \nIF(\n    CALCULATE(count('Atenciones'[RUN]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\n    (CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"M16\") ||\n    CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"M17\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n    FILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Estratificacion[Diagnósticos],\"M16\") ||\n    CONTAINSSTRING(Estratificacion[Diagnósticos],\"M17\")))),\n    \"SI\",\"NO\")\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\n    CONTAINSSTRING('Otros y Respi'[84.- ¿PADECE DE ARTROSIS DE CADERA Y RODILLA?],\"si\") &&\n    (CONTAINSSTRING('Otros y Respi'[85.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[85.- ESTADO],\"seguimien\")))),\n    \"SI\",\"NO\")\n\nvar _Receta =\nIF(\n    CALCULATE(COUNT('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Recetas Vigentes'[TIPO RECETA],\"crónica\") && \n    (CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"paracetamol\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"celecoxi\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"tramado\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\" ||\n    _Receta=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Artrosis de cadera/rodilla SI/NO: diagnóstico M16/M17 médico o en Estratificación, formulario de artrosis válido, o receta crónica de paracetamol, celecoxib o tramadol."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "OTROS Epilepsia",
+   "calculated": true,
+   "dax": "var _Atenciones =\nIF(\n    CALCULATE(count('Atenciones'[RUN]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\n    (CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"G40\") ||\n    CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"G41\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n    FILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Estratificacion[Diagnósticos],\"G40\") ||\n    CONTAINSSTRING(Estratificacion[Diagnósticos],\"G41\")))),\n    \"SI\",\"NO\")\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\n    CONTAINSSTRING('Otros y Respi'[75.- ¿PADECE DE EPILEPSIA?],\"si\") &&\n    (CONTAINSSTRING('Otros y Respi'[79.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[79.- ESTADO],\"seguimien\")))),\n    \"SI\",\"NO\")\n\nvar _Receta = \nIF(\n    CALCULATE(COUNT('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Recetas Vigentes'[TIPO RECETA],\"cróni\") &&\n    (CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"levetiracetam\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"carbamazepina\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"valproico\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"lamotrigina\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"fenitoina\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"fenobarbi\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\" ||\n    _Receta=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Epilepsia SI/NO: diagnóstico G40/G41 en atención médica o Estratificación, formulario de epilepsia en ingreso/seguimiento, o receta crónica vigente de anticonvulsivante (levetiracetam, carbamazepina, ácido valproico, lamotrigina, fenitoína o fenobarbital)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "OTROS Hipotiroidismo",
+   "calculated": true,
+   "dax": "var _Atenciones =\nIF(\n    CALCULATE(count('Atenciones'[RUN]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"E03\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion =     \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n    FILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING(Estratificacion[Diagnósticos],\"E03\"))),\n    \"SI\",\"NO\")\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\n    CONTAINSSTRING('Otros y Respi'[95.- ¿PADECE DE HIPOTIROIDISMO?],\"si\") &&\n    (CONTAINSSTRING('Otros y Respi'[96.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[96.- ESTADO],\"seguimien\")))),\n    \"SI\",\"NO\")\n\nvar _Receta = \nIF(\n    CALCULATE(COUNT('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Recetas Vigentes'[TIPO RECETA],\"crónica\") && \n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"levotiroxina\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\" ||\n    _Receta=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Hipotiroidismo SI/NO: diagnóstico E03 en atención médica o Estratificación, formulario «Otros y Respi» (pregunta 95) en ingreso/seguimiento, o receta crónica de levotiroxina. (Corregido jul-2026: el formulario no estaba incluido en el resultado.)"
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "OTROS Parkinson",
+   "calculated": true,
+   "dax": "var _Atenciones = \nIF(\n    CALCULATE(count('Atenciones'[RUN]),\n    FILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"G20\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n    FILTER(ALL(Estratificacion),Estratificacion[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING(Estratificacion[Diagnósticos],\"G20\"))),\n    \"SI\",\"NO\")\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[81.- ¿PADECE DE LA ENFERMEDAD DE PARKINSON?],\"si\") &&\n    (CONTAINSSTRING('Otros y Respi'[82.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[82.- ESTADO],\"seguimient\")))),\n    \"SI\",\"NO\")\n\nvar _Receta = \nIF(\n    CALCULATE(COUNT('Recetas Vigentes'[RUN]),\n    FILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\n    CONTAINSSTRING('Recetas Vigentes'[TIPO RECETA],\"crónic\") &&\n    (CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"levodopa\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"pramipexol\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"quetiapina 25\") ||\n    CONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"primidona\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Estratificacion=\"SI\" ||\n    _Formulario=\"SI\" ||\n    _Receta=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Parkinson SI/NO: diagnóstico G20 médico o en Estratificación, formulario de Parkinson válido, o receta crónica de levodopa, pramipexol, quetiapina 25 o primidona."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV ACV",
+   "calculated": true,
+   "dax": "var _Fecha =\nLASTDATE(\n    CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n        FILTER(\n            PSCV,\n            PSCV[RUN]='Ferrada'[RUN] &&\n            PSCV[38.- ¿HA PRESENTADO AVE?] <> \"\"\n        )\n    )\n)\n\nvar _Formularios =\nIF(\n    CALCULATE(COUNT(PSCV[RUN]),\n        FILTER(\n            PSCV,\n            PSCV[RUN]='Ferrada'[RUN] &&\n            PSCV[FECHA ATENCION] = _Fecha &&\n            CONTAINSSTRING(PSCV[38.- ¿HA PRESENTADO AVE?],\"si\")\n        )\n    ),\"SI\",\"NO\"\n)\n\nvar _Atenciones = \nIF(\n    CALCULATE(count(Atenciones[RUN]),\n        FILTER(\n            'Atenciones',\n            Atenciones[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\n            (\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I60\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I61\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I62\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I63\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I64\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"I69\")\n            )\n        )\n    ),\n    \"SI\",\"NO\"\n)\n\nRETURN\n\nIF(\n    _Formularios=\"SI\" ||\n    _Atenciones=\"SI\",\n    \"SI\",\"NO\"\n)",
+   "explanation": "ACV SI/NO: el último formulario PSCV con la pregunta 38 (¿ha presentado AVE?) respondida dice «sí», o diagnóstico I60-I64/I69 en atención médica."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV DLP",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n        FILTER(\n            PSCV,\n            PSCV[RUN]='Ferrada'[RUN] &&\n            PSCV[26.- ¿ES DISLIPIDÉMICO?] <> \"\"\n        )\n    )\n)\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT(PSCV[RUN]),\n        FILTER(\n            PSCV,\n            PSCV[RUN]='Ferrada'[RUN] &&\n            PSCV[FECHA ATENCION]=_Fecha &&\n            CONTAINSSTRING(PSCV[26.- ¿ES DISLIPIDÉMICO?],\"si\")\n        )\n    ),\"SI\",\"NO\"\n)\n\n\n/*var _Atenciones = \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n        FILTER(\n            Estratificacion,\n            Estratificacion[RUN]='Ferrada'[RUN] &&\n            CONTAINSSTRING(Estratificacion[Diagnósticos],\"E78\")\n        )\n    ) > 0\n||\n    CALCULATE(count(Atenciones[RUN]),\n        FILTER(\n            Atenciones,\n            Atenciones[RUN]='Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médico\") &&\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E78\")\n            )\n        )\n    ) > 0,\n    \"SI\",\"NO\"\n)\n*/\nRETURN\n\n_Formulario",
+   "explanation": "Dislipidemia SI/NO: último formulario PSCV con pregunta 26 respondida dice «sí», o diagnóstico E78 en Estratificación o en atenciones médicas."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV DM",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            PSCV[22.- ¿ES DM2?] <> \"\"\n        )\n    )\n)\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT(PSCV[RUN]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            PSCV[FECHA ATENCION] = _Fecha &&\n            CONTAINSSTRING(PSCV[22.- ¿ES DM2?],\"si\")\n        )\n    ) > 0,\n    \"SI\",\"NO\"\n)\n\nvar _Atenciones = \nIF(\n    CALCULATE(COUNT(Estratificacion[RUN]),\n        FILTER\n        (Estratificacion,\n        Estratificacion[RUN] = 'Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING(Estratificacion[Diagnósticos],\"E10\") ||\n                CONTAINSSTRING(Estratificacion[Diagnósticos],\"E11\") ||\n                CONTAINSSTRING(Estratificacion[Diagnósticos],\"E12\") ||\n                CONTAINSSTRING(Estratificacion[Diagnósticos],\"E13\") ||\n                CONTAINSSTRING(Estratificacion[Diagnósticos],\"E14\")\n            )\n        )\n    ) > 0\n\n    ||\n\n    CALCULATE(COUNT(Atenciones[RUN]),\n        FILTER(\n            Atenciones,\n            Atenciones[RUN] = 'Ferrada'[RUN] &&\n            (\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E10\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E11\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E12\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E13\") ||\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"E14\")\n            )\n        )\n    ) > 0,\n    \"SI\",\"NO\"\n)\n\nRETURN\n\nIF(\n    _Atenciones=\"SI\" ||\n    _Formulario=\"SI\",\n    \"SI\",\"NO\"\n)",
+   "explanation": "Diabetes tipo 2 SI/NO: el último formulario PSCV con la pregunta 22 respondida dice «sí», o diagnóstico E10-E14 en Estratificación o Atenciones."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV DM ¿compensada?",
+   "calculated": true,
+   "dax": "IF(\n    ISBLANK('Ferrada'[PSCV HbA1c (última)]),\n    \"Sin Datos\",\nIF(\n    ('Ferrada'[Edad] < 80  && 'Ferrada'[PSCV HbA1c (última)] >= 7) ||\n    ('Ferrada'[Edad] >= 80 && 'Ferrada'[PSCV HbA1c (última)] >= 8),\n    \"NO\", \"SI\"))",
+   "explanation": "Compensación de DM según última HbA1c: «NO» si (<80 años y HbA1c≥7) o (≥80 y ≥8); «SI» si está bajo esos umbrales; «Sin Datos» si no hay HbA1c registrada (corregido jul-2026: antes el paciente sin examen aparecía compensado)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV ECV",
+   "calculated": true,
+   "dax": "var _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            (\n                PSCV[28.- ¿TIENE ANTECEDENTES ENF. CARDIOVASCULAR ATEROSCLER] <> \"\" ||\n                PSCV[17.- ANTECEDENTES DE OTRAS ENFERMEDADES CARDIOVASCULARE] <> \"\"\n            )\n        )\n    )\n)\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT(PSCV[RUN]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            PSCV[FECHA ATENCION]=_Fecha &&\n            (\n                CONTAINSSTRING(PSCV[28.- ¿TIENE ANTECEDENTES ENF. CARDIOVASCULAR ATEROSCLER],\"si\") ||\n                CONTAINSSTRING(PSCV[17.- ANTECEDENTES DE OTRAS ENFERMEDADES CARDIOVASCULARE],\"si\")\n            )\n        )\n    ) > 0,\n    \"SI\",\"NO\"\n)\n\nRETURN\n\nIF(\n    'Ferrada'[PSCV IAM]=\"SI\" || \n    'Ferrada'[PSCV ACV]=\"SI\" ||\n    _Formulario=\"SI\",\n    \"SI\",\"NO\"\n)",
+   "explanation": "Enfermedad cardiovascular ateroesclerótica SI/NO: [PSCV IAM] o [PSCV ACV] en «SI», o último formulario con antecedentes CV (preguntas 28/17) marcado «sí»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV ERC",
+   "calculated": true,
+   "dax": "IF(\n(NOT ISBLANK(Ferrada[PSCV VFG]) && 'Ferrada'[PSCV VFG]< 45) ||\n(NOT ISBLANK(Ferrada[PSCV VFG]) && 'Ferrada'[PSCV VFG]< 60 && NOT ISBLANK(Ferrada[PSCV RAC]) && Ferrada[PSCV RAC] <= 30 && Ferrada[Edad] >= 15 && Ferrada[Edad] < 65) ||\n(NOT ISBLANK(Ferrada[PSCV RAC]) && 'Ferrada'[PSCV RAC]>30),\n\"SI\",\"NO\")",
+   "explanation": "ERC SI/NO por criterios de laboratorio: VFG<45, o RAC>30, o (VFG<60 con RAC≤30 en paciente de 15-64 años). Nota: revisar el segundo criterio — exigir RAC≤30 junto a VFG 45-59 es poco habitual (KDIGO clasificaría G3a con cualquier RAC); podría ser intencional para capturar G3a sin albuminuria, pero vale la pena confirmarlo."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV HDL",
+   "calculated": true,
+   "dax": "VAR _FechaHEC =\n    CALCULATE(\n        MAX('Laboratorio (resultado) HEC 2024'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"hdl\")\n        )\n    )\n\nVAR _HEC =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio (resultado) HEC 2024'[Resultado],1),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio (resultado) HEC 2024'[Fecha Ingreso] = _FechaHEC &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"hdl\")\n        )\n    )\n\nVAR _FechaHOLANDA =\n    CALCULATE(\n        MAX('Laboratorio Holanda'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"colesterol hdl\")\n        )\n    )\n\nVAR _HOLANDA =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio Holanda'[Resultado],1),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio Holanda'[Fecha Ingreso] = _FechaHOLANDA &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"colesterol hdl\")\n        )\n    )\n\nVAR _FechaPSCV =\n    CALCULATE(\n        MAX(PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *]),\n        FILTER('PSCV',\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        NOT ISBLANK(PSCV[82.- COLESTEROL HDL (MG/DL)]))\n    )\n\nVAR _ValorPSCV =\n    CALCULATE(\n        FIRSTNONBLANK(PSCV[82.- COLESTEROL HDL (MG/DL)],1),\n        FILTER(PSCV,\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *] = _FechaPSCV)\n    )\n\n\n\n-- Consolidamos fechas y valores\nVAR _Tabla =\n    {\n        (_FechaHEC, _HEC),\n        (_FechaHOLANDA, _HOLANDA),\n        (_FechaPSCV, _ValorPSCV)\n    }\n\nVAR _Ultimo =\n    TOPN(\n        1,\n        FILTER(_Tabla, NOT ISBLANK([Value2])),\n        [Value1], DESC\n    )\n\nVAR _ResultadoFinal =\n    MAXX(_Ultimo, [Value2])\n\nRETURN\n    _ResultadoFinal",
+   "explanation": "Valor de colesterol HDL consolidado de tres fuentes (formulario PSCV, laboratorio HEC 2024, laboratorio Holanda; búsqueda: «hdl» en labs, pregunta correspondiente del formulario): de cada fuente toma el registro más reciente y gana el de fecha más nueva. (Corregido jul-2026: se eliminó el respaldo histórico erróneo que leía HbA1c de Estratificación, y las columnas que elegían el valor más alto en vez del más reciente.) Nota vigente: las descargas masivas de laboratorio (HEC/Holanda) están descontinuadas desde ~2025; en la práctica hoy alimenta solo el formulario PSCV. La lógica por fecha hace que los datos congelados pierdan naturalmente contra registros nuevos."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV HTA",
+   "calculated": true,
+   "dax": "VAR _Dg = \n    IF(\n        CALCULATE(\n            COUNT(Estratificacion[RUN]),\n            FILTER(\n                ALL(Estratificacion),\n                Estratificacion[RUN] = 'Ferrada'[RUN] &&\n                CONTAINSSTRING(Estratificacion[Diagnósticos], \"I1\")\n            )\n        ) > 0 ||\n        CALCULATE(\n            COUNT(Atenciones[RUN]),\n            FILTER(\n                ALL(Atenciones),\n                Atenciones [RUN] = 'Ferrada'[RUN] &&\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS], \"I1\")\n            )\n        ) > 0,\n        \"SI\",\n        \"NO\"\n    )\n\nVAR _Form = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[20.- ¿ES HTA?] = \"si\"\n            )\n        ) > 0,\n        \"SI\",\n        \"NO\"\n    )\n\nRETURN\n    IF(\n        _Dg = \"SI\" || \n        _Form = \"SI\",\n        \"SI\",\n        \"NO\"\n    )",
+   "explanation": "Hipertensión SI/NO: diagnóstico CIE-10 I1* en Estratificación o en Atenciones, o pregunta 20 del formulario PSCV («¿es HTA?») marcada «sí» en cualquier registro."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV HTA ¿compensada?",
+   "calculated": true,
+   "dax": "IF(\n    ISBLANK('Ferrada'[PSCV PAS (última)]) || ISBLANK('Ferrada'[PSCV PAD (última)]),\n    \"Sin Datos\",\nIF(\n    ('Ferrada'[Edad] < 80  && ('Ferrada'[PSCV PAS (última)] >= 140 || 'Ferrada'[PSCV PAD (última)] >= 90)) ||\n    ('Ferrada'[Edad] >= 80 && ('Ferrada'[PSCV PAS (última)] >= 150 || 'Ferrada'[PSCV PAD (última)] >= 90)),\n    \"NO\", \"SI\"))",
+   "explanation": "Compensación de HTA según última PA: «NO» si (<80 años y PAS≥140 o PAD≥90) o (≥80 y PAS≥150 o PAD≥90); «SI» bajo umbral; «Sin Datos» si falta PAS o PAD (corregido jul-2026: antes el paciente sin control aparecía compensado)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV HbA1c (primera)",
+   "calculated": true,
+   "dax": "VAR _FechaHEC =\n    CALCULATE(\n        MIN('Laboratorio (resultado) HEC 2024'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"glicosilada\")\n        )\n    )\n\nVAR _HEC =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio (resultado) HEC 2024'[Resultado],1),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio (resultado) HEC 2024'[Fecha Ingreso] = _FechaHEC &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"glicosilada\")\n        )\n    )\n\nVAR _FechaHOLANDA =\n    CALCULATE(\n        MIN('Laboratorio Holanda'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"glicada\")\n        )\n    )\n\nVAR _HOLANDA =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio Holanda'[Resultado],1),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio Holanda'[Fecha Ingreso] = _FechaHOLANDA &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"glicada\")\n        )\n    )\n\nVAR _FechaPSCV =\n    CALCULATE(\n        MIN(PSCV[58.- FECHA HEMOGLOBINA GLICOSILADA (HBA1C)]),\n        FILTER(PSCV,\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        NOT ISBLANK(PSCV[59.- HEMOGLOBINA GLICOSILADA (HBA1C)]))\n    )\n\nVAR _PSCV =\n    CALCULATE(\n        FIRSTNONBLANK(PSCV[59.- HEMOGLOBINA GLICOSILADA (HBA1C)],1),\n        FILTER(PSCV,\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        PSCV[58.- FECHA HEMOGLOBINA GLICOSILADA (HBA1C)] = _FechaPSCV)\n    )\n\nVAR _Historica =\n    LOOKUPVALUE(Estratificacion[HbA1c], Estratificacion[RUN], 'Ferrada'[RUN])\n\nVAR _ValorPSCV =\n    IF(ISBLANK(_PSCV), _Historica, _PSCV)\n\n-- Consolidamos fechas y valores\nVAR _Tabla =\n    {\n        (_FechaHEC, _HEC),\n        (_FechaHOLANDA, _HOLANDA),\n        (_FechaPSCV, _ValorPSCV)\n    }\n\nVAR _Primero =\n    TOPN(\n        1,\n        FILTER(_Tabla, NOT ISBLANK([Value2])),\n        [Value1], ASC\n    )\n\nVAR _ResultadoFinal =\n    MAXX(_Primero, [Value2])\n\n\nRETURN\n    _ResultadoFinal",
+   "explanation": "Primera HbA1c registrada: valor de la fuente con fecha más antigua entre lab HEC, lab Holanda y formulario PSCV (con respaldo histórico de Estratificación)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV HbA1c (última)",
+   "calculated": true,
+   "dax": "VAR _FechaHEC =\n    CALCULATE(\n        MAX('Laboratorio (resultado) HEC 2024'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"glicosilada\")\n        )\n    )\n\nVAR _HEC =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio (resultado) HEC 2024'[Resultado],1),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio (resultado) HEC 2024'[Fecha Ingreso] = _FechaHEC &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"glicosilada\")\n        )\n    )\n\nVAR _FechaHOLANDA =\n    CALCULATE(\n        MAX('Laboratorio Holanda'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"glicada\")\n        )\n    )\n\nVAR _HOLANDA =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio Holanda'[Resultado],1),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio Holanda'[Fecha Ingreso] = _FechaHOLANDA &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"glicada\")\n        )\n    )\n\nVAR _FechaPSCV =\n    CALCULATE(\n        MAX(PSCV[58.- FECHA HEMOGLOBINA GLICOSILADA (HBA1C)]),\n        FILTER('PSCV',\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        NOT ISBLANK(PSCV[59.- HEMOGLOBINA GLICOSILADA (HBA1C)]))\n    )\n\nVAR _PSCV =\n    CALCULATE(\n        FIRSTNONBLANK(PSCV[59.- HEMOGLOBINA GLICOSILADA (HBA1C)],1),\n        FILTER(PSCV,\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        PSCV[58.- FECHA HEMOGLOBINA GLICOSILADA (HBA1C)] = _FechaPSCV)\n    )\n\nVAR _Historica =\n    LOOKUPVALUE(Estratificacion[HbA1c], Estratificacion[RUN], 'Ferrada'[RUN])\n\nVAR _ValorPSCV =\n    IF(ISBLANK(_PSCV), _Historica, _PSCV)\n\n-- Consolidamos fechas y valores\nVAR _Tabla =\n    {\n        (_FechaHEC, _HEC),\n        (_FechaHOLANDA, _HOLANDA),\n        (_FechaPSCV, _ValorPSCV)\n    }\n\nVAR _Ultimo =\n    TOPN(\n        1,\n        FILTER(_Tabla, NOT ISBLANK([Value2])),\n        [Value1], DESC\n    )\n\nVAR _ResultadoFinal =\n    MAXX(_Ultimo, [Value2])\n\nRETURN\nIF(\n    _ResultadoFinal > 30 || _ResultadoFinal < 2,BLANK(),_ResultadoFinal)",
+   "explanation": "HbA1c más reciente consolidada de tres fuentes: laboratorio HEC («glicosilada»), laboratorio Holanda («glicada») y formulario PSCV (pregunta 59, con respaldo histórico de Estratificación). Gana el valor con fecha más nueva. Valida rango clínico: valores >30 o <2 se descartan (BLANK)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV IAM",
+   "calculated": true,
+   "dax": "VAR _Dg = \n    IF(\n        CALCULATE(\n            COUNT(Atenciones[RUN]),\n            FILTER(\n                ALL(Atenciones),\n                Atenciones [RUN] = 'Ferrada'[RUN] &&\n                CONTAINSSTRING(Atenciones[DIAGNOSTICOS], \"I25\")\n            )\n        ) > 0,\n        \"SI\",\n        \"NO\"\n    )\n\nVAR _Form = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[36.- ¿HA PRESENTADO IAM?] = \"si\"\n            )\n        ) > 0,\n        \"SI\",\n        \"NO\"\n    )\n\nRETURN\n    IF(\n        _Dg = \"SI\" || \n        _Form = \"SI\",\n        \"SI\",\n        \"NO\"\n    )",
+   "explanation": "Infarto (IAM) SI/NO: diagnóstico I25 en alguna atención o pregunta 36 del formulario PSCV marcada «sí»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV Insulina",
+   "calculated": true,
+   "dax": "var _RecetaVigente = \nIF(CALCULATE(count('Recetas Vigentes'[RUN]),\nFILTER(ALL('Recetas Vigentes'),'Recetas Vigentes'[RUN]='Ferrada'[RUN] &&\nCONTAINSSTRING('Recetas Vigentes'[DESCRIPCION ARTICULO],\"insulina\"))),\n\"SI\",\"NO\")\n\nvar _RecetaExterna = \nIF(CALCULATE(COUNT('Recetas Externas'[RUN]),\nFILTER(ALL('Recetas Externas'),'Recetas Externas'[RUN] = Ferrada[RUN] &&\nCONTAINSSTRING('Recetas Externas'[Medicamento],\"insulina\"))),\n\"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _RecetaVigente = \"SI\" ||\n    _RecetaExterna = \"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Insulina SI/NO: receta interna vigente o receta externa que contenga «insulina»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV LDL",
+   "calculated": true,
+   "dax": "VAR _FechaHEC =\n    CALCULATE(\n        MAX('Laboratorio (resultado) HEC 2024'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"ldl\")\n        )\n    )\n\nVAR _HEC =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio (resultado) HEC 2024'[Resultado],1),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio (resultado) HEC 2024'[Fecha Ingreso] = _FechaHEC &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"ldl\")\n        )\n    )\n\nVAR _FechaHOLANDA =\n    CALCULATE(\n        MAX('Laboratorio Holanda'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"colesterol ldl\")\n        )\n    )\n\nVAR _HOLANDA =\n    CALCULATE(\n        FIRSTNONBLANK('Laboratorio Holanda'[Resultado],1),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio Holanda'[Fecha Ingreso] = _FechaHOLANDA &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"colesterol ldl\")\n        )\n    )\n\nVAR _FechaPSCV =\n    CALCULATE(\n        MAX(PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *]),\n        FILTER('PSCV',\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        NOT ISBLANK(PSCV[84.- COLESTEROL LDL (MG/DL)]))\n    )\n\nVAR _ValorPSCV =\n    CALCULATE(\n        FIRSTNONBLANK(PSCV[84.- COLESTEROL LDL (MG/DL)],1),\n        FILTER(PSCV,\n        PSCV[RUN] = 'Ferrada'[RUN] &&\n        PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *] = _FechaPSCV)\n    )\n\n\n\n-- Consolidamos fechas y valores\nVAR _Tabla =\n    {\n        (_FechaHEC, _HEC),\n        (_FechaHOLANDA, _HOLANDA),\n        (_FechaPSCV, _ValorPSCV)\n    }\n\nVAR _Ultimo =\n    TOPN(\n        1,\n        FILTER(_Tabla, NOT ISBLANK([Value2])),\n        [Value1], DESC\n    )\n\nVAR _ResultadoFinal =\n    MAXX(_Ultimo, [Value2])\n\nRETURN\n    _ResultadoFinal",
+   "explanation": "Valor de colesterol LDL consolidado de tres fuentes (formulario PSCV, laboratorio HEC 2024, laboratorio Holanda; búsqueda: «ldl» en labs, pregunta 84 del formulario): de cada fuente toma el registro más reciente y gana el de fecha más nueva. (Corregido jul-2026: se eliminó el respaldo histórico erróneo que leía HbA1c de Estratificación, y las columnas que elegían el valor más alto en vez del más reciente.) Nota vigente: las descargas masivas de laboratorio (HEC/Holanda) están descontinuadas desde ~2025; en la práctica hoy alimenta solo el formulario PSCV. La lógica por fecha hace que los datos congelados pierdan naturalmente contra registros nuevos."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV LDL >160",
+   "calculated": true,
+   "dax": "IF(\n    'Ferrada'[PSCV LDL]>=160,\n    \"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: LDL ≥160 mg/dL. Nota: el nombre dice «>160» pero la fórmula usa ≥."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV PA (primera)",
+   "calculated": true,
+   "dax": "IF(ISBLANK(Ferrada[PSCV PAS (primera)]),BLANK(),\nFerrada[PSCV PAS (primera)] & \"/\" & Ferrada[PSCV PAD (primera)])",
+   "explanation": "Concatena la presión arterial como texto «PAS/PAD» usando [PSCV PAS (primera)], [PSCV PAD (primera)]. BLANK si no hay PAS."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV PA (última)",
+   "calculated": true,
+   "dax": "IF(ISBLANK(Ferrada[PSCV PAS (última)]),BLANK(),\nFerrada[PSCV PAS (última)] & \"/\" & Ferrada[PSCV PAD (última)])",
+   "explanation": "Concatena la presión arterial como texto «PAS/PAD» usando [PSCV PAS (última)], [PSCV PAD (última)]. BLANK si no hay PAS."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV PA/Hba1c/LDL alta",
+   "calculated": true,
+   "dax": "var _PA = \nIF(OR(\n    'Ferrada'[Edad] < 80 &&\n    ('Ferrada'[PSCV PAS (última)] >= 140 ||\n    'Ferrada'[PSCV PAD (última)] >= 90),\n    'Ferrada'[Edad] >= 80 &&\n    ('Ferrada'[PSCV PAS (última)] >= 150 ||\n    'Ferrada'[PSCV PAD (última)] >= 90)),\n    \"SI\",\"NO\")\n\nvar _GLI = \nIF(OR(\n    'Ferrada'[Edad] < 80 &&\n    'Ferrada'[PSCV HbA1c (última)] >= 7,\n    'Ferrada'[Edad] >= 80 &&\n    'Ferrada'[PSCV HbA1c (última)] >= 8),\n    \"SI\",\"NO\")\n\nvar _LDL = \nIF(\n    'Ferrada'[PSCV LDL] >= 100,\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _PA = \"SI\" ||\n    _GLI = \"SI\" ||\n    _LDL = \"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Indicador de descompensación combinada: «SI» si la PA está sobre meta (mismos cortes por edad que [PSCV HTA ¿compensada?]), la HbA1c sobre meta (≥7 / ≥8 según edad) o el LDL ≥100. Para priorizar rescates."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV TG",
+   "calculated": true,
+   "dax": "VAR _FechaPSCV =\n    CALCULATE(\n        MAX(PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            NOT ISBLANK(PSCV[83.- TRIGLICÉRIDOS (MG/DL)])\n        )\n    )\n\nVAR _ValorPSCV =\n    CALCULATE(\n        MAX(PSCV[83.- TRIGLICÉRIDOS (MG/DL)]),\n        FILTER(\n            PSCV,\n            PSCV[RUN] = 'Ferrada'[RUN] &&\n            PSCV[54.- FECHA DE REALIZACIÓN DE BATERÍA DE EXÁMEN *] = _FechaPSCV)\n    )\n\nVAR _FechaHEC =\n    CALCULATE(\n        MAX('Laboratorio (resultado) HEC 2024'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"triglicéri\")\n        )\n    )\n\nVAR _ValorHEC =\n    CALCULATE(\n        MAX('Laboratorio (resultado) HEC 2024'[Resultado]),\n        FILTER(\n            'Laboratorio (resultado) HEC 2024',\n            'Laboratorio (resultado) HEC 2024'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio (resultado) HEC 2024'[Fecha Ingreso] = _FechaHEC &&\n            CONTAINSSTRING('Laboratorio (resultado) HEC 2024'[Nombre del Test], \"triglicéri\")\n        )\n    )\n\nVAR _FechaHOLANDA =\n    CALCULATE(\n        MAX('Laboratorio Holanda'[Fecha Ingreso]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"triglicéri\")\n        )\n    )\n\nVAR _ValorHOLANDA =\n    CALCULATE(\n        MAX('Laboratorio Holanda'[Resultado]),\n        FILTER(\n            'Laboratorio Holanda',\n            'Laboratorio Holanda'[RUN] = 'Ferrada'[RUN] &&\n            'Laboratorio Holanda'[Fecha Ingreso] = _FechaHOLANDA &&\n            CONTAINSSTRING('Laboratorio Holanda'[Determinacion], \"triglicéri\")\n        )\n    )\n\n-- Tabla con fechas y valores para comparar\nVAR _Tabla =\n    {\n        (_FechaPSCV, _ValorPSCV),\n        (_FechaHEC, _ValorHEC),\n        (_FechaHOLANDA, _ValorHOLANDA)\n    }\n    \nVAR _Ultimo =\n    TOPN(1, FILTER(_Tabla, NOT ISBLANK([Value2])), [Value1], DESC)\n\nRETURN\n    MAXX(_Ultimo, [Value2])",
+   "explanation": "Valor de triglicéridos consolidado de tres fuentes (formulario PSCV, laboratorio HEC 2024, laboratorio Holanda; búsqueda: «triglicéri» en labs (corregido jul-2026: Holanda buscaba RAC por error), pregunta correspondiente del formulario): de cada fuente toma el registro más reciente y gana el de fecha más nueva. (Corregido jul-2026: se eliminó el respaldo histórico erróneo que leía HbA1c de Estratificación, y las columnas que elegían el valor más alto en vez del más reciente.) Nota vigente: las descargas masivas de laboratorio (HEC/Holanda) están descontinuadas desde ~2025; en la práctica hoy alimenta solo el formulario PSCV. La lógica por fecha hace que los datos congelados pierdan naturalmente contra registros nuevos."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "PSCV ¿Ingresado?",
+   "calculated": true,
+   "dax": "VAR _HTA = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[20.- ¿ES HTA?], \"si\")\n            )\n        ), \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _DM = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[22.- ¿ES DM2?], \"si\")\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _DLP = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[26.- ¿ES DISLIPIDÉMICO?], \"si\")\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _ACV = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[38.- ¿HA PRESENTADO AVE?], \"si\")\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _IAM = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[36.- ¿HA PRESENTADO IAM?], \"si\")\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _ECV = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                CONTAINSSTRING(PSCV[28.- ¿TIENE ANTECEDENTES ENF. CARDIOVASCULAR ATEROSCLER], \"si\")\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nVAR _ERC = \n    IF(\n        CALCULATE(\n            COUNT(PSCV[RUN]),\n            FILTER(\n                ALL(PSCV),\n                PSCV[RUN] = 'Ferrada'[RUN] &&\n                PSCV[FECHA ATENCION] = LASTDATE(CALCULATETABLE(VALUES(PSCV[FECHA ATENCION]),\n                FILTER(ALL(PSCV),PSCV[RUN]='Ferrada'[RUN] &&\n                CONTAINSSTRING(PSCV[INSTRUMENTO],\"médico\")))) &&\n                (\n                    CONTAINSSTRING(PSCV[115.- ETAPA DE ERC], \"g3b\") ||\n                    CONTAINSSTRING(PSCV[115.- ETAPA DE ERC], \"g4\") ||\n                    CONTAINSSTRING(PSCV[115.- ETAPA DE ERC], \"g5\")\n                )\n            )\n        ) > 0, \n        \"SI\", \n        \"NO\"\n    )\n\nRETURN\n    IF(\n        _ACV = \"SI\" || \n        _IAM = \"SI\" || \n        _DM = \"SI\" || \n        _HTA = \"SI\" || \n        _DLP = \"SI\" || \n        _ECV = \"SI\" || \n        _ERC = \"SI\",\n        \"SI\", \n        \"NO\"\n    )",
+   "explanation": "Ingreso al PSCV SI/NO: en el último formulario PSCV con instrumento médico, alguna de las siete condiciones está marcada «sí»: HTA (p.20), DM2 (p.22), dislipidemia (p.26), AVE (p.38), IAM (p.36), antecedente CV ateroesclerótico (p.28) o ERC etapa G3b-G5 (p.115). Refleja el estado del último formulario, no el histórico."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pertenece a ECICEP",
+   "calculated": true,
+   "dax": "IF(\n     IF(LOOKUPVALUE('ECICEP Histórico'[RUN],'ECICEP Histórico'[RUN],'Ferrada'[RUN]) <> \"\",\n    \"SI\",\"NO\")=\"SI\" || \n    'Ferrada'[ECICEP Ingreso]=\"SI\" ||\n    'Ferrada'[ECICEP Control (act)]=\"SI\" ||\n    'Ferrada'[ECICEP Seguimiento a distancia (act)]=\"SI\" ||\n    'Ferrada'[ECICEP Gestión de Egreso (act)]=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Pertenencia a ECICEP: figura en el histórico (drive), o tiene ingreso, control, seguimiento a distancia o gestión de egreso ECICEP."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pertenece a PAD",
+   "calculated": true,
+   "dax": "IF(LOOKUPVALUE('PAD Drive'[RUN],'PAD Drive'[RUN],'Ferrada'[RUN]) <> \"\",\n\"SI\",\"NO\")",
+   "explanation": "Indicador SI/NO: el RUN del paciente aparece en la tabla «PAD Drive»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Pueblo Originario",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[PUEBLO INDIG],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «PUEBLO INDIG» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "RUN",
+   "calculated": false,
+   "dax": null,
+   "explanation": null
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA ASMA",
+   "calculated": true,
+   "dax": "var _SBOR = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\",\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\n    CALCULATE(count(Atenciones[RUN]),\n    FILTER(ALL(Atenciones),Atenciones[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING(Atenciones[DIAGNOSTICOS],\"J45\") &&\n    CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\")))),\n    \"SI\",\"NO\")\n\nvar _Estratificacion =\nIF(\n    CONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J45\"),\n     \"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"Si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "Asma en sala SI/NO: requiere no ser SBOR ([SALA SBOR]=«NO») y cumplir alguna de: diagnóstico J45 en atención médica, J45 en Estratificación, o último formulario «Otros y Respi» de asma válido (asma=«sí», gravedad y estado de control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA EPOC",
+   "calculated": true,
+   "dax": "var _Edad = \nIF(\n    'Ferrada'[Edad]>=40,\"SI\",\"NO\")\n\nvar _Atenciones = \nIF(\nCALCULATE(count('Atenciones'[RUN]),\nFILTER(ALL('Atenciones'),'Atenciones'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING(Atenciones[INSTRUMENTO],\"médic\") &&\nCONTAINSSTRING('Atenciones'[DIAGNOSTICOS],\"J44\")))),\n\"SI\",\"NO\")\n\nvar _Estratificacion = \nIF(\nCONTAINSSTRING(LOOKUPVALUE(Estratificacion[Diagnósticos],Estratificacion[RUN],'Ferrada'[RUN]),\"J44\"),\n\"SI\",\"NO\")\n\nvar _Fecha = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _Formulario = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_Fecha &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _Edad=\"si\" &&\n(\n    _Atenciones=\"si\" ||\n    _Estratificacion=\"si\" ||\n    _Formulario=\"si\"\n),\n    \"SI\",\"NO\")",
+   "explanation": "EPOC en sala SI/NO: requiere ≥40 años y alguna de: diagnóstico J44 médico, J44 en Estratificación, o último formulario EPOC válido (padece=«sí», tipo y control registrados, ingreso/seguimiento)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SALA Ingresado",
+   "calculated": true,
+   "dax": "var _FechaASMA = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioASMA = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaASMA &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    'Otros y Respi'[11.- GRAVEDAD ASMA BRONQUIAL]<>\"\" &&\n    'Otros y Respi'[13.- ESTADO DE CONTROL ASMA]<>\"\" &&\n    CONTAINSSTRING('Otros y Respi'[9.- ¿PADECE DE ASMA BRONQUIAL?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[10.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaEPOC = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioEPOC = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaEPOC &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[14.- ¿PADECE ENFERMEDAD PULMONAR CRONICA?],\"si\")) &&\n    'Otros y Respi'[16.- TIPO EPOC]<>\"\" &&\n    'Otros y Respi'[19.- ESTADO DE CONTROL EPOC]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[17.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaSBOR = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioSBOR = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION] = _FechaSBOR &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[1.- ¿PADECE DE SÍNDROME BRONQUIAL OBSTRUCTIVO?],\"si\") &&\n    CONTAINSSTRING('Otros y Respi'[2.- ¿ES RECURRENTE?],\"si\")) &&\n    'Otros y Respi'[4.- GRAVEDAD SBOR]<>\"\" &&\n    (CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[3.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _FechaAV = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))))\n\nvar _FormularioAV = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaAV &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[26.- ¿NECESITA ASISTENCIA VENTILATORIA?],\"si\")) &&\n'Otros y Respi'[27.- ASISTENCIA VENTILATORIA]<>\"\" &&\n(CONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[28.- ESTADO ASISTENCIA VENTILATORIA],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaOtrosR = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioOtrosRespi = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaOtrosR &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaO2 = \nLASTDATE(\nCALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioO2 = \nIF(\nCALCULATE(COUNT('Otros y Respi'[RUN]),\nFILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n'Otros y Respi'[FECHA ATENCION] = _FechaO2 &&\n(CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médico\") &&\nCONTAINSSTRING('Otros y Respi'[23.- ¿ES OXIGENO DEPENDIENTE?],\"si\")) &&\n(CONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"ingreso\") ||\nCONTAINSSTRING('Otros y Respi'[24.- ESTADO],\"seguimiento\")))),\n\"SI\",\"NO\")\n\nvar _FechaFQ = \nLASTDATE(\n    CALCULATETABLE(VALUES('Otros y Respi'[FECHA ATENCION]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))))\n\nvar _FormularioFQ = \nIF(\n    CALCULATE(COUNT('Otros y Respi'[RUN]),\n    FILTER(ALL('Otros y Respi'),'Otros y Respi'[RUN]='Ferrada'[RUN] &&\n    'Otros y Respi'[FECHA ATENCION]=_FechaFQ &&\n    (CONTAINSSTRING('Otros y Respi'[INSTRUMENTO],\"médic\") &&\n    CONTAINSSTRING('Otros y Respi'[30.- ¿PADECE DE FIBROSIS QUISTICA?],\"si\")) &&\n    (CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"ingreso\") ||\n    CONTAINSSTRING('Otros y Respi'[31.- ESTADO],\"seguimiento\")))),\n    \"SI\",\"NO\")\n\nvar _ASMA = \nIF(\n    'Ferrada'[SALA SBOR]=\"NO\" &&\n    _FormularioASMA=\"SI\",\n    \"SI\",\"NO\")\n\nvar _SBOR = \nIF(\n    'Ferrada'[Edad]<5 &&\n    _FormularioSBOR=\"SI\",\n    \"SI\",\"NO\")\n\nvar _EPOC = \nIF(\n    'Ferrada'[Edad]>=40 &&\n    _FormularioEPOC=\"SI\",\n    \"SI\",\"NO\")\n\nvar _OTROS = \nIF(\n    _FormularioOtrosRespi=\"SI\",\n    \"SI\",\"NO\")\n\nvar _O2 = \nIF(\n    _FormularioO2=\"SI\",\n    \"SI\",\"NO\")\n\nvar _AV = \nIF(\n    _FormularioAV=\"SI\",\n    \"SI\",\"NO\")\n\nvar _FQ = \nIF(\n    _FormularioFQ=\"SI\",\n    \"SI\",\"NO\")\n\nRETURN\n\nIF(\n    _SBOR=\"SI\" ||\n    _ASMA=\"SI\" ||\n    _EPOC=\"SI\" ||\n    _OTROS=\"SI\" ||\n    _AV=\"SI\" ||\n    _O2=\"SI\" ||\n    _FQ=\"SI\",\n    \"SI\",\"NO\")",
+   "explanation": "Ingreso a sala respiratoria SI/NO: consolida los formularios «Otros y Respi» válidos de las siete líneas (SBOR si <5 años, asma si no es SBOR, EPOC si ≥40 años, otras respiratorias, asistencia ventilatoria, O2 dependiente y fibrosis quística). Basta una línea válida. A diferencia de las columnas SALA por patología, aquí solo cuenta el formulario (no diagnósticos ni estratificación)."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "SM Ingresado",
+   "calculated": true,
+   "dax": "IF(\n'Ferrada'[SM Violencia (form)]=\"activo\" ||\n'Ferrada'[SM Abuso Sexual (form)]=\"activo\" || \n'Ferrada'[SM Suicidio (form)]=\"activo\" ||\n'Ferrada'[SM Depresión (form)]=\"activo\" ||\n'Ferrada'[SM Bipolaridad (form)]=\"activo\" ||\n'Ferrada'[SM OH Perjudical (form)]=\"activo\" || \n'Ferrada'[SM OH Dependiente (form)]=\"activo\" ||\n'Ferrada'[SM Drogas Perjudical (form)]=\"activo\" || \n'Ferrada'[SM Drogas Dependiente (form)]=\"activo\" ||\n'Ferrada'[SM OH y Drogas (form)]=\"activo\" ||\n'Ferrada'[SM TDAH (form)]=\"activo\" ||\n'Ferrada'[SM Oposicionista desafiante (form)]=\"activo\" ||\n'Ferrada'[SM Ansiedad separación (form)]=\"activo\" ||\n'Ferrada'[SM Otras Infancia/Adolescencia (form)]=\"activo\" ||\n'Ferrada'[SM Ansiedad (form)]=\"activo\" ||\n'Ferrada'[SM Demencia (form)]=\"activo\" ||\n'Ferrada'[SM Esquizofrenia (form)]=\"activo\" ||\n'Ferrada'[SM Adaptativo (form)]=\"activo\" ||\n'Ferrada'[SM Conducta Alimentaria (form)]=\"activo\" ||\n'Ferrada'[SM Retraso Mental (form)]=\"activo\" ||\n'Ferrada'[SM Personalidad (form)]=\"activo\" ||\n'Ferrada'[SM Autismo (form)]=\"activo\" ||\n'Ferrada'[SM Asperger (form)]=\"activo\" ||\n'Ferrada'[SM Rett (form)]=\"activo\" ||\n'Ferrada'[SM Desintegrativo niñez (form)]=\"activo\" ||\n'Ferrada'[SM TGD (form)]=\"activo\" ||\n'Ferrada'[SM Otras (form)]=\"activo\" ||\n'Ferrada'[SM Depresión Postparto (form)]=\"activo\",\n\"SI\",\"NO\")",
+   "explanation": "Ingreso a salud mental SI/NO: alguna de las 28 columnas de estado (form) vale «Activo». (Corregido jul-2026: un typo hacía que Oposicionista desafiante nunca activara el indicador.)"
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sector",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN])=\"\",BLANK(),\nLOOKUPVALUE(Inscritos[SECTOR],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sector de inscripción desde «Inscritos»; BLANK si vacío."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Sexo",
+   "calculated": true,
+   "dax": "IF(\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN])=\"\",\n\"No informado\",\nLOOKUPVALUE(Inscritos[SEXO],Inscritos[RUN],'Ferrada'[RUN]))",
+   "explanation": "Sexo registral desde «Inscritos»; si está vacío devuelve «No informado»."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Situación",
+   "calculated": true,
+   "dax": "LOOKUPVALUE(Inscritos[SITUACION],Inscritos[RUN],'Ferrada'[RUN])",
+   "explanation": "Trae por cruce de RUN el valor de «SITUACION» desde la tabla «Inscritos» hacia esta tabla (LOOKUPVALUE). Copia directa, sin transformación."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "Trans",
+   "calculated": true,
+   "dax": "VAR _Sexo = LOOKUPVALUE(Inscritos[SEXO], Inscritos[RUN], 'Ferrada'[RUN])\nVAR _Genero = LOOKUPVALUE(Inscritos[GENERO], Inscritos[RUN], 'Ferrada'[RUN])\nVAR _SexoInformado = NOT(ISBLANK(_Sexo) || _Sexo = \"\" || _Sexo IN {\"Desconocido\", \"No informado\"})\nVAR _GeneroInformado = NOT(_Genero IN {\"\", \"Sin registro\", \"No revelado\"})\nRETURN\nIF(\n    _SexoInformado && _GeneroInformado,\n    IF(\n        (_Sexo = \"Hombre\" && _Genero = \"Masculino\") || (_Sexo = \"Mujer\" && _Genero = \"Femenina\"),\n        0, 1\n    ),\n    BLANK()\n)",
+   "explanation": "Marcador de identidad trans: 1 si el sexo registral y el género informado no coinciden (hombre/masculino, mujer/femenina); 0 si coinciden; BLANK si falta información."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Atendido en 12m?",
+   "calculated": true,
+   "dax": "VAR _FechaInicio = \nEOMONTH(TODAY(),-13) + 1\n\nVAR _FechaFinal =\nEOMONTH(TODAY(),-1)\n\nRETURN\n\nIF(\n    CALCULATE(COUNT(Atenciones[RUN]),\n        FILTER(\n            Atenciones,\n            Atenciones[RUN]='Ferrada'[RUN] &&\n            Atenciones[FECHA ATENCION] >= _FechaInicio &&\n            Atenciones[FECHA ATENCION] <= _FechaFinal\n        )\n    ),\"SI\",\"NO\"\n)",
+   "explanation": "Indicador SI/NO: tuvo al menos una atención dentro de los 12 meses cerrados."
+  },
+  {
+   "entity": "Ferrada",
+   "prop": "¿Originario o Migrante?",
+   "calculated": true,
+   "dax": "SWITCH(\n    TRUE(),\n    'Ferrada'[Nacionalidad] <> \"Chilena\" && 'Ferrada'[Nacionalidad] <> \"\" && Ferrada[Nacionalidad] <> \"desconocido\", \n    \"Migrante\",\n    (\n        'Ferrada'[Nacionalidad] = \"Chilena\" && \n        'Ferrada'[Pueblo Originario] <> \"Ninguno\" && \n        'Ferrada'[Pueblo Originario] <> \"No Contesta\" && \n        'Ferrada'[Pueblo Originario] <> \"No Sabe\" && \n        'Ferrada'[Pueblo Originario] <> \"\"\n    ), \n        \"Originario\",\n        \"NO\"\n    )",
+   "explanation": "Clasificación intercultural: «Migrante» si la nacionalidad no es chilena (ni vacía ni desconocida); «Originario» si es chilena y declara pueblo originario válido; «NO» en otro caso."
+  }
+ ]
+}
