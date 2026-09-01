@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # CLAUDE.md — Proyecto autoREM (Salud Mental, SSMC)
 
 Contexto de proyecto para Claude Code. Este archivo se carga automáticamente al
-abrir el repo. Compila el estado a **agosto 2026**, tras migrar el desarrollo de
+abrir el repo. Compila el estado a **septiembre 2026**, tras migrar el desarrollo de
 Cowork a Claude Code (para usar git y crear módulos nuevos).
 
 ---
@@ -17,8 +17,8 @@ Cowork a Claude Code (para usar git y crear módulos nuevos).
 
 - **Autor:** Simón Tobar — médico APS, CESFAM Dr. Luis Ferrada Urzúa (SSMC).
 - **Idioma:** inglés y español indiferenciado. Usar **"tú"**, nunca "vos".
-- **Estilo:** técnico pero no aburrido; conciso, sin verborrea. El autor tiene
-  AuDHD: ir al grano, decir explícitamente cuando algo está equivocado.
+- **Estilo:** técnico pero no aburrido; conciso, sin verborrea.    
+  Ir al grano, decir explícitamente cuando algo está equivocado.
 - **Privacidad (regla dura):** avisar si por error se cargan datos
   identificatorios de pacientes (RUT, nombre, fecha nacimiento, dirección,
   teléfono). Ver §8.
@@ -29,10 +29,6 @@ Cowork a Claude Code (para usar git y crear módulos nuevos).
 
 Herramientas en Python para automatizar la tabulación del **REM** (Registro
 Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**.
-
-El módulo actual (único terminado) procesa el export de **"Formularios RAYEN —
-Control de Salud Mental"** y produce una tabla lista para tabular los **egresos
-del REM A05** (Salud Mental).
 
 - Corre **100% local, offline**. Sin nube. Consistente con Ley 20.584 y 21.719.
 - Dependencias externas: **openpyxl** y **pandas** (pandas desde v1.4.0, para los
@@ -76,8 +72,7 @@ Funcionan porque la raíz (donde vive `autorem.py`) está en `sys.path`.
 
 **Convención de nombre de módulo de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`,
 donde `<casilla>` es la celda/columna del REM (A05: `n`=ingresos, `o`=egresos).
-El descriptor y el `id` del `TAREA` la incluyen (ej. `a05_o_egresos`). El próximo
-módulo (screening A03 D.3) será `rem_a03_d3_instrumentos.py`.
+El descriptor y el `id` del `TAREA` la incluyen (ej. `a05_o_egresos`).
 
 | Archivo | Rol |
 |---|---|
@@ -351,7 +346,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
   GPL-3.0-or-later` + versión (`X.Y.Z`, sincronizada con `rem_utils.VERSION`).
 - **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`
   con el texto completo (ya está en el repo; `license ES.txt` es traducción de
-  referencia, no la versión legal).
+  referencia).
 - Comentarios y mensajes de usuario en español; nombres de función mixtos OK.
 
 ---
@@ -380,11 +375,6 @@ de seguridad.
   utils/A05). Tag `v1.2` en el import.
 - Los módulos de tarea ya tienen nombre limpio y con convención
   (`rem_a05_o_egresos.py` / `rem_a05_n_ingresos.py`, sin versión ni espacios).
-
-### Higiene pendiente (opcional)
-- Mover los `.py` viejos (`1.1`, `1.2`, `v0.2`, `rem_marcar_egresos.py`) a
-  `legacy/` — git ya guarda la historia; solo ordenan la carpeta.
-- Tag `v1.3` cuando se estabilice.
 
 ---
 
