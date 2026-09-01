@@ -174,8 +174,21 @@ incompletas desde admin; IRIS es la fuente plena (igual que el resto del A23).
 El Administrativo trae el dx en **texto plano** (p.ej. "Bronquitis aguda") sin el
 `J20`. Para replicar en admin las reglas por código (asma = J09–J22\J19, y los dx
 agudos de la Sección A/D en general) haría falta un **mapa nombre↔código CIE-10**.
-Fuente autoritativa = estándar público (OMS/DEIS Chile). *(Se está evaluando de dónde
-tomar la tabla; pendiente — no decidir acá todavía.)*
+
+**Fuente identificada:** Lista Tabular CIE-10 en español de **DEIS/MINSAL** (oficial,
+dato público → sin problema de licencia). Estructura: hoja `Códigos` con col **Código**
++ **Descripción**, ~8.900 códigos (3 hojas: cruz/daga, asterisco, causa externa). El
+archivo está guardado local en `refs tablas/` pero **gitignored** (no vendorizado aún).
+⚠ Dos quirks al usarla:
+- **Formato de código distinto**: DEIS trae `Annn` (sin punto, p.ej. `J209`), RAYEN
+  usa `Ann.n` (`J20.9`) → **normalizar** (lo más simple: quitarle el punto a RAYEN).
+- **Antigüedad**: la lista DEIS es de ~2018 y tiene **casi 10 años** → puede faltar
+  alguna actualización CIE-10; validar el subconjunto que importe (para J09–J22 es
+  estable, no debería morder).
+
+**RAYEN NO tiene un "maestro de diagnósticos"** equivalente al Maestro de Actividades
+(no hay catálogo dx→código que baste pedir) → por eso el mapa hay que armarlo desde
+DEIS. Decisión de vendorizar/formato/ubicación: **pendiente** (no cerrar acá).
 
 Recordatorios: (a) el match por NOMBRE es frágil (RAYEN redacta distinto) → admin
 seguirá PARCIAL/heurístico, con aviso de "fuente parcial"; (b) para el rango chico de

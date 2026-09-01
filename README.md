@@ -123,8 +123,9 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   RAYEN, opcional) como autoridad para clasificar; lo nuevo que RAYEN agregue cae a
   heurística. Salida: *Por_Actividad* + *Por_Funcionario* + resumen + detalle.
 
-Cada pestaña de datos (A23 y SM) deja elegir la **carpeta de salida** (por defecto, la
-carpeta del `.exe`), para no perder el resultado junto al input.
+Las pestañas dejan elegir la **carpeta de salida**; si la dejas **vacía**, el resultado
+se guarda **junto al archivo que cargaste** (para no ensuciar la carpeta desde donde
+corres el programa). El A05 siempre guarda junto a su archivo de entrada.
 
 Los exports RAYEN/IRIS **modificados** (datos en más de una hoja, p.ej. con una tabla
 dinámica agregada) se **rechazan** con un aviso claro: cárgalos tal como los descargas.

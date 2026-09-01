@@ -12,6 +12,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.4] — 2026-09-01
+
+### Cambiado
+- **Carpeta de salida por defecto = junto al archivo cargado.** Antes las pestañas
+  A23 / SM / A03 caían a la carpeta del `.exe` (o el cwd) → corriendo desde el repo
+  se llenaba de `.xlsx`. Ahora el campo «Carpeta de salida» **vacío** guarda el
+  resultado en la carpeta del archivo de entrada (`_valida_carpeta` acepta `defecto`;
+  el A05 ya lo hacía vía `with_name`).
+
+### Docs
+- `A23_P3_plan`: fuente CIE-10 identificada = Lista Tabular **DEIS/MINSAL** (dato
+  público); quirks anotados (formato `Annn` vs `Ann.n` de RAYEN; RAYEN no tiene
+  "maestro de diagnósticos"; lista ~2018). Archivo guardado local, **gitignored**.
+
+---
+
 ## [1.7.3] — 2026-08-28
 
 ### Agregado

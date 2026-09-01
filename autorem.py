@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.3
+# Version: 1.7.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -258,13 +258,15 @@ def _dir_salida_default():
 
 
 def _fila_carpeta_salida(parent):
-    """Fila 'Carpeta de salida: [___] [Examinar…]'. Devuelve get()->str (ruta)."""
+    """Fila 'Carpeta de salida: [___] [Examinar…]'. Devuelve get()->str (ruta).
+    Vacío por defecto = guardar JUNTO al archivo de entrada (ver `_valida_carpeta`);
+    así no se ensucia el cwd/carpeta del .exe al correr desde ahí."""
     import tkinter as tk
     from tkinter import ttk, filedialog
     fila = ttk.Frame(parent)
     fila.pack(fill="x", pady=(3, 3))
     ttk.Label(fila, text="Carpeta de salida:", width=30, anchor="w").pack(side="left")
-    var = tk.StringVar(value=str(_dir_salida_default()))
+    var = tk.StringVar(value="")   # vacío -> junto al archivo de entrada
     ttk.Entry(fila, textvariable=var).pack(side="left", fill="x", expand=True, padx=6)
 
     def elegir():
@@ -273,6 +275,8 @@ def _fila_carpeta_salida(parent):
             var.set(d)
 
     ttk.Button(fila, text="Examinar…", command=elegir).pack(side="left")
+    ttk.Label(parent, text="     (vacío = junto al archivo cargado)",
+              foreground="#888").pack(anchor="w")
     return lambda: (var.get() or "").strip().strip('"').strip("'")
 
 
@@ -289,10 +293,12 @@ def _valida_ruta(ruta, messagebox):
     return p
 
 
-def _valida_carpeta(ruta, messagebox):
-    """Valida (o cae al default) la carpeta de salida. Devuelve Path o None."""
+def _valida_carpeta(ruta, messagebox, defecto=None):
+    """Valida la carpeta de salida. Si `ruta` está vacía, cae a `defecto` (la carpeta
+    del archivo de entrada) y, si tampoco hay, a `_dir_salida_default()`. Devuelve
+    Path o None."""
     ruta = (ruta or "").strip().strip('"').strip("'")
-    p = Path(ruta) if ruta else _dir_salida_default()
+    p = Path(ruta) if ruta else (Path(defecto) if defecto else _dir_salida_default())
     if not p.exists() or not p.is_dir():
         messagebox.showerror("Carpeta inválida", f"No existe la carpeta de salida:\n{p}")
         return None
@@ -696,7 +702,8 @@ def _tab_a03(nb, root):
             messagebox.showwarning("Sin archivos", "Carga al menos un instrumento "
                                    "(PSC / PSC-Y / GHQ-12).")
             return
-        carpeta = _valida_carpeta(get_salida(), messagebox)
+        carpeta = _valida_carpeta(get_salida(), messagebox,
+                                  defecto=Path(next(iter(por_inst.values()))).parent)
         if carpeta is None:
             return
         salida = carpeta / "REM_A03_D3.xlsx"
@@ -776,7 +783,7 @@ def _tab_a23(nb, root):
         except ValueError:
             messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
             return
-        carpeta = _valida_carpeta(get_salida(), messagebox)
+        carpeta = _valida_carpeta(get_salida(), messagebox, defecto=Path(atens[0]).parent)
         if carpeta is None:
             return
         salida = carpeta / f"REM_A23_{y}_{m:02d}_procesado.xlsx"
@@ -888,7 +895,7 @@ def _tab_sm(nb, root):
         except ValueError:
             messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
             return
-        carpeta = _valida_carpeta(get_salida(), messagebox)
+        carpeta = _valida_carpeta(get_salida(), messagebox, defecto=Path(ada[0]).parent)
         if carpeta is None:
             return
         salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
