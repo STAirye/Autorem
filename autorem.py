@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.7
+# Version: 1.7.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -115,6 +115,25 @@ def _resumen_texto(resultados, salida):
 # ╚═══════════════════════════════════════════════════════════════════╝
 _MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
                 "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
+
+# RAYEN/IRIS exportan en .xls, .csv, .html y .xlsx; la herramienta lee SOLO .xlsx.
+_MSG_NO_XLSX = (
+    "El archivo no es un Excel .xlsx válido.\n\n"
+    "RAYEN/IRIS entregan varios formatos (.xls antiguo, .csv, .html) y esta "
+    "herramienta lee SOLO .xlsx.\n\n"
+    "Ábrelo en Excel y usa «Guardar como» → «Libro de Excel (.xlsx)», y carga ese.\n"
+    "(Si un .xlsx te da este error, suele ser un .html/.xls disfrazado: mismo arreglo.)")
+
+
+def _es_error_formato(e):
+    """True si la excepción viene de intentar abrir algo que NO es un .xlsx real
+    (extensión no soportada por openpyxl, o zip corrupto = html/xls disfrazado)."""
+    import zipfile
+    try:
+        from openpyxl.utils.exceptions import InvalidFileException
+    except Exception:   # noqa: BLE001
+        InvalidFileException = ()
+    return isinstance(e, (zipfile.BadZipFile,) + ((InvalidFileException,) if InvalidFileException else ()))
 
 _AVISO_SIN_MODIFICAR = ("⚠  Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
                         "sin abrirlos, editarlos ni re-guardarlos.\n"
@@ -329,6 +348,9 @@ def _manejar_error(e, log, messagebox):
     elif isinstance(e, sm.ArchivoInvalido):
         log(f"[archivo inválido] {e}")
         messagebox.showerror("Archivo inválido", str(e))
+    elif _es_error_formato(e):
+        log(f"[formato no soportado] {e}")
+        messagebox.showerror("No es un .xlsx", _MSG_NO_XLSX)
     else:
         _error_inesperado(e, log, messagebox)
 
@@ -615,7 +637,11 @@ def _tab_a05(nb, root, ruta_inicial=""):
             messagebox.showerror("Permiso denegado", _MSG_PERMISO)
             return
         except Exception as e:
-            _error_inesperado(e, log, messagebox)
+            if _es_error_formato(e):
+                log(f"[formato no soportado] {e}")
+                messagebox.showerror("No es un .xlsx", _MSG_NO_XLSX)
+            else:
+                _error_inesperado(e, log, messagebox)
             return
         finally:
             btn.configure(state="normal")
@@ -1069,6 +1095,11 @@ def main_cli(args):
     except PermissionError:
         print("\n[PERMISO DENEGADO] ¿está abierto en Excel? Ciérralo y reintenta.")
         return 1
+    except Exception as e:   # noqa: BLE001
+        if _es_error_formato(e):
+            print("\n[NO ES .XLSX] " + _MSG_NO_XLSX)
+            return 1
+        raise
     print(_resumen_texto(resultados, salida))
     return 0
 

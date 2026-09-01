@@ -472,6 +472,12 @@ pyinstaller --onefile --windowed --name "autoREM" \
   re-lectura/sincronización antes de concluir que es un bug del código.
 - **Excel abierto:** si el `.xlsx` de salida está abierto, `wb.save()` lanza
   `PermissionError` — ya manejado con mensaje amable.
+- **Formatos de RAYEN/IRIS (`.xls`, `.csv`, `.html`, `.xlsx`):** la herramienta lee
+  **solo `.xlsx`** (decisión de diseño: minimizar deps/líneas; convertir a mano). Si
+  el usuario carga otro, `_es_error_formato` (autorem) atrapa `InvalidFileException`
+  (extensión no soportada) y `BadZipFile` (el **HTML disfrazado de `.xlsx`** típico de
+  RAYEN) → diálogo «No es un .xlsx» que dice abrir en Excel y Guardar como `.xlsx`.
+  Cubre GUI (vía `_manejar_error` y la cadena del A05) y CLI.
 - **Normalización (regla dura, mordió 2 veces en 1.5.1):** las búsquedas de texto
   van SIEMPRE por `contiene_todos`/`contiene_alguno` (que normalizan ambos lados) o
   con `serie_norm.str.contains(norm("literal"))`. Un `.str.contains("minúscula")`

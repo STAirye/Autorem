@@ -12,6 +12,19 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.8] — 2026-09-01
+
+### Agregado (fail loud)
+- **Mensaje claro al cargar un archivo que NO es `.xlsx`.** RAYEN/IRIS exportan en
+  `.xls`, `.csv`, `.html` y `.xlsx`, pero la herramienta lee SOLO `.xlsx`. Antes,
+  elegir cualquier otro caía al genérico "Error inesperado" con traceback; ahora un
+  diálogo «No es un .xlsx» explica que hay que abrirlo en Excel y **Guardar como →
+  .xlsx**. Cubre las 4 pestañas (GUI) y el CLI, de un solo lugar (`_es_error_formato`
+  + `_MSG_NO_XLSX`): atrapa `InvalidFileException` (extensión no soportada: .txt/.csv/
+  .xls) y `BadZipFile` (el **HTML disfrazado de .xlsx** que a veces entrega RAYEN).
+
+---
+
 ## [1.7.7] — 2026-09-01
 
 ### Agregado (fail loud)
