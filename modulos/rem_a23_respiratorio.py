@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.11
+# Version: 1.7.12
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -38,7 +38,8 @@ import pandas as pd
 
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
-                                 contiene_alguno as _any, _rango_mes, _mujer, _hombre)
+                                 contiene_alguno as _any, _rango_mes, _mujer, _hombre,
+                                 grid as _grid)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -440,12 +441,125 @@ def _seccion_h(nsp, ini, fin):
     return pd.DataFrame(filas)
 
 
+# ── Tablas agregadas edad×sexo (forma exacta del template SA_26, hoja A23) ──
+# Bandas del template (fila 10): Menor de 1 · 1-4 · 5-9 · … · 80 y más (18 bandas).
+# `grid()` emite Ambos·Hombres·Mujeres + por banda H/M, EN EL ORDEN de las columnas
+# del SA_26 → copy-paste directo (la etiqueta va en la col 1).
+LBL_A23 = ["Menor de 1", "1-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34",
+           "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74",
+           "75-79", "80+"]
+BANDAS_A23 = [(0, 0), (1, 4), (5, 9), (10, 14), (15, 19), (20, 24), (25, 29), (30, 34),
+              (35, 39), (40, 44), (45, 49), (50, 54), (55, 59), (60, 64), (65, 69),
+              (70, 74), (75, 79), (80, 200)]
+
+
+def _tablas_a23(fer):
+    """Construye las tablas por sección (edad×sexo) con la forma del SA_26. PROTOTIPO:
+    cubre las secciones cuyo indicador por-RUN ya existe y es 1:1. Filas sin fuente
+    fiable (o de otra forma) van en 0 y ANOTADAS para validar 1:1 contra el PowerBI:
+    A (semántica 'ingreso a sala' ≠ 'tuvo dx'), I espirometría basal/post BD (hoy 1
+    indicador), y O (forma EPOC A/B) → pendientes. B/C/P/Q/M.2/J/K/L fuera de alcance."""
+    import pandas as pd
+
+    def sub(mask):
+        s = fer.loc[mask, ["Edad", "Sexo"]] if mask is not None else fer.iloc[0:0][["Edad", "Sexo"]]
+        return s.rename(columns={"Edad": "edad", "Sexo": "sexo"})
+
+    def g(ind):   # grid del indicador SI/NO (o zeros si la columna no existe)
+        m = fer[ind].eq("SI") if ind in fer.columns else None
+        return _grid(sub(m), BANDAS_A23, LBL_A23)
+
+    def gmask(mask):
+        return _grid(sub(mask), BANDAS_A23, LBL_A23)
+
+    cero = _grid(sub(None), BANDAS_A23, LBL_A23)
+
+    def fila(nombre, datos):
+        return {"Concepto": nombre, **datos}
+
+    tablas = {}
+
+    # SECCIÓN D — Consultas de morbilidad en salas (solo médico)
+    tablas["A23_D_Morbilidad"] = pd.DataFrame([fila("Médico/a", g("REMA23 Morbi respiratoria"))])
+
+    # SECCIÓN E — Controles crónicos (Enfermera/o NO existe → 0; ver reglas)
+    med = fer["REMA23 Control SALA Med (act)"].eq("SI")
+    kin = fer["REMA23 Control SALA Kine (act)"].eq("SI")
+    tablas["A23_E_Controles_Cronicos"] = pd.DataFrame([
+        fila("Médico/a", gmask(med)),
+        fila("Enfermera/o", cero),                        # no existe control de enfermería
+        fila("Kinesiólogo/a", gmask(kin)),
+        fila("TOTAL", gmask(med | kin))])
+
+    # SECCIÓN F — Seguimiento en agudos
+    eu = fer["REMA23 Seguimiento Eu"].eq("SI")
+    ki = fer["REMA23 Seguimiento Kine"].eq("SI")
+    tablas["A23_F_Seguimiento_Agudos"] = pd.DataFrame([
+        fila("Enfermera/o", gmask(eu)),
+        fila("Kinesiólogo/a", gmask(ki)),
+        fila("TOTAL", gmask(eu | ki))])
+
+    # SECCIÓN I — Procedimientos (espirometría basal/post BD: HOY un solo indicador →
+    # va todo a 'basal', post BD queda 0 PENDIENTE de split por texto de actividad).
+    tablas["A23_I_Procedimientos"] = pd.DataFrame([
+        fila("Espirometría basal", g("REMA23 Espirometría (act)")),
+        fila("Espirometría post BD  (PENDIENTE split)", cero),
+        fila("Flujometría basal", cero), fila("Flujometría post BD", cero),
+        fila("Pimometría", cero), fila("Test de provocación con ejercicio", cero),
+        fila("Test de marcha 6 minutos", cero),
+        fila("Sesiones de kinesioterapia respiratoria", g("REMA23 KTR")),
+        fila("Toma de muestra secreción mucosa/bronquial", cero)])
+
+    # SECCIÓN M.1 — Educación individual en sala
+    m1 = [("Antitabaco", "REMA23 Educación Antitabaco"),
+          ("Autocuidado según patología", "REMA23 Autocuidado"),
+          ("Uso de terapia inhalatoria", "REMA23 Inhaloterapia"),
+          ("Educacion integral en salud respiratoria", "REMA23 Edu Integral Sala"),
+          ("Estilo de vida saludables", "REMA23 Vida Saludable"),
+          ("Otras", "REMA23 Otras")]
+    filas_m1 = [fila(lbl, g(ind)) for lbl, ind in m1]
+    tot_m1 = fer[[i for _, i in m1]].eq("SI").any(axis=1)
+    filas_m1.append(fila("TOTAL", gmask(tot_m1)))
+    tablas["A23_M1_Educacion_Individual"] = pd.DataFrame(filas_m1)
+
+    # SECCIÓN N — Visitas domiciliarias (solo 'Otras visitas' desde VDI Respi; resto
+    # sin fuente → 0). VDI Respi existe solo si se cargó el formulario Otros y Respi.
+    tablas["A23_N_Visitas"] = pd.DataFrame([
+        fila("Hogar libre del humo del tabaco", cero),
+        fila("Por muerte de neumonía en domicilio", cero),
+        fila("Programa oxigenoterapia ambulatoria, AVNI, AVI, AVNIA, AVIA", cero),
+        fila("Seguimiento telefónico realizado por kinesiologo sala", cero),
+        fila("Otras visitas", g("REMA23 VDI Respi"))])
+
+    # SECCIÓN A — Ingresos agudos por diagnóstico. ⚠ PROTOTIPO: mapea los dx directos
+    # que ya tenemos; el resto (Otras IRAS bajas, exacerbación SBOR/Asma/FQ/otras) va 0.
+    # OJO semántico: A es 'INGRESO agudo derivado a sala', no 'tuvo una atención con
+    # ese dx' → VALIDAR 1:1 contra el PowerBI antes de confiar.
+    a_dx = [("I.R.A. alta", "REMA23 Ira Alta"), ("Influenza", "REMA23 Influenza"),
+            ("Neumonía", "REMA23 Neumonia"), ("Coqueluche", "REMA23 Coqueluche"),
+            ("Bronquitis obstructiva aguda", "REMA23 Bronquitis Aguda")]
+    filas_a = [fila(lbl, g(ind)) for lbl, ind in a_dx]
+    filas_a += [fila("Otras IRAS bajas", cero),
+                fila("Exacerbación síndrome bronquial obstructivo recurrente (SBOR)", cero),
+                fila("Exacerbación Asma  (PENDIENTE: confirmado + J09-J22)", cero),
+                fila("Exacerbación de enfermedad pulmonar obstructiva crónica (EPOC)",
+                     g("REMA23 EPOC Exacerbado")),
+                fila("Exacerbación fibrosis quística", cero),
+                fila("Exacerbación otras respiratorias crónicas", cero)]
+    tablas["A23_A_Ingresos_Agudos"] = pd.DataFrame(filas_a)
+
+    return tablas
+
+
 def escribir(fer, salida):
-    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + las
-    Secciones G (inasistentes a control de crónicos) y H (inasistentes a citación
-    agendada) agregadas, en un solo .xlsx."""
+    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + una
+    hoja POR SECCIÓN del REM A23 (forma copy-paste al SA_26) + las Secciones G y H
+    agregadas, en un solo .xlsx."""
     with pd.ExcelWriter(salida) as xw:
         fer.to_excel(xw, index=False, sheet_name="A23_Detalle")
+        # Una hoja por sección (edad×sexo), forma copy-paste al SA_26.
+        for nombre, df in _tablas_a23(fer).items():
+            df.to_excel(xw, index=False, sheet_name=nombre[:31])
         g = fer.attrs.get("seccion_g")
         if g:
             (pd.DataFrame(g).T.reset_index().rename(columns={"index": "Diagnóstico"})

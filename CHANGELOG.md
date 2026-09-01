@@ -12,6 +12,24 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.12] — 2026-09-01
+
+### Agregado (PROTOTIPO)
+- **A23: salida tabulada por sección (copy-paste al SA_26), estilo SM Actividades.**
+  `escribir()` ahora deja, en el MISMO `…_procesado.xlsx`, una hoja por sección
+  además del detalle por paciente y las Secciones G/H (todo se SUMA, nada se
+  reemplaza): **A** (ingresos agudos), **D** (morbilidad médico), **E** (controles
+  crónicos; Enfermera/o=0), **F** (seguimiento agudos), **I** (procedimientos),
+  **M.1** (educación individual), **N** (visitas). Forma exacta del template
+  (Ambos·H·M + 18 bandas etarias × sexo) vía `_grid` de rem_utils.
+  - **PENDIENTE de validar 1:1 vs PowerBI** (filas rotuladas en la propia hoja):
+    A semántica "ingreso a sala" (hoy usa el dx por-RUN), asma-A (confirmado +
+    J09-J22), I espirometría basal vs post BD (hoy 1 indicador → todo a basal), y
+    la Sección **O** (forma EPOC A/B, fuente `EPOC_tipo`/col BA de Otros y Respi).
+  - Fuera de alcance: B/C (bajo control → PowerBI), P/Q/M.2/J/K/L.
+
+---
+
 ## [1.7.11] — 2026-09-01
 
 ### Corregido (fail loud + qué archivo falló)
