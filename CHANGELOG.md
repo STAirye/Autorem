@@ -10,6 +10,18 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.7.13] — 2026-09-01
+
+### Corregido (alineación con PowerBI)
+- **Filtro base "Pertenece a SALA"** (DAX del PowerBI): el A23 se reporta SOLO sobre
+  quienes están bajo control en sala (OR de los 7 flags SALA). Antes las secciones
+  contaban sobre TODOS los RUN con atención (~15.860 vs ~1.907 del PowerBI). Ahora
+  el detalle expone la columna `Pertenece a SALA` y las **secciones se calculan solo
+  sobre ese subconjunto**. Se agregan las columnas `SALA O2 Dependiente` y
+  `SALA Asistencia Ventilatoria`.
+- **SALA O2 / Asistencia Ventilatoria**: alineado al DAX — **NO exigen médico** (a
+  diferencia de ASMA/EPOC, que sí). Antes se les pedía médico → subcontaban.
+
 ---
 
 ## [1.7.12] — 2026-09-01

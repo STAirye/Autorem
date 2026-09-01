@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.12
+# Version: 1.7.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -310,8 +310,8 @@ def _sala(idx, edad, aten, otros, estrat):
         "SBOR":  med & si("SBOR_p") & si("SBOR_rec") & nn("SBOR_grav") & est("SBOR_est"),
         "ASMA":  med & si("ASMA_p") & nn("ASMA_grav") & nn("ASMA_ctrl") & est("ASMA_est"),
         "EPOC":  med & si("EPOC_p") & nn("EPOC_tipo") & nn("EPOC_ctrl") & est("EPOC_est"),
-        "O2":    med & si("O2_p") & est("O2_est"),
-        "AV":    med & si("AV_p") & nn("AV_val") & est("AV_est"),
+        "O2":    si("O2_p") & est("O2_est"),                    # DAX O2: NO exige médico
+        "AV":    si("AV_p") & nn("AV_val") & est("AV_est"),      # DAX AV: NO exige médico
         "FQ":    med & si("FQ_p") & est("FQ_est"),
         "OTRAS": med & si("OTRAS_p") & est("OTRAS_est"),
     }
@@ -344,6 +344,11 @@ def _sala(idx, edad, aten, otros, estrat):
     s["SALA Ingresado"] = cs(ing)
     s["SALA SBOR"] = cs(sbor); s["SALA ASMA"] = cs(asma); s["SALA EPOC"] = cs(epoc)
     s["SALA FQ"] = cs(fq); s["SALA Otras Respi"] = cs(fv["OTRAS"])
+    s["SALA O2 Dependiente"] = cs(fv["O2"]); s["SALA Asistencia Ventilatoria"] = cs(fv["AV"])
+    # 'Pertenece a SALA' = OR de los 7 flags (DAX del PowerBI). Es el FILTRO base de la
+    # tabla 'Ferrada': el A23 se reporta SOLO sobre quienes están bajo control en sala.
+    pert = sbor | asma | epoc | fq | fv["OTRAS"] | fv["O2"] | fv["AV"]
+    s["Pertenece a SALA"] = cs(pert)
     s["SALA SBOR Gravedad"] = _gate(idx, sbor, gsbor)
     s["SALA ASMA Gravedad"] = _gate(idx, asma, gasma)
     s["SALA EPOC Tipo"] = _gate(idx, epoc, tepoc)
@@ -460,6 +465,11 @@ def _tablas_a23(fer):
     A (semántica 'ingreso a sala' ≠ 'tuvo dx'), I espirometría basal/post BD (hoy 1
     indicador), y O (forma EPOC A/B) → pendientes. B/C/P/Q/M.2/J/K/L fuera de alcance."""
     import pandas as pd
+
+    # FILTRO base del PowerBI: el A23 se reporta SOLO sobre quienes 'Pertenecen a SALA'
+    # (bajo control). Sin el formulario Otros y Respi no hay flags → no se puede filtrar.
+    if "Pertenece a SALA" in fer.columns:
+        fer = fer[fer["Pertenece a SALA"].eq("SI")]
 
     def sub(mask):
         s = fer.loc[mask, ["Edad", "Sexo"]] if mask is not None else fer.iloc[0:0][["Edad", "Sexo"]]
