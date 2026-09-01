@@ -11,6 +11,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 > REM largo) para no perder el procedimiento. Cuando se retome, replicar como el A23:
 > pedir el/los **DAX del PowerBI** de "población PSM" y validar 1:1 contra el PowerBI.
 
+## Por qué el P se liga al A05 N/O (ingresos/egresos)
+La **diferencia matricial** entre el P (población bajo control PSM) de ESTE mes y el
+del mes ANTERIOR se descompone en **ingresos (N)** y **egresos (O)**: quien entra a la
+matriz este mes = ingreso; quien sale = egreso. O sea, N/O del A05 se pueden **derivar
+del delta mes-a-mes del P** (además de la vía directa por formulario del módulo A05
+actual). Cuadre cruzado a futuro: los ingresos/egresos del A05 deberían conciliar con
+ese delta del P.
+
 ## Fuente
 - **Población PSM desde PowerBI** (tiene todo un DAX propio — conseguirlo al implementar).
 - Se arma como una **tabla dinámica**:
