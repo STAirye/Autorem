@@ -14,12 +14,6 @@
 # Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
 # explícito: git add -f muestra_anonimizada.xlsx
 
-# --- Specs del PowerBI (DAX/columnas exportados) — NUNCA al repo ---
-# Volcados generados desde el PowerBI con los cálculos de todas las columnas
-# (referencia para replicar los DAX). Pueden traer nombres/estructura sensibles
-# y no son parte del código → carpeta completa ignorada.
-specs/
-
 # --- CARPETA DE PII REAL — NUNCA al repo (regla dura §8) ---
 # Tablas reales con datos de pacientes (atenciones, formularios, inasistencias,
 # estratificación, citas, etc.) para correr los módulos LOCALMENTE. La carpeta
