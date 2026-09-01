@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.9
+# Version: 1.7.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -766,10 +766,12 @@ def _tab_a23(nb, root):
         "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s);\n"
         "     puede venir del AÑO COMPLETO → se filtra al mes elegido por FECHA ATENCIÓN.\n"
         "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
-        "     ⚠ Se bajan POR AÑO → carga VARIOS archivos (al menos el año actual + el anterior, ideal 5):\n"
-        "        el inasistente tiene su último control hace >1 año, así que con pocos meses G subcuenta.\n"
+        "     ⚠ Se baja POR AÑO calendario → SELECCIONA VARIOS a la vez (ctrl-click): como MÍNIMO\n"
+        "        el año del reporte Y el ANTERIOR (ideal 5). El inasistente tiene su último control\n"
+        "        hace >1 año, así que sin el año previo la Sección G subcuenta (te avisa si falta).\n"
         "3.  Estratificación de Riesgo (opcional)  →  mejora la detección de asma/EPOC/FQ/SBOR.\n"
         "4.  Inasistentes NSP (opcional)  →  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
+        "     También acepta VARIOS años (ctrl-click); se filtra al mes por FECHA CITA.\n"
         "\n"
         "⚠ OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
         "   «monitoreo de actividades» mensual — con MUCHO menos info que el export IRIS (y horrible de\n"
@@ -782,10 +784,10 @@ def _tab_a23(nb, root):
     _aviso_sin_modificar(tab)
 
     get_aten = _fila_archivos(tab, "Atenciones (mes o año):", "Atenciones / Diagnósticos / Actividades (se filtra al mes elegido por FECHA ATENCIÓN)")
-    get_otros = _fila_archivos(tab, "Otros Crónicos (histórico):", "Formulario Otros Crónicos — varios años")
+    get_otros = _fila_archivos(tab, "Otros Crónicos (2+ años):", "Formulario Otros Crónicos — selecciona VARIOS años (año del reporte + anterior, ideal 5)")
     _separador_opcionales(tab)
     get_estrat = _fila_archivos(tab, "Estratificación (opcional):", "Estratificación de Riesgo — opcional")
-    get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc):", "Reporte de pacientes inasistentes (NSP) — Sección H")
+    get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc):", "Reporte de pacientes inasistentes (NSP) — Sección H (puedes cargar VARIOS años; se filtra al mes por FECHA CITA)")
     get_salida = _fila_carpeta_salida(tab)
 
     hoy = date.today()
@@ -815,7 +817,7 @@ def _tab_a23(nb, root):
         est_sel = get_estrat()
         est = est_sel[0] if est_sel else None
         nsp_sel = get_nsp()
-        nsp = nsp_sel[0] if nsp_sel else None
+        nsp = nsp_sel or None          # acepta VARIOS años (cargar_inasistentes concatena)
         try:
             y, m = int(var_anio.get()), int(var_mes.get())
         except ValueError:

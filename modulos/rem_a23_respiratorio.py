@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.9
+# Version: 1.7.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -155,15 +155,19 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     if otros is not None:
         od, _ = cargar_otros(otros)
         # Sección G solo sirve con historial largo: el inasistente tiene su ÚLTIMO
-        # formulario/control hace >1 año. El PowerBI usa ~5 años; con pocos meses G
-        # subcuenta fuerte. Avisar si el span de formularios es corto.
+        # formulario/control hace >1 año. El reporte 'Otros y Respi' se baja POR AÑO
+        # calendario, así que reportar un mes exige AL MENOS el año del reporte + el
+        # anterior (12 meses atrás). Fail loud si el historial no llega tan atrás
+        # (chequeo por FECHA MÍNIMA, no por span: un solo año da ~365 días pero igual
+        # deja fuera el año previo).
         if od["FECHA"].notna().any():
-            span_g = (od["FECHA"].max() - od["FECHA"].min()).days
-            if span_g < 365:
-                log(f"[a23] ⚠ Sección G: los formularios 'Otros y Respi' cubren solo "
-                    f"~{span_g} días. Los inasistentes suelen tener su último control hace "
-                    f">1 año → carga MÁS AÑOS de formularios (idealmente 5, como el PowerBI) "
-                    f"o G subcontará.")
+            limite = ini - pd.DateOffset(months=12)   # G mira ≥12 meses hacia atrás
+            if od["FECHA"].min() > limite:
+                log(f"[a23] ⚠⚠ Sección G SUBCONTARÁ: los formularios 'Otros y Respi' "
+                    f"arrancan en {od['FECHA'].min():%Y-%m}, pero el mes reportado "
+                    f"({ini:%Y-%m}) necesita historial hasta {limite:%Y-%m}. Como el "
+                    f"reporte se baja POR AÑO, carga AMBOS: el año del reporte Y el "
+                    f"ANTERIOR (ideal 5, como el PowerBI). Selecciónalos juntos (ctrl-click).")
         est = cargar_estrat(estrat) if estrat is not None else pd.Series(dtype="object")
         sala, _ing = _sala(fer.index, fer["Edad"], d, od, est)
         for c in sala.columns:

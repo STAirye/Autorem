@@ -12,6 +12,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.10] — 2026-09-01
+
+### Cambiado (fail loud)
+- **A23 · Otros Crónicos: aviso preciso si falta el año anterior.** El reporte se baja
+  POR AÑO calendario y la Sección G mira ≥12 meses atrás; reportar un mes exige el año
+  del reporte **y el anterior**. El chequeo pasó de "span < 365 días" (dejaba pasar
+  cargar solo el año en curso) a **fecha mínima ≤ 12 meses antes del mes reportado**
+  → avisa exacto cuándo arrancan los formularios vs. hasta dónde se necesita.
+- **GUI A23**: instrucciones + labels aclaran que Atenciones puede venir del año
+  completo (se filtra al mes) y que Otros Crónicos toma VARIOS años (ctrl-click:
+  año del reporte + anterior). **Inasistentes NSP** ahora también acepta VARIOS
+  años (antes la GUI tomaba solo el 1er archivo; `cargar_inasistentes` ya concatena)
+  → se filtra al mes por FECHA CITA.
+
+---
+
 ## [1.7.9] — 2026-09-01
 
 ### Corregido
