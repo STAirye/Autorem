@@ -44,6 +44,30 @@ from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_cano
 
 _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 
+# ── PRE-ESCRITO (NO activo): Educación GRUPAL A23·M.2 — talleres respiratorios ──
+# Estado ago-2026: los talleres grupales AÚN NO se hacen en el CESFAM → nada que
+# contar hoy. Se esperan en ~2 meses (Simón envió las actividades candidatas al RT
+# de Respiratorio). La lógica es CASI IDÉNTICA a rem_sm_actividades: conteo por
+# ASISTENCIA del reporte 'Atenciones Grupales' (cada fila Asiste=SI, SIN dedup) →
+# A23·M.2 (Nº sesiones = grupos distintos; Nº participantes = asistencias). Ver
+# docs/A23_P3_plan.md ("Educación grupal M.2").
+#
+# Hallazgo Maestro (ago-2026): hoy TODO lo grupal respiratorio cae a REM-Gestion
+# (no tributa). Al activarse, estas deberían apuntar a A23·M.2 (o reclasificarse en
+# el Maestro); mientras tanto caen a 'saco vacío' (las caza Trabajo perdido):
+#   _M2_TALLERES = [
+#       "taller grupal cesacion tabaco",   # tema tabaco
+#       "ges tabaco sesion",               # AG_GES TABACO Sesión 1-6
+#       "taller prevencion ira",
+#       "taller era descompensado",
+#       "taller rehabilitacion pulmonar",  # ¿M.2 o O? confirmar con el RT
+#   ]
+# Implementación (cuando haya datos): reciclar cargar_grupal() de rem_sm_actividades
+# (mismo reporte grupal), filtrar ACT por _M2_TALLERES + mes por FECHA ATENCIÓN, y
+# armar la tabla con _grid. VALIDAR contra un mes real (como se hizo con SM). OJO:
+# el tabaco INDIVIDUAL ya tributa por otra vía (A23·M.1 'Educación Antitabaco' de
+# _masks_simples y A23·N VDI Hogar Libre de Humo) → no duplicar.
+
 
 def _masks_simples(d):
     """dict indicador -> máscara BOOLEANA por fila (atención del mes)."""
