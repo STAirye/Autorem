@@ -12,6 +12,25 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 
 ---
 
+## [1.7.11] — 2026-09-01
+
+### Corregido (fail loud + qué archivo falló)
+- **Un archivo de entrada no legible / sin encabezado / modificado ahora da un
+  mensaje CLARO** en vez de "Error inesperado → pásaselo a Simón". `cargar_canonico`
+  valida CADA archivo y, si falla, levanta `ArchivoInvalido` **nombrando el archivo
+  culpable** (`«nombre.xlsx»`) — clave para los módulos que cargan VARIOS (A23:
+  atenciones + otros + NSP; SM: ADA + grupal). Cubre 3 casos: no legible (.xls/.csv/
+  .html/corrupto), datos en >1 hoja (modificado), y faltan columnas (sin la fila de
+  nombres). `cargar_atenciones` y `cargar_grupal` declaran sus columnas requeridas.
+- `_error_inesperado`: loguea `Tipo: mensaje` (antes, en el hilo worker, salía
+  "NoneType: None" porque `format_exc()` no tenía traceback vivo).
+
+> Nota: los .xlsx de la "datos-madre" (fuente del PowerBI, header en fila 1 sin
+> banner, mismo esquema del ADA) **se leen tal cual** — verificado; sirven para
+> validar el A23 1:1 contra el PowerBI. No requieren nada especial.
+
+---
+
 ## [1.7.10] — 2026-09-01
 
 ### Cambiado (fail loud)

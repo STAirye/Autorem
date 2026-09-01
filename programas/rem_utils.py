@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.10
+# Version: 1.7.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.7.10"
+VERSION = "1.7.11"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -240,16 +240,36 @@ MAPA_ATENCIONES = {
 }
 
 
-def cargar_canonico(entrada, ancla, resolver):
+def cargar_canonico(entrada, ancla, resolver, requeridas=None):
     """Lee UNO o VARIOS .xlsx (los reportes acumulativos necesitan varios años) y
     arma el DataFrame canónico concatenado. `resolver(headers) -> {canon: columna}`.
-    Devuelve (df, col_del_primero)."""
+    `requeridas` = claves canónicas que DEBEN resolverse en CADA archivo; si a alguno
+    le faltan, levanta ArchivoInvalido NOMBRANDO ese archivo (los módulos multi-archivo
+    así saben CUÁL falló). Devuelve (df, col_del_primero)."""
     import pandas as pd
     partes, col0 = [], None
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
-        verificar_hoja_unica(e)          # rechaza exports modificados (datos en >1 hoja)
-        hdr, filas = leer_xlsx(e, ancla=ancla)
+        nombre = Path(str(e)).name
+        try:
+            verificar_hoja_unica(e)      # rechaza exports modificados (datos en >1 hoja)
+            hdr, filas = leer_xlsx(e, ancla=ancla)
+        except ArchivoInvalido as ai:    # p.ej. 'modificado' -> agrega el nombre del archivo
+            raise ArchivoInvalido(ai.categoria, f"Archivo «{nombre}»:\n\n{ai}") from ai
+        except Exception as ex:          # openpyxl/zip/etc. -> no es un .xlsx legible
+            raise ArchivoInvalido(
+                "no_legible",
+                f"No pude leer el archivo:\n«{nombre}»\n\n{ex}\n\n"
+                "¿Es un .xlsx válido (no .xls/.csv/.html) y sin modificar?") from ex
         col = resolver(hdr)
+        if requeridas:
+            faltan = [k for k in requeridas if not col.get(k)]
+            if faltan:
+                raise ArchivoInvalido(
+                    "sin_columnas",
+                    f"No reconozco el archivo:\n«{nombre}»\n\n"
+                    f"No encuentro las columnas: {', '.join(faltan)}.\n\n"
+                    "¿Está SIN la fila de encabezado (nombres de columna) o modificado? "
+                    "Cárgalo tal como sale de RAYEN/IRIS, sin editar.")
         col0 = col0 or col
         idx = {c: i for i, c in enumerate(hdr)}
         partes.append(pd.DataFrame(
@@ -263,11 +283,8 @@ def cargar_atenciones(entrada):
     """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico +
     textos normalizados (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
     import pandas as pd
-    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES))
-    faltan = [k for k in ("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO") if not col[k]]
-    if faltan:
-        raise ValueError("No reconozco el export de atenciones (¿IRIS o Monitoreo "
-                         "admin?); faltan columnas: " + ", ".join(faltan))
+    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+                             requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"))
     # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
     # de actividad, con RUN y datos de cabecera SOLO en la 1ª. Se rellena la cabecera
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su

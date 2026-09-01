@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.10
+# Version: 1.7.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -329,11 +329,13 @@ def _valida_carpeta(ruta, messagebox, defecto=None):
 
 def _error_inesperado(e, log, messagebox):
     import traceback
-    log("[ERROR INESPERADO]")
-    log(traceback.format_exc())
+    log(f"[ERROR INESPERADO] {type(e).__name__}: {e}")   # legible aunque no haya traceback vivo
+    tb = traceback.format_exc()
+    if tb and not tb.startswith("NoneType"):   # en hilo worker format_exc() da 'NoneType: None'
+        log(tb)
     messagebox.showerror(
         "Error inesperado",
-        f"Ocurrió un error no previsto:\n\n{e}\n\n"
+        f"Ocurrió un error no previsto:\n\n{type(e).__name__}: {e}\n\n"
         "Copia el texto del registro y pásaselo a Simón.")
 
 

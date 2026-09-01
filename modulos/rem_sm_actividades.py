@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.7.10
+# Version: 1.7.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -100,10 +100,8 @@ def cargar_grupal(entrada):
     """Export(s) de 'Atenciones Grupales' -> DataFrame canónico. Ruta o lista
     (el export puede venir por período). La fecha viene en TEXTO DD/MM/YYYY."""
     d, col = cargar_canonico(entrada, ["ACTIVIDADES", "FECHA ATENCION"],
-                             lambda h: resolver_columnas(h, MAPA_GRUPAL))
-    if not col.get("ASISTE"):
-        raise ValueError("El reporte de Atenciones Grupales no trae la columna "
-                         "'ASISTE (SI/NO)'. Descárgalo sin modificar desde RAYEN.")
+                             lambda h: resolver_columnas(h, MAPA_GRUPAL),
+                             requeridas=("ACT", "FECHA", "ASISTE"))
     d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
