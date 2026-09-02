@@ -572,7 +572,7 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **1** | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
 | **2** | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
 | **3** | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + bump a **1.9.0** (Y++, módulo nuevo) + fila en la matriz de programas de CLAUDE.md. | Suite completa verde. |
-| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
+| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
 | **4** *(después)* | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
 
 ---
@@ -592,6 +592,7 @@ recicla la tabla en vez de forkearla.
 | `Rescate_13m` | `SM Atendido hace 13m = Si` — tuvo atención en el mes que acaba de salir de la ventana de 12m y nada después | **se acaba de caer del programa**; rescate antes de perder el bajo-control |
 | `Fallecidos_mes` | cumple criterios SM, **ya no** está Activo+Ingresado, y `Motivo Pasivación = Fallecido` con `Fecha Pasivación` en el mes reportado | **para NO llamarlos**, y para el egreso del A05 (§8.3) |
 | `Posibles_Traslados` | los de las cohortes de rescate con `Motivo Pasivación` de traslado / cambio de domicilio | **no se excluyen del rescate**: se flagean para confirmar el traslado en vez de perseguir un abandono (§8.5) |
+| `Brecha_Medico` | dx SM activo registrado **solo por otro estamento** | están **al debe de control médico** (§8.6) |
 
 Cada una **agrupada por `Sector`** (una sección por sector, o una hoja por sector si
 se prefiere repartirlas). Ordenadas por sector y luego por fecha de última atención.
@@ -710,3 +711,40 @@ Mismas columnas que las listas de rescate + `Motivo Pasivación` + `Fecha Pasiva
 | Traslado / cambio de domicilio | **SÍ** | `Posibles_Traslados` (flag) |
 
 ---
+
+### 8.6 Brecha de control médico — toggle `exigir_medico`
+
+**Idea:** correr la revisión formulario-por-formulario **omitiendo el check
+`INSTRUMENTO ⊃ MEDIC`** (D3) y comparar contra la corrida normal. El delta son los
+pacientes cuyo diagnóstico SM está registrado **solo por otro estamento** (psicólogo,
+trabajador social, enfermería…) y que por lo tanto **están al debe de control médico**.
+
+```
+P_med    = población con el filtro médico       ← la que tributa al REM
+P_todos  = población sin el filtro médico
+BRECHA   = P_todos − P_med                      ← al debe de control médico
+```
+
+Sale casi gratis: la config por-dx ya tiene `filtra_instrumento` por fila, así que el
+toggle es `filtra_instrumento and exigir_medico`. **El módulo corre las dos pasadas y
+emite la diferencia** — no se le pide al usuario correr dos veces y restar a mano;
+eso es justamente lo que hace útil el reporte.
+
+**Salida:** hoja `Brecha_Medico`, sectorizada como las de rescate, mismas columnas
+(`RUN · Sector · Edad · Sexo · Dx activos`, §8.4) **más**:
+
+| Columna extra | Para qué |
+|---|---|
+| `Estamento que lo registró` | quién lo tiene en control hoy (del `INSTRUMENTO` / `PROFESIONAL ATENCION` del formulario) |
+| `Fecha último formulario` | hace cuánto que está sin médico |
+| `Dx que entran solo por no-médico` | si tiene otros dx que sí tienen control médico, se ve al tiro |
+
+> 🔴 **Guardarraíl obligatorio: el toggle NO cambia lo que tributa al REM.**
+> El P6 se tabula **siempre** con `exigir_medico = True`. `P_todos` existe únicamente
+> para calcular la brecha. El módulo **no debe** poder emitir una hoja `P6_A1` con el
+> toggle apagado; si alguien lo intenta, error explícito. Sin esto, un día alguien
+> corre con el toggle puesto y pega números inflados al SP.
+
+**Ojo:** los **factores de riesgo ya no filtran por estamento** (D2), así que el
+toggle solo mueve los **diagnósticos** (filas 25-58). La brecha es de control médico
+del diagnóstico, que es exactamente lo que interesa.
