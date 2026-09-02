@@ -23,6 +23,28 @@ ese delta del P.
 P 2.1 junio.xlsx` (versionado). Al implementar, portar ESA lógica del delta P(mes) −
 P(mes−1) → N/O en vez de reinventarla; es el referente validado.
 
+## Parte O (egresos): DOS métodos que se concilian
+El egreso de la matriz O sale de cruzar **dos** fuentes:
+- **Método 1 — matriz:** delta P(mes) − P(mes−1) → total de quienes SALIERON de la
+  población PSM.
+- **Método 2 — módulo A05:** egresos explícitos del formulario (**Alta / Traslado /
+  Otras Causas**, detectados por token de ESTADO).
+
+**Registro de la parte O:**
+- **Alta** y **Traslado** del A05 → se registran por su motivo real.
+- **Todo el resto** del delta (salió de la población pero SIN egreso formal en el A05)
+  → **Abandono** (residual por definición: nadie llena un formulario de "abandono").
+
+**Conciliación (revisar a mano donde los dos métodos discrepan):**
+1. **Egresos por "Otras Causas"** (bucket manual del A05: abandono vs clínica) — suelen
+   requerir **revisión manual**; es uno de los puntos donde matriz y A05 no calzan.
+2. **Números NEGATIVOS** en el delta matricial (p.ej. un reingreso, o inconsistencia de
+   datos entre meses) — **anomalía → revisar** antes de reportar.
+
+⚠ A confirmar al implementar: si "Otras Causas" queda como **columna propia** de la
+matriz O o se resuelve (a mano) hacia Alta/Traslado/Abandono. Por ahora = **flag de
+revisión manual**, no auto-asignado.
+
 ## Fuente
 - **Población PSM desde PowerBI** (tiene todo un DAX propio — conseguirlo al implementar).
 - Se arma como una **tabla dinámica**:
