@@ -93,6 +93,8 @@ def test_clasificadores():
     assert scr.clasificar_ghq12(6) == "Medio"
     assert scr.clasificar_ghq12(12) == "Alto"
     assert scr.clasificar_ghq12(None) is None
+    assert scr.clasificar_ghq12(13) is None          # >12: fuera del scoring binario 0-12
+    assert scr.clasificar_ghq12(-1) is None
 
 
 def test_psc_bajo_el_corte_se_etiqueta():
@@ -246,6 +248,37 @@ def test_tabla_d3_excluye_sin_riesgo():
     assert cel("ingreso", "Alto", "5-9 M") == 1
     assert cel("egreso", "Medio", "40-44 M") == 1     # edad 40 → banda 40-44
     assert int(t["Ambos"].sum()) == 3, "'Sin riesgo' no debe contar en el D.3"
+
+
+def test_ghq12_fuera_de_rango_avisa():
+    """Un puntaje GHQ-12 > 12 (imposible en el scoring binario 0-12) NO se descarta
+    callado: se AVISA (posible cambio a scoring Likert 0-36) y no clasifica. El de
+    dentro de rango sí clasifica y no gatilla el aviso (SIMP-2)."""
+    p = _iris("ghq_fuera.xlsx", "Cuestionario de Salud de Goldberg", [
+        ("11111111-1", 30, "Hombre", "F", "Psicólogo(a)", "Ingreso", 15, ""),   # 15 > 12: fuera
+        ("22222222-2", 40, "Mujer",  "F", "Médico",       "Ingreso", 8,  ""),   # 8: Alto, normal
+    ])
+    out = _TMP / "ghq_fuera_out.xlsx"
+    msgs = []
+    scr.procesar(p, out, log=msgs.append)
+    aviso = [m for m in msgs if "FUERA del rango" in m]
+    assert aviso, "debió avisar el puntaje fuera de rango"
+    assert "15" in aviso[0]                             # menciona el valor anómalo
+    _, filas = _dump(out)
+    by = {f["RUT"]: f for f in filas}
+    assert by["11111111-1"]["Resultado_DISAM"] in (None, "")   # 15 no clasifica
+    assert by["22222222-2"]["Resultado_DISAM"] == "Alto"       # 8 -> Alto
+
+
+def test_ghq12_en_rango_no_avisa():
+    """Un GHQ-12 dentro de 0-12 no gatilla el aviso de fuera de rango."""
+    p = _iris("ghq_ok.xlsx", "Cuestionario de Salud de Goldberg", [
+        ("33333333-3", 30, "Hombre", "F", "Médico", "Ingreso", 10, ""),
+    ])
+    out = _TMP / "ghq_ok_out.xlsx"
+    msgs = []
+    scr.procesar(p, out, log=msgs.append)
+    assert not [m for m in msgs if "FUERA del rango" in m]
 
 
 def test_procesar_unificado():

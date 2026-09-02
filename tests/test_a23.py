@@ -201,6 +201,35 @@ def test_seccion_h():
     assert h.loc["TOTAL", "Total"] == 3                # junio y Consulta SAC fuera
 
 
+def test_fecha_col_avisa_ilegibles():
+    """fecha_col cuenta y AVISA solo los valores no-vacíos ilegibles; los vacíos
+    legítimos (blanco / None) quedan callados. Serie limpia -> sin aviso (CORR-1)."""
+    import pandas as pd
+    from programas.rem_utils import fecha_col
+    msgs = []
+    s = pd.Series(["01/03/2026", "no-es-fecha", "", None, "15/13/2026"])
+    out = fecha_col(s, log=msgs.append, etiqueta="X")
+    assert int(out.isna().sum()) == 4                 # 2 ilegibles + 2 vacíos (1 válido)
+    assert len(msgs) == 1 and "2 valor" in msgs[0]    # avisa exactamente 2 ilegibles
+    msgs2 = []
+    fecha_col(pd.Series(["01/03/2026", "", None]), log=msgs2.append)
+    assert msgs2 == []                                # serie limpia: silencio
+
+
+def test_cargar_inasistentes_avisa_fecha_ilegible():
+    """El loader NSP usa fecha_col y REENVÍA el log: una FECHA HORA CITA ilegible
+    se avisa (no cae callada fuera del filtro de mes). Verifica la propagación."""
+    nsp = _mk_nsp([
+        {"instr": "Médico", "tipo": "Control IRA", "fecha": "10-07-2026 09:00:00", "run": "A", "anos": 40},
+        {"instr": "Médico", "tipo": "Control IRA", "fecha": "fecha-mala",           "run": "B", "anos": 40},
+    ])
+    msgs = []
+    a23.cargar_inasistentes(nsp, log=msgs.append)
+    avisos = [m for m in msgs if "[fecha]" in m and "ilegible" in m]
+    assert avisos, "debió avisar la fecha ilegible"
+    assert "1 valor" in avisos[0]                     # exactamente 1 ilegible (la otra es válida)
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]
