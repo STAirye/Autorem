@@ -138,7 +138,11 @@ trans = ((sexo=="Hombre") & (genero=="Femenina")) | ((sexo=="Mujer") & (genero==
 
 **Grupos etarios:** 0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39, 40-44, 45-49, 50-54, 55-59, 60-64, 65-69, 70-74, 75-79, 80+
 
-**TDAH truncamiento:** edad >= 30 → forzar bucket 25-29 en output SA (sin límite en SP)
+**TDAH truncamiento:** ⚠ DESACTUALIZADO — decía «edad >= 30 → bucket 25-29 en el SA».
+En `SA_26_V1.2` la columna 25-29 está BLOQUEADA: el último rango reportable del bloque
+«trastornos del comportamiento… de comienzo habitual en la infancia» (TDAH, disocial,
+ansiedad de separación; filas 218-220 ingresos / 270-272 egresos) es **20-24**. La
+plantilla MINSAL cambió. Sin límite en el SP. Ver `SP_P6_poblacion_plan.md` §5.0.1
 
 **Violencia sexual:** `Abuso Sexual (form)` + `Violencia Tipo (form)` contiene "sexual" → mapear SOLO a violencia sexual (filas 8-9 CALCULADOR). Fila 12 (abuso sexual) = 0.
 

@@ -68,7 +68,7 @@ la decisión **D2**, que le quita el filtro a los factores de riesgo.
 | 32 | Consumo perjudicial de drogas | `Drogas Perjudical (form)` | 35 | 36 | CONSUMO PERJUDICIAL DE DROGAS |
 | 33 | Consumo dependiente de drogas | `Drogas Dependiente (form)` | 37 | 38 | CONSUMO DEPENDIENTE DE DROGAS |
 | 34 | Consumo de drogas y alcohol | `OH y Drogas (form)` | 39 | 40 | CONSUMO DE DROGAS Y ALCOHOL |
-| 35 | Trastorno hipercinético (TDAH) | `TDAH (form)` | 57 | 58 | ¿TIENE TRASTORNOS HIPERCINÉTICOS…? |
+| 35 | Trastorno hipercinético (TDAH) *(**sin recorte etario en el SP**; el tope 0-24 es del SA·A05, §5.0.1)* | `TDAH (form)` | 57 | 58 | ¿TIENE TRASTORNOS HIPERCINÉTICOS…? |
 | 36 | Disocial desafiante y oposicionista | `Oposicionista desafiante (form)` | 69 | 70 | ¿TIENE TRASTORNO DISOCIAL DESAFIANTE Y OPOSICIONISTA? |
 | 37 | Ansiedad de separación *(0-14; ≥15 se **pliega** a 10-14)* | `Ansiedad separación (form)` | 71 | 72 | ¿TIENE TRASTORNO DE ANSIEDAD DE SEPARACIÓN EN LA INFANCIA? |
 | 38 | Otros comportamiento/emociones infancia *(0-19; ≥20 se **pliega** a 15-19)* | `Otras Infancia/Adolescencia (form)` | 73 | 74 | ¿TIENE OTROS TRASTORNOS DEL COMPORTAMIENTO Y DE LAS…? |

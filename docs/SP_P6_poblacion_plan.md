@@ -280,30 +280,47 @@ Tres consecuencias de diseño:
 
 #### 5.0.1 🔴 Rangos etarios recortados: se PLIEGAN al rango reportable más cercano
 
-**El SP recorta rangos etarios en la parte infantil que el SA·A05 N/O no recorta.**
-Un paciente fuera del rango de su fila no tiene celda donde caer — y **si se descarta,
-desaparece del REM**. La práctica del autor (hoy manual) es **sumarlo al último rango
-etario reportable de esa fila**, y eso es lo que el módulo debe automatizar.
+**El SP y el SA·A05 N/O recortan rangos etarios en filas DISTINTAS.** Un paciente
+fuera del rango de su fila no tiene celda donde caer — y **si se descarta, desaparece
+del REM**. La práctica del autor (hoy manual) es **sumarlo al último rango etario
+reportable de esa fila**, y eso es lo que hay que automatizar en cada planilla.
 
-| Fila | Rango reportable | Fuera de rango → se pliega a |
+**Recortes del SP·P6 A.1** (leídos de la máscara de protección):
+
+| Fila P6 | Rango reportable | Fuera de rango → se pliega a |
 |---|---|---|
 | 37 Ansiedad de separación | 0-14 | ≥15 → **banda 10-14** |
 | 38 Otros trastornos infancia | 0-19 | ≥20 → **banda 15-19** |
-| 28 Depresión post parto | mujeres 10-59 | ≥60 → **banda 55-59** · <10 → *ver abajo* |
-| 22-23 Suicidio | 5 y más | 0-4 → **banda 5-9** *(a confirmar: acá el plegado es hacia ARRIBA, es el único recorte por el extremo inferior)* |
+| 28 Depresión post parto | mujeres 10-59 | ≥60 → **banda 55-59** |
+| 22-23 Suicidio | 5 y más | 0-4 → **banda 5-9** *(único recorte por el extremo inferior; a confirmar)* |
+| **35 TDAH** | **0-80+ — SIN recorte** | **no se pliega nada** ⚠ ver abajo |
+
+**Recortes del SA·A05 N/O** (`SA_26_V1.2.xlsm`, secciones N ingresos y su gemela de
+egresos) — es **donde el plegado pesa más**:
+
+| Fila SA (N / O) | Concepto | Rango reportable | Se pliega a |
+|---|---|---|---|
+| **218 / 270** | **Trastorno hipercinético (TDAH)** | **0-24** | ≥25 → **banda 20-24** |
+| 219 / 271 | Disocial desafiante y oposicionista | 0-24 | ≥25 → banda 20-24 |
+| 220 / 272 | Ansiedad de separación en la infancia | 0-24 | ≥25 → banda 20-24 |
+
+> ⚠ **TDAH es el caso más significativo**, y va **al revés** de lo intuitivo: en el
+> **SP no hay tope** (el adulto con TDAH se cuenta en su banda real), pero en el
+> **SA·A05 sí** (se pliega a 20-24). **No plegar TDAH en el P6.**
+
+> 📌 **Dato desactualizado en `CONTEXTO_REM_general`:** dice «edad ≥30 → forzar bucket
+> **25-29** en el SA». En `SA_26_V1.2` la columna 25-29 (P/Q) está **bloqueada**: el
+> último rango reportable es **20-24** (F..O). La plantilla MINSAL cambió. Usar 20-24.
 
 **Todos los plegados se listan igual en `P6_Revisar`** — con RUN, edad real, fila y
 banda de destino. El número entra al REM (que es lo correcto), pero queda la
 trazabilidad de que esa persona se contó en una banda que no es la suya.
 
-Es el mismo fenómeno que el **truncamiento de TDAH** ya documentado en el
-`CONTEXTO_REM_general` («edad ≥30 → forzar bucket 25-29 en el SA, sin límite en el
-SP»), pero en la dirección contraria: **cada planilla recorta filas distintas.**
-
-⚠ **Impacto en la fase 4 (delta P → A05 N/O):** como SA y SP truncan filas distintas,
-el delta **no va a cuadrar banda por banda** en las filas recortadas. Hay que
-conciliar a nivel de fila (total), no de celda, o replicar el truncamiento de cada
-planilla por separado. Anotarlo antes de perseguir un descuadre que no es un error.
+⚠ **Impacto en la fase 4 (delta P → A05 N/O):** como SA y SP recortan filas distintas,
+el delta **no va a cuadrar banda por banda** en las filas recortadas — TDAH sobre todo.
+Hay que conciliar a nivel de fila (total), no de celda, o aplicar el truncamiento de
+cada planilla por separado antes de comparar. Anotarlo **antes** de perseguir un
+descuadre que no es un error.
 
 ### 5.1 Mapeo fila → columna de la tabla intermedia
 
