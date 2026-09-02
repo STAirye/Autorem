@@ -266,17 +266,44 @@ demográficas por fila.**
 | 44-46 Demencias | AN, AO, AT, AU | no aplica gestante / madre<5 / SENAME / Mejor Niñez |
 | todas | C, D, E | son fórmulas (§5) |
 
-Dos consecuencias de diseño:
+Tres consecuencias de diseño:
 
-1. **La máscara es un validador clínico gratis.** Si el cálculo produce un número
-   donde la plantilla bloquea (ansiedad de separación en alguien de 40, TDAH en una
-   madre de hijo <5, demencia en una gestante, suicidio en un menor de 5, depresión
-   post parto en un hombre), **eso es un error de datos**, no un dato. No se escribe:
-   va a `P6_Revisar` con el RUN y el motivo.
-2. **La salida `P6_A1` debe replicar la máscara** (hueco donde la plantilla bloquea)
-   y venir partida en **bloques pegables** — rectángulos maximales sin celdas
-   bloqueadas, saltando la fila 14. Ver §5.6 para la alternativa que evita el
-   copy-paste por completo.
+1. **Los recortes ETARIOS se PLIEGAN, no se descartan** (§5.0.1). Es la regla más
+   importante de esta sección y la más fácil de equivocar.
+2. **Los recortes DEMOGRÁFICOS sí son un validador.** Un número en AN/AO/AT/AU donde
+   la plantilla bloquea (TDAH en una madre de hijo <5, demencia en una gestante o en
+   SENAME) no tiene dónde plegarse: **es un error de datos**. No se escribe y va a
+   `P6_Revisar` con el RUN y el motivo.
+3. **La salida `P6_A1` replica la máscara** (hueco donde la plantilla bloquea) y viene
+   partida en **bloques pegables** — rectángulos maximales sin celdas bloqueadas,
+   saltando la fila 14 (§5.6).
+
+#### 5.0.1 🔴 Rangos etarios recortados: se PLIEGAN al rango reportable más cercano
+
+**El SP recorta rangos etarios en la parte infantil que el SA·A05 N/O no recorta.**
+Un paciente fuera del rango de su fila no tiene celda donde caer — y **si se descarta,
+desaparece del REM**. La práctica del autor (hoy manual) es **sumarlo al último rango
+etario reportable de esa fila**, y eso es lo que el módulo debe automatizar.
+
+| Fila | Rango reportable | Fuera de rango → se pliega a |
+|---|---|---|
+| 37 Ansiedad de separación | 0-14 | ≥15 → **banda 10-14** |
+| 38 Otros trastornos infancia | 0-19 | ≥20 → **banda 15-19** |
+| 28 Depresión post parto | mujeres 10-59 | ≥60 → **banda 55-59** · <10 → *ver abajo* |
+| 22-23 Suicidio | 5 y más | 0-4 → **banda 5-9** *(a confirmar: acá el plegado es hacia ARRIBA, es el único recorte por el extremo inferior)* |
+
+**Todos los plegados se listan igual en `P6_Revisar`** — con RUN, edad real, fila y
+banda de destino. El número entra al REM (que es lo correcto), pero queda la
+trazabilidad de que esa persona se contó en una banda que no es la suya.
+
+Es el mismo fenómeno que el **truncamiento de TDAH** ya documentado en el
+`CONTEXTO_REM_general` («edad ≥30 → forzar bucket 25-29 en el SA, sin límite en el
+SP»), pero en la dirección contraria: **cada planilla recorta filas distintas.**
+
+⚠ **Impacto en la fase 4 (delta P → A05 N/O):** como SA y SP truncan filas distintas,
+el delta **no va a cuadrar banda por banda** en las filas recortadas. Hay que
+conciliar a nivel de fila (total), no de celda, o replicar el truncamiento de cada
+planilla por separado. Anotarlo antes de perseguir un descuadre que no es un error.
 
 ### 5.1 Mapeo fila → columna de la tabla intermedia
 
@@ -474,7 +501,8 @@ P6 afectada y el motivo:
 | **Sexo/género no binario** — no cae en columna H ni M | `Sexo` / `Género` fuera de {Hombre, Mujer} |
 | **`Sexo = "No informado"`** — el propio DAX lo genera cuando el Inscritos viene vacío | §Ferrada[Sexo] |
 | **Hombre marcado como «madre de hijo < 5»** — flag descartado, hay que corregir la ficha en RAYEN | §5.4.1 |
-| **Número en celda bloqueada** — ansiedad de separación en adulto, TDAH en madre<5, demencia en gestante/SENAME, suicidio en 0-4, depresión post parto en hombre o fuera de 10-59 | máscara §5.0 |
+| **Edad plegada** — paciente fuera del rango etario de su fila; **se cuenta igual**, en la banda de borde. Con edad real y banda de destino | §5.0.1 |
+| **Número en celda demográfica bloqueada** — TDAH en madre<5, demencia en gestante/SENAME, depresión post parto en hombre. **No se cuenta** (no hay dónde plegarlo) | máscara §5.0 |
 | **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
 | **Egreso multi-dx divergente** — casos donde el PowerBI habría marcado Egresado todos los dx y el port marca solo uno | §4.3 |
 | **Identificador no-RUT** (DNI, pasaporte) | `Tipo de identificación` ≠ RUT → el CONTEXTO manda eliminar la fila; acá se lista antes de eliminarla |

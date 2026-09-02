@@ -61,7 +61,7 @@ la decisión **D2**, que le quita el filtro a los factores de riesgo.
 | Fila P6 | Concepto (P6) | Columna | dx | ESTADO | Texto de la pregunta dx |
 |---|---|---|---|---|---|
 | **25-27** | Depresión leve / moderada / grave *(+ las 25/27/29 caen en la 27, D4)* | `Depresión (form)` + gravedad | 18 | 19 | ¿TIENE DEPRESIÓN? |
-| 28 | Depresión post parto *(solo mujeres 10-59)* | `Depresión Postparto (form)` | 21 | 22 | ¿TIENE DEPRESIÓN POST-PARTO? |
+| 28 | Depresión post parto *(mujeres 10-59; ≥60 se **pliega** a 55-59)* | `Depresión Postparto (form)` | 21 | 22 | ¿TIENE DEPRESIÓN POST-PARTO? |
 | 29 | Trastorno bipolar | `Bipolaridad (form)` | 23 | 24 | ¿TIENE TRANSTORNO BIPOLAR? *(typo de RAYEN)* |
 | 30 | Consumo perjudicial de alcohol | `OH Perjudical (form)` | 31 | 32 | CONSUMO PERJUDICIAL DE ALCOHOL |
 | 31 | Consumo dependiente de alcohol | `OH Dependiente (form)` | 33 | 34 | CONSUMO DEPENDIENTE DEL ALCOHOL |
@@ -70,8 +70,8 @@ la decisión **D2**, que le quita el filtro a los factores de riesgo.
 | 34 | Consumo de drogas y alcohol | `OH y Drogas (form)` | 39 | 40 | CONSUMO DE DROGAS Y ALCOHOL |
 | 35 | Trastorno hipercinético (TDAH) | `TDAH (form)` | 57 | 58 | ¿TIENE TRASTORNOS HIPERCINÉTICOS…? |
 | 36 | Disocial desafiante y oposicionista | `Oposicionista desafiante (form)` | 69 | 70 | ¿TIENE TRASTORNO DISOCIAL DESAFIANTE Y OPOSICIONISTA? |
-| 37 | Ansiedad de separación *(solo 0-14)* | `Ansiedad separación (form)` | 71 | 72 | ¿TIENE TRASTORNO DE ANSIEDAD DE SEPARACIÓN EN LA INFANCIA? |
-| 38 | Otros comportamiento/emociones infancia *(solo 0-19)* | `Otras Infancia/Adolescencia (form)` | 73 | 74 | ¿TIENE OTROS TRASTORNOS DEL COMPORTAMIENTO Y DE LAS…? |
+| 37 | Ansiedad de separación *(0-14; ≥15 se **pliega** a 10-14)* | `Ansiedad separación (form)` | 71 | 72 | ¿TIENE TRASTORNO DE ANSIEDAD DE SEPARACIÓN EN LA INFANCIA? |
+| 38 | Otros comportamiento/emociones infancia *(0-19; ≥20 se **pliega** a 15-19)* | `Otras Infancia/Adolescencia (form)` | 73 | 74 | ¿TIENE OTROS TRASTORNOS DEL COMPORTAMIENTO Y DE LAS…? |
 | **39-43** | Ansiedad: TEPT / pánico / fobia social / TAG / otros | `Ansiedad (form)` + tipo | 41 | **42** | ¿TIENE TRASTORNO DE ANSIEDAD? |
 | **44-46** | Demencias leve / moderado / avanzado *(solo CON etapa, D5)* | `Demencia (form)` + etapa | 44 | **46** | ¿TIENE ALZHEIMER Y/O OTRAS DEMENCIAS? |
 | 47 | Esquizofrenia | `Esquizofrenia (form)` | 51 | 52 | ¿TIENE ESQUIZOFRENIA? |
@@ -99,7 +99,7 @@ registrar cualquier estamento, no solo médico.
 | **15-20** | Violencia física/sexual/psicológica × víctima/agresor | `Violencia (form)` | 4 | **5** | **6** (tipo) × **7** (en la violencia es) | ⚠ **quitar** (el DAX lo tiene) |
 | **17-18** | Violencia sexual *(también entra por acá)* | `Abuso Sexual (form)` | 9 | 10 | — | ninguno ✔ (el DAX ya estaba bien) |
 | 21 | Abuso sexual | — | — | — | — | **no capturable** en la plantilla → 0 |
-| **22-23** | Suicidio: ideación / intento *(sin banda 0-4)* | `Suicidio (form)` | 11 | **13** | **12** (tipo) | ⚠ **quitar** (el DAX lo tiene) |
+| **22-23** | Suicidio: ideación / intento *(0-4 se **pliega** a 5-9)* | `Suicidio (form)` | 11 | **13** | **12** (tipo) | ⚠ **quitar** (el DAX lo tiene) |
 
 **Regla de violencia sexual** (del `CONTEXTO_REM_general`): `Abuso Sexual (form)` **+**
 `Violencia Tipo (form) ⊃ "sexual"` van **ambos** a las filas 17/18. La fila 21 queda en 0.
