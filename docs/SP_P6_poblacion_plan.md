@@ -283,10 +283,15 @@ antes que FOBIA por «agoraFOBIA»). La fila 41 sale calculada, no por descarte.
 
 ### 5.4 Demografía `AN..AX`
 
+**Principio (lo confirma el propio control de errores del SP):** el P6 tabula todo
+por **sexo registral**, no por género. Las fórmulas de validación son
+`AN, AO ≤ E (Mujeres)` · `AP, AR ≤ D (Hombres)` · `AQ, AS ≤ E (Mujeres)` ·
+`AT, AU, AV ≤ C (Ambos)`. El género aparece **solo** en AW/AX (TRANS).
+
 | Col | Concepto | Fuente | Ya existe |
 |---|---|---|---|
-| AN | Gestantes (solo mujeres) | `¿Embarazada?` — matrona + prenatal/formulario gestante, 3 meses | `rem_utils.gestante_runs()` |
-| AO | Madre de hijo < 5 años | pregunta 1 del formulario | `DEMOGRAFIA` en `rem_saludmental` |
+| AN | Gestantes — **solo sexo registral femenino** | `¿Embarazada?` — matrona + prenatal/formulario gestante | `rem_utils.gestante_runs()` · **def. abierta §6.0** |
+| AO | Madre de hijo < 5 años — **solo sexo registral femenino** (§5.4.1) | pregunta 1 del formulario | `DEMOGRAFIA` en `rem_saludmental` |
 | AP/AQ | Pueblos originarios H/M | `¿Originario o Migrante?` = Originario | `rem_utils.PUEBLO_VACIO` |
 | AR/AS | Migrantes H/M | `¿Originario o Migrante?` = Migrante | idem |
 | AT | SENAME | `PROTECCION NIÑEZ` = «SENAME» (alerta ⊃ SENAME) | `marcar_demografia()` |
@@ -298,6 +303,28 @@ antes que FOBIA por «agoraFOBIA»). La fila 41 sale calculada, no por descarte.
 `AX ≤ D (Hombres)`. O sea «TRANS Masculino» = **sexo registral mujer**, género
 masculino. Las etiquetas se invierten respecto del sexo registral; `trans_map()` ya
 hace ese split, hay que respetar la orientación al escribir.
+
+#### 5.4.1 «Madre de hijo menor de 5 años» (AO) — filtrar por SEXO, no por género
+
+La pregunta 1 del formulario **a veces se marca en hombres**. Regla:
+
+```
+AO  =  pregunta 1 == "SI"   AND   sexo registral == Mujer
+```
+
+- **Sexo registral masculino marcado → NO cuenta, por definición.** Es un error de
+  registro en RAYEN: se descarta el flag y **la persona va a `P6_Revisar`** para que
+  alguien lo corrija en la ficha.
+- **Sexo registral femenino + género transmasculino → SÍ cuenta.** El filtro es por
+  **sexo**, no por género: un hombre trans puede ser madre de un hijo menor de 5.
+
+Lo mismo aplica a AN (gestantes): sexo registral femenino, independiente del género.
+
+⚠ **Hallazgo colateral (fuera del alcance de este plan):** hoy
+`rem_saludmental.DEMOGRAFIA["Madre_menor5"]` es solo `pregunta 1 == "SI"`, **sin
+filtro de sexo** → la columna `Madre_menor5` del **A05 egresos/ingresos** sobrecuenta
+a los hombres mal marcados. Es un fix aparte de este módulo; conviene extraer la
+regla a una función compartida para que A05, SA y SP usen la misma.
 
 ### 5.5 Hoja `P6_Revisar` — excepciones para decisión humana
 
@@ -314,6 +341,7 @@ P6 afectada y el motivo:
 |---|---|
 | **Sexo/género no binario** — no cae en columna H ni M | `Sexo` / `Género` fuera de {Hombre, Mujer} |
 | **`Sexo = "No informado"`** — el propio DAX lo genera cuando el Inscritos viene vacío | §Ferrada[Sexo] |
+| **Hombre marcado como «madre de hijo < 5»** — flag descartado, hay que corregir la ficha en RAYEN | §5.4.1 |
 | **Número en celda bloqueada** — ansiedad de separación en adulto, TDAH en madre<5, demencia en gestante/SENAME, suicidio en 0-4, depresión post parto en hombre o fuera de 10-59 | máscara §5.0 |
 | **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
 | **Egreso multi-dx divergente** — casos donde el PowerBI habría marcado Egresado todos los dx y el port marca solo uno | §4.3 |
