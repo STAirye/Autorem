@@ -165,10 +165,46 @@ anteriores sí se rescatan sin problema. Consecuencias:
 El control de errores del SP (cols CN..CX) cuenta como **error** una celda de
 demografía vacía cuando el total de la fila es > 0. El módulo escribe ceros.
 
+Ojo con `AV` «Plan de Cuidado Integral»: no tiene fuente, pero **tampoco va vacía** —
+se llena por una regla operativa explícita. Ver §5.4.2.
+
 ### 4.6 Alcance
 
 Solo **sección A.1** (filas 13–58). Fuera: A.2 rehabilitación tipo I/II, A.3
 acompañamiento psicosocial, y toda la sección B (especialidades, filas 75–126).
+
+### 4.7 Gestante = control prenatal con matrona en 3 meses *(decidido)*
+
+**Definición operativa adoptada:** `rem_utils.gestante_runs()` con ventana de
+**3 meses cerrados terminando en el mes reportado** — **fuente única para SA y SP**.
+Se descarta replicar el DAX del PowerBI.
+
+**Por qué es un proxy y no un registro:** *no existe un registro en tiempo real de
+gestación que tribute al REM*. Existe en la ficha clínica, y todo el punto de esta
+herramienta es **no abrir la ficha**. Entonces se infiere: si tuvo control prenatal,
+está embarazada.
+
+**Por qué se filtra por matrona:** el control prenatal **lo hace únicamente matrona
+o matrón**, ningún otro estamento. El filtro no excluye casos, los **precisa**.
+
+Divergencias contra el PowerBI (esperadas, documentadas, no son bugs del port):
+
+| | PowerBI (DAX) | autoREM (adoptado) |
+|---|---|---|
+| Ventana | `EOMONTH(-3)+1 … EOMONTH(-1)` = **2 meses** (off-by-one; para 3 sería `-4`) | **3 meses** cerrados hasta el mes reportado |
+| «Matrón» | `CONTAINSSTRING(…,"matron")` **no matchea** «Matrón»: DAX ignora mayúsculas pero **no acentos** → pierde a los matrones | `norm()` quita acentos → **captura Matrona y Matrón** |
+| Anclaje | `TODAY()` | corte del mes reportado (§4.1) |
+
+Limitación aceptada por diseño: no verifica que el embarazo siga en curso. Quien
+parió dentro de la ventana sigue marcada; quien está embarazada con su último
+control fuera de la ventana no aparece. Sin abrir la ficha no hay alternativa, y la
+ventana de 3 meses es justamente la tolerancia elegida (el control prenatal es
+~mensual: 3 meses absorben una inasistencia sin arrastrar puérperas demasiado).
+
+Sin costo de input: el P6 ya carga 12 meses de ADA para `Activo 12m` (§3.1); la
+ventana de gestante es un subconjunto.
+
+Aplica además el filtro por **sexo registral femenino** de §5.4.1.
 
 ---
 
@@ -296,7 +332,7 @@ por **sexo registral**, no por género. Las fórmulas de validación son
 | AR/AS | Migrantes H/M | `¿Originario o Migrante?` = Migrante | idem |
 | AT | SENAME | `PROTECCION NIÑEZ` = «SENAME» (alerta ⊃ SENAME) | `marcar_demografia()` |
 | AU | Mejor Niñez | `PROTECCION NIÑEZ` = «Mejor Niñez» (alerta ⊃ SPE) | idem |
-| AV | Plan Cuidado Integral Elaborado | `Pauta llenada (12m)` — **a confirmar** *(abierto)* | — |
+| AV | Plan de Cuidado Integral Elaborado | **MANUAL — no hay fuente** (§5.4.2) | — |
 | AW/AX | TRANS Masculino / Femenino | `Trans` = 1, split por género | `rem_utils.trans_map()` |
 
 ⚠ **Foot-gun de AW/AX:** el control de errores compara `AW ≤ E (Mujeres)` y
@@ -319,6 +355,41 @@ AO  =  pregunta 1 == "SI"   AND   sexo registral == Mujer
   **sexo**, no por género: un hombre trans puede ser madre de un hijo menor de 5.
 
 Lo mismo aplica a AN (gestantes): sexo registral femenino, independiente del género.
+
+#### 5.4.2 `AV` «Plan de Cuidado Integral» (PIC) — sin fuente, con regla operativa
+
+**No tiene reporte, ni formulario, ni ninguna otra fuente** en RAYEN/IRIS hoy. No es
+`SM Pauta llenada (12m)` ni ninguna otra columna del PowerBI: el dato **no existe**
+en ningún sistema consultable. Es la última casilla del P6·A.1 sin automatizar.
+
+**Regla vigente (WIP declarado del autor, sep-2026):** se reporta el PIC solo donde
+es **obligatorio**, y ahí se asume completo —
+
+```
+AV(fila) = total de la fila     si la fila es GES-obligatoria o factor de riesgo
+AV(fila) = 0                    en el resto
+```
+
+| Filas | PIC | Motivo |
+|---|---|---|
+| 15–23 | = total de la fila | factores de riesgo |
+| 25, 26, 27 (depresión leve/moderada/grave) | = total de la fila | GES depresión |
+| 44, 45, 46 (demencias / Alzheimer) | = total de la fila | GES Alzheimer |
+| resto | 0 | — |
+
+**Esto es un placeholder por obligación de reporte, no un conteo real de planes
+elaborados.** El módulo lo implementa como regla explícita y configurable (una
+constante con el set de filas, no repartida por el código), y **el log lo declara en
+cada corrida**: «AV PIC llenado por regla WIP = total de fila en GES + factores de
+riesgo; no es un conteo de planes reales». Fail loud (§CLAUDE.md): un número
+asumido, pero nunca un número asumido y callado.
+
+Si algún día aparece una fuente (formulario nuevo, alerta administrativa), esto pasa
+a ser una línea de config y se automatiza como el resto.
+
+*Pendiente de precisar (§6):* si «las depresiones varias» incluye la fila 28
+(depresión post parto), y si hay otras filas GES que hoy queden fuera de la regla
+(esquizofrenia primer episodio, consumo perjudicial en menores de 20).
 
 ⚠ **Hallazgo colateral (fuera del alcance de este plan):** hoy
 `rem_saludmental.DEMOGRAFIA["Madre_menor5"]` es solo `pregunta 1 == "SI"`, **sin
@@ -372,58 +443,16 @@ El copy-paste choca con la protección de hoja (§5.0). Dos caminos:
 
 ## 6. Puntos abiertos
 
-### 6.0 🔴 BLOQUEANTE — definición de «Gestante» (col AN)
+> La definición de **Gestante** era el bloqueante de esta sección; quedó cerrada
+> en **§4.7** (3 meses, matrona, fuente única SA/SP).
 
-**En revisión por el autor (sep-2026). No implementar hasta cerrar.** El DAX:
-
-```dax
-VAR FechaInicio = EOMONTH(TODAY(), -3) + 1
-VAR FechaFin    = EOMONTH(TODAY(), -1)
-VAR AtencionesGestante =
-CALCULATE(COUNTROWS(Atenciones),
-    FILTER(ALL(Atenciones),
-        Atenciones[RUN] = 'Ferrada'[RUN] &&
-        Atenciones[FECHA ATENCION] >= FechaInicio &&
-        Atenciones[FECHA ATENCION] <= FechaFin &&
-        CONTAINSSTRING(Atenciones[INSTRUMENTO], "matron") &&
-        (   CONTAINSSTRING(Atenciones[ACTIVIDADES], "control prenatal") ||
-            CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], "gestante")  )))
-RETURN IF(AtencionesGestante > 0, "SI", "NO")
-```
-
-Hallazgos:
-
-1. **La ventana es de 2 meses, no de 3.** Corriendo el 2-sep-2026 para reportar
-   agosto: `EOMONTH(-3)` = 30-jun → `+1` = 1-jul; `EOMONTH(-1)` = 31-ago. Resultado:
-   **1-jul a 31-ago**. Para 3 meses reales sería `EOMONTH(TODAY(),-4)+1`. Compárese
-   con `SM Activo 12m`, que sí está correcto (`EOMONTH(-13)+1` = 12 meses exactos):
-   es un off-by-one aislado de esta fórmula.
-2. **`CONTAINSSTRING(INSTRUMENTO,"matron")` no matchea «Matrón».** DAX ignora
-   mayúsculas pero **no acentos** → los matrones varones se pierden. En Python
-   `norm()` quita acentos y los captaría: **divergencia silenciosa contra el
-   PowerBI** si no queda documentada.
-3. **Ya hay otra definición en el repo y no coincide.** `rem_utils.gestante_runs()`
-   (SM Actividades → SA) usa `ini3 = ini - 2 meses` = **3 meses** (1-jun a 31-ago en
-   el ejemplo). Misma paciente, mismo mes: **SA y SP darían flags distintos.**
-4. **Exige instrumento matrona** → un control prenatal hecho por médico/a no cuenta.
-5. **No verifica que el embarazo siga en curso.** Quien parió dentro de la ventana
-   sigue en «SI»; quien está embarazada con su último control fuera de la ventana
-   sale «NO». El spec la titula «Embarazo **probable**»: es un proxy.
-6. Al colgar de `TODAY()`, abrir el PowerBI en octubre para corregir agosto corre la
-   ventana a 1-ago–30-sep → se reporta agosto con datos de septiembre (§4.1).
-
-**Decisión pendiente:** ¿se replica el DAX literal (2 meses, sin matrones), se
-adopta `gestante_runs()` (3 meses, con matrones) como fuente única para SA y SP, o
-se define algo nuevo (p. ej. último control prenatal dentro de N meses **y** sin
-parto registrado)? Sea cual sea, **SA y SP deben usar la MISMA función** — si no,
-el mismo flag da dos números en el mismo REM.
-
-### 6.1 No bloqueantes
 
 1. **Fila 57 Epilepsia** — no está en el formulario SM ni en el PBI, y
    `EXCLUIR_PATOLOGIA={75,77,79,81}` la saca del A05 por ser del REM adulto. ¿Queda
    manual, o hay otra fuente?
-2. **Col AV «Plan Cuidado Integral Elaborado»** — ¿es `SM Pauta llenada (12m)`?
+2. **Alcance exacto de la regla PIC (§5.4.2)** — «las depresiones varias»: ¿entra la
+   fila 28 (depresión post parto)? ¿Y hay otras filas GES que hoy queden fuera
+   (esquizofrenia primer episodio, consumo perjudicial en < 20 años)?
 3. **Diagnósticos del formulario sin fila en A.1:** Psicosis (47), Primer episodio
    de esquizofrenia (53), Trastornos conductuales asociados a demencia (67),
    Depresión refractaria / grave con psicosis / alto riesgo suicida (25/27/29 — esas
