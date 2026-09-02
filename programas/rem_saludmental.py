@@ -48,7 +48,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios, mes_de_celda,
-    PUEBLO_VACIO,
+    PUEBLO_VACIO, verificar_hoja_unica,
 )
 from programas import formatos
 
@@ -324,6 +324,7 @@ def abrir_validado(entrada, perfil):
             "    pip install openpyxl\n"
             f"(detalle: {OPENPYXL_ERR})"
         )
+    verificar_hoja_unica(entrada)   # rechaza exports modificados (datos en >1 hoja)
     wb = openpyxl.load_workbook(entrada)
     ws = wb[HOJA] if HOJA else wb.active
     perfil["validar"](ws)   # portón: rechaza archivos que no son el formato elegido

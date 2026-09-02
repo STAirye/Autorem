@@ -54,6 +54,7 @@ from programas.rem_utils import (
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
     grid as _grid, BANDAS_A06, LBL_A06,
+    verificar_hoja_unica,
 )
 from programas import formatos
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
@@ -180,6 +181,7 @@ def abrir_validado(entrada):
         raise ImportError(
             "Falta 'openpyxl'. Instálala con:  pip install openpyxl\n"
             f"(detalle: {OPENPYXL_ERR})")
+    verificar_hoja_unica(entrada)   # rechaza exports modificados (datos en >1 hoja)
     wb = openpyxl.load_workbook(entrada)
     ws = wb.active
     formato = formatos.detectar_eje(ws)
