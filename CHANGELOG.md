@@ -10,6 +10,30 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.8.2] — 2026-09-02
+
+### Corregido (regla dura: *fallar ruidoso, no callado y mal*)
+- **`Madre_menor5` ahora filtra por SEXO REGISTRAL.** La pregunta 1 del formulario
+  («¿usted es madre de hijo menor de 5 años?») **a veces se marca en hombres**, y esos
+  por definición no cuentan. La columna del A05 (egresos e ingresos) los venía
+  **sobrecontando desde siempre**. Nuevo `DEMOGRAFIA_SOLO_FEMENINO` en
+  `rem_saludmental` (zona de config): los flags que el REM define solo sobre mujeres se
+  anulan cuando el sexo registral no es femenino, y **el log avisa con el conteo** para
+  que se corrija la ficha en RAYEN — no se descarta en silencio.
+  El filtro va por **SEXO, nunca por GÉNERO**: una persona de sexo femenino y género
+  transmasculino **sí cuenta** (puede ser madre). Criterio único en `rem_utils._mujer()`,
+  el mismo que ya usaban `grid`, A23 y SM Actividades. Test nuevo
+  `test_madre_menor5_filtra_por_sexo_no_por_genero` (mujer cis / hombre mal marcado /
+  transmasculino). **62/62 tests.**
+
+### Agregado
+- **`docs/SP_P6_poblacion_plan.md`** — plan del módulo REM **SP·P6 A.1 «Población en
+  control PSM»**: IRIS → tabla intermedia (la «Ferrada» del PowerBI, portada desde
+  `refs tablas/specs/Salud_Mental_spec.md`) → tabulación directa del SP. Incluye la
+  máscara de celdas protegidas del P6 como validador clínico, la hoja de excepciones
+  `P6_Revisar`, las unidades de conteo por bloque de filas, y las definiciones cerradas
+  de Gestante (3 meses, matrona) y del Plan de Cuidado Integral. Sin implementar.
+
 ## [1.8.1] — 2026-09-02
 
 Tanda de **correctitud, privacidad y robustez** surgida de una revisión de código

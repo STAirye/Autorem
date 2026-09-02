@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.1
+# Version: 1.8.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios, mes_de_celda,
-    PUEBLO_VACIO, verificar_hoja_unica,
+    PUEBLO_VACIO, verificar_hoja_unica, _mujer,
 )
 from programas import formatos
 
@@ -146,6 +146,12 @@ DEMOGRAFIA = {
     "Proteccion_Ninez":    (["ALERTAS"],              ["MEJOR NINEZ", "PROTECCION ESPECIAL"]),   # solo IRIS
     "Migrante":            (["ALERTAS"],              ["MIGRANTE"]),                             # solo IRIS
 }
+# Flags que el REM define SOLO sobre mujeres -> se anulan si el sexo REGISTRAL no es
+# femenino. La pregunta 1 ('¿usted es madre de hijo menor de 5 años?') a veces se
+# marca en hombres y esos, por definición, no cuentan. El filtro va por SEXO y no por
+# GÉNERO: sexo femenino con género transmasculino SÍ cuenta (puede ser madre).
+DEMOGRAFIA_SOLO_FEMENINO = {"Madre_menor5"}
+
 COL_GENERO_TOKENS = ["GENERO"]   # Trans: valor de GÉNERO si contiene "TRANS" (solo IRIS)
 # (los "vacío de pueblo" se comparten con pandas: rem_utils.PUEBLO_VACIO, ver flag_demo)
 
@@ -402,6 +408,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
     eventos = []
     filas_en_mes = 0        # formularios que caen en el mes pedido
     filas_fecha_mala = 0    # formularios con RUT pero fecha ilegible (se excluyen)
+    solo_fem_anulados = {}  # flag -> nº de formularios donde se marcó en un no-femenino
 
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
@@ -421,6 +428,11 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
         sexo = fila[sexo_col - 1] if sexo_col else ""
         demo = {flag: (flag_demo(fila[c - 1], regla) if c else "")
                 for flag, (c, regla) in demo_cols.items()}
+        if not _mujer(sexo):   # flags solo-mujeres: anular y contar (ver DEMOGRAFIA_SOLO_FEMENINO)
+            for flag in DEMOGRAFIA_SOLO_FEMENINO:
+                if demo.get(flag):
+                    demo[flag] = ""
+                    solo_fem_anulados[flag] = solo_fem_anulados.get(flag, 0) + 1
         trans = ""
         if genero_col:
             g = fila[genero_col - 1]
@@ -453,6 +465,11 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
                       "trans": trans, "fila": r}
                 ev.update(demo)
                 eventos.append(ev)
+
+    for flag, n in sorted(solo_fem_anulados.items()):
+        log(f"[demo] AVISO: «{flag}» venía marcado en {n} formulario(s) de sexo NO "
+            f"femenino -> se ANULA (por definición no cuenta). Corregir la ficha en "
+            f"RAYEN. Ojo: el filtro es por SEXO, no por género (transmasculino sí cuenta).")
 
     if mes_activo:
         if filas_fecha_mala:

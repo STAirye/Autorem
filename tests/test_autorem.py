@@ -172,6 +172,35 @@ def test_subtipo_ansiedad_override():
     assert sm.limpiar_subtipo("Moderado", "45.- ETAPA") == "Moderado"
 
 
+def test_madre_menor5_filtra_por_sexo_no_por_genero():
+    """Pregunta 1 marcada en un hombre -> se ANULA (por definición no cuenta).
+    Sexo femenino con género transmasculino -> SÍ cuenta (el filtro es por SEXO)."""
+    p = _TMP / "madre.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio", None]); ws.append(["Filtros", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "1.- ¿Usted es Madre de Hijo menor de 5 años?", "GÉNERO",
+               "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO"])
+    ws.append(["11111111-1", 30, "Mujer",  "SI", "Femenino",       "SI", "EGRESO ALTA"])
+    ws.append(["22222222-2", 40, "Hombre", "SI", "Masculino",      "SI", "EGRESO ALTA"])
+    ws.append(["33333333-3", 25, "Mujer",  "SI", "Trans Masculino", "SI", "EGRESO ALTA"])
+    wb.save(p)
+    out = _TMP / "madre_out.xlsx"
+    avisos = []
+    egresos.procesar(p, out, log=avisos.append)
+    ws2 = openpyxl.load_workbook(out)["A05_Egresos"]
+    head = [ws2.cell(row=1, column=c).value for c in range(1, ws2.max_column + 1)]
+    ci = head.index("Madre_menor5") + 1
+    ruts = [ws2.cell(row=r, column=1).value for r in range(2, ws2.max_row + 1)]
+    madre = {ws2.cell(row=r, column=1).value: (ws2.cell(row=r, column=ci).value or "")
+             for r in range(2, ws2.max_row + 1)}   # celda vacía vuelve como None
+    assert len(ruts) == 3                      # las 3 filas siguen siendo egresos
+    assert madre["11111111-1"] == "SI"         # mujer cis: cuenta
+    assert madre["22222222-2"] == ""           # hombre mal marcado: ANULADO
+    assert madre["33333333-3"] == "SI"         # transmasculino de sexo femenino: cuenta
+    assert any("Madre_menor5" in a and "NO " in a for a in avisos)   # avisa, no calla
+
+
 def test_edad_anios():
     assert sm.edad_anios("45 años 3 meses 2 días") == 45
     assert sm.edad_anios("8 meses 10 días") == 0        # menor de 1 año

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.1
+# Version: 1.8.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.8.1"
+VERSION = "1.8.2"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -383,6 +383,9 @@ LBL_A06 = ["0-4"] + LBL_A04[2:]
 
 
 def _mujer(s):
+    """Sexo REGISTRAL femenino. Es el criterio de los flags que el REM define solo
+    sobre mujeres (Madre de hijo <5, Gestante): va por SEXO, nunca por GÉNERO, así
+    que una persona de sexo femenino y género transmasculino SÍ cuenta."""
     n = norm(s); return ("FEMENIN" in n) or ("MUJER" in n)
 
 
