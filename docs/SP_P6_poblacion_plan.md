@@ -57,9 +57,11 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 **Salida (`escribir()`):**
 - `PSM_Poblacion` — la tabla intermedia, con los **mismos nombres de columna del
   export PowerBI** para poder diffear. Es también el snapshot mensual archivable (§4.4).
-- `P6_A1` — grilla copy-paste a la hoja P6 del SP.
+- `P6_A1` — grilla para llevar al SP, respetando la máscara de celdas bloqueadas (§5.0).
 - `P6_Detalle` — auditable, 1 fila por persona con las banderas que la hicieron
   tributar a cada fila del P6.
+- **`P6_Revisar` — excepciones que requieren decisión humana (§5.5).** Hoja
+  obligatoria del módulo, no un extra.
 
 ---
 
@@ -141,12 +143,22 @@ Para que la diferencia sea explicable y no misteriosa, el módulo emite además 
 columna de auditoría con el valor que habría dado el PowerBI y un aviso en el log
 («N personas / M diagnósticos difieren por egreso multi-dx»). Fail loud, §CLAUDE.md.
 
-### 4.4 El Inscritos es un snapshot, no un histórico
+### 4.4 El Inscritos es un snapshot, pero los SP/SA anteriores existen
 
-`Estado`, `Situación`, `Motivo/Fecha Pasivación` son al día de la descarga; no se
-puede reconstruir quién estaba Activo hace 3 meses. **Consecuencia operativa: la
-tabla `PSM_Poblacion` hay que archivarla cada mes** — ella misma pasa a ser el
-histórico que habilita el delta P(m)−P(m−1) del A05 (fase 4).
+`Estado`, `Situación`, `Motivo/Fecha Pasivación` del Inscritos son al día de la
+descarga: **no se puede reconstruir desde cero quién estaba Activo hace 3 meses.**
+
+Ahora bien, **los SP y SA de cada mes se guardan aparte**, así que los meses
+anteriores sí se rescatan sin problema. Consecuencias:
+
+- Para el **delta P(m) − P(m−1) del A05** (fase 4) basta con el SP guardado del mes
+  anterior: el `CALCULADOR A05` trabaja sobre la matriz agregada (dx × edad × sexo),
+  que es justamente lo que el SP contiene. **No es un bloqueador.**
+- Archivar `PSM_Poblacion` cada mes sigue valiendo la pena, pero por otra razón: da
+  el **detalle por RUN** que el SP agregado no tiene. Sirve para auditar el delta,
+  para identificar nominalmente el residual «abandono» de la parte O, y para resolver
+  las excepciones de `P6_Revisar` mirando el mes anterior. Es una mejora, no un
+  requisito de arranque.
 
 ### 4.5 Escribir 0, nunca celda vacía
 
@@ -170,6 +182,36 @@ acompañamiento psicosocial, y toda la sección B (especialidades, filas 75–12
   regla del `CONTEXTO_REM_general`: abuso sexual se mapea a **violencia sexual**
   (filas 17/18) y la fila 21 queda en 0.
 - **Fila 28 «Depresión post parto» solo tiene C y E** → sin columna de hombres.
+
+### 5.0 La hoja está PROTEGIDA y la máscara es información clínica
+
+`ws.protection.sheet = True`. Pegar un bloque rectangular 13→58 × F..AX **falla con
+error de celdas protegidas** — es el problema reportado. Las celdas bloqueadas dentro
+de la zona de captura no son arbitrarias: **codifican restricciones etarias y
+demográficas por fila.**
+
+| Fila(s) | Bloqueado dentro de F..AX | Qué significa |
+|---|---|---|
+| **14** | **F..AX completa** | es la cabecera «FACTORES DE RIESGO» → **es la que rompe el pegado de un bloque corrido** |
+| 22, 23 Suicidio | F, G | no aplica banda 0-4 años |
+| 28 Depresión post parto | todas las de hombres + 0-9 + 60+ + AN, AP, AR, AX | **solo mujeres de 10 a 59 años** |
+| 37 Ansiedad de separación | 15-19 en adelante + AO | **solo 0-14 años** |
+| 38 Otros trastornos infancia | 20-24 en adelante + AO | **solo 0-19 años** |
+| 35, 36 TDAH / disocial | AO | no aplica «madre de hijo < 5» |
+| 44-46 Demencias | AN, AO, AT, AU | no aplica gestante / madre<5 / SENAME / Mejor Niñez |
+| todas | C, D, E | son fórmulas (§5) |
+
+Dos consecuencias de diseño:
+
+1. **La máscara es un validador clínico gratis.** Si el cálculo produce un número
+   donde la plantilla bloquea (ansiedad de separación en alguien de 40, TDAH en una
+   madre de hijo <5, demencia en una gestante, suicidio en un menor de 5, depresión
+   post parto en un hombre), **eso es un error de datos**, no un dato. No se escribe:
+   va a `P6_Revisar` con el RUN y el motivo.
+2. **La salida `P6_A1` debe replicar la máscara** (hueco donde la plantilla bloquea)
+   y venir partida en **bloques pegables** — rectángulos maximales sin celdas
+   bloqueadas, saltando la fila 14. Ver §5.6 para la alternativa que evita el
+   copy-paste por completo.
 
 ### 5.1 Mapeo fila → columna de la tabla intermedia
 
@@ -212,13 +254,24 @@ Todas las filas se filtran primero por: `Estado = "Activo"` **&** `¿Activo 12m?
 | Otros trastornos de ansiedad (43) | `COUNT(dx Depresión→Otras Infancia + Demencia→TGD == SI) == 0` |
 | Otros infancia/adolescencia (38) | `COUNT(dx Depresión→Asperger + Rett→TGD == SI) <= 2` |
 
-### 5.2 Fila 13 = suma literal de 15–24 *(decidido)*
+### 5.2 Unidad de conteo por bloque de filas — EXPLÍCITO
 
-Se replica el procedimiento del autor. **Doble-cuenta** a quien tiene factor de
-riesgo y diagnóstico a la vez (violencia + depresión es lo habitual), así que el
-módulo calcula además el `DISTINCTCOUNT(RUN)` real y **avisa en el log** cuando la
-suma lo excede, con la magnitud de la diferencia. Se pega la suma; el aviso queda
-para revisar con el referente si algún mes se dispara.
+Cada bloque del P6·A.1 cuenta una cosa distinta. **No son sumables entre sí y las
+diferencias son intencionales, no errores:**
+
+| Filas | Unidad de conteo | Relación |
+|---|---|---|
+| **15–23** | **Factores de riesgo.** Una persona puede tributar a varias filas (víctima de violencia física *y* psicológica *y* con ideación suicida). **Se cuentan doble a propósito.** | suma ≫ personas |
+| **24** | **Pacientes, globalmente.** `DISTINCTCOUNT(RUN)` con los filtros del P6. Una persona = 1, tenga los diagnósticos que tenga. | — |
+| **25–58** | **Por diagnóstico, según el FORMULARIO.** Una persona con depresión + ansiedad + TDAH tributa a 3 filas. | suma > fila 24 (esperado) |
+| **13** | **Suma literal de las filas 15 a 24** *(decidido)*. Hereda el doble conteo de los factores de riesgo. | — |
+
+**Sanity checks que el módulo emite en el log** (avisos, no errores):
+- `suma(25..58) > fila 24` → esperado; si NO se cumple, algo está mal.
+- `fila 24` fuera del rango histórico ~1300-1500 → aviso ruidoso.
+- `fila 13` vs el `DISTINCTCOUNT(RUN)` real de «tiene FR o dx»: se reporta la
+  diferencia (= magnitud del doble conteo de FR) para tenerla a la vista, sin
+  cambiar lo que se pega.
 
 ### 5.3 Fobia social: el port resuelve un pendiente upstream
 
@@ -246,9 +299,98 @@ antes que FOBIA por «agoraFOBIA»). La fila 41 sale calculada, no por descarte.
 masculino. Las etiquetas se invierten respecto del sexo registral; `trans_map()` ya
 hace ese split, hay que respetar la orientación al escribir.
 
+### 5.5 Hoja `P6_Revisar` — excepciones para decisión humana
+
+**La plantilla del REM es binaria (Hombres / Mujeres) y RAYEN reporta personas no
+binarias.** Eso no tiene solución automática correcta: asignar por sexo registral
+sería inventar el dato, y descartar la fila perdería a la persona. **Va a revisión
+manual, siempre.**
+
+Esa es la razón de ser de la hoja, pero no el único contenido. `P6_Revisar` junta
+**todo lo que requiere criterio humano antes de pegar al SP**, con RUN, la fila del
+P6 afectada y el motivo:
+
+| Motivo | Origen |
+|---|---|
+| **Sexo/género no binario** — no cae en columna H ni M | `Sexo` / `Género` fuera de {Hombre, Mujer} |
+| **`Sexo = "No informado"`** — el propio DAX lo genera cuando el Inscritos viene vacío | §Ferrada[Sexo] |
+| **Número en celda bloqueada** — ansiedad de separación en adulto, TDAH en madre<5, demencia en gestante/SENAME, suicidio en 0-4, depresión post parto en hombre o fuera de 10-59 | máscara §5.0 |
+| **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
+| **Egreso multi-dx divergente** — casos donde el PowerBI habría marcado Egresado todos los dx y el port marca solo uno | §4.3 |
+| **Identificador no-RUT** (DNI, pasaporte) | `Tipo de identificación` ≠ RUT → el CONTEXTO manda eliminar la fila; acá se lista antes de eliminarla |
+| **Edad sin fecha de nacimiento** — cayó al fallback `Inscritos[EDAD AÑOS]` | §Ferrada[Edad] |
+| **Fecha de formulario ilegible** | `mes_de_celda()` devolvió None |
+| **Fila 13 vs distinct** — magnitud del doble conteo de FR | §5.2 |
+| **Delta negativo** contra el mes anterior (reingresos, inconsistencias) | fase 4, cuando exista |
+
+Diseño: una sola hoja, columnas `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`,
+ordenada por motivo. **Fail loud** (§CLAUDE.md): si la hoja trae filas, el log lo
+grita con el conteo por motivo; nunca un número plausible y callado.
+
+### 5.6 Cómo llega el resultado al SP — *(pendiente de decidir)*
+
+El copy-paste choca con la protección de hoja (§5.0). Dos caminos:
+
+- **A — bloques pegables.** `P6_A1` sale partida en rectángulos maximales sin celdas
+  bloqueadas (saltando la fila 14, la 28, los recortes etarios de 22/23/37/38 y las
+  columnas AN/AO/AT/AU de 44-46). Son ~10 bloques: seguro, pero tedioso de pegar.
+- **B — escribir directo en una copia del `SP_26_V1.1.xlsm`.** openpyxl escribe en
+  celdas bloqueadas sin problema (la protección es de UI, no del archivo). Salida:
+  `SP_26_2026_MM_P6.xlsm` ya llenado, cero pegado. Requiere `keep_vba=True` y
+  **verificar que no rompa las macros ni las validaciones** del template MINSAL —
+  ese es el riesgo a probar antes de comprometerse.
+
 ---
 
-## 6. Puntos abiertos (no bloquean el arranque)
+## 6. Puntos abiertos
+
+### 6.0 🔴 BLOQUEANTE — definición de «Gestante» (col AN)
+
+**En revisión por el autor (sep-2026). No implementar hasta cerrar.** El DAX:
+
+```dax
+VAR FechaInicio = EOMONTH(TODAY(), -3) + 1
+VAR FechaFin    = EOMONTH(TODAY(), -1)
+VAR AtencionesGestante =
+CALCULATE(COUNTROWS(Atenciones),
+    FILTER(ALL(Atenciones),
+        Atenciones[RUN] = 'Ferrada'[RUN] &&
+        Atenciones[FECHA ATENCION] >= FechaInicio &&
+        Atenciones[FECHA ATENCION] <= FechaFin &&
+        CONTAINSSTRING(Atenciones[INSTRUMENTO], "matron") &&
+        (   CONTAINSSTRING(Atenciones[ACTIVIDADES], "control prenatal") ||
+            CONTAINSSTRING(Atenciones[FORMULARIOS CLINICOS], "gestante")  )))
+RETURN IF(AtencionesGestante > 0, "SI", "NO")
+```
+
+Hallazgos:
+
+1. **La ventana es de 2 meses, no de 3.** Corriendo el 2-sep-2026 para reportar
+   agosto: `EOMONTH(-3)` = 30-jun → `+1` = 1-jul; `EOMONTH(-1)` = 31-ago. Resultado:
+   **1-jul a 31-ago**. Para 3 meses reales sería `EOMONTH(TODAY(),-4)+1`. Compárese
+   con `SM Activo 12m`, que sí está correcto (`EOMONTH(-13)+1` = 12 meses exactos):
+   es un off-by-one aislado de esta fórmula.
+2. **`CONTAINSSTRING(INSTRUMENTO,"matron")` no matchea «Matrón».** DAX ignora
+   mayúsculas pero **no acentos** → los matrones varones se pierden. En Python
+   `norm()` quita acentos y los captaría: **divergencia silenciosa contra el
+   PowerBI** si no queda documentada.
+3. **Ya hay otra definición en el repo y no coincide.** `rem_utils.gestante_runs()`
+   (SM Actividades → SA) usa `ini3 = ini - 2 meses` = **3 meses** (1-jun a 31-ago en
+   el ejemplo). Misma paciente, mismo mes: **SA y SP darían flags distintos.**
+4. **Exige instrumento matrona** → un control prenatal hecho por médico/a no cuenta.
+5. **No verifica que el embarazo siga en curso.** Quien parió dentro de la ventana
+   sigue en «SI»; quien está embarazada con su último control fuera de la ventana
+   sale «NO». El spec la titula «Embarazo **probable**»: es un proxy.
+6. Al colgar de `TODAY()`, abrir el PowerBI en octubre para corregir agosto corre la
+   ventana a 1-ago–30-sep → se reporta agosto con datos de septiembre (§4.1).
+
+**Decisión pendiente:** ¿se replica el DAX literal (2 meses, sin matrones), se
+adopta `gestante_runs()` (3 meses, con matrones) como fuente única para SA y SP, o
+se define algo nuevo (p. ej. último control prenatal dentro de N meses **y** sin
+parto registrado)? Sea cual sea, **SA y SP deben usar la MISMA función** — si no,
+el mismo flag da dos números en el mismo REM.
+
+### 6.1 No bloqueantes
 
 1. **Fila 57 Epilepsia** — no está en el formulario SM ni en el PBI, y
    `EXCLUIR_PATOLOGIA={75,77,79,81}` la saca del A05 por ser del REM adulto. ¿Queda
