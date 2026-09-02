@@ -40,7 +40,7 @@ USO:
 import sys
 from pathlib import Path
 
-from programas.rem_utils import VERSION
+from programas.rem_utils import VERSION, mes_anterior
 import programas.rem_saludmental as sm
 import programas.estamentos as estam
 
@@ -558,9 +558,7 @@ def _tab_a05(nb, root, ruta_inicial=""):
     _fila_archivo(tab, var_ruta, "Elige el export de Control de Salud Mental")
 
     # ── Período: archivo completo vs. un mes (por FECHA FORMULARIO) ──
-    from datetime import date as _date
-    _hoy = _date.today()
-    _y0, _m0 = (_hoy.year, _hoy.month - 1) if _hoy.month > 1 else (_hoy.year - 1, 12)
+    _y0, _m0 = mes_anterior()
     caja_per = ttk.LabelFrame(tab, text="Período", padding=8)
     caja_per.pack(fill="x", pady=(2, 6))
     var_periodo = tk.StringVar(value="todo")   # "todo" | "mes"
@@ -792,8 +790,7 @@ def _tab_a23(nb, root):
     get_nsp = _fila_archivos(tab, "Inasistentes NSP (opc):", "Reporte de pacientes inasistentes (NSP) — Sección H (puedes cargar VARIOS años; se filtra al mes por FECHA CITA)")
     get_salida = _fila_carpeta_salida(tab)
 
-    hoy = date.today()
-    y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+    y0, m0 = mes_anterior()
     barra_mes = ttk.Frame(tab)
     barra_mes.pack(fill="x", pady=(4, 4))
     ttk.Label(barra_mes, text="Mes a reportar (año / mes):").pack(side="left")
@@ -891,8 +888,7 @@ def _tab_sm(nb, root):
     get_maestro = _fila_archivos(tab, "Maestro (opc, saco vacío):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
     get_salida = _fila_carpeta_salida(tab)
 
-    hoy = date.today()
-    y0, m0 = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+    y0, m0 = mes_anterior()
     barra_mes = ttk.Frame(tab)
     barra_mes.pack(fill="x", pady=(4, 4))
     ttk.Label(barra_mes, text="Mes a reportar (año / mes):").pack(side="left")

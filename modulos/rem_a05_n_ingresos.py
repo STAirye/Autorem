@@ -36,7 +36,9 @@ import programas.rem_saludmental as sm
 
 # ── Config específica del INGRESO ─────────────────────────────────────
 NOMBRE_HOJA_SALIDA = "A05_Ingresos"
-BUSQUEDAS = {"Ingreso": ["INGRESO"]}     # la columna '...ESTADO' muestra 'Ingreso'
+BUSQUEDAS = {"Ingreso": ["INGRESO"]}     # la columna '...ESTADO' muestra 'Ingreso'.
+# Match por SUBCADENA: 'REINGRESO' también tributa aquí A PROPÓSITO — para el REM un
+# reingreso es estadísticamente un ingreso. No acotar a igualdad exacta.
 TIPO_LABEL = {"Ingreso": "Ingreso"}
 ORDEN_TIPOS = {"Ingreso": 0}
 # Ingreso con diagnóstico que DEBERÍA tener subtipo y no lo trae -> Falta_Subtipo.

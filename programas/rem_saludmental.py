@@ -204,8 +204,6 @@ def flag_demo(cell, regla):
     n = norm(cell)
     if regla == "_no_vacio":   # hoy solo Pueblos_Originarios; lista compartida con pandas
         return "SI" if n not in PUEBLO_VACIO else ""
-    if regla == "_no_chileno":
-        return "SI" if (n and "CHILE" not in n) else ""
     if isinstance(regla, (list, tuple)):
         return "SI" if any(norm(k) in n for k in regla) else ""
     return ""

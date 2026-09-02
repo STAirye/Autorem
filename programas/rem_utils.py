@@ -423,18 +423,29 @@ def grid(sub, bandas, lbls, con_sexo=True):
     return out
 
 
+def indice_col(headers_norm, *subs):
+    """Índice 0-based de la 1ª columna cuyo header YA normalizado contiene TODAS
+    las subcadenas `subs` (se normalizan). None si no hay. Para el mundo leer_xlsx
+    (acceso por índice de tupla); resolver_columnas es el equivalente por-nombre."""
+    return next((i for i, n in enumerate(headers_norm)
+                 if all(norm(s) in n for s in subs)), None)
+
+
+def mes_anterior(hoy=None):
+    """(año, mes) del mes calendario anterior a `hoy` (date; default = hoy real).
+    Fuente única del 'mes por defecto' que comparten la GUI y los módulos pandas."""
+    from datetime import date
+    hoy = hoy or date.today()
+    return (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
+
+
 def _rango_mes(mes):
     """(inicio, fin) Timestamp del mes de reporte. mes=(año,mes) o None -> mes
     anterior. Compartido por los módulos pandas (A23, SM Actividades, Trabajo
     Perdido); los cálculos van hacia atrás desde el mes reportado, NO TODAY()."""
     import calendar
-    from datetime import date
     import pandas as pd
-    if mes is None:
-        hoy = date.today()
-        y, m = (hoy.year, hoy.month - 1) if hoy.month > 1 else (hoy.year - 1, 12)
-    else:
-        y, m = mes
+    y, m = mes if mes is not None else mes_anterior()
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
@@ -528,14 +539,10 @@ def trans_map(entrada):
     (toda la población del CESFAM) → se carga solo si el usuario lo aporta."""
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
-
-    def ci(*subs):
-        return next((i for i, n in enumerate(hn) if all(norm(s) in n for s in subs)), None)
-
-    i_run = ci("NUMERO", "IDENTIFICACION")
+    i_run = indice_col(hn, "NUMERO", "IDENTIFICACION")
     if i_run is None:
-        i_run = ci("RUN")
-    i_gen = ci("GENERO")
+        i_run = indice_col(hn, "RUN")
+    i_gen = indice_col(hn, "GENERO")
     if i_run is None or i_gen is None:   # archivo modificado o reporte equivocado
         falta = " y ".join(c for c, i in [("RUN", i_run), ("GÉNERO", i_gen)] if i is None)
         raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {falta}. "
@@ -555,11 +562,7 @@ def atenid_multiprofesional(entrada):
     sin este reporte, todo se asume mono-profesional."""
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
-
-    def ci(*subs):
-        return next((i for i, n in enumerate(hn) if all(norm(s) in n for s in subs)), None)
-
-    i_aten, i_m1 = ci("ATEN", "ID"), ci("MULTIPROFESIONAL", "1")
+    i_aten, i_m1 = indice_col(hn, "ATEN", "ID"), indice_col(hn, "MULTIPROFESIONAL", "1")
     if i_aten is None or i_m1 is None:
         raise ValueError("el 'Monitoreo Multiprofesional' no trae ATEN ID / "
                          "Multiprofesional-1. ¿Modificado o reporte equivocado?")

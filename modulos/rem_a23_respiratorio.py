@@ -39,7 +39,7 @@ import pandas as pd
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, _mujer, _hombre,
-                                 grid as _grid, fecha_col, PUEBLO_VACIO)
+                                 grid as _grid, fecha_col, PUEBLO_VACIO, indice_col)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -280,10 +280,8 @@ def cargar_estrat(entrada):
     """DataFrame de Estratificación: RUN (=RUT-DV) -> Diagnósticos (normalizado)."""
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
-    def ci(*subs):
-        return next((i for i, n in enumerate(hn) if all(norm(s) in n for s in subs)), None)
-    i_rut, i_dv = ci("RUT"), ci("DV")
-    i_dg = ci("DETALLE", "DIAGNOSTICOS") or ci("CONDICIONES CRONICAS")
+    i_rut, i_dv = indice_col(hn, "RUT"), indice_col(hn, "DV")
+    i_dg = indice_col(hn, "DETALLE", "DIAGNOSTICOS") or indice_col(hn, "CONDICIONES CRONICAS")
     run = [f"{f[i_rut]}-{f[i_dv]}" if i_dv is not None and f[i_rut] not in (None, "") else str(f[i_rut])
            for f in filas]
     dg = [norm(f[i_dg]) if i_dg is not None else "" for f in filas]
