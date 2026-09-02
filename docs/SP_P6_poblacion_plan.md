@@ -298,7 +298,7 @@ diferencias son intencionales, no errores:**
 | Filas | Unidad de conteo | Relación |
 |---|---|---|
 | **15–23** | **Factores de riesgo.** Una persona puede tributar a varias filas (víctima de violencia física *y* psicológica *y* con ideación suicida). **Se cuentan doble a propósito.** | suma ≫ personas |
-| **24** | **Pacientes, globalmente.** `DISTINCTCOUNT(RUN)` con los filtros del P6. Una persona = 1, tenga los diagnósticos que tenga. | — |
+| **24** | **Pacientes, globalmente.** `DISTINCTCOUNT(RUN)` con los filtros del P6. Una persona = 1, tenga los diagnósticos que tenga. **Excepción: la columna `AV` (PIC) sí se suma por diagnóstico** — §5.4.2. | — |
 | **25–58** | **Por diagnóstico, según el FORMULARIO.** Una persona con depresión + ansiedad + TDAH tributa a 3 filas. | suma > fila 24 (esperado) |
 | **13** | **Suma literal de las filas 15 a 24** *(decidido)*. Hereda el doble conteo de los factores de riesgo. | — |
 
@@ -373,9 +373,22 @@ AV(fila) = 0                    en el resto
 | Filas | PIC | Motivo |
 |---|---|---|
 | 15–23 | = total de la fila | factores de riesgo |
+| **24** | **= SUMA(AV 25:58)** | **excepción, ver abajo** |
 | 25, 26, 27 (depresión leve/moderada/grave) | = total de la fila | GES depresión |
 | 44, 45, 46 (demencias / Alzheimer) | = total de la fila | GES Alzheimer |
 | resto | 0 | — |
+| 13 | = SUMA(AV 15:24) | regla general de la fila 13 (§5.2) |
+
+**Excepción de la fila 24 (importante):** en el resto de la fila 24 cada celda es un
+`DISTINCTCOUNT(RUN)` — una persona cuenta una vez tenga los diagnósticos que tenga
+(§5.2). **`AV` es la única celda de la fila 24 que NO es un distinct:** se acumula
+por diagnóstico, `AV24 = SUMA(AV25:AV58)`. Con la regla WIP eso se reduce a
+`AV25+AV26+AV27 + AV44+AV45+AV46`.
+
+Sanity check que el módulo emite: si `AV24 > C24` hay comorbilidad
+depresión + demencia sumándose dos veces, y **el control de errores del SP lo va a
+marcar** (`AV ≤ C`). Es raro pero posible → aviso en el log con los RUN implicados
+para resolverlo a mano.
 
 **Esto es un placeholder por obligación de reporte, no un conteo real de planes
 elaborados.** El módulo lo implementa como regla explícita y configurable (una
