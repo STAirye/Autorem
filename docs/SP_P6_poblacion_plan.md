@@ -90,13 +90,28 @@ contra el PowerBI.
 
 ### 3.2 Alcance de la tabla intermedia: SLIM (decidido)
 
-Se portan las columnas que el P6 necesita, **con los nombres del export PowerBI**.
-Quedan **fuera**:
-- las 21 columnas de fármacos (`Sertralina`, `Quetiapina`, `Diazepam`… y sus `(Ext)`)
-  → requieren 2 exports más y **no tributan a ninguna casilla del REM**;
-- `¿Receta Vigente?` (misma razón);
-- las columnas dx sin `(form)` que dependen del ADA histórico (§3.1). Si se quiere
-  el diff exacto, se enchufan después sin rediseñar nada.
+**El DAX tiene MUCHA columna redundante para el cálculo final.** De las ~150 de
+`Ferrada`, el P6 necesita ~55. Se portan esas, **con los nombres del export
+PowerBI** para poder diffear.
+
+**Regla de oro (decidida):** se usan **solo las columnas `(form)`**. Las `(fecha)` y
+las `(mixto)`/`(dg)` **no se emiten**.
+
+| Qué se omite | Cuántas | Por qué |
+|---|---|---|
+| Todas las `(fecha)` — `Depresión (fecha)`, `Ansiedad (fecha)`… | ~28 | Son **variables intermedias** del DAX (el `LASTDATE` que alimenta a su `(form)`), no resultados. Se calculan en memoria y se descartan. |
+| Todas las `(mixto)` / `(dg)` — `SM TGD`, `SM Desintegrativo niñez`, `Bipolaridad (dg)`, `Retraso Mental (dg)` | ~6 | **Deprecated, no se usan actualmente.** |
+| Las dx **sin** `(form)` — `SM Depresión`, `SM Ansiedad`… | ~24 | Solo alimentan `Pertenece a PSM`, que es implicado por `¿Ingresado?` (§3.1). |
+| `Pertenece a PSM` | 1 | Redundante: `Ingresado = SI ⟹ Pertenece = SI`. |
+| Los 21 fármacos + `¿Receta Vigente?` | 22 | Requieren 2 exports más y **no tributan a ninguna casilla del REM**. |
+| `SM Atendido hace 6m` / `hace 13m`, `SM Pauta llenada`, `SM último control (fecha)/(instrumento)`, `PAD Es cuidador?`, `Sector` | 7 | El P6·A.1 no tiene ninguna casilla que los consuma. |
+| **`Nombre completo`, `Nombre Social`, `Fecha Nacimiento`, `Dirección Completa`, `Celular`, `Mail`, `Tipo de identificación`** | 7 | **Privacidad (§8 CLAUDE.md), no solo economía.** El export PowerBI arrastra nombre, dirección, teléfono y correo; **el P6 no necesita ninguno**. El RUN basta para trazar. Menos PII en circulación. |
+
+Se conservan `Estado`, `Motivo Pasivación` y `Fecha Pasivación` aunque el A.1 no los
+use: los necesita el delta P→A05 de la fase 4 (traslados y fallecidos).
+
+Si algún día se quiere el diff celda-a-celda contra el PowerBI, las omitidas se
+enchufan sin rediseñar nada.
 
 ---
 
@@ -279,8 +294,21 @@ Todas las filas se filtran primero por: `Estado = "Activo"` **&** `¿Activo 12m?
 | 50 | Retraso mental | `Retraso Mental (form)` |
 | 51 | Trastorno de personalidad | `Personalidad (form)` |
 | 52–56 | TGD: autismo / asperger / Rett / desintegrativo / no especificado | respectivas `(form)` |
-| 57 | Epilepsia | **sin fuente** en el formulario SM ni en el PBI → manual / 0 *(abierto)* |
+| 57 | Epilepsia | **NO SE REPORTA** — no es del programa de salud mental *(decidido)*. Coherente con `EXCLUIR_PATOLOGIA` del A05. |
 | 58 | Otras | `Otras (form)` |
+
+**Diagnósticos del formulario que NO se cuentan** *(decidido)* — son de psiquiatría
+hospitalaria o COSAM, no de APS, así que no tributan al P6·A.1:
+
+| Nº pregunta | Diagnóstico |
+|---|---|
+| 47 | Psicosis |
+| 53 | Primer episodio de esquizofrenia |
+| 67 | Trastornos conductuales asociados a demencia |
+
+No van a «Otras» (fila 58): se **descartan**. Ojo con no confundir la **pregunta 51**
+(Esquizofrenia, que **sí** cuenta y va a la fila 47 del P6) con la **pregunta 53**
+(primer episodio, que no).
 
 **Exclusiones comodín** (nivel fila, antes de agregar — del `CONTEXTO_REM_general`):
 
@@ -374,10 +402,14 @@ AV(fila) = 0                    en el resto
 |---|---|---|
 | 15–23 | = total de la fila | factores de riesgo |
 | **24** | **= SUMA(AV 25:58)** | **excepción, ver abajo** |
-| 25, 26, 27 (depresión leve/moderada/grave) | = total de la fila | GES depresión |
+| 25, 26, 27, **28** (depresión leve/moderada/grave **y post parto**) | = total de la fila | GES depresión |
 | 44, 45, 46 (demencias / Alzheimer) | = total de la fila | GES Alzheimer |
 | resto | 0 | — |
 | 13 | = SUMA(AV 15:24) | regla general de la fila 13 (§5.2) |
+
+**No entran otras GES** *(decidido)*: esquizofrenia y consumo perjudicial en menores
+de 20 son GES, pero se atienden en **psiquiatría hospitalaria o COSAM**, no en APS →
+fuera de la regla del PIC.
 
 **Excepción de la fila 24 (importante):** en el resto de la fila 24 cada celda es un
 `DISTINCTCOUNT(RUN)` — una persona cuenta una vez tenga los diagnósticos que tenga
@@ -385,10 +417,12 @@ AV(fila) = 0                    en el resto
 por diagnóstico, `AV24 = SUMA(AV25:AV58)`. Con la regla WIP eso se reduce a
 `AV25+AV26+AV27 + AV44+AV45+AV46`.
 
-Sanity check que el módulo emite: si `AV24 > C24` hay comorbilidad
-depresión + demencia sumándose dos veces, y **el control de errores del SP lo va a
-marcar** (`AV ≤ C`). Es raro pero posible → aviso en el log con los RUN implicados
-para resolverlo a mano.
+**`AV24` va a REVISIÓN MANUAL** *(decidido)*. Si `AV24 > C24` hay comorbilidad
+depresión + demencia sumándose dos veces, y el control de errores del SP lo marca
+(`AV ≤ C`). En teoría el **GES demencia tiene primacía** sobre el de depresión, pero
+**la primacía NO se aplica automáticamente**: los RUN con ambas GES se listan en
+`P6_Revisar` para que se decidan a mano. La regla clínica queda anotada como ayuda a
+quien revise, no como lógica del código.
 
 **Esto es un placeholder por obligación de reporte, no un conteo real de planes
 elaborados.** El módulo lo implementa como regla explícita y configurable (una
@@ -439,43 +473,35 @@ Diseño: una sola hoja, columnas `RUN · Motivo · Fila_P6 · Detalle · Valor_c
 ordenada por motivo. **Fail loud** (§CLAUDE.md): si la hoja trae filas, el log lo
 grita con el conteo por motivo; nunca un número plausible y callado.
 
-### 5.6 Cómo llega el resultado al SP — *(pendiente de decidir)*
+### 5.6 Cómo llega el resultado al SP: COPY-PASTE en bloques *(decidido)*
 
-El copy-paste choca con la protección de hoja (§5.0). Dos caminos:
+Se descarta escribir directo en una copia del `SP_26.xlsm` (openpyxl podría hacerlo:
+la protección es de UI, no del archivo). **Se mantiene el copy-paste a propósito.**
 
-- **A — bloques pegables.** `P6_A1` sale partida en rectángulos maximales sin celdas
-  bloqueadas (saltando la fila 14, la 28, los recortes etarios de 22/23/37/38 y las
-  columnas AN/AO/AT/AU de 44-46). Son ~10 bloques: seguro, pero tedioso de pegar.
-- **B — escribir directo en una copia del `SP_26_V1.1.xlsm`.** openpyxl escribe en
-  celdas bloqueadas sin problema (la protección es de UI, no del archivo). Salida:
-  `SP_26_2026_MM_P6.xlsm` ya llenado, cero pegado. Requiere `keep_vba=True` y
-  **verificar que no rompa las macros ni las validaciones** del template MINSAL —
-  ese es el riesgo a probar antes de comprometerse.
+**Por qué:** el paso manual es un **control de calidad humano**. Obliga a mirar los
+números antes de que entren al REM y a hacerse una idea de las magnitudes; un pipeline
+que escribe solo el archivo final se puede equivocar en silencio y nadie lo nota.
+Es una decisión de diseño, no una limitación técnica.
+
+`P6_A1` sale partida en **rectángulos maximales sin celdas bloqueadas**, cada uno
+rotulado con su rango destino (ej. «pegar en `F15`»). Los cortes salen de §5.0:
+la fila 14, la fila 28, los recortes etarios de 22/23/37/38, y las columnas AN/AO
+de 35-36 y AN/AO/AT/AU de 44-46. Son ~10 bloques.
 
 ---
 
 ## 6. Puntos abiertos
 
-> La definición de **Gestante** era el bloqueante de esta sección; quedó cerrada
-> en **§4.7** (3 meses, matrona, fuente única SA/SP).
+Los bloqueantes de esta sección quedaron todos cerrados (sep-2026): **Gestante**
+en §4.7, **PIC / col AV** en §5.4.2, **epilepsia y diagnósticos no-APS** en §5.1,
+**solo `(form)`** en §3.2, **copy-paste en bloques** en §5.6.
 
+Queda solo un punto menor, ya aceptado y sin acción:
 
-1. **Fila 57 Epilepsia** — no está en el formulario SM ni en el PBI, y
-   `EXCLUIR_PATOLOGIA={75,77,79,81}` la saca del A05 por ser del REM adulto. ¿Queda
-   manual, o hay otra fuente?
-2. **Alcance exacto de la regla PIC (§5.4.2)** — «las depresiones varias»: ¿entra la
-   fila 28 (depresión post parto)? ¿Y hay otras filas GES que hoy queden fuera
-   (esquizofrenia primer episodio, consumo perjudicial en < 20 años)?
-3. **Diagnósticos del formulario sin fila en A.1:** Psicosis (47), Primer episodio
-   de esquizofrenia (53), Trastornos conductuales asociados a demencia (67),
-   Depresión refractaria / grave con psicosis / alto riesgo suicida (25/27/29 — esas
-   tres sí tienen fila, pero en la sección **B** de especialidades). ¿Caen todas en
-   «Otras» (fila 58) o se descartan?
-4. **`SM TGD` es «(mixto)»** en el PBI: el formulario tiene una pregunta 63 genérica
-   («Trastorno generalizado del desarrollo») además de las 83–91 específicas.
-   Verificar que no haya doble conteo entre la fila 56 y las 52–55.
-5. **`Bipolaridad (dg)` vs `(form)`** — pacientes legacy solo con `(dg)`; el PBI solo
-   cuenta `(form)` y subestima levemente. Ya aceptado en el CONTEXTO; se mantiene.
+1. **`Bipolaridad (dg)` vs `(form)`** — hay pacientes legacy con el diagnóstico solo
+   en `(dg)`. Como se usan **solo las columnas `(form)`** (§3.2), esos casos no se
+   cuentan y el número queda levemente subestimado. Ya aceptado en el
+   `CONTEXTO_REM_general`; se mantiene.
 
 ---
 
