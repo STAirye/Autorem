@@ -144,7 +144,7 @@ def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente):
     base = {
         "casilla": casilla, "sub": sub, "run": s["RUN"].astype(str), "id": ids,
         "estamento": s[est_col].astype(str),
-        "edad": pd.to_numeric(s[edad_col], errors="coerce"),
+        "edad": pd.to_numeric(s[edad_col].map(edad_anios), errors="coerce"),  # ANOS_AT num o texto verboso
         "sexo": s["SEXO"].astype(str), "fecha": s["FECHA"],
         "actividad": s["ACT"].astype(str), "fuente": fuente}
     for c in DEM_COLS:   # flags demográficos (ADA los trae; grupal -> False)

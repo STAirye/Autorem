@@ -39,7 +39,7 @@ import pandas as pd
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, _mujer, _hombre,
-                                 grid as _grid, fecha_col)
+                                 grid as _grid, fecha_col, PUEBLO_VACIO)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -215,8 +215,9 @@ def _edad(dem, ref):
 
 def _origen(dem):
     nac, pue = dem["NACION"].map(norm), dem["PUEBLO"].map(norm)
-    mig = (nac != "CHILENA") & (nac != "") & (nac != "DESCONOCIDO")
-    ori = (nac == "CHILENA") & ~pue.isin({"NINGUNO", "NO CONTESTA", "NO SABE", ""})
+    es_chileno = nac.str.contains("CHILEN", regex=False, na=False)   # CHILENA/CHILENO/variantes
+    mig = ~es_chileno & (nac != "") & (nac != "DESCONOCIDO")
+    ori = es_chileno & ~pue.isin(PUEBLO_VACIO)
     return pd.Series(["Migrante" if m else "Originario" if o else "NO"
                       for m, o in zip(mig, ori)], index=dem.index)
 
@@ -303,7 +304,7 @@ def _sala(idx, edad, aten, otros, estrat):
     o = otros
     def N(k): return o[k].map(norm)
     med = o["_med"]
-    si  = lambda k: N(k).str.contains("SI", regex=False, na=False)   # padece/recurrente = 'Si'
+    si  = lambda k: N(k).eq("SI")   # padece/recurrente = 'Si'
     nn  = lambda k: N(k).str.len() > 0                               # campo obligatorio no vacío
     est = lambda k: N(k).str.contains("INGRESO", na=False) | N(k).str.contains("SEGUIMIENTO", na=False)
 
@@ -375,7 +376,7 @@ def _seccion_g(otros, corte):
     o = otros
     def N(k): return o[k].map(norm)
     med = o["_med"]
-    si  = lambda k: N(k).str.contains("SI", regex=False, na=False)
+    si  = lambda k: N(k).eq("SI")
     est = lambda k: N(k).str.contains("INGRESO", na=False) | N(k).str.contains("SEGUIMIENTO", na=False)
     ed = ((corte - pd.to_datetime(o["FNAC_o"], errors="coerce", dayfirst=True)).dt.days // 365.25)
     edad_run = ed.groupby(o["RUN"]).max()
