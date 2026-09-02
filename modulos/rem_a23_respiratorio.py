@@ -146,7 +146,8 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     # De toda la historia, no del mes. groupby.last() = último no-nulo por columna.
     dem = d.sort_values("FECHA").groupby("RUN").last()
     fer["Última atención (instrumento)"] = dem["INSTR"].reindex(fer.index).fillna("")
-    fer["Nombre completo"] = (dem["NOMBRES"] + " " + dem["APAT"] + " " + dem["AMAT"]).str.strip().reindex(fer.index)
+    # NO se emite el nombre del paciente: §8 = el único identificador en la salida es
+    # el RUN (=RUT-DV), que basta para trazar la fila a la ficha. No reañadir NOMBRES/APAT/AMAT.
     for c in ("SEXO", "SECTOR", "NACION", "PUEBLO"):
         fer[c.title()] = dem[c].reindex(fer.index)
     fer["Edad"] = _edad(dem, fin).reindex(fer.index)
