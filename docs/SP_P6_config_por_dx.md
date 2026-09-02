@@ -71,7 +71,7 @@ la decisión **D2**, que le quita el filtro a los factores de riesgo.
 | 35 | Trastorno hipercinético (TDAH) *(**sin recorte etario en el SP**; el tope 0-24 es del SA·A05, §5.0.1)* | `TDAH (form)` | 57 | 58 | ¿TIENE TRASTORNOS HIPERCINÉTICOS…? |
 | 36 | Disocial desafiante y oposicionista | `Oposicionista desafiante (form)` | 69 | 70 | ¿TIENE TRASTORNO DISOCIAL DESAFIANTE Y OPOSICIONISTA? |
 | 37 | Ansiedad de separación *(0-14; ≥15 se **pliega** a 10-14)* | `Ansiedad separación (form)` | 71 | 72 | ¿TIENE TRASTORNO DE ANSIEDAD DE SEPARACIÓN EN LA INFANCIA? |
-| 38 | Otros comportamiento/emociones infancia *(0-19; ≥20 se **pliega** a 15-19)* | `Otras Infancia/Adolescencia (form)` | 73 | 74 | ¿TIENE OTROS TRASTORNOS DEL COMPORTAMIENTO Y DE LAS…? |
+| 38 | Otros comportamiento/emociones infancia *(0-24; ≥25 se **pliega** a 20-24)* | `Otras Infancia/Adolescencia (form)` | 73 | 74 | ¿TIENE OTROS TRASTORNOS DEL COMPORTAMIENTO Y DE LAS…? |
 | **39-43** | Ansiedad: TEPT / pánico / fobia social / TAG / otros | `Ansiedad (form)` + tipo | 41 | **42** | ¿TIENE TRASTORNO DE ANSIEDAD? |
 | **44-46** | Demencias leve / moderado / avanzado *(solo CON etapa, D5)* | `Demencia (form)` + etapa | 44 | **46** | ¿TIENE ALZHEIMER Y/O OTRAS DEMENCIAS? |
 | 47 | Esquizofrenia | `Esquizofrenia (form)` | 51 | 52 | ¿TIENE ESQUIZOFRENIA? |

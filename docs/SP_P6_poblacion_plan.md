@@ -261,7 +261,7 @@ demográficas por fila.**
 | 22, 23 Suicidio | F, G | no aplica banda 0-4 años |
 | 28 Depresión post parto | todas las de hombres + 0-9 + 60+ + AN, AP, AR, AX | **solo mujeres de 10 a 59 años** |
 | 37 Ansiedad de separación | 15-19 en adelante + AO | **solo 0-14 años** |
-| 38 Otros trastornos infancia | 20-24 en adelante + AO | **solo 0-19 años** |
+| 38 Otros trastornos infancia | 25-29 en adelante + AO | **solo 0-24 años** |
 | 35, 36 TDAH / disocial | AO | no aplica «madre de hijo < 5» |
 | 44-46 Demencias | AN, AO, AT, AU | no aplica gestante / madre<5 / SENAME / Mejor Niñez |
 | todas | C, D, E | son fórmulas (§5) |
@@ -285,12 +285,18 @@ fuera del rango de su fila no tiene celda donde caer — y **si se descarta, des
 del REM**. La práctica del autor (hoy manual) es **sumarlo al último rango etario
 reportable de esa fila**, y eso es lo que hay que automatizar en cada planilla.
 
-**Recortes del SP·P6 A.1** (leídos de la máscara de protección):
+**Recortes del SP·P6 A.1** — leídos de la máscara de protección del `.xlsm`:
+
+> 📌 **Regla de implementación: la máscara se EXTRAE del archivo, no se transcribe.**
+> `ws.cell(f, c).protection.locked` sobre las 46 filas de la sección A.1, comparadas
+> una por una. Esta tabla es documentación; **la fuente de verdad es el archivo**.
+> No es teórico: transcribir a mano ya metió un error acá (la fila 38 abre hasta
+> 20-24, no hasta 15-19 — detectado al extraerla mecánicamente, sep-2026).
 
 | Fila P6 | Rango reportable | Fuera de rango → se pliega a |
 |---|---|---|
 | 37 Ansiedad de separación | 0-14 | ≥15 → **banda 10-14** |
-| 38 Otros trastornos infancia | 0-19 | ≥20 → **banda 15-19** |
+| 38 Otros trastornos infancia | **0-24** | ≥25 → **banda 20-24** |
 | 28 Depresión post parto | mujeres 10-59 | ≥60 → **banda 55-59** |
 | 22-23 Suicidio | 5 y más | 0-4 → **banda 5-9** *(único recorte por el extremo inferior; a confirmar)* |
 | **35 TDAH** | **0-80+ — SIN recorte** | **no se pliega nada** ⚠ ver abajo |
