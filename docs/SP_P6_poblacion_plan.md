@@ -140,13 +140,21 @@ Sin esto no se puede recalcular un mes pasado ni cuadrar el delta P(m)−P(m−1
 Nota: el PowerBI asume que se corre en el mes M+1 para reportar M; con `corte`
 explícito eso deja de ser un supuesto implícito.
 
-### 4.2 El DAX **no es uniforme** entre diagnósticos
+### 4.2 El DAX SÍ es uniforme *(corregido tras el parseo — fase 0)*
 
-Algunas fórmulas `(form)` filtran `CONTAINSSTRING(INSTRUMENTO,"médico")` (Depresión)
-y otras no (Adaptativo); los códigos CIE-10 del bloque `_Atenciones` varían por dx.
-**El core del port es una tabla de config por-dx** extraída de las 28 fórmulas
-`(form)` del spec — en el estilo de `OVERRIDE_PATOLOGIA`, con revisión humana
-fórmula por fórmula. Esa tabla ES el entregable de la fase 0.
+Yo había escrito acá que «el DAX no es uniforme entre diagnósticos». **Es falso.**
+El parseo mecánico de las 28 fórmulas `(form)` muestra que **todas siguen el mismo
+patrón** (último formulario con `INSTRUMENTO ⊃ médico` + pregunta dx ⊃ «si» +
+ESTADO ⊃ ingreso/seguimiento), con **una sola excepción**: `SM Abuso Sexual (form)`
+no filtra por instrumento.
+
+Eso simplifica el port: **una función parametrizada por (pregunta_dx, pregunta_estado,
+filtra_instrumento)** y una tabla de datos, en vez de 28 casos especiales.
+
+La tabla está extraída y lista para revisión en
+**[SP_P6_config_por_dx.md](SP_P6_config_por_dx.md)** — entregable de la fase 0, con
+5 anomalías anotadas (la más relevante: la fila 56 del P6 se llena hoy con la
+pregunta 63 cuando le corresponde la 91, que no tiene columna en el PowerBI).
 
 ### 4.3 Egreso: se corrige el bug del PowerBI *(decidido)*
 
