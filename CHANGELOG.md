@@ -10,6 +10,68 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.8.1] — 2026-09-02
+
+Tanda de **correctitud, privacidad y robustez** surgida de una revisión de código
+integral (Claude Octopus / `octo` code-review 🐙). Cada cambio verificado con la
+batería de tests (**57/57**) y con checks funcionales puntuales.
+
+### Seguridad / Privacidad
+- **A23 deja de emitir el nombre del paciente** (§8). La hoja `A23_Detalle` volcaba
+  `NOMBRES + APAT + AMAT` de cada paciente — era la **única** salida del proyecto que
+  exponía nombre. Eliminada la columna; el **RUN (=RUT-DV)** queda como identificador,
+  suficiente para trazar cada fila a la ficha. `Nación/Pueblo/Sexo/Sector` se mantienen.
+
+### Corregido (regla dura: *fallar ruidoso, no callado y mal*)
+- **Fechas ilegibles ya no se descartan en silencio.** Los loaders pandas
+  (`cargar_atenciones`, `cargar_grupal`, `cargar_inasistentes`) parseaban la fecha con
+  `to_datetime(errors="coerce")`: un valor corrupto pasaba a `NaT` y caía **fuera del
+  filtro de mes sin aviso** → indicadores subcontados. Nuevo helper `rem_utils.fecha_col`
+  cuenta y avisa los valores no-vacíos ilegibles (distingue vacío legítimo de fecha rota).
+- **A05 sobrecontaba Pueblos Originarios.** `flag_demo` (openpyxl) no listaba
+  "No sabe / No contesta / No informado" como vacío, mientras el mundo pandas sí →
+  misma columna, dos definiciones. Unificado en `rem_utils.PUEBLO_VACIO` (fuente única,
+  superset), consumido por A05 y por `marcar_demografia`. Un **tercer** set duplicado en
+  `_origen` (A23) también migró a la constante compartida.
+- **A05 y A03 ahora aplican `verificar_hoja_unica`.** La guarda que rechaza exports
+  modificados (datos en >1 hoja, típico de una tabla dinámica agregada) solo corría en la
+  ruta pandas; A05/A03 abrían `wb.active` sin ella → un export tocado pasaba en silencio.
+- **A23 — matching por igualdad, no por subcadena.** `si()` en SALA / Sección G usaba
+  `contains("SI")`: un futuro "Sin dato" / "Sigue control" (norm → `SIN…` / `SIGUE…`)
+  contaba como afirmativo e inflaba el conteo. Ahora `.eq("SI")` exacto. (`est()` con
+  INGRESO/SEGUIMIENTO se deja con `contains`: ahí el substring es legítimo.)
+- **A23 — Migrante robusto a variantes de nacionalidad.** Comparaba con el literal
+  exacto `"CHILENA"`: "Chileno" o cualquier variante marcaba **Migrante**. Ahora
+  `contains("CHILEN")`.
+- **SM — la edad del ADA parsea texto verboso.** `ANOS_AT` se leía con `to_numeric`
+  directo mientras el grupal ya usaba `edad_anios`; si IRIS trajera la edad como
+  "55 años 3 meses", caía fuera de toda banda etaria. Ahora `edad_anios` + `to_numeric`.
+- **A03 — puntajes GHQ-12 fuera de rango se avisan.** El corte cubre **0–12** (scoring
+  binario 0-0-1-1, estándar APS Chile); un puntaje >12 (o <0) caía **callado** al bucket
+  "(sin puntaje)". Ahora se acumula y se avisa al final (posible cambio de scoring a
+  Likert 0–36). El corte 0–12 se mantiene.
+
+### Cambiado / refactor (sin cambio de comportamiento)
+- `rem_utils.indice_col` unifica el helper `ci` (índice de columna por subcadena) que
+  estaba reimplementado **idéntico** en `trans_map`, `atenid_multiprofesional` y
+  `cargar_estrat`. Las variantes `find`/`tras` de `_resolver_otros` se dejan (son
+  especializadas: excluyen tokens / buscan tras un ancla).
+- `rem_utils.mes_anterior` = fuente única del "mes por defecto", antes repetido en
+  `_rango_mes` y **3 veces** en la GUI (una por pestaña).
+- A05 ingresos: documentado que **"REINGRESO" tributa a propósito** — para el REM, un
+  reingreso es estadísticamente un ingreso (match por subcadena de "INGRESO").
+
+### Eliminado
+- Regla `_no_chileno` de `flag_demo`: código muerto (Migrante deriva de `ALERTAS` desde
+  v1.2; ninguna entrada de `DEMOGRAFIA` la usaba).
+
+### Pendiente anotado (no tocado)
+- Estamento del **grupal** en SM (`rem_sm_actividades`): guarda el nombre del prestador,
+  no un instrumento. Inocuo hoy (ninguna tabla desagrega el grupal por estamento); bomba
+  latente si se agrega esa desagregación.
+
+---
+
 ## [1.8.0] — 2026-09-01
 
 ### Agregado (módulo/reporte — Y++)
