@@ -40,9 +40,11 @@ detalle del P6 → **vive en `programas/`, no dentro del módulo.**
 ```
 Informe Inscritos ──┐
 Formulario SM (hist)├─► programas/poblacion.py ──► tabla «Ferrada» (1 fila por RUN)
-ADA (12 meses) ─────┘                                        │
-                                                             ▼
-                              modulos/rem_sp_p6_poblacion.py ──► P6·A.1 + detalle
+ADA (13 meses) ─────┘                                        │
+                                     ┌───────────────────────┴────────────────┐
+                                     ▼                                        ▼
+              modulos/rem_sp_p6_poblacion.py           modulos/rem_sm_rescate_inasistentes.py
+                 → P6·A.1 + detalle (REM)                  → rescate 6m/13m (NO tributa, §8)
 ```
 
 | Capa | Archivo | Rol |
@@ -517,7 +519,7 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **1** | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
 | **2** | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
 | **3** | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + bump a **1.9.0** (Y++, módulo nuevo) + fila en la matriz de programas de CLAUDE.md. | Suite completa verde. |
-| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
+| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
 | **4** *(después)* | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
 
 ---
@@ -529,13 +531,14 @@ Segundo consumidor de la tabla `Ferrada`, en el mismo patrón que
 casilla del REM**. Módulo propio, `modulos/rem_sm_rescate_inasistentes.py`, que
 recicla la tabla en vez de forkearla.
 
-**Salida: dos planillas SECTORIZADAS.**
+**Salida: planillas SECTORIZADAS, sin datos de contacto (§8.4).**
 
 | Hoja | Cohorte | Para qué |
 |---|---|---|
 | `Rescate_6m` | `SM Atendido hace 6m = Si` — su última atención SM fue hace 6 meses | dejó de asistir; rescate temprano |
 | `Rescate_13m` | `SM Atendido hace 13m = Si` — tuvo atención en el mes que acaba de salir de la ventana de 12m y nada después | **se acaba de caer del programa**; rescate antes de perder el bajo-control |
 | `Fallecidos_mes` | cumple criterios SM, **ya no** está Activo+Ingresado, y `Motivo Pasivación = Fallecido` con `Fecha Pasivación` en el mes reportado | **para NO llamarlos**, y para el egreso del A05 (§8.3) |
+| `Posibles_Traslados` | los de las cohortes de rescate con `Motivo Pasivación` de traslado / cambio de domicilio | **no se excluyen del rescate**: se flagean para confirmar el traslado en vez de perseguir un abandono (§8.5) |
 
 Cada una **agrupada por `Sector`** (una sección por sector, o una hoja por sector si
 se prefiere repartirlas). Ordenadas por sector y luego por fecha de última atención.
@@ -613,17 +616,44 @@ Cuando el filtro saque a alguien, el log lo dice con el conteo: es información 
 rescatables (ya no pertenecen al centro). ¿Se excluyen también de las listas, o se
 dejan para que alguien confirme el traslado?
 
-### 8.4 🔴 Decisión de privacidad pendiente
+### 8.4 Privacidad: SOLO RUN + Sector *(decidido)*
 
-Un listado de rescate es para **llamar por teléfono**. Pero §3.2 saca `Celular`,
-`Mail`, `Nombre completo` y `Dirección` de la tabla por privacidad (§8 CLAUDE.md), y
-**este reporte sí tendría un uso legítimo para el teléfono**.
+Un listado de rescate es para llamar, pero **NO lleva datos de contacto**. Quien
+llame busca el teléfono en la ficha por RUN. Cero PII de contacto en un archivo que
+puede quedar abierto en un escritorio compartido o mandarse por correo interno.
 
-Es una decisión del autor, no del código:
-- **A — solo RUN + Sector** (y quien llame busca el teléfono en la ficha). Cero PII de
-  contacto en un archivo que puede quedar en un escritorio compartido.
-- **B — incluir nombre y teléfono** en `Rescate_*`, y **solo ahí** (la tabla
-  `PSM_Poblacion` y las hojas del P6 siguen sin PII). Operativamente cómodo, pero
-  genera un archivo con datos de contacto de cientos de pacientes.
+**Fuera, sin excepción:** `Nombre completo` · `Nombre Social` · `Celular` · `Mail` ·
+`Dirección Completa` · `Fecha Nacimiento`. Es la misma lista que §3.2 saca de la tabla
+base: el reporte de rescate **no reabre** esa puerta.
+
+Columnas de `Rescate_6m` / `Rescate_13m`:
+
+```
+RUN · Sector · Edad · Sexo · Diagnósticos activos · Fecha última atención SM
+```
+
+`Edad`, `Sexo` y los diagnósticos se quedan porque sin ellos la lista no es
+accionable (no se puede priorizar a quién llamar primero) y no son datos de contacto
+— el criterio de §8 CLAUDE.md es que **el RUT sea el único identificador**, y se
+respeta. Si igual se quieren fuera, es borrar tres columnas de una constante.
+
+### 8.5 Traslados: NO se excluyen, se FLAGEAN aparte *(decidido)*
+
+A diferencia de los fallecidos (§8.3, filtro duro), los pasivados por **cambio de
+domicilio / traslado de inscripción** **siguen en las listas de rescate**. Un traslado
+registrado no siempre significa que la persona se fue de verdad, y confirmarlo es
+parte del trabajo de rescate.
+
+Salida: una **segunda tabla chica**, `Posibles_Traslados`, con los RUN de las cohortes
+de rescate cuyo `Motivo Pasivación` es de traslado, y su motivo. Quien llame la mira
+primero y sabe que ahí **la gestión es confirmar el traslado**, no perseguir un
+abandono.
+
+Mismas columnas que las listas de rescate + `Motivo Pasivación` + `Fecha Pasivación`.
+
+| Situación | En las listas de rescate | Tabla aparte |
+|---|---|---|
+| `Motivo Pasivación = Fallecido` | **NO** (filtro duro, cualquier fecha) | `Fallecidos_mes` (solo cohorte del mes, para el A05) |
+| Traslado / cambio de domicilio | **SÍ** | `Posibles_Traslados` (flag) |
 
 ---
