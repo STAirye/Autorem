@@ -71,17 +71,18 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 |---|---|---|---|
 | 1 | **Informe Inscritos / Adscritos** (IRIS) | snapshot actual | sí |
 | 2 | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
-| 3 | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **12 meses** (acepta LISTA de archivos, como el A23) | sí |
+| 3 | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
 | — | Recetas Vigentes / Recetas Externas | — | **no** (§3.1) |
 
 ### 3.1 Por qué el ADA no necesita el histórico completo
 
-El ADA entra al DAX en tres lugares:
+El ADA entra al DAX en cuatro lugares:
 1. `SM Activo 12m` — actividades SM en los 12 meses cerrados → **12 meses**.
 2. `¿Embarazada?` — matrona + control prenatal/formulario gestante → **3 meses**.
-3. `_Atenciones` por CIE-10 (F32/F33/F43…) — **sin filtro de fecha** en el DAX.
+3. `SM Atendido hace 13m` — el mes que acaba de salir de la ventana → **13 meses** (§8).
+4. `_Atenciones` por CIE-10 (F32/F33/F43…) — **sin filtro de fecha** en el DAX.
 
-El (3) alimenta únicamente las columnas de diagnóstico **sin** `(form)`
+El (4) alimenta únicamente las columnas de diagnóstico **sin** `(form)`
 (`SM Depresión`, `SM Ansiedad`…), y esas solo alimentan `Pertenece a PSM`. El P6
 filtra por `Ingresado = SI`, que depende **exclusivamente de las columnas `(form)`**,
 y `Ingresado=SI ⟹ Pertenece=SI`. **Conclusión: el histórico completo del ADA no
@@ -104,11 +105,14 @@ las `(mixto)`/`(dg)` **no se emiten**.
 | Las dx **sin** `(form)` — `SM Depresión`, `SM Ansiedad`… | ~24 | Solo alimentan `Pertenece a PSM`, que es implicado por `¿Ingresado?` (§3.1). |
 | `Pertenece a PSM` | 1 | Redundante: `Ingresado = SI ⟹ Pertenece = SI`. |
 | Los 21 fármacos + `¿Receta Vigente?` | 22 | Requieren 2 exports más y **no tributan a ninguna casilla del REM**. |
-| `SM Atendido hace 6m` / `hace 13m`, `SM Pauta llenada`, `SM último control (fecha)/(instrumento)`, `PAD Es cuidador?`, `Sector` | 7 | El P6·A.1 no tiene ninguna casilla que los consuma. |
+| `SM Pauta llenada`, `SM último control (fecha)/(instrumento)`, `PAD Es cuidador?` | 4 | El P6·A.1 no tiene ninguna casilla que los consuma. |
 | **`Nombre completo`, `Nombre Social`, `Fecha Nacimiento`, `Dirección Completa`, `Celular`, `Mail`, `Tipo de identificación`** | 7 | **Privacidad (§8 CLAUDE.md), no solo economía.** El export PowerBI arrastra nombre, dirección, teléfono y correo; **el P6 no necesita ninguno**. El RUN basta para trazar. Menos PII en circulación. |
 
-Se conservan `Estado`, `Motivo Pasivación` y `Fecha Pasivación` aunque el A.1 no los
-use: los necesita el delta P→A05 de la fase 4 (traslados y fallecidos).
+Se conservan aunque el A.1 no los use:
+- `Estado`, `Motivo Pasivación`, `Fecha Pasivación` → los necesita el delta P→A05 de
+  la fase 4 (traslados y fallecidos);
+- `Sector`, `SM Atendido hace 6m`, `SM Atendido hace 13m` → los necesita el **reporte
+  de rescate de inasistentes** (§8).
 
 Si algún día se quiere el diff celda-a-celda contra el PowerBI, las omitidas se
 enchufan sin rediseñar nada.
@@ -513,4 +517,113 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **1** | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
 | **2** | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
 | **3** | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + bump a **1.9.0** (Y++, módulo nuevo) + fila en la matriz de programas de CLAUDE.md. | Suite completa verde. |
+| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
 | **4** *(después)* | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
+
+---
+
+## 8. Reporte adicional — Rescate de inasistentes (NO tributa al REM)
+
+Segundo consumidor de la tabla `Ferrada`, en el mismo patrón que
+`rem_sm_trabajo_perdido` respecto de `rem_sm_actividades`: **reporte operativo, no
+casilla del REM**. Módulo propio, `modulos/rem_sm_rescate_inasistentes.py`, que
+recicla la tabla en vez de forkearla.
+
+**Salida: dos planillas SECTORIZADAS.**
+
+| Hoja | Cohorte | Para qué |
+|---|---|---|
+| `Rescate_6m` | `SM Atendido hace 6m = Si` — su última atención SM fue hace 6 meses | dejó de asistir; rescate temprano |
+| `Rescate_13m` | `SM Atendido hace 13m = Si` — tuvo atención en el mes que acaba de salir de la ventana de 12m y nada después | **se acaba de caer del programa**; rescate antes de perder el bajo-control |
+| `Fallecidos_mes` | cumple criterios SM, **ya no** está Activo+Ingresado, y `Motivo Pasivación = Fallecido` con `Fecha Pasivación` en el mes reportado | **para NO llamarlos**, y para el egreso del A05 (§8.3) |
+
+Cada una **agrupada por `Sector`** (una sección por sector, o una hoja por sector si
+se prefiere repartirlas). Ordenadas por sector y luego por fecha de última atención.
+
+### 8.1 Las dos definiciones del DAX NO son consistentes entre sí
+
+| | `SM Atendido hace 6m` | `SM Atendido hace 13m` |
+|---|---|---|
+| Ventana | **solo el mes −6** | **solo el mes −13** |
+| Actividad | `CONTAINSSTRING(ACTIVIDADES,"salud mental")` — **laxo** | **lista explícita de 7** (la misma de `Activo 12m`) |
+| Condición extra | ninguna atención SM **posterior** al mes objetivo | `SM Activo 12m = "No"` |
+
+Las **ventanas de un solo mes están bien**: es una cohorte de rescate. Si fueran
+acumulativas se llamaría a la misma gente todos los meses.
+
+**El problema es la lista de actividades.** El filtro laxo del 6m:
+- **pierde las VDI** — «visita domiciliaria integral a familia con adulto mayor con
+  demencia» y «…con niños/as de 5 a 9 años…» **no contienen el string «salud mental»**;
+- y a la vez **captura de más**: cualquier actividad futura con «salud mental» en el
+  nombre entra sin haber sido validada.
+
+**Decidido: ambas usan la LISTA EXPLÍCITA DE 7, que es la validada** — la misma que
+ya usa `Activo 12m`. Se descarta el `contains "salud mental"` laxo del DAX del 6m.
+
+Así las tres definiciones (activo 12m, rescate 6m, rescate 13m) hablan del **mismo
+universo de actividades**, y la cohorte de rescate es el complemento exacto de la
+población activa en vez de un conjunto que se solapa raro. La lista vive en **una
+sola constante compartida** de `programas/poblacion.py`; agregar una actividad nueva
+al programa es editar una línea, no cazar tres literales distintos.
+
+Las 7 actividades (del DAX de `SM Activo 12m`, match por `norm()`):
+`control salud mental` · `controles salud mental` · `consulta de salud mental` ·
+`visita domiciliaria integral familia con integrante con patologia de salud mental` ·
+`visita domiciliaria integral a familia con adulto mayor con demencia` ·
+`visita domiciliaria integral a familia con niños/as de 5 a 9 años con problemas y/o
+trastorno` · `visita integral de salud mental a domicilio`.
+
+### 8.2 Otros detalles del port
+
+- **Ambas anclan en `TODAY()`** → se parametrizan al corte (§4.1). Eso además permite
+  recalcular la cohorte de un mes pasado, cosa que el PowerBI no puede.
+- El DAX escribe `"patologia de salud mental"` **sin tilde**; en Python `norm()` lo
+  resuelve en ambos sentidos, no hay que replicar el typo.
+- La `13m` no exige «ninguna posterior» de forma explícita: lo consigue indirecto vía
+  `Activo 12m = No`. Con la lista unificada (§8.1) las dos formulaciones convergen.
+- Requiere **13 meses de ADA** (§3.1), un mes más de lo que pedía el P6 solo.
+
+### 8.3 Fallecidos — y por qué NO basta con la cohorte del mes
+
+`Fallecidos_mes` = cumple criterios SM · **no** está Activo+Inscrito+Ingresado ·
+`Estado = Pasivo` & `Motivo Pasivación = Fallecido` & `Fecha Pasivación` **en el mes
+reportado**. Es la misma definición que ya trae el `CONTEXTO_REM_general`.
+
+Sirve para dos cosas distintas:
+1. **Que nadie llame a la familia de un paciente que falleció.** Motivo obvio, y la
+   razón por la que esta planilla existe.
+2. **Egreso del A05** (fase 4): un fallecido salió de la población en control. Si no
+   se identifica, cae en el residual «abandono» del delta P(m)−P(m−1) y ensucia la
+   parte O.
+
+⚠ **La cohorte del mes NO alcanza para el filtro de rescate.** `Rescate_6m` mira
+6 meses atrás y `Rescate_13m` mira 13: alguien que falleció hace 8 meses **no** está
+en `Fallecidos_mes` pero **sí** puede aparecer en `Rescate_13m` — dejó de asistir,
+por razones evidentes. Entonces:
+
+> **Filtro duro en las listas de rescate: se excluye a TODO paciente con
+> `Motivo Pasivación = Fallecido`, sin importar la fecha de pasivación.**
+> `Fallecidos_mes` es la cohorte del mes (para el A05); el filtro del rescate es
+> sobre el histórico completo.
+
+Cuando el filtro saque a alguien, el log lo dice con el conteo: es información útil
+(«N de la cohorte de rescate estaban fallecidos»), no ruido.
+
+*A confirmar:* los pasivados por **traslado / cambio de domicilio** tampoco son
+rescatables (ya no pertenecen al centro). ¿Se excluyen también de las listas, o se
+dejan para que alguien confirme el traslado?
+
+### 8.4 🔴 Decisión de privacidad pendiente
+
+Un listado de rescate es para **llamar por teléfono**. Pero §3.2 saca `Celular`,
+`Mail`, `Nombre completo` y `Dirección` de la tabla por privacidad (§8 CLAUDE.md), y
+**este reporte sí tendría un uso legítimo para el teléfono**.
+
+Es una decisión del autor, no del código:
+- **A — solo RUN + Sector** (y quien llame busca el teléfono en la ficha). Cero PII de
+  contacto en un archivo que puede quedar en un escritorio compartido.
+- **B — incluir nombre y teléfono** en `Rescate_*`, y **solo ahí** (la tabla
+  `PSM_Poblacion` y las hojas del P6 siguen sin PII). Operativamente cómodo, pero
+  genera un archivo con datos de contacto de cientos de pacientes.
+
+---
