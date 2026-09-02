@@ -254,6 +254,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
 
     filas = []
     no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
+    fuera_rango = []      # puntaje presente que no cae en ninguna banda del corte (p.ej. GHQ-12 >12)
     for r in range(header_idx + 1, ws.max_row + 1):
         fila = [ws.cell(row=r, column=c).value for c in range(1, ncols + 1)]
         puntaje = solo_entero(fila[punt_col - 1]) if punt_col else None
@@ -268,6 +269,8 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
         funcionario = fila[func_col - 1] if func_col else ""
         estamento = fila[estam_col - 1] if estam_col else ""  # IRIS: en col; Admin: se rellena abajo
         resu_disam = clasificar(puntaje)
+        if puntaje is not None and resu_disam is None:   # puntaje presente FUERA de las bandas del corte
+            fuera_rango.append(puntaje)
         banda_rayen = canon_resultado(resu_rayen)   # canoniza la redacción de RAYEN
         if resu_rayen not in (None, "") and banda_rayen is None:
             k = str(resu_rayen)
@@ -361,6 +364,11 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
         log("[aviso] RESULTADO de RAYEN con redacción NO reconocida (no se comparó "
             "con DISAM; agrégala a _MAP_RESULTADO): "
             + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
+    if fuera_rango:
+        log(f"[aviso] ⚠ {len(fuera_rango)} puntaje(s) FUERA del rango del corte "
+            f"({inst['nombre']}) → sin banda, NO tributan al D.3. Valores: "
+            f"{sorted(set(fuera_rango))}. ¿El instrumento cambió de scoring (p.ej. "
+            "GHQ-12 en Likert 0–36 en vez del binario 0–12)? Revisar el export.")
 
     return {
         "salida": (str(salida) if salida is not None else None),
