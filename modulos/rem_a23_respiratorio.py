@@ -39,7 +39,7 @@ import pandas as pd
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, _mujer, _hombre,
-                                 grid as _grid)
+                                 grid as _grid, fecha_col)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
 
@@ -114,7 +114,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     'Otros y Respi' + 'Estratificación' → agregan SALA bajo control + Sección G.
     `inasistentes` (opcional) = reporte NSP → Sección H (citas Control/Ingreso
     IRA/ERA no asistidas, por estamento × tramo etario)."""
-    d = cargar_atenciones(entrada)
+    d = cargar_atenciones(entrada, log=log)
     ini, fin = _rango_mes(mes)
     span_min, span_max = d["FECHA"].min(), d["FECHA"].max()
     log(f"[a23] {len(d)} atenciones | datos {span_min:%Y-%m-%d}..{span_max:%Y-%m-%d} "
@@ -193,7 +193,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
 
     # ── Sección H: inasistentes a citación agendada (reporte NSP, independiente) ──
     if inasistentes is not None:
-        nsp = cargar_inasistentes(inasistentes)
+        nsp = cargar_inasistentes(inasistentes, log=log)
         h = _seccion_h(nsp, ini, fin)
         fer.attrs["seccion_h"] = h
         tot = int(h.loc[h["Profesional"] == "TOTAL", "Total"].iloc[0])
@@ -418,10 +418,10 @@ MAPA_NSP = {
 _H_ESTAM = [("Médico/a", "MEDICO"), ("Kinesiólogo/a", "KINE"), ("Enfermera/o", "ENFERMER")]
 
 
-def cargar_inasistentes(entrada):
+def cargar_inasistentes(entrada, log=print):
     """Reporte NSP ('pacientes inasistentes') -> DataFrame + FECHA CITA parseada."""
     d, _col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_NSP))
-    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA HORA CITA (NSP)")
     d["TIPO_n"] = d["TIPO"].map(norm)
     d["INSTR_n"] = d["INSTR"].map(norm)
     return d

@@ -174,7 +174,7 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None):
     `maestro` = 'Maestro de Actividades' (opcional; sin él, todo por heurística).
     `mes` = (año, mes) o None (mes anterior). `d` = ADA ya cargado (para leer el ADA
     UNA sola vez cuando lo comparte con el módulo de actividades)."""
-    d = cargar_atenciones(ada) if d is None else d
+    d = cargar_atenciones(ada, log=log) if d is None else d
     rem_map = None
     if maestro is not None:
         dfm = cargar_maestro(maestro)

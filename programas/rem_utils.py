@@ -279,7 +279,25 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None):
     return d, col0
 
 
-def cargar_atenciones(entrada):
+def fecha_col(serie, log=print, etiqueta="fecha"):
+    """to_datetime robusto que AVISA las fechas ilegibles en vez de callarlas.
+    Un texto no vacío que no se puede parsear queda NaT y saldría del filtro por
+    mes en SILENCIO (subconteo con número plausible); acá se cuenta y se loguea
+    (regla fail-loud del proyecto). Devuelve la serie parseada (datetime)."""
+    import pandas as pd
+    parsed = pd.to_datetime(serie, errors="coerce", dayfirst=True)
+    # vacío legítimo = nulo real, o texto en blanco / centinela → NO es "ilegible".
+    vacio = serie.isna() | serie.astype(str).str.strip().isin(
+        ("", "nan", "NaN", "NaT", "None", "<NA>"))
+    ilegible = parsed.isna() & ~vacio
+    n = int(ilegible.sum())
+    if n:
+        log(f"[fecha] ⚠ {n} valor(es) de «{etiqueta}» ilegibles → NaT: quedan "
+            f"FUERA del filtro por fecha (revisar el export).")
+    return parsed
+
+
+def cargar_atenciones(entrada, log=print):
     """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico +
     textos normalizados (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
     import pandas as pd
@@ -297,7 +315,7 @@ def cargar_atenciones(entrada):
     if child.any():
         dd = d[cab].replace("", pd.NA)
         d[cab] = dd.where(~child, dd.ffill())
-    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención")
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
     return d

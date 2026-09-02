@@ -953,7 +953,7 @@ def _tab_sm(nb, root):
         def trabajo(log):
             from programas.rem_utils import cargar_atenciones
             import modulos.rem_sm_actividades as smact
-            d = cargar_atenciones(ada)          # el ADA se lee UNA sola vez y se comparte
+            d = cargar_atenciones(ada, log=log)  # el ADA se lee UNA sola vez y se comparte
             E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
                                multiprofesional=multiprofesional, mes=(y, m), log=log, d=d)
             smact.escribir(E, salida)

@@ -43,7 +43,7 @@ from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_can
                                  marcar_demografia, gestante_runs, trans_map,
                                  atenid_multiprofesional, _rango_mes,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
-                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06)
+                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col)
 
 # Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
 # Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
@@ -96,13 +96,13 @@ _EV_COLS = ["casilla", "sub", "run", "id", "estamento", "edad", "sexo",
             "fecha", "actividad", "fuente"]
 
 
-def cargar_grupal(entrada):
+def cargar_grupal(entrada, log=print):
     """Export(s) de 'Atenciones Grupales' -> DataFrame canónico. Ruta o lista
     (el export puede venir por período). La fecha viene en TEXTO DD/MM/YYYY."""
     d, col = cargar_canonico(entrada, ["ACTIVIDADES", "FECHA ATENCION"],
                              lambda h: resolver_columnas(h, MAPA_GRUPAL),
                              requeridas=("ACT", "FECHA", "ASISTE"))
-    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención (grupal)")
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
     # EDAD del grupal viene en TEXTO ('55 años 3 meses 1 día') → años (nº). Sin esto,
@@ -366,7 +366,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
     A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
     sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga)."""
-    d = cargar_atenciones(ada) if d is None else d
+    d = cargar_atenciones(ada, log=log) if d is None else d
     d = marcar_demografia(d)
     ini, fin = _rango_mes(mes)
     # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.
@@ -404,7 +404,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     Ea = _ada_eventos(dm)
 
     if grupal is not None:
-        g = cargar_grupal(grupal)
+        g = cargar_grupal(grupal, log=log)
         gm = g[(g["FECHA"] >= ini) & (g["FECHA"] <= fin) & (g["ASISTE_n"] == "SI")]
         log(f"[sm] Grupal: {len(g)} filas | mes {ini:%Y-%m} + Asiste=SI -> {len(gm)} asistencias")
         Eg = _grupal_eventos(gm)
