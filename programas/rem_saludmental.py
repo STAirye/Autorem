@@ -48,6 +48,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios, mes_de_celda,
+    PUEBLO_VACIO,
 )
 from programas import formatos
 
@@ -146,7 +147,7 @@ DEMOGRAFIA = {
     "Migrante":            (["ALERTAS"],              ["MIGRANTE"]),                             # solo IRIS
 }
 COL_GENERO_TOKENS = ["GENERO"]   # Trans: valor de GÉNERO si contiene "TRANS" (solo IRIS)
-NEGATIVOS_DEMO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION", "N/A"}
+# (los "vacío de pueblo" se comparten con pandas: rem_utils.PUEBLO_VACIO, ver flag_demo)
 
 # ── Config técnica compartida ──
 HOJA = None
@@ -201,8 +202,8 @@ def limpiar_subtipo(valor, subtipo_header):
 
 def flag_demo(cell, regla):
     n = norm(cell)
-    if regla == "_no_vacio":
-        return "SI" if n not in NEGATIVOS_DEMO else ""
+    if regla == "_no_vacio":   # hoy solo Pueblos_Originarios; lista compartida con pandas
+        return "SI" if n not in PUEBLO_VACIO else ""
     if regla == "_no_chileno":
         return "SI" if (n and "CHILE" not in n) else ""
     if isinstance(regla, (list, tuple)):

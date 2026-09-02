@@ -477,7 +477,13 @@ def maestro_rem_map(dfm):
 # Fuente = ADA IRIS (ALERTAS ADMINISTRATIVAS / ES IMIGRANTE / PUEBLO / DIAG / ACT).
 # El grupal y el Monitoreo admin NO traen estos campos -> todos los flags quedan
 # en False (limitación conocida). Reutilizable por cualquier módulo (A23, SM…).
-_PUEBLO_VACIO = {"NINGUNO", "NO SABE", "NO CONTESTA", "NO INFORMADO", ""}
+# Valores de PUEBLO ORIGINARIO que NO cuentan como pertenencia (formato norm()).
+# Fuente ÚNICA compartida: la usa marcar_demografia (pandas) Y flag_demo del A05
+# (openpyxl, vía rem_saludmental). Antes divergían: el A05 no listaba "NO SABE"/
+# "NO CONTESTA"/"NO INFORMADO" -> sobrecontaba originarios en silencio (CORR-2).
+PUEBLO_VACIO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION",
+                "N/A", "NO SABE", "NO CONTESTA", "NO INFORMADO"}
+_PUEBLO_VACIO = PUEBLO_VACIO   # alias retrocompat (uso interno histórico)
 
 
 def marcar_demografia(d):
