@@ -189,42 +189,66 @@ def _columnas_en_rango(rangos, fila_propia):
 # ══════════════════════════════════════════════════════════════════════
 _RUT_FORMATO = re.compile(r"^\d{6,9}-[\dkK]$")
 _TECHO_NO_RUT = 0.05   # §5.5.1: si el filtro descarta más de esto, el roto es EL FILTRO
+# §5.5.2: forma válida pero SIGNIFICADO incorrecto -> la forma sola no basta. Hoy solo
+# "RUN Responsable" (colisión de clave con un tercero — programas.poblacion.
+# cargar_inscritos ya lo saca ANTES de deduplicar; este chequeo es un segundo resguardo
+# por si `P` llega armado de otra forma). NO cachear esta lista entre corridas: el
+# conjunto rota mes a mes (Registro Civil ~5 días para emitir el RUT del RN).
+_TIPOID_FORMA_OK_SIGNIFICADO_MAL = ["RUN RESPONSABLE"]
 
 
 def _base_valida(P, log):
     """Filtro base §5.1 (Estado=Activo & Activo12m=SI & Ingresado=SI) + descarta
-    identificador no-RUT (§5.5). Filtra por FORMA (regex sobre 'Número'), NO por la
-    etiqueta 'Tipo de identificación': RAYEN la escribe distinto según el export
-    (RUT/RUN/R.U.T./Cédula…) y una whitelist de etiquetas se rompe con cada variante
-    (§5.5.1 — la primera corrida real descartó al 100% del padrón así). La etiqueta
-    queda solo como dato informativo en P6_Revisar.
+    identificador no-RUN (§5.5/§5.5.2). DOS chequeos, ninguno basta solo:
+      1. FORMA — regex sobre 'Número' (^\\d{6,9}-[dkK]$): descarta FONASA/pasaportes
+         y sobrevive a que RAYEN renombre la etiqueta (era "RUN", no "RUT" — la
+         primera corrida real, exigiendo el literal "RUT", descartó al 100%).
+      2. ETIQUETA (blacklist chica) — "RUN Responsable" tiene forma de RUT VÁLIDA
+         pero es el RUN de un tercero (recién nacido <1 mes sin RUT propio): la forma
+         sola no lo detecta.
+    La etiqueta cruda queda como dato informativo en P6_Revisar.
 
-    Guardarraíl (§5.5.1): si esto descarta más de `_TECHO_NO_RUT` del padrón, el
+    Guardarraíl (§5.5.1): si el total descartado supera `_TECHO_NO_RUT` del padrón, el
     filtro es el que está roto, no los datos → `ArchivoInvalido` explícito en vez de
-    seguir y emitir un P6_A1 lleno de ceros en silencio.
+    seguir y emitir un P6_A1 lleno de ceros en silencio. Y tras filtrar, 'Número' debe
+    quedar ÚNICO — si sobrevive una colisión, `ArchivoInvalido` también.
     Devuelve (P_filtrada, filas_revisar)."""
     revisar = []
 
     numero_str = P["Número"].astype(str).str.strip()
     formato_ok = numero_str.str.match(_RUT_FORMATO)
-    no_rut = ~formato_ok
+    tipoid_n = P["Tipo de identificación"].map(norm)
+    es_responsable = tipoid_n.isin(_TIPOID_FORMA_OK_SIGNIFICADO_MAL)
+    no_rut = ~formato_ok | es_responsable
+
     n_no_rut, total = int(no_rut.sum()), len(P)
     if total and n_no_rut / total > _TECHO_NO_RUT:
         raise ArchivoInvalido(
             "validador_rut",
-            f"El validador de formato de RUT descartó {n_no_rut} de {total} personas "
+            f"El validador de identificador descartó {n_no_rut} de {total} personas "
             f"({n_no_rut / total:.0%}) — muy por encima del techo esperado "
             f"({_TECHO_NO_RUT:.0%}, §5.5.1 del plan). El roto es el validador, no los "
-            "datos: revisa cómo viene la columna 'Número' (¿es el Informe Inscritos y "
-            "Adscritos correcto, sin modificar?) antes de seguir.")
+            "datos: revisa cómo viene 'Tipo de identificación'/'Número' en el Informe "
+            "Inscritos y Adscritos (¿es el correcto, sin modificar?) antes de seguir.")
     for _, row in P.loc[no_rut].iterrows():
-        revisar.append({"RUN": row["Número"], "Motivo": "Identificador con formato NO-RUT",
-                        "Fila_P6": "", "Detalle": row["Tipo de identificación"],
-                        "Valor_crudo": row["Número"]})
+        motivo = ("RUN Responsable (colisión de clave con un tercero, probable "
+                 "recién nacido <1 mes)" if norm(row["Tipo de identificación"]) in
+                 _TIPOID_FORMA_OK_SIGNIFICADO_MAL else "Identificador con formato NO-RUT")
+        revisar.append({"RUN": row["Número"], "Motivo": motivo, "Fila_P6": "",
+                        "Detalle": row["Tipo de identificación"], "Valor_crudo": row["Número"]})
     if n_no_rut:
-        log(f"[sp_p6] ⚠ {n_no_rut} persona(s) cuyo 'Número' no tiene forma de RUT "
-            f"(regex {_RUT_FORMATO.pattern}): excluidas de todo el P6 (P6_Revisar).")
-    P = P.loc[formato_ok].copy()
+        log(f"[sp_p6] ⚠ {n_no_rut} persona(s) descartadas por identificador "
+            "(formato no-RUT o RUN Responsable): van a P6_Revisar.")
+    P = P.loc[~no_rut].copy()
+
+    dup = P["Número"].duplicated(keep=False)
+    if dup.any():
+        ruts = ", ".join(sorted(set(P.loc[dup, "Número"]))[:20])
+        raise ArchivoInvalido(
+            "colision_run",
+            f"Quedaron {int(dup.sum())} 'Número' DUPLICADOS después de filtrar "
+            f"(§5.5.2): {ruts}. Es una colisión de clave sin resolver (dos personas "
+            "con el mismo RUN) — no se puede armar el P6 así.")
 
     base = ((P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI") &
            (P["¿Ingresado?"] == "SI"))

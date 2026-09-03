@@ -194,11 +194,29 @@ MAPA_INSCRITOS = {
 
 def cargar_inscritos(entrada, log=print):
     """'Informe Inscritos y Adscritos' (IRIS, snapshot) -> DataFrame, 1 fila por
-    RUN. Es la base de la tabla Ferrada: TODA la población, sin filtrar."""
+    RUN. Es la base de la tabla Ferrada: TODA la población, sin filtrar (el filtro
+    Activo/Ingresado lo aplica quien consuma la tabla)."""
     d, _ = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
                           requeridas=("RUN", "SEXO", "ESTADO", "SITUACION"))
     d["RUN"] = d["RUN"].astype(str).str.strip()
-    d = d[d["RUN"] != ""].drop_duplicates(subset="RUN", keep="last").reset_index(drop=True)
+    d = d[d["RUN"] != ""]
+
+    # «RUN Responsable» (§5.5.2 del plan sp-p6): un recién nacido de <1 mes sin RUT
+    # propio se inscribe con el RUN de un tercero (típicamente la madre) -> ESE RUN
+    # queda repetido en el Inscritos, una fila por la madre y otra por el RN. Es una
+    # COLISIÓN de clave, no una fila más: si no se saca ANTES de deduplicar, el
+    # `drop_duplicates` de abajo puede quedarse con la fila del RN y perder la de la
+    # madre (el caso de riesgo real: madre con Depresión Postparto activa).
+    if "TIPOID" in d.columns:
+        es_responsable = d["TIPOID"].map(norm) == "RUN RESPONSABLE"
+        n_resp = int(es_responsable.sum())
+        if n_resp:
+            log(f"[poblacion] {n_resp} fila(s) 'RUN Responsable' descartadas antes de "
+                "deduplicar (recién nacido <1 mes con el RUN de un tercero; no se "
+                "pierde a la persona real, solo la fila colisionada).")
+        d = d[~es_responsable]
+
+    d = d.drop_duplicates(subset="RUN", keep="last").reset_index(drop=True)
     log(f"[poblacion] Inscritos: {len(d)} personas (snapshot)")
     return d
 
