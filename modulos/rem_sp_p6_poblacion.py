@@ -184,6 +184,38 @@ _TECHO_NO_RUT = 0.05   # §5.5.1: si el filtro descarta más de esto, el roto es
 _TIPOID_FORMA_OK_SIGNIFICADO_MAL = ["RUN RESPONSABLE"]
 
 
+_FR_COLS = ["Violencia (form)", "Abuso Sexual (form)", "Suicidio (form)"]
+
+
+def _desglose_ingresado(P, log):
+    """Desglose de QUE columna hace que cada persona quede '¿Ingresado? = SI'.
+    Diagnostico de la brecha contra el PowerBI: si el grueso entra SOLO por un
+    factor de riesgo, la causa es D2 (les quitamos el filtro de estamento, asi que
+    los formularios de violencia/suicidio de psicologia o social ahora cuentan y en
+    el PowerBI no). No filtra ni cambia numeros: solo informa."""
+    cols = [c for c in P.columns if c.endswith("(form)")]
+    if not cols:
+        return
+    ingr = P["¿Ingresado?"] == "SI"
+    if not int(ingr.sum()):
+        return
+    act = P.loc[ingr, cols] == "Activo"
+    log(f"[sp_p6] --- desglose de Ingresado=SI ({int(ingr.sum())} personas) ---")
+    for c in sorted(cols, key=lambda c: -int(act[c].sum())):
+        n = int(act[c].sum())
+        if n:
+            log(f"[sp_p6]    {c:<36} {n:>6}")
+
+    fr = [c for c in _FR_COLS if c in cols]
+    dx = [c for c in cols if c not in fr]
+    if fr and dx:
+        solo_fr = act[fr].any(axis=1) & ~act[dx].any(axis=1)
+        n_solo_fr = int(solo_fr.sum())
+        log(f"[sp_p6]    -> SOLO por factor de riesgo (sin ningun dx): {n_solo_fr}")
+        log("[sp_p6]       (D2: el PowerBI exige estamento medico en violencia/suicidio "
+            "y nosotros no; esta es la brecha esperable contra su 'Ingresado')")
+
+
 def _base_valida(P, log):
     """Filtro base §5.1 (Estado=Activo & Activo12m=SI & Ingresado=SI) + descarta
     identificador no-RUN (§5.5/§5.5.2). DOS chequeos, ninguno basta solo:
@@ -253,7 +285,12 @@ def _base_valida(P, log):
                       ("Ingresado=SI", f_ingr)):
         acum &= f
         log(f"[sp_p6]    {nombre:<16} solo={int(f.sum()):>6}   acumulado={int(acum.sum()):>6}")
+    for col in ("¿Pertenece? (24 DAX)", "¿Pertenece? (28 real)"):
+        if col in P.columns:
+            log(f"[sp_p6]    {col:<21} solo={int((P[col] == 'SI').sum()):>6}"
+                "   (no filtra: solo para comparar con el prefiltro del PowerBI)")
     log(f"[sp_p6] base (los 3 filtros): {int(base.sum())} de {len(P)} personas del snapshot")
+    _desglose_ingresado(P, log)
 
     sexo_raro = P.loc[base, "Sexo"].map(lambda s: not (_hombre(s) or _mujer(s)))
     for run, sx in zip(P.loc[base].loc[sexo_raro, "Número"], P.loc[base].loc[sexo_raro, "Sexo"]):

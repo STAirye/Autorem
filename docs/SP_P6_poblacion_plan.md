@@ -112,7 +112,7 @@ las `(mixto)`/`(dg)` **no se emiten**.
 | Todas las `(fecha)` — `Depresión (fecha)`, `Ansiedad (fecha)`… | ~28 | Son **variables intermedias** del DAX (el `LASTDATE` que alimenta a su `(form)`), no resultados. Se calculan en memoria y se descartan. |
 | Todas las `(mixto)` / `(dg)` — `SM TGD`, `SM Desintegrativo niñez`, `Bipolaridad (dg)`, `Retraso Mental (dg)` | ~6 | **Deprecated, no se usan actualmente.** |
 | Las dx **sin** `(form)` — `SM Depresión`, `SM Ansiedad`… | ~24 | Solo alimentan `Pertenece a PSM`, que es implicado por `¿Ingresado?` (§3.1). |
-| `Pertenece a PSM` | 1 | Redundante: `Ingresado = SI ⟹ Pertenece = SI`. |
+| `Pertenece a PSM` | (ver abajo) | Se creía redundante por `Ingresado ⟹ Pertenece`. **FALSO, ver §3.3** — se emite en dos versiones. |
 | Los 21 fármacos + `¿Receta Vigente?` | 22 | Requieren 2 exports más y **no tributan a ninguna casilla del REM**. |
 | `SM Pauta llenada`, `SM último control (fecha)/(instrumento)`, `PAD Es cuidador?` | 4 | El P6·A.1 no tiene ninguna casilla que los consuma. |
 | **`Nombre completo`, `Nombre Social`, `Fecha Nacimiento`, `Dirección Completa`, `Celular`, `Mail`, `Tipo de identificación`** | 7 | **Privacidad (§8 CLAUDE.md), no solo economía.** El export PowerBI arrastra nombre, dirección, teléfono y correo; **el P6 no necesita ninguno**. El RUN basta para trazar. Menos PII en circulación. |
@@ -125,6 +125,41 @@ Se conservan aunque el A.1 no los use:
 
 Si algún día se quiere el diff celda-a-celda contra el PowerBI, las omitidas se
 enchufan sin rediseñar nada.
+
+### 3.3 `Ingresado ⟹ Pertenece` es FALSO — el DAX de Pertenece tiene un hueco
+
+**Corrección a §3.1/§3.2** (detectada sep-2026 al comparar la cascada de filtros).
+Yo había justificado descartar `Pertenece a PSM` diciendo que `Ingresado = SI` implica
+`Pertenece = SI`. **No se cumple.** El DAX de `Pertenece` lista **24** columnas y el
+de `Ingresado` usa **28**. Las cuatro que faltan:
+
+```
+Ingresado tiene:  OH Perjudicial · OH Dependiente · Drogas Perjudicial · Drogas Dependiente
+Pertenece tiene:  solo el agregado "OH y Drogas"
+```
+
+El DAX además mezcla columnas con y sin `(form)` sin criterio aparente
+(`SM Violencia` sin form, `SM Suicidio (form)` con form…). No hay lógica interna.
+
+**Consecuencia práctica:** el reporte «Población SM» del PowerBI trae `Pertenece` como
+**prefiltro de página**. Quien queda `Ingresado=SI` únicamente por «consumo perjudicial
+de alcohol» (o cualquiera de esas 4) **cae FUERA del export del PowerBI pero DENTRO de
+autoREM**. Es parte de la brecha del comparativo de agosto.
+
+**Se emiten las DOS versiones** en `PSM_Poblacion`, y ambas salen en la cascada del log:
+
+| Columna | Qué es |
+|---|---|
+| `¿Pertenece? (24 DAX)` | replica el hueco del PowerBI — sirve para comparar contra su prefiltro |
+| `¿Pertenece? (28 real)` | la que corresponde: las mismas 28 que usa `Ingresado` |
+
+Ninguna de las dos **filtra** nada: son informativas. Detalles de implementación:
+
+- **Base formulario, sin CIE-10.** El DAX de las columnas sin `(form)` mira además los
+  códigos CIE-10 del ADA histórico; replicarlo sería lentísimo y **el objetivo es
+  comparar, no reproducir el número exacto**.
+- **Cuentan Activo Y Egresado** (el DAX usa `<> "NO"`), que es lo que se necesita en
+  el reporte.
 
 ---
 

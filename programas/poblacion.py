@@ -121,6 +121,20 @@ TABLA_FR = [
 
 TODAS_LAS_SPECS = TABLA_FR + TABLA_DX
 
+# El DAX de 'Pertenece a PSM' lista 24 columnas, pero el de 'Ingresado' usa 28:
+# faltan las 4 de OH/drogas granulares (Pertenece solo tiene el agregado "OH y
+# Drogas"). Como el reporte 'Poblacion SM' del PowerBI trae Pertenece de PREFILTRO
+# de pagina, quien queda Ingresado SOLO por una de esas 4 cae FUERA del export del
+# PowerBI pero DENTRO de autoREM -> el supuesto "Ingresado => Pertenece" NO se
+# cumple. Se emiten las dos versiones para poder comparar de dónde sale la brecha.
+#
+# Base FORMULARIO: el DAX mezcla columnas con y sin (form) y las sin-(form) miran
+# ademas los CIE-10 del ADA historico; replicar eso seria lentisimo y el objetivo
+# aca es COMPARAR, no reproducir el numero exacto. Cuenta Activo Y Egresado
+# (el DAX usa <> "NO"), que es lo que se necesita en el reporte.
+_PERTENECE_FALTANTES_EN_DAX = ["OH Perjudicial (form)", "OH Dependiente (form)",
+                               "Drogas Perjudicial (form)", "Drogas Dependiente (form)"]
+
 # D1 — TGD no especificado: la 91 no tiene columna en el PowerBI (nunca se
 # llenó); se recupera vía la pregunta "padre" 63, pero SOLO si ninguna de las
 # TGD específicas (83/85/87/89/91) está activa (evita doble conteo).
@@ -154,7 +168,8 @@ ACTIVIDADES_SM_7 = [
 COL_IDENTIDAD = ["Número", "Tipo de identificación", "Sexo", "Género", "Edad", "Sector",
                  "Situación", "Estado", "Motivo Pasivación", "Fecha Pasivación",
                  "¿Originario o Migrante?", "Pueblo Originario", "PROTECCION NIÑEZ"]
-COL_ACTIVIDAD = ["¿Ingresado?", "¿Activo 12m?", "¿Última atención hace 6m?",
+COL_ACTIVIDAD = ["¿Ingresado?", "¿Pertenece? (24 DAX)", "¿Pertenece? (28 real)",
+                 "¿Activo 12m?", "¿Última atención hace 6m?",
                  "¿Última atención hace 13m?", "¿Embarazada?", "Madre <5 años"]
 
 
@@ -569,6 +584,11 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     # -- ¿Ingresado? (SI si CUALQUIER dx/FR quedó 'Activo') --
     cols_dx = [s["col"] for s in TODAS_LAS_SPECS]
     P["¿Ingresado?"] = np.where((P[cols_dx] == "Activo").any(axis=1), "SI", "NO")
+
+    # -- ¿Pertenece? en sus DOS versiones (ver _PERTENECE_FALTANTES_EN_DAX) --
+    cols_24 = [c for c in cols_dx if c not in _PERTENECE_FALTANTES_EN_DAX]
+    P["¿Pertenece? (24 DAX)"] = np.where((P[cols_24] != "").any(axis=1), "SI", "NO")
+    P["¿Pertenece? (28 real)"] = np.where((P[cols_dx] != "").any(axis=1), "SI", "NO")
 
     div_df = pd.DataFrame(divergencias_detalle,
                           columns=["Diagnostico", "RUN", "Valor_port", "Valor_PowerBI"])
