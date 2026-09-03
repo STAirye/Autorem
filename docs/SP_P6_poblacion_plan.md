@@ -371,11 +371,11 @@ Todas las filas se filtran primero por: `Estado = "Activo"` **&** `¿Activo 12m?
 | 35 | Trastorno hipercinético | `TDAH (form)` |
 | 36 | Disocial desafiante y oposicionista | `Oposicionista desafiante (form)` |
 | 37 | Ansiedad de separación | `Ansiedad separación (form)` |
-| 38 | Otros comportamiento/emociones infancia | `Otras Infancia/Adolescencia (form)` + exclusión comodín |
+| 38 | Otros comportamiento/emociones infancia | `Otras Infancia/Adolescencia (form)` |
 | 39–43 | Ansiedad: TEPT / pánico / fobia social / TAG / otros | `Ansiedad (form)` + `43.- TIPO DE TRASTORNO DE ANSIEDAD` **(§5.3)** |
 | 44–46 | Demencias leve/moderado/avanzado | `Demencia (form)` + `Demencia Leve/Moderado/Avanzado` |
 | 47 | Esquizofrenia | `Esquizofrenia (form)` |
-| 48 | Trastorno adaptativo | `Adaptativo (form)` + exclusión comodín |
+| 48 | Trastorno adaptativo | `Adaptativo (form)` |
 | 49 | Conducta alimentaria | `Conducta Alimentaria (form)` |
 | 50 | Retraso mental | `Retraso Mental (form)` |
 | 51 | Trastorno de personalidad | `Personalidad (form)` |
@@ -396,13 +396,29 @@ No van a «Otras» (fila 58): se **descartan**. Ojo con no confundir la **pregun
 (Esquizofrenia, que **sí** cuenta y va a la fila 47 del P6) con la **pregunta 53**
 (primer episodio, que no).
 
-**Exclusiones comodín** (nivel fila, antes de agregar — del `CONTEXTO_REM_general`):
+**Exclusiones comodín — ELIMINADAS** *(decidido sep-2026, validado contra el REM
+manual de agosto)*. El `CONTEXTO_REM_general` las traía del CALCULADOR original: las
+filas cajón de sastre (38, 43, 48) solo tributaban si la persona no acumulaba
+demasiados diagnósticos específicos. **Ya no se aplican** — el autor las sacó de su
+metodología manual del P6, y el módulo tampoco las aplica. Las tres filas tributan
+igual que cualquier otro diagnóstico.
 
-| Diagnóstico | Cuenta solo si |
+**Por qué se sacaron:** el filtro con umbral 0 de la fila 43 («otros trastornos de
+ansiedad») excluía a **~199 personas** que en el REM manual sí cuentan — era la
+diferencia más grande del comparativo de agosto (autoREM 228 vs manual 427). El resto
+de las filas cajón de sastre movían poco, pero por coherencia se remueve el mecanismo
+completo, no caso por caso.
+
+Reglas retiradas (se dejan documentadas por si algún día MINSAL las reintroduce):
+
+| Diagnóstico | Regla retirada |
 |---|---|
-| Trastorno adaptativo (48) | `COUNT(dx Depresión→Oposicionista + Personalidad→TGD == SI) <= 1` |
-| Otros trastornos de ansiedad (43) | `COUNT(dx Depresión→Otras Infancia + Demencia→TGD == SI) == 0` |
-| Otros infancia/adolescencia (38) | `COUNT(dx Depresión→Asperger + Rett→TGD == SI) <= 2` |
+| Trastorno adaptativo (48) | contaba solo si ≤1 otro dx de {25-36, 51-56} |
+| Otros trastornos de ansiedad (43) | contaba solo si 0 otros dx de {25-38, 44-56} |
+| Otros infancia/adolescencia (38) | contaba solo si ≤2 otros dx de {25-53, 54-56} |
+
+> Consecuencia en `Revisar_Clinico`: **desaparece el motivo «Excluido por
+> comorbilidad»** (§5.5). Nadie se saca ya por esta vía.
 
 ### 5.2 Unidad de conteo por bloque de filas — EXPLÍCITO
 
@@ -568,7 +584,6 @@ Ambas: `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`, ordenadas por motiv
 
 | Motivo | Origen |
 |---|---|
-| **Excluido por comorbilidad** (exclusión comodín) — adaptativo/otros-ansiedad/otros-infancia con demasiados dx específicos | §5.1, `EXCLUSION_COMODIN` |
 | **Dx activo sin subtipo registrado** — está Activo pero el subtipo viene vacío → no tributa a ninguna fila | D5 |
 | **Edad plegada** — fuera del rango etario de su fila; **se cuenta igual** en la banda de borde, con edad real y destino | §5.0.1 |
 | **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |

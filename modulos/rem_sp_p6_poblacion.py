@@ -139,9 +139,8 @@ FILA_SIMPLE = {
     55: "Desintegrativo niñez (form)", 56: "TGD (form)", 58: "Otros (form)",
 }
 
-# Todas las filas 25-58 -> su columna (form) de origen (incluye las bucketed,
-# para resolver los rangos de las exclusiones comodín, §5.1). 57 no tiene
-# columna: Epilepsia no se reporta.
+# Todas las filas 25-58 -> su columna (form) de origen (incluye las bucketed).
+# 57 no tiene columna: Epilepsia no se reporta.
 FILA_COLUMNA_DX = dict(FILA_SIMPLE)
 FILA_COLUMNA_DX.update({
     25: "Depresión (form)", 26: "Depresión (form)", 27: "Depresión (form)",
@@ -162,26 +161,14 @@ _ANSIEDAD_FILA = {"TEPT": 39, "Pánico": 40, "Fobia social": 41, "Generalizada":
 ANSIEDAD_REGLAS = [(keys, _ANSIEDAD_FILA[nombre]) for keys, nombre in OVERRIDE_SUBTIPO[43]]
 VIOLENCIA_TIPO_REGLAS = [(["FISICA"], (15, 16)), (["SEXUAL"], (17, 18)), (["PSICOL"], (19, 20))]
 
-# Exclusiones comodín (§5.1, docs/CONTEXTO_REM_general.md): fila objetivo ->
-# (rangos de fila P6 a mirar, máximo de OTROS dx activos permitido). El propio
-# dx de la fila objetivo se excluye siempre del conteo (no se auto-cuenta).
-EXCLUSION_COMODIN = {
-    48: ([(25, 36), (51, 56)], 1),   # Trastorno adaptativo
-    43: ([(25, 38), (44, 56)], 0),   # Otros trastornos de ansiedad
-    38: ([(25, 53), (54, 56)], 2),   # Otros infancia/adolescencia
-}
+# Exclusiones comodín (§5.1): ELIMINADAS (sep-2026). El autor las sacó por completo
+# de su metodología manual del P6 -> el módulo tampoco las aplica. Las filas cajón de
+# sastre (38, 43, 48) tributan sin restringir por comorbilidad. Motivo: el filtro con
+# umbral 0 de la fila 43 sacaba ~199 personas que el REM manual sí cuenta (validado
+# ago-2026, ver docs/SP_P6_poblacion_plan.md §5.1).
 
 # Filas GES-obligatorias o factor de riesgo -> AV (PIC) = total de la fila (§5.4.2 WIP).
 GES_FILAS_AV = set(range(15, 24)) | {25, 26, 27, 28, 44, 45, 46}
-
-
-def _columnas_en_rango(rangos, fila_propia):
-    cols = set()
-    for lo, hi in rangos:
-        for r in range(lo, hi + 1):
-            if r != fila_propia and r in FILA_COLUMNA_DX:
-                cols.add(FILA_COLUMNA_DX[r])
-    return cols
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -435,25 +422,6 @@ def _tributarios_bucket(P, col_activo, col_subtipo, reglas, filas, revisar, etiq
     return out
 
 
-def _tributarios_comodin(P, tributarios, revisar):
-    """Aplica las exclusiones comodín (§5.1) sobre las filas 38/43/48,
-    filtrando el DataFrame ya asignado a esa fila."""
-    for fila, (rangos, umbral) in EXCLUSION_COMODIN.items():
-        sub = tributarios.get(fila)
-        if sub is None or sub.empty:
-            continue
-        cols = _columnas_en_rango(rangos, fila)
-        cols = [c for c in cols if c in P.columns]
-        n_otros = (sub[cols] == "Activo").sum(axis=1) if cols else pd.Series(0, index=sub.index)
-        excluidos = sub.loc[n_otros > umbral]
-        for idx, run in excluidos["Número"].items():
-            revisar.append({"RUN": run, "Motivo": "Excluido por comorbilidad (exclusión comodín)",
-                            "Fila_P6": fila, "Detalle": ROW_LABELS.get(fila, ("", ""))[1] or "",
-                            "Valor_crudo": f"{int(n_otros.loc[idx])} otros dx activos (máx {umbral})",
-                            "Categoria": "Clinico"})
-        tributarios[fila] = sub.loc[n_otros <= umbral]
-
-
 def construir_p6(P, log=print):
     """`P` = PSM_Poblacion (de `programas.poblacion.construir_poblacion()`).
     Devuelve dict: 'grid' (DataFrame, 1 fila por fila-P6), 'detalle' (DataFrame
@@ -488,9 +456,10 @@ def construir_p6(P, log=print):
     tributarios[21] = Pv.iloc[0:0]   # Abuso sexual: no capturable, fila fija en 0
     tributarios[57] = Pv.iloc[0:0]   # Epilepsia: no es del programa SM, fila fija en 0
 
-    _tributarios_comodin(Pv, tributarios, revisar)
+    # (exclusiones comodín §5.1 ELIMINADAS sep-2026: las filas cajón de sastre
+    #  38/43/48 tributan sin restringir por comorbilidad. Ver módulo, arriba.)
 
-    comorbidos_ges = (set(tributarios[25]["Número"]) | set(tributarios[26]["Número"]) |
+    comorbidos_ges =(set(tributarios[25]["Número"]) | set(tributarios[26]["Número"]) |
                       set(tributarios[27]["Número"]) | set(tributarios[28]["Número"])) & \
                      (set(tributarios[44]["Número"]) | set(tributarios[45]["Número"]) |
                       set(tributarios[46]["Número"]))

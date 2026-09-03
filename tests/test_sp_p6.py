@@ -440,19 +440,20 @@ def test_dato_demografico_bloqueado_va_a_revisar_y_no_se_escribe():
     assert any(m == "Dato demográfico no aplica en esta fila" for m in _motivos(r))
 
 
-def test_exclusion_comodin_adaptativo():
-    """Trastorno adaptativo (48) cuenta solo si <=1 OTRO dx de {25-36,51-56} activo."""
+def test_sin_exclusion_comodin_cajon_de_sastre_cuenta_todo():
+    """§5.1 ELIMINADA (sep-2026): las filas cajón de sastre (38/43/48) tributan SIN
+    restringir por comorbilidad. El adaptativo con 2 comorbilidades ya NO se excluye,
+    y no aparece el motivo 'Excluido por comorbilidad' en ninguna hoja de revisión."""
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[49]: "SI", _Q[50]: "INGRESO"}},   # adaptativo solo
         {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[49]: "SI", _Q[50]: "INGRESO"}},
         {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO", _Q[20]: "Leve"}},
-        {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[23]: "SI", _Q[24]: "INGRESO"}},   # 2 comorbilidades -> excluye
+        {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[23]: "SI", _Q[24]: "INGRESO"}},   # 2 comorbilidades
     ], [{"rut": "11111111-1"}, {"rut": "22222222-2"}], ada_filas=[_sm("11111111-1"), _sm("22222222-2")])
     r = _p6(P)
-    assert _fila_p6(r["grid"], 48)["Ambos"] == 1     # solo A
-    # va a Revisar_CLINICO (exige criterio clínico, no es un problema de registro)
-    assert (r["revisar_clinico"]["Motivo"] == "Excluido por comorbilidad (exclusión comodín)").any()
-    assert "Excluido por comorbilidad (exclusión comodín)" not in list(r["revisar_administrativo"]["Motivo"])
+    assert _fila_p6(r["grid"], 48)["Ambos"] == 2     # AMBOS cuentan: ya no se filtra
+    motivos = list(r["revisar_clinico"]["Motivo"]) + list(r["revisar_administrativo"]["Motivo"])
+    assert not any("comorbilidad" in str(m).lower() for m in motivos)
 
 
 def test_av_pic_regla_wip_ges_y_total_filas():
