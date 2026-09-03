@@ -310,6 +310,49 @@ ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
   seguridad, incluso estando el repo fuera de OneDrive.
 - Al trabajar con Claude, avisar si por error se cargan datos identificatorios.
 
+### 8.1 Incidente sep-2026: un RUT real en el repo público (LEER)
+
+**Qué pasó.** Un RUT de una **persona real** vivía como «ejemplo» en el CLAUDE.md
+(§7, la nota de `NUMERO TIPO IDENTIFICACION`) y en los tres archivos de `legacy/`,
+**desde el commit inicial** (6-jul-2026). El repo es público en GitHub, así que el
+dato estuvo expuesto ~2 meses. Se detectó recién cuando el autor lo reconoció al
+verlo citado.
+
+**Por qué no lo atajó nada.** El `.gitignore` bloquea `*.xlsx/*.xls/*.csv` — la PII
+que se esperaba era *una planilla*. Un RUT suelto en un comentario de código o en
+un `.md` no lo cubre ninguna de esas reglas. **La red de seguridad tenía la malla
+del tamaño equivocado.**
+
+**Remediación aplicada.**
+1. Purga del árbol de trabajo (reemplazo por `11111111-1`, sintético).
+2. Reescritura del historial completo con `git filter-repo`, en **contenido**
+   (`--replace-text`) **y en mensajes de commit** (`--replace-message` — el primero
+   NO toca los mensajes, es un paso aparte que se olvida fácil).
+3. Repositorio **borrado y recreado** en GitHub: un `push --force` no basta, GitHub
+   sigue sirviendo los commits viejos por URL directa de SHA hasta que corra su GC.
+4. **Pre-commit hook** `tools/hook_pre_commit_rut.py` (§8.2).
+
+**Regla que queda.** Un RUT **nunca** es un buen ejemplo, ni en un comentario, ni en
+un docstring, ni en un `.md`, ni en un mensaje de commit. Para ilustrar el formato se
+usa `11111111-1`. Si hace falta un lote para fixtures, cuerpo que empiece en `1000`
+con el DV calculado.
+
+### 8.2 Pre-commit hook anti-RUT
+
+`tools/hook_pre_commit_rut.py` bloquea cualquier cadena con forma de RUT cuyo
+**dígito verificador cuadre** (módulo 11), en archivos staged y en el mensaje de
+commit. Validar el DV es lo que separa un RUT plausible de un número inventado: al
+azar casi nunca cuadra el módulo 11.
+
+```bash
+python tools/hook_pre_commit_rut.py --instalar
+```
+
+**Los hooks NO se versionan** (viven en `.git/hooks/`): hay que instalarlo **en cada
+clon**, incluido cualquier equipo nuevo. Deja pasar los placeholders obvios
+(dígitos repetidos, cuerpo `1000…`, todo ceros). Escape puntual y consciente:
+`git commit --no-verify`.
+
 ---
 
 ## 9. Convenciones de código
