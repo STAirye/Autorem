@@ -73,14 +73,13 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 |---|---|---|---|
 | **1** | **Informe Inscritos / Adscritos** (IRIS) — *«Inscritos y Adscritos», NO «archivo Excel» a secas* | snapshot actual | sí |
 | **2** | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
-
-**Este orden (1 Inscritos · 2 Formulario · 3 ADA) es el que debe mostrar la GUI**, en las
-instrucciones y en los selectores de carga. Cada slot se rotula con el **nombre del
-reporte tal como se descarga**, nunca «archivo Excel»: el usuario baja todo desde
-RAYEN/IRIS con nombres parecidos y necesita saber cuál va en cada casilla.
-
 | **3** | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
 | — | Recetas Vigentes / Recetas Externas | — | **no** (§3.1) |
+
+**Ese orden (1 Inscritos · 2 Formulario · 3 ADA) es el que debe mostrar la GUI**, tanto
+en las instrucciones como en los selectores de carga. Cada slot se rotula con el
+**nombre del reporte tal como se descarga**, nunca «archivo Excel»: el usuario baja
+todo desde RAYEN/IRIS con nombres parecidos y necesita saber cuál va en cada casilla.
 
 ### 3.1 Por qué el ADA no necesita el histórico completo
 
