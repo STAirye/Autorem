@@ -62,8 +62,8 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 - `P6_A1` — grilla para llevar al SP, respetando la máscara de celdas bloqueadas (§5.0).
 - `P6_Detalle` — auditable, 1 fila por persona con las banderas que la hicieron
   tributar a cada fila del P6.
-- **`P6_Revisar` — excepciones que requieren decisión humana (§5.5).** Hoja
-  obligatoria del módulo, no un extra.
+- **`Revisar_Administrativo` + `Revisar_Clinico` — excepciones que requieren decisión
+  humana, partidas por tipo (§5.5).** Hojas obligatorias del módulo, no un extra.
 
 ---
 
@@ -537,28 +537,53 @@ binarias.** Eso no tiene solución automática correcta: asignar por sexo regist
 sería inventar el dato, y descartar la fila perdería a la persona. **Va a revisión
 manual, siempre.**
 
-Esa es la razón de ser de la hoja, pero no el único contenido. `P6_Revisar` junta
+Esa es la razón de ser de la hoja, pero no el único contenido. La revisión junta
 **todo lo que requiere criterio humano antes de pegar al SP**, con RUN, la fila del
-P6 afectada y el motivo:
+P6 afectada y el motivo.
+
+**Se parte en DOS hojas** *(decidido — una sola era demasiado unwieldy)*, porque las
+dos mitades las resuelven personas y momentos distintos:
+
+- **`Revisar_Administrativo`** — problemas de **identidad y registro**. Se resuelven
+  corrigiendo la ficha en RAYEN (o pidiéndoselo a SOME/admin), **sin criterio clínico**.
+- **`Revisar_Clinico`** — casos que exigen **criterio clínico** para decidir si la
+  persona tributa o no, y a qué fila.
+
+Ambas: `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`, ordenadas por motivo.
+
+#### `Revisar_Administrativo`
 
 | Motivo | Origen |
 |---|---|
+| **Identificador no-RUN** (FONASA, pasaporte) | `TIPO IDENTIFICACION` no es RUN (§5.5.2) |
+| **`RUN Responsable`** — RN <1 mes inscrito con el RUN de un tercero; colisión de clave | §5.5.2 |
 | **Sexo/género no binario** — no cae en columna H ni M | `Sexo` / `Género` fuera de {Hombre, Mujer} |
-| **`Sexo = "No informado"`** — el propio DAX lo genera cuando el Inscritos viene vacío | §Ferrada[Sexo] |
-| **Hombre marcado como «madre de hijo < 5»** — flag descartado, hay que corregir la ficha en RAYEN | §5.4.1 |
-| **Edad plegada** — paciente fuera del rango etario de su fila; **se cuenta igual**, en la banda de borde. Con edad real y banda de destino | §5.0.1 |
-| **Número en celda demográfica bloqueada** — TDAH en madre<5, demencia en gestante/SENAME, depresión post parto en hombre. **No se cuenta** (no hay dónde plegarlo) | máscara §5.0 |
-| **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
-| **Egreso multi-dx divergente** — casos donde el PowerBI habría marcado Egresado todos los dx y el port marca solo uno | §4.3 |
-| **Identificador no-RUT** (DNI, pasaporte) | `Tipo de identificación` ≠ RUT → el CONTEXTO manda eliminar la fila; acá se lista antes de eliminarla |
+| **`Sexo = "No informado"`** — el DAX lo genera con el Inscritos vacío | §Ferrada[Sexo] |
+| **Hombre marcado como «madre de hijo < 5»** — flag descartado, corregir la ficha | §5.4.1 |
+| **Número en celda demográfica bloqueada** — TDAH en madre<5, demencia en gestante/SENAME, post parto en hombre. **No se cuenta** | máscara §5.0 |
 | **Edad sin fecha de nacimiento** — cayó al fallback `Inscritos[EDAD AÑOS]` | §Ferrada[Edad] |
 | **Fecha de formulario ilegible** | `mes_de_celda()` devolvió None |
+
+#### `Revisar_Clinico`
+
+| Motivo | Origen |
+|---|---|
+| **Excluido por comorbilidad** (exclusión comodín) — adaptativo/otros-ansiedad/otros-infancia con demasiados dx específicos | §5.1, `EXCLUSION_COMODIN` |
+| **Dx activo sin subtipo registrado** — está Activo pero el subtipo viene vacío → no tributa a ninguna fila | D5 |
+| **Edad plegada** — fuera del rango etario de su fila; **se cuenta igual** en la banda de borde, con edad real y destino | §5.0.1 |
+| **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
+| **Egreso multi-dx divergente** — el PowerBI habría egresado todos los dx, el port solo uno | §4.3 |
+| **AV24 con comorbilidad depre+demencia** — GES a resolver a mano | §5.4.2 |
 | **Fila 13 vs distinct** — magnitud del doble conteo de FR | §5.2 |
 | **Delta negativo** contra el mes anterior (reingresos, inconsistencias) | fase 4, cuando exista |
 
-Diseño: una sola hoja, columnas `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`,
-ordenada por motivo. **Fail loud** (§CLAUDE.md): si la hoja trae filas, el log lo
-grita con el conteo por motivo; nunca un número plausible y callado.
+> El plegado etario y la comorbilidad quedan en la hoja **clínica** aunque el número ya
+> entre al REM: el revisor clínico es quien puede confirmar que el cuadro corresponde a
+> esa banda/fila, o detectar un registro errado que infla un dx.
+
+**Fail loud** (§CLAUDE.md): si cualquiera de las dos trae filas, el log grita el conteo
+por motivo y por hoja; nunca un número plausible y callado. Ambas hojas se emiten
+siempre (aunque vengan vacías), para que su ausencia no se confunda con «no revisé».
 
 #### 5.5.1 🔴 Guardarraíl: un filtro que descarta demasiado es un BUG del filtro
 
