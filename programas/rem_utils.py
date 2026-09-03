@@ -386,6 +386,32 @@ BANDAS_A06 = [(0, 4)] + BANDAS_A04[2:]
 LBL_A06 = ["0-4"] + LBL_A04[2:]
 
 
+def dv_rut(cuerpo):
+    """Digito verificador de un RUT chileno (modulo 11). `cuerpo` = los digitos sin
+    DV. Devuelve '0'-'9' o 'K'."""
+    suma, mult = 0, 2
+    for ch in reversed(str(cuerpo)):
+        suma += int(ch) * mult
+        mult = 2 if mult == 7 else mult + 1
+    resto = 11 - (suma % 11)
+    return "0" if resto == 11 else "K" if resto == 10 else str(resto)
+
+
+def rut_valido(v):
+    """True si `v` es un RUT chileno BIEN FORMADO: forma correcta Y digito
+    verificador que cuadra (modulo 11). Mas fuerte que validar solo la forma -- un
+    numero de pasaporte con pinta de RUT pasa el regex pero casi nunca el DV.
+
+    OJO: valida la ARITMETICA, no la existencia. '11111111-1' cuadra el modulo 11
+    pero no es un RUT asignado a nadie. Sirve para descartar identificadores que NO
+    son RUT (pasaportes, FONASA), no para verificar la identidad de una persona."""
+    n = norm(v).replace(".", "").replace(" ", "")
+    cuerpo, sep, dv = n.rpartition("-")
+    if not sep or not cuerpo.isdigit() or not (6 <= len(cuerpo) <= 9):
+        return False
+    return dv == dv_rut(cuerpo)
+
+
 def _mujer(s):
     """Sexo REGISTRAL femenino. Es el criterio de los flags que el REM define solo
     sobre mujeres (Madre de hijo <5, Gestante): va por SEXO, nunca por GÉNERO, así

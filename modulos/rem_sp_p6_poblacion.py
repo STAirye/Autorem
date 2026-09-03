@@ -37,7 +37,7 @@ import re
 import pandas as pd
 
 from programas.rem_utils import (norm, BANDAS_A06 as BANDAS, LBL_A06 as LBL, _band_idx, grid,
-                                 _hombre, _mujer, ArchivoInvalido)
+                                 _hombre, _mujer, ArchivoInvalido, rut_valido)
 from programas.rem_saludmental import OVERRIDE_SUBTIPO
 
 # ======================================================================
@@ -174,7 +174,6 @@ GES_FILAS_AV = set(range(15, 24)) | {25, 26, 27, 28, 44, 45, 46}
 # ======================================================================
 # Motor
 # ======================================================================
-_RUT_FORMATO = re.compile(r"^\d{6,9}-[\dkK]$")
 _TECHO_NO_RUT = 0.05   # §5.5.1: si el filtro descarta más de esto, el roto es EL FILTRO
 # §5.5.2: forma válida pero SIGNIFICADO incorrecto -> la forma sola no basta. Hoy solo
 # "RUN Responsable" (colisión de clave con un tercero — programas.poblacion.
@@ -235,7 +234,7 @@ def _base_valida(P, log):
     revisar = []
 
     numero_str = P["Número"].astype(str).str.strip()
-    formato_ok = numero_str.str.match(_RUT_FORMATO)
+    formato_ok = numero_str.map(rut_valido)
     tipoid_n = P["Tipo de identificación"].map(norm)
     es_responsable = tipoid_n.isin(_TIPOID_FORMA_OK_SIGNIFICADO_MAL)
     no_rut = ~formato_ok | es_responsable
@@ -249,16 +248,26 @@ def _base_valida(P, log):
             f"({_TECHO_NO_RUT:.0%}, §5.5.1 del plan). El roto es el validador, no los "
             "datos: revisa cómo viene 'Tipo de identificación'/'Número' en el Informe "
             "Inscritos y Adscritos (¿es el correcto, sin modificar?) antes de seguir.")
-    for _, row in P.loc[no_rut].iterrows():
+    # Solo se REPORTA a quien habria entrado al P6 de no ser por el identificador:
+    # "esta persona deberia estar y no esta" es accionable. Listar a los ~miles de
+    # pasaportes/FONASA del padron que nunca vieron salud mental es puro ruido en la
+    # hoja (y un iterrows() al pedo). El calculo de no_rut, el guardarrail del techo
+    # y el assert de unicidad SI corren sobre el padron completo: ahi esta su sentido.
+    _relevante = ((P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI") &
+                  (P["¿Ingresado?"] == "SI"))
+    reportables = no_rut & _relevante
+    for _, row in P.loc[reportables].iterrows():
         motivo = ("RUN Responsable (colisión de clave con un tercero, probable "
                  "recién nacido <1 mes)" if norm(row["Tipo de identificación"]) in
                  _TIPOID_FORMA_OK_SIGNIFICADO_MAL else "Identificador no-RUN (formato inválido)")
         revisar.append({"RUN": row["Número"], "Motivo": motivo, "Fila_P6": "",
-                        "Detalle": row["Tipo de identificación"], "Valor_crudo": row["Número"],
-                        "Categoria": "Administrativo"})
+                        "Detalle": f"{row['Tipo de identificación']} — habria entrado al P6",
+                        "Valor_crudo": row["Número"], "Categoria": "Administrativo"})
     if n_no_rut:
-        log(f"[sp_p6] {n_no_rut} persona(s) descartadas por identificador "
-            "(formato no-RUN o RUN Responsable): van a Revisar_Administrativo.")
+        log(f"[sp_p6] {n_no_rut} persona(s) descartadas por identificador (formato "
+            f"no-RUN o RUN Responsable); de esas, {int(reportables.sum())} habrian "
+            "entrado al P6 -> van a Revisar_Administrativo. El resto se descarta "
+            "en silencio (no tributaban igual).")
     P = P.loc[~no_rut].copy()
 
     dup = P["Número"].duplicated(keep=False)

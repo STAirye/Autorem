@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPO))
 
 import programas.poblacion as pob              # noqa: E402
 import modulos.rem_sp_p6_poblacion as p6mod     # noqa: E402
-from programas.rem_utils import ArchivoInvalido  # noqa: E402
+from programas.rem_utils import ArchivoInvalido, dv_rut  # noqa: E402
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_sp_p6_"))
 
@@ -301,6 +301,31 @@ def test_cobertura_avisa_si_ada_no_llega_al_mes_reportado():
         mes=(2026, 8))
     assert any("El ADA NO llega hasta el mes reportado" in m for m in log)
     assert not any("necesitan desde" in m and "13 meses cerrados" in m for m in log)   # sí cubre 13 meses
+
+
+def test_identificador_no_rut_solo_se_reporta_si_habria_entrado_al_p6():
+    """El check de identificador se calcula sobre el padron completo (guardarrail y
+    unicidad lo necesitan), pero SOLO se REPORTA a quien habria entrado al P6. Un
+    pasaporte sin nada de salud mental es ruido en la hoja, no un caso a revisar."""
+    # padron de relleno con identificador valido: sin el, 2 pasaportes sobre 3
+    # personas serian el 67% y saltaria el guardarrail del 5% (§5.5.1).
+    relleno = [{"rut": f"1000{n:04d}-{dv_rut(f'1000{n:04d}')}"} for n in range(50)]
+    P = _poblacion([
+        # AB123456: pasaporte CON diagnostico activo -> habria entrado al P6 -> se reporta
+        {"rut": "AB123456", "fecha": date(2026, 7, 1),
+         **{_Q[18]: "SI", _Q[19]: "19.- INGRESO", _Q[20]: "Leve"}},
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1),
+         **{_Q[18]: "SI", _Q[19]: "19.- INGRESO", _Q[20]: "Leve"}},
+    ], [
+        {"rut": "11111111-1"},
+        {"rut": "AB123456", "tipoid": "Numero de Pasaporte"},
+        # CD789012: pasaporte SIN nada de salud mental -> NO se reporta (puro ruido)
+        {"rut": "CD789012", "tipoid": "Numero de Pasaporte"},
+    ] + relleno, ada_filas=[_sm("11111111-1"), _sm("AB123456")])
+    r = _p6(P)
+    ruts = list(r["revisar_administrativo"]["RUN"])
+    assert "AB123456" in ruts        # habria entrado al P6: accionable
+    assert "CD789012" not in ruts    # nunca iba a tributar: se descarta callado
 
 
 def test_cobertura_avisa_si_ada_no_cubre_13_meses():
