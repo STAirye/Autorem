@@ -32,9 +32,12 @@ cambia la plantilla, re-extraer con el mismo método (recorrer
 `ws.cell(...).protection.locked` de la hoja P6) y actualizar acá.
 """
 
+import re
+
 import pandas as pd
 
-from programas.rem_utils import norm, BANDAS_A06 as BANDAS, LBL_A06 as LBL, _band_idx, grid, _hombre, _mujer
+from programas.rem_utils import (norm, BANDAS_A06 as BANDAS, LBL_A06 as LBL, _band_idx, grid,
+                                 _hombre, _mujer, ArchivoInvalido)
 from programas.rem_saludmental import OVERRIDE_SUBTIPO
 
 # ══════════════════════════════════════════════════════════════════════
@@ -184,28 +187,44 @@ def _columnas_en_rango(rangos, fila_propia):
 # ══════════════════════════════════════════════════════════════════════
 # Motor
 # ══════════════════════════════════════════════════════════════════════
+_RUT_FORMATO = re.compile(r"^\d{6,9}-[\dkK]$")
+_TECHO_NO_RUT = 0.05   # §5.5.1: si el filtro descarta más de esto, el roto es EL FILTRO
+
+
 def _base_valida(P, log):
-    """Filtro base §5.1 (Estado=Activo & Activo12m=SI & Ingresado=SI) +
-    descarta identificador no-RUT (§5.5, listado antes de eliminar).
+    """Filtro base §5.1 (Estado=Activo & Activo12m=SI & Ingresado=SI) + descarta
+    identificador no-RUT (§5.5). Filtra por FORMA (regex sobre 'Número'), NO por la
+    etiqueta 'Tipo de identificación': RAYEN la escribe distinto según el export
+    (RUT/RUN/R.U.T./Cédula…) y una whitelist de etiquetas se rompe con cada variante
+    (§5.5.1 — la primera corrida real descartó al 100% del padrón así). La etiqueta
+    queda solo como dato informativo en P6_Revisar.
+
+    Guardarraíl (§5.5.1): si esto descarta más de `_TECHO_NO_RUT` del padrón, el
+    filtro es el que está roto, no los datos → `ArchivoInvalido` explícito en vez de
+    seguir y emitir un P6_A1 lleno de ceros en silencio.
     Devuelve (P_filtrada, filas_revisar)."""
     revisar = []
 
-    tipoid_n = P["Tipo de identificación"].map(norm)
-    distintos = sorted(v for v in tipoid_n.unique() if v)
-    log(f"[sp_p6] Tipo de identificación en el snapshot: "
-        + (", ".join(distintos) if distintos else "(todo vacío)"))
-    # BLACKLIST (no whitelist): RAYEN no siempre etiqueta el RUT literal como "RUT" (a
-    # veces "RUN"); exigir un match exacto excluía al 100% del snapshot. Se excluye SOLO
-    # lo claramente NO-nacional (pasaporte/DNI/sin documento); todo lo demás se acepta.
-    _TIPOID_SOSPECHOSO = ["PASAPORTE", "DNI", "SIN DOCUMENTO", "EXTRANJER"]
-    no_rut = tipoid_n.map(lambda s: any(k in s for k in _TIPOID_SOSPECHOSO))
+    numero_str = P["Número"].astype(str).str.strip()
+    formato_ok = numero_str.str.match(_RUT_FORMATO)
+    no_rut = ~formato_ok
+    n_no_rut, total = int(no_rut.sum()), len(P)
+    if total and n_no_rut / total > _TECHO_NO_RUT:
+        raise ArchivoInvalido(
+            "validador_rut",
+            f"El validador de formato de RUT descartó {n_no_rut} de {total} personas "
+            f"({n_no_rut / total:.0%}) — muy por encima del techo esperado "
+            f"({_TECHO_NO_RUT:.0%}, §5.5.1 del plan). El roto es el validador, no los "
+            "datos: revisa cómo viene la columna 'Número' (¿es el Informe Inscritos y "
+            "Adscritos correcto, sin modificar?) antes de seguir.")
     for _, row in P.loc[no_rut].iterrows():
-        revisar.append({"RUN": row["Número"], "Motivo": "Identificador no-RUT",
-                        "Fila_P6": "", "Detalle": row["Tipo de identificación"], "Valor_crudo": ""})
-    if no_rut.any():
-        log(f"[sp_p6] ⚠ {int(no_rut.sum())} persona(s) con identificador NO-RUT: "
-            "excluidas de todo el P6 (van a P6_Revisar).")
-    P = P.loc[~no_rut].copy()
+        revisar.append({"RUN": row["Número"], "Motivo": "Identificador con formato NO-RUT",
+                        "Fila_P6": "", "Detalle": row["Tipo de identificación"],
+                        "Valor_crudo": row["Número"]})
+    if n_no_rut:
+        log(f"[sp_p6] ⚠ {n_no_rut} persona(s) cuyo 'Número' no tiene forma de RUT "
+            f"(regex {_RUT_FORMATO.pattern}): excluidas de todo el P6 (P6_Revisar).")
+    P = P.loc[formato_ok].copy()
 
     base = ((P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI") &
            (P["¿Ingresado?"] == "SI"))

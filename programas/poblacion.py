@@ -499,7 +499,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
             for run, nuestro, pbi_v in zip(P.loc[diverge, "Número"], P.loc[diverge, spec["col"]],
                                            pbi[diverge]):
                 divergencias_detalle.append({"Diagnostico": spec["col"], "RUN": run,
-                                             "Nuestro_estado": nuestro, "Estado_PowerBI_bug": pbi_v})
+                                             "Valor_port": nuestro, "Valor_PowerBI": pbi_v})
 
     P = _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
 
@@ -508,7 +508,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     P["¿Ingresado?"] = np.where((P[cols_dx] == "Activo").any(axis=1), "SI", "NO")
 
     div_df = pd.DataFrame(divergencias_detalle,
-                          columns=["Diagnostico", "RUN", "Nuestro_estado", "Estado_PowerBI_bug"])
+                          columns=["Diagnostico", "RUN", "Valor_port", "Valor_PowerBI"])
     if len(div_df):
         div_df = div_df.sort_values(["Diagnostico", "RUN"]).reset_index(drop=True)
         resumen = div_df.groupby("Diagnostico", sort=False).size()
@@ -537,11 +537,11 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
 
 
 def escribir_divergencias(wb, div, sheet_name="Egreso_Divergencias"):
-    """Escribe `div` (columnas Diagnostico/RUN/Nuestro_estado/Estado_PowerBI_bug, YA
-    ordenado por Diagnostico) como bloques COLAPSABLES por diagnóstico (agrupación de
-    filas de Excel, +/- en el margen izquierdo): 1 fila de cabecera con el diagnóstico
-    y el total, y debajo el detalle por RUN. `wb` = Workbook openpyxl. Nada que escribir
-    -> no crea la hoja."""
+    """Escribe `div` (columnas Diagnostico/RUN/Valor_port/Valor_PowerBI, YA ordenado
+    por Diagnostico) como bloques COLAPSABLES por diagnóstico (agrupación de filas de
+    Excel, +/- en el margen izquierdo, §4.3 del plan): 1 fila de cabecera con el
+    diagnóstico y el total, y debajo el detalle por RUN. `wb` = Workbook openpyxl.
+    Nada que escribir -> no crea la hoja."""
     if div is None or not len(div):
         return None
     from openpyxl.styles import Font
@@ -549,7 +549,7 @@ def escribir_divergencias(wb, div, sheet_name="Egreso_Divergencias"):
     ws = wb.create_sheet(sheet_name)
     ws.sheet_properties.outlinePr.summaryBelow = False   # cabecera ARRIBA de su detalle -> el
                                                           # +/- de colapsar queda junto a ella
-    ws.append(["Diagnóstico", "N personas", "RUN", "Nuestro estado", "Estado PowerBI (con el bug §4.3)"])
+    ws.append(["Diagnóstico", "N personas", "RUN", "Valor_port", "Valor_PowerBI (con el bug §4.3)"])
     for c in ws[1]:
         c.font = Font(bold=True)
     r = 2
@@ -559,8 +559,8 @@ def escribir_divergencias(wb, div, sheet_name="Egreso_Divergencias"):
         r += 1
         for _, fila in sub.iterrows():
             ws.cell(row=r, column=3, value=fila["RUN"])
-            ws.cell(row=r, column=4, value=fila["Nuestro_estado"])
-            ws.cell(row=r, column=5, value=fila["Estado_PowerBI_bug"])
+            ws.cell(row=r, column=4, value=fila["Valor_port"])
+            ws.cell(row=r, column=5, value=fila["Valor_PowerBI"])
             ws.row_dimensions[r].outline_level = 1   # colapsable bajo la cabecera del diagnóstico
             r += 1
     ws.freeze_panes = "A2"

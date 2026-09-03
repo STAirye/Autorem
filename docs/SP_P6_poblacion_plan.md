@@ -71,15 +71,17 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 
 | # | Export | Ventana | Obligatorio |
 |---|---|---|---|
-| **1** | **Informe Inscritos / Adscritos** (IRIS) — *«Inscritos y Adscritos», NO «archivo Excel» a secas* | snapshot actual | sí |
-| **2** | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
-| **3** | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
+| **1** | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
+| **2** | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
+| **3** | **Informe Inscritos / Adscritos** (IRIS) — *«Inscritos y Adscritos», NO «archivo Excel» a secas* | snapshot actual | sí |
 | — | Recetas Vigentes / Recetas Externas | — | **no** (§3.1) |
 
-**Ese orden (1 Inscritos · 2 Formulario · 3 ADA) es el que debe mostrar la GUI**, tanto
-en las instrucciones como en los selectores de carga. Cada slot se rotula con el
-**nombre del reporte tal como se descarga**, nunca «archivo Excel»: el usuario baja
-todo desde RAYEN/IRIS con nombres parecidos y necesita saber cuál va en cada casilla.
+**Ese orden (1 Formulario · 2 ADA · 3 Inscritos) es el que debe mostrar la GUI**, tanto
+en las instrucciones como en los selectores de carga — decidido así por el autor
+(no 1 Inscritos, como quedó escrito acá por error una versión anterior). Cada slot se
+rotula con el **nombre del reporte tal como se descarga**, nunca «archivo Excel»: el
+usuario baja todo desde RAYEN/IRIS con nombres parecidos y necesita saber cuál va en
+cada casilla.
 
 ### 3.1 Por qué el ADA no necesita el histórico completo
 
