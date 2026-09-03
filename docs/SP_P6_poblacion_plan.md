@@ -612,10 +612,26 @@ Se le inscribe con el RUN de un tercero, **habitualmente la madre**. Consecuenci
 duplicados, `ArchivoInvalido` (quedó una colisión sin resolver). Es barato y ataja
 justo el modo de falla que este caso introduce.
 
-En la práctica un RN de <1 mes no va a tener diagnóstico SM activo, así que el impacto
-numérico en el P6 es ~0 — pero **se excluye explícitamente y se lista en `P6_Revisar`**
-con su motivo, no se descarta callado. Y los cuatro tipos no-RUN juntos deberían ser
-un puñado de personas: si superan el techo del 5%, salta el guardarraíl de §5.5.1.
+**Por qué excluir es exactamente lo correcto (y no una pérdida):** un RN de <1 mes no
+se ve por salud mental prácticamente por definición, así que el impacto numérico en el
+P6 es ~0. Al descartar la fila del RN, **la fila de la madre queda intacta** — que es
+la que sí importa.
+
+> ⚠ **El escenario de riesgo es concreto, no teórico.** La fila 28 del P6 es
+> **depresión post parto**. La paciente con más probabilidad de tener un
+> `RUN Responsable` colisionando con su ficha es justamente la que acaba de parir —
+> o sea la candidata natural a un dx SM activo de esa misma fila. Resolver mal la
+> colisión corrompería precisamente esa ficha. **Es el caso de test obligatorio:**
+> madre con `Depresión Postparto (form) = Activo` + RN inscrito con su mismo RUN.
+
+**El conjunto ROTA mes a mes.** El Registro Civil demora ~5 días en entregar el RUT:
+llegan al control de díada (10 días) sin RUT y al control del mes ya con el suyo. O
+sea los `RUN Responsable` de este mes no son los del siguiente. Consecuencias:
+**no cachear ninguna lista de exclusión** (se recalcula en cada corrida), y esperar que
+el conteo varíe entre meses sin que eso signifique nada.
+
+Los cuatro tipos no-RUN juntos deberían ser un puñado de personas: si superan el techo
+del 5%, salta el guardarraíl de §5.5.1.
 
 ### 5.6 Cómo llega el resultado al SP: COPY-PASTE en bloques *(decidido)*
 
