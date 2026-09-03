@@ -176,8 +176,11 @@ def _fila_p6(grid, n):
 
 
 def _motivos(resultado):
-    r = resultado["revisar"]
-    return list(r["Motivo"]) if len(r) else []
+    """Motivos de AMBAS hojas de revisión juntos (§5.5: Revisar_Administrativo +
+    Revisar_Clinico) — a la mayoría de los tests no les importa en cuál cayó,
+    solo que quedó trazado. Los que sí distinguen usan las claves directo."""
+    partes = [resultado["revisar_administrativo"], resultado["revisar_clinico"]]
+    return [m for r in partes if len(r) for m in r["Motivo"]]
 
 
 def _poblacion_log(formulario_filas, inscritos_filas, ada_filas, mes=(2026, 8)):
@@ -447,7 +450,9 @@ def test_exclusion_comodin_adaptativo():
     ], [{"rut": "11111111-1"}, {"rut": "22222222-2"}], ada_filas=[_sm("11111111-1"), _sm("22222222-2")])
     r = _p6(P)
     assert _fila_p6(r["grid"], 48)["Ambos"] == 1     # solo A
-    assert any(m == "Excluido por comorbilidad (exclusión comodín)" for m in _motivos(r))
+    # va a Revisar_CLINICO (exige criterio clínico, no es un problema de registro)
+    assert (r["revisar_clinico"]["Motivo"] == "Excluido por comorbilidad (exclusión comodín)").any()
+    assert "Excluido por comorbilidad (exclusión comodín)" not in list(r["revisar_administrativo"]["Motivo"])
 
 
 def test_av_pic_regla_wip_ges_y_total_filas():
@@ -498,7 +503,37 @@ def test_sexo_no_binario_no_se_ubica_y_va_a_revisar():
     r = _p6(P)
     fila = _fila_p6(r["grid"], 35)
     assert fila["Hombres"] == 0 and fila["Mujeres"] == 0
-    assert "Sexo/género no binario" in _motivos(r)
+    # va a Revisar_ADMINISTRATIVO (problema de registro, se corrige en la ficha)
+    assert (r["revisar_administrativo"]["Motivo"] == "Sexo/género no binario").any()
+    assert "Sexo/género no binario" not in list(r["revisar_clinico"]["Motivo"])
+
+
+def test_revisar_clinico_siempre_trae_fila13_vs_distinct():
+    """'Fila 13 vs distinct' (§5.2) es una MAGNITUD, no un caso por RUN -> siempre
+    aparece en Revisar_Clinico (aunque sea con diferencia 0), nunca en la hoja
+    administrativa."""
+    P = _poblacion([
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[57]: "SI", _Q[58]: "INGRESO"}},
+    ], [{"rut": "11111111-1"}], ada_filas=[_sm("11111111-1")])
+    r = _p6(P)
+    assert (r["revisar_clinico"]["Motivo"] == "Fila 13 vs distinct").any()
+    assert "Fila 13 vs distinct" not in list(r["revisar_administrativo"]["Motivo"])
+
+
+def test_egreso_multidx_divergente_llega_a_revisar_clinico():
+    """El §4.3 (egreso multi-dx divergente, calculado en programas.poblacion) se
+    refleja también en Revisar_Clinico, no solo en la hoja Egreso_Divergencias."""
+    P = _poblacion([
+        {"rut": "11111111-1", "fecha": date(2026, 5, 1), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}},
+        {"rut": "11111111-1", "fecha": date(2026, 5, 1), **{_Q[41]: "SI", _Q[42]: "INGRESO", _Q[43]: "Generalizada"}},
+        {"rut": "11111111-1", "fecha": date(2026, 8, 20), **{_Q[18]: "SI", _Q[19]: "19.- EGRESO"}},
+    ], [{"rut": "11111111-1"}], ada_filas=[_sm("11111111-1")])
+    r = _p6(P)
+    clin = r["revisar_clinico"]
+    fila = clin[clin["Motivo"] == "Egreso multi-dx divergente"]
+    assert len(fila) == 1
+    assert fila.iloc[0]["RUN"] == "11111111-1"
+    assert fila.iloc[0]["Detalle"] == "Ansiedad (form)"
 
 
 def test_bloques_pegables_fila28_es_bloque_propio():

@@ -206,7 +206,7 @@ def _base_valida(P, log):
       2. ETIQUETA (blacklist chica) — "RUN Responsable" tiene forma de RUT VÁLIDA
          pero es el RUN de un tercero (recién nacido <1 mes sin RUT propio): la forma
          sola no lo detecta.
-    La etiqueta cruda queda como dato informativo en P6_Revisar.
+    La etiqueta cruda queda como dato informativo en Revisar_Administrativo.
 
     Guardarraíl (§5.5.1): si el total descartado supera `_TECHO_NO_RUT` del padrón, el
     filtro es el que está roto, no los datos → `ArchivoInvalido` explícito en vez de
@@ -233,12 +233,13 @@ def _base_valida(P, log):
     for _, row in P.loc[no_rut].iterrows():
         motivo = ("RUN Responsable (colisión de clave con un tercero, probable "
                  "recién nacido <1 mes)" if norm(row["Tipo de identificación"]) in
-                 _TIPOID_FORMA_OK_SIGNIFICADO_MAL else "Identificador con formato NO-RUT")
+                 _TIPOID_FORMA_OK_SIGNIFICADO_MAL else "Identificador no-RUN (formato inválido)")
         revisar.append({"RUN": row["Número"], "Motivo": motivo, "Fila_P6": "",
-                        "Detalle": row["Tipo de identificación"], "Valor_crudo": row["Número"]})
+                        "Detalle": row["Tipo de identificación"], "Valor_crudo": row["Número"],
+                        "Categoria": "Administrativo"})
     if n_no_rut:
         log(f"[sp_p6] ⚠ {n_no_rut} persona(s) descartadas por identificador "
-            "(formato no-RUT o RUN Responsable): van a P6_Revisar.")
+            "(formato no-RUN o RUN Responsable): van a Revisar_Administrativo.")
     P = P.loc[~no_rut].copy()
 
     dup = P["Número"].duplicated(keep=False)
@@ -259,10 +260,10 @@ def _base_valida(P, log):
     for run, sx in zip(P.loc[base].loc[sexo_raro, "Número"], P.loc[base].loc[sexo_raro, "Sexo"]):
         motivo = "Sexo = No informado" if sx == "No informado" else "Sexo/género no binario"
         revisar.append({"RUN": run, "Motivo": motivo, "Fila_P6": "", "Detalle": "",
-                        "Valor_crudo": sx})
+                        "Valor_crudo": sx, "Categoria": "Administrativo"})
     if sexo_raro.any():
         log(f"[sp_p6] ⚠ {int(sexo_raro.sum())} persona(s) con sexo fuera de "
-            "{{Hombre,Mujer}}: no se pueden ubicar en columna H/M del P6 (P6_Revisar).")
+            "{{Hombre,Mujer}}: no se pueden ubicar en columna H/M del P6 (Revisar_Administrativo).")
 
     return P.loc[base].copy(), revisar
 
@@ -306,13 +307,15 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
             if len(marcados):
                 for run in marcados["Número"]:
                     revisar.append({"RUN": run, "Motivo": "Dato demográfico no aplica en esta fila",
-                                    "Fila_P6": fila, "Detalle": col, "Valor_crudo": "SI"})
+                                    "Fila_P6": fila, "Detalle": col, "Valor_crudo": "SI",
+                                    "Categoria": "Administrativo"})
 
     for _, r in sub.iterrows():
         if r["_plegada"]:
             revisar.append({"RUN": r["Número"], "Motivo": "Edad plegada al rango reportable",
                             "Fila_P6": fila, "Detalle": f"edad real {r['Edad']}",
-                            "Valor_crudo": f"-> banda destino desde idx {lo}-{hi}"})
+                            "Valor_crudo": f"-> banda destino desde idx {lo}-{hi}",
+                            "Categoria": "Clinico"})
         detalle_rows.append({
             "RUN": r["Número"], "Fila_P6": fila,
             "Concepto": ROW_LABELS.get(fila, ("", ""))[0], "Subconcepto": ROW_LABELS.get(fila, ("", ""))[1],
@@ -337,7 +340,7 @@ DEMO_COLS_MAP = {
 def _preparar_demografia(P, revisar, log=print):
     """Agrega al DataFrame las columnas booleanas `_dem_*` que consume
     `_grid_y_detalle`. Aplica el filtro por SEXO REGISTRAL de §5.4.1 a
-    Gestante/Madre<5 (con aviso a P6_Revisar si se descarta por sexo)."""
+    Gestante/Madre<5 (con aviso a Revisar_Administrativo si se descarta por sexo)."""
     P = P.copy()
     es_mujer = P["Sexo"].map(_mujer)
     es_hombre = P["Sexo"].map(_hombre)
@@ -351,11 +354,11 @@ def _preparar_demografia(P, revisar, log=print):
     for run in P.loc[descartadas_m, "Número"]:
         revisar.append({"RUN": run, "Motivo": "Hombre marcado «madre de hijo <5»",
                         "Fila_P6": "", "Detalle": "flag descartado, corregir en RAYEN",
-                        "Valor_crudo": "SI"})
+                        "Valor_crudo": "SI", "Categoria": "Administrativo"})
     n_descartadas = int(descartadas_g.sum()) + int(descartadas_m.sum())
     if n_descartadas:
         log(f"[sp_p6] ⚠ {n_descartadas} flag(s) de Gestante/Madre<5 descartado(s) por "
-            "sexo registral no-femenino (§5.4.1, P6_Revisar).")
+            "sexo registral no-femenino (§5.4.1, Revisar_Administrativo).")
 
     origen = P["¿Originario o Migrante?"]
     P["_dem_pueblo_h"] = (origen == "Originario") & es_hombre
@@ -381,7 +384,8 @@ def _tributarios_violencia(P, revisar):
     sin_subtipo = activo & ((tipo_n == "") | (va_n == ""))
     for run in P.loc[sin_subtipo, "Número"]:
         revisar.append({"RUN": run, "Motivo": "Dx activo sin subtipo registrado",
-                        "Fila_P6": "15-20", "Detalle": "Violencia", "Valor_crudo": ""})
+                        "Fila_P6": "15-20", "Detalle": "Violencia", "Valor_crudo": "",
+                        "Categoria": "Clinico"})
     usable = activo & ~sin_subtipo
     for keys, (f_vic, f_agr) in VIOLENCIA_TIPO_REGLAS:
         m = usable & tipo_n.str.contains("|".join(norm(k) for k in keys), regex=True, na=False)
@@ -403,7 +407,8 @@ def _tributarios_suicidio(P, revisar):
     sin_subtipo = activo & (tipo_n == "")
     for run in P.loc[sin_subtipo, "Número"]:
         revisar.append({"RUN": run, "Motivo": "Dx activo sin subtipo registrado",
-                        "Fila_P6": "22-23", "Detalle": "Suicidio", "Valor_crudo": ""})
+                        "Fila_P6": "22-23", "Detalle": "Suicidio", "Valor_crudo": "",
+                        "Categoria": "Clinico"})
     usable = activo & ~sin_subtipo
     for keys, fila in SUICIDIO_REGLAS:
         m = usable & tipo_n.str.contains("|".join(norm(k) for k in keys), regex=True, na=False)
@@ -426,7 +431,7 @@ def _tributarios_bucket(P, col_activo, col_subtipo, reglas, filas, revisar, etiq
     for run in P.loc[sin_reconocer, "Número"]:
         revisar.append({"RUN": run, "Motivo": "Dx activo sin subtipo registrado/reconocible",
                         "Fila_P6": "/".join(map(str, filas)), "Detalle": etiqueta,
-                        "Valor_crudo": ""})
+                        "Valor_crudo": "", "Categoria": "Clinico"})
     return out
 
 
@@ -444,15 +449,17 @@ def _tributarios_comodin(P, tributarios, revisar):
         for idx, run in excluidos["Número"].items():
             revisar.append({"RUN": run, "Motivo": "Excluido por comorbilidad (exclusión comodín)",
                             "Fila_P6": fila, "Detalle": ROW_LABELS.get(fila, ("", ""))[1] or "",
-                            "Valor_crudo": f"{int(n_otros.loc[idx])} otros dx activos (máx {umbral})"})
+                            "Valor_crudo": f"{int(n_otros.loc[idx])} otros dx activos (máx {umbral})",
+                            "Categoria": "Clinico"})
         tributarios[fila] = sub.loc[n_otros <= umbral]
 
 
 def construir_p6(P, log=print):
     """`P` = PSM_Poblacion (de `programas.poblacion.construir_poblacion()`).
-    Devuelve dict: 'grid' (DataFrame, 1 fila por fila-P6), 'detalle'
-    (DataFrame auditable), 'revisar' (DataFrame), 'bloques' (rectángulos
-    pegables), 'mes' (año,mes)."""
+    Devuelve dict: 'grid' (DataFrame, 1 fila por fila-P6), 'detalle' (DataFrame
+    auditable), 'revisar_administrativo'/'revisar_clinico' (DataFrames — §5.5:
+    identidad/registro vs criterio clínico, hojas separadas), 'bloques'
+    (rectángulos pegables), 'mes' (año,mes)."""
     revisar = []
     mes = P.attrs.get("mes")
     Pv, revisar_base = _base_valida(P, log)
@@ -490,7 +497,7 @@ def construir_p6(P, log=print):
     for run in comorbidos_ges:
         revisar.append({"RUN": run, "Motivo": "Comorbilidad GES depresión + demencia (AV24)",
                         "Fila_P6": 24, "Detalle": "el PIC se acumula 2 veces; decidir primacía a mano",
-                        "Valor_crudo": ""})
+                        "Valor_crudo": "", "Categoria": "Clinico"})
 
     detalle_rows = []
     filas_grid = {}
@@ -530,25 +537,49 @@ def construir_p6(P, log=print):
 
     # §5.2: fila 13 vs el DISTINCTCOUNT(RUN) real de "tiene FR o dx" (15-23 UNION 25-58,
     # que es justamente runs_24) -> la diferencia es la magnitud del doble conteo de FR.
+    # Va TAMBIÉN a Revisar_Clinico (no solo al log): es una magnitud, no un RUN puntual.
     runs_fr = set().union(*[set(tributarios[f]["Número"]) for f in range(15, 24) if f in tributarios])
     distinct_fr_o_dx = len(runs_fr | runs_24)
     log(f"[sp_p6] fila 13 = {filas_grid[13]['Ambos']} (suma FR+dx, con doble conteo) vs "
         f"{distinct_fr_o_dx} personas DISTINTAS con algún factor de riesgo o dx (diferencia = "
         "doble conteo de factores de riesgo, esperado).")
+    revisar.append({"RUN": "", "Motivo": "Fila 13 vs distinct", "Fila_P6": 13,
+                    "Detalle": f"fila13={filas_grid[13]['Ambos']} vs {distinct_fr_o_dx} personas distintas",
+                    "Valor_crudo": f"magnitud doble conteo FR = {filas_grid[13]['Ambos'] - distinct_fr_o_dx}",
+                    "Categoria": "Clinico"})
+
+    # §4.3: egreso multi-dx divergente (calculado en programas.poblacion) -> se refleja
+    # también acá para que el revisor clínico vea TODO en un solo lugar; el detalle
+    # completo (con estados) sigue viviendo en la hoja Egreso_Divergencias.
+    div = P.attrs.get("egreso_divergencias")
+    if div is not None and len(div):
+        for _, d in div.iterrows():
+            revisar.append({"RUN": d["RUN"], "Motivo": "Egreso multi-dx divergente",
+                            "Fila_P6": "", "Detalle": d["Diagnostico"],
+                            "Valor_crudo": f"port={d['Valor_port']} / PowerBI={d['Valor_PowerBI']}",
+                            "Categoria": "Clinico"})
 
     grid_df = pd.DataFrame([{**{"Fila": f, "Concepto": ROW_LABELS.get(f, ("", ""))[0],
                                 "Subconcepto": ROW_LABELS.get(f, ("", ""))[1]}, **g}
                            for f, g in sorted(filas_grid.items())])
     detalle_df = pd.DataFrame(detalle_rows)
-    revisar_df = pd.DataFrame(revisar)
     bloques_df = _bloques_pegables()
 
-    log(f"[sp_p6] P6·A.1 armado" + (f" (mes {mes[0]}-{mes[1]:02d})" if mes else ""))
-    if len(revisar_df):
-        conteo = revisar_df["Motivo"].value_counts()
-        log("[sp_p6] P6_Revisar: " + " · ".join(f"{m}={n}" for m, n in conteo.items()))
+    cols_revisar = ["RUN", "Motivo", "Fila_P6", "Detalle", "Valor_crudo"]
+    revisar_df = pd.DataFrame(revisar, columns=cols_revisar + ["Categoria"])
+    revisar_admin = revisar_df[revisar_df["Categoria"] == "Administrativo"][cols_revisar].reset_index(drop=True)
+    revisar_clin = revisar_df[revisar_df["Categoria"] == "Clinico"][cols_revisar].reset_index(drop=True)
 
-    return {"grid": grid_df, "detalle": detalle_df, "revisar": revisar_df,
+    log(f"[sp_p6] P6·A.1 armado" + (f" (mes {mes[0]}-{mes[1]:02d})" if mes else ""))
+    if len(revisar_admin):
+        conteo = revisar_admin["Motivo"].value_counts()
+        log("[sp_p6] Revisar_Administrativo: " + " · ".join(f"{m}={n}" for m, n in conteo.items()))
+    if len(revisar_clin):
+        conteo = revisar_clin["Motivo"].value_counts()
+        log("[sp_p6] Revisar_Clinico: " + " · ".join(f"{m}={n}" for m, n in conteo.items()))
+
+    return {"grid": grid_df, "detalle": detalle_df,
+           "revisar_administrativo": revisar_admin, "revisar_clinico": revisar_clin,
            "bloques": bloques_df, "mes": mes}
 
 
@@ -604,13 +635,17 @@ def _col_banda_letra(idx, hombre):
 
 def escribir(P, resultado, salida):
     """Escribe PSM_Poblacion (+ Egreso_Divergencias, colapsable por diagnóstico) y
-    las hojas del P6 (P6_A1, P6_Detalle, P6_Revisar, P6_Bloques) en un solo .xlsx."""
+    las hojas del P6 (P6_A1, P6_Detalle, Revisar_Administrativo, Revisar_Clinico,
+    P6_Bloques) en un solo .xlsx. Las dos de revisión se emiten SIEMPRE, aunque
+    vengan vacías (§5.5: su ausencia no debe confundirse con "no había nada que
+    revisar")."""
     from programas.poblacion import escribir_divergencias
     with pd.ExcelWriter(salida, engine="openpyxl") as xw:
         P.to_excel(xw, index=False, sheet_name="PSM_Poblacion")
         escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
         resultado["grid"].to_excel(xw, index=False, sheet_name="P6_A1")
         resultado["detalle"].to_excel(xw, index=False, sheet_name="P6_Detalle")
-        resultado["revisar"].to_excel(xw, index=False, sheet_name="P6_Revisar")
+        resultado["revisar_administrativo"].to_excel(xw, index=False, sheet_name="Revisar_Administrativo")
+        resultado["revisar_clinico"].to_excel(xw, index=False, sheet_name="Revisar_Clinico")
         resultado["bloques"].to_excel(xw, index=False, sheet_name="P6_Bloques")
     return str(salida)

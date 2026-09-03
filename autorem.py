@@ -1097,10 +1097,12 @@ def _tab_beta(nb, root):
                 return
             P, resultado = res
             n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
-            n_revisar = len(resultado["revisar"])
+            n_admin = len(resultado["revisar_administrativo"])
+            n_clin = len(resultado["revisar_clinico"])
             txt = (f"Listo (BETA, sin validar todavía). SP·P6 {y}-{m:02d}.\n"
                    f"{len(P)} personas en el snapshot, {n_ingresados} con ¿Ingresado?=SI.\n"
-                   f"P6_Revisar: {n_revisar} fila(s) — revísalas antes de pegar al SP.\n\n"
+                   f"Revisar_Administrativo: {n_admin} fila(s) · Revisar_Clinico: {n_clin} fila(s) "
+                   "— revísalas antes de pegar al SP.\n\n"
                    f"Guardado en:\n{salida}")
             log(""); log("✔ " + txt.replace("\n", " | "))
             if messagebox.askyesno("Listo (BETA)", txt + "\n\n¿Abrir la carpeta del resultado?"):
