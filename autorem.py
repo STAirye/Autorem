@@ -197,6 +197,7 @@ def lanzar_gui(ruta_inicial=""):
     _tab_a03(nb, root)
     _tab_a23(nb, root)
     _tab_sm(nb, root)
+    _tab_beta(nb, root)
 
     root.mainloop()
 
@@ -996,6 +997,110 @@ def _tab_sm(nb, root):
                    f"{rtxt}\n\nGuardado en:\n{salida}")
             log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
             if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
+                _abrir_carpeta(salida.parent)
+
+        _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar)
+
+    barra = ttk.Frame(tab)
+    barra.pack(fill="x")
+    btn = ttk.Button(barra, text="Procesar", command=on_procesar)
+    btn.pack(side="left")
+
+
+# ── Pestaña BETA: SP·P6 · Población en control PSM (en pruebas) ────────
+def _tab_beta(nb, root):
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    tab = _tab_scroll(nb, "BETA")
+
+    instr = (
+        "⚠ EN PRUEBAS — Fase 1+2 de SP·P6, todavía SIN validar contra un P6 llenado a\n"
+        "mano. Úsala para ir comparando, no para tabular en producción todavía.\n"
+        "Arma la tabla intermedia PSM_Poblacion (port del PowerBI 'Ferrada') y la grilla\n"
+        "P6·A.1 lista para copiar-pegar al SP_26.xlsm — respeta la máscara de celdas\n"
+        "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
+        "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
+        "pegar. Ver docs/SP_P6_poblacion_plan.md.\n"
+        "1.  Informe Inscritos y Adscritos (IRIS)  →  snapshot actual, un archivo.\n"
+        "2.  Formulario 'Control de Salud Mental' (IRIS)  →  HISTÓRICO COMPLETO: carga\n"
+        "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click).\n"
+        "3.  Atenciones/Diagnósticos/Actividades (ADA)  →  13 meses (Activo 12m,\n"
+        "     Gestante, rescate a 13 meses); acepta varios archivos.\n"
+        "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
+    )
+    caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
+    caja.pack(fill="x", pady=(0, 8))
+    ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
+    _aviso_sin_modificar(tab)
+
+    var_inscritos = tk.StringVar()
+    _fila_archivo(tab, var_inscritos, "Elige el 'Informe Inscritos y Adscritos'")
+    get_formulario = _fila_archivos(tab, "Formulario SM (histórico):",
+                                    "Formulario 'Control de Salud Mental' (IRIS) — carga TODO el histórico disponible")
+    get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):",
+                             "Atenciones / Diagnósticos / Actividades — 13 meses")
+    get_salida = _fila_carpeta_salida(tab)
+
+    y0, m0 = mes_anterior()
+    barra_mes = ttk.Frame(tab)
+    barra_mes.pack(fill="x", pady=(4, 4))
+    ttk.Label(barra_mes, text="Mes a reportar (año / mes):").pack(side="left")
+    var_anio = tk.StringVar(value=str(y0))
+    var_mes = tk.StringVar(value=str(m0))
+    ttk.Spinbox(barra_mes, from_=2020, to=2100, width=6, textvariable=var_anio).pack(side="left", padx=(6, 2))
+    ttk.Spinbox(barra_mes, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
+
+    log, limpiar = _crear_log(tab, root)
+
+    def on_procesar():
+        limpiar()
+        entrada = _valida_ruta(var_inscritos.get(), messagebox)
+        if entrada is None:
+            return
+        formularios = get_formulario()
+        if not formularios:
+            messagebox.showwarning("Falta el histórico", "Carga el histórico del formulario "
+                                   "'Control de Salud Mental' (IRIS) — al menos un archivo.")
+            return
+        ada = get_ada()
+        if not ada:
+            messagebox.showwarning("Falta el ADA", "Carga al menos un archivo de "
+                                   "Atenciones / Diagnósticos / Actividades.")
+            return
+        try:
+            y, m = int(var_anio.get()), int(var_mes.get())
+        except ValueError:
+            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+            return
+        if not (1 <= m <= 12):
+            messagebox.showwarning("Mes inválido", "El mes debe estar entre 1 y 12.")
+            return
+        carpeta = _valida_carpeta(get_salida(), messagebox, defecto=entrada.parent)
+        if carpeta is None:
+            return
+        salida = carpeta / f"REM_SP_P6_{y}_{m:02d}_BETA.xlsx"
+
+        def trabajo(log):
+            import programas.poblacion as pob
+            import modulos.rem_sp_p6_poblacion as p6
+            P = pob.construir_poblacion(str(entrada), formularios, ada, mes=(y, m), log=log)
+            resultado = p6.construir_p6(P, log=log)
+            p6.escribir(P, resultado, salida)
+            return P, resultado
+
+        def al_terminar(res, err):
+            if err is not None:
+                _manejar_error(err, log, messagebox)
+                return
+            P, resultado = res
+            n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
+            n_revisar = len(resultado["revisar"])
+            txt = (f"Listo (BETA, sin validar todavía). SP·P6 {y}-{m:02d}.\n"
+                   f"{len(P)} personas en el snapshot, {n_ingresados} con ¿Ingresado?=SI.\n"
+                   f"P6_Revisar: {n_revisar} fila(s) — revísalas antes de pegar al SP.\n\n"
+                   f"Guardado en:\n{salida}")
+            log(""); log("✔ " + txt.replace("\n", " | "))
+            if messagebox.askyesno("Listo (BETA)", txt + "\n\n¿Abrir la carpeta del resultado?"):
                 _abrir_carpeta(salida.parent)
 
         _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar)
