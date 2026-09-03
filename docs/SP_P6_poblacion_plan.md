@@ -572,18 +572,50 @@ nunca seguir y emitir ceros.
 
 | Filtro | Techo razonable | Si lo supera |
 |---|---|---|
-| Identificador no-RUT | **5%** del padrón | error: «el validador de RUT descartó N de M personas; revisa los valores de `TIPO IDENTIFICACION`» |
+| Identificador no-RUN (§5.5.2) | **5%** del padrón | error: «el validador descartó N de M personas; revisa los valores de `TIPO IDENTIFICACION`» |
 | Fallecidos (§8.3) | 2% | aviso ruidoso |
 | Edad ilegible / sin banda | 1% | aviso ruidoso |
 
-**Y el filtro en sí va por FORMA, no por etiqueta.** El texto del tipo de
-identificación es un rótulo que RAYEN puede cambiar (RUT / RUN / R.U.T. / Cédula de
-Identidad) y cada variante rompe una whitelist. Lo estable es el **formato del
-identificador**: `^\d{6,9}-[\dkK]$` sobre `Número` ya normalizado (el proyecto ya fija
-ese formato, ver `CONTEXTO_REM_general` §quirks). La etiqueta se conserva **solo como
-dato informativo** en `P6_Revisar`, no como criterio.
+#### 5.5.2 Los valores REALES de `TIPO IDENTIFICACION` (verificados sep-2026)
 
-Aplica igual a cualquier filtro futuro: **validar la forma del dato, no cómo se llama.**
+El export trae exactamente estos cinco. **El valor es `RUN`, no «RUT»** — de ahí que
+la whitelist contra el literal `"RUT"` descartara a todo el mundo:
+
+| Valor | ¿Entra al P6? | Por qué |
+|---|---|---|
+| **`RUN`** | ✅ **sí** | es el identificador válido; la inmensa mayoría del padrón |
+| `Número de identificador FONASA` | ❌ no | no es RUT |
+| `Número de Pasaporte` | ❌ no | no es RUT |
+| `Pasaporte/Otros` | ❌ no | no es RUT |
+| **`RUN Responsable`** | ❌ **no — y es el caso delicado** | ver abajo |
+
+**`RUN Responsable` = recién nacido de menos de un mes que todavía no tiene su RUT.**
+Se le inscribe con el RUN de un tercero, **habitualmente la madre**. Consecuencias:
+
+1. **Es una COLISIÓN de clave, no un identificador inválido.** `Ferrada` es *1 fila por
+   RUN*: el RN y su madre quedan con el mismo `Número`. Si la madre está en población
+   SM, mezclar las dos fichas corrompe la fila.
+2. **Un chequeo por FORMA no lo detecta** — el RUN de la madre tiene formato válido.
+
+> ⚠ **Corrección a §5.5.1:** dije «validar la forma del dato, no cómo se llama».
+> Está incompleto. `RUN Responsable` prueba que **la etiqueta lleva información que la
+> forma no tiene**. La regla correcta es **las dos cosas**:
+>
+> - **forma** — `^\d{6,9}-[\dkK]$` sobre `Número` normalizado → descarta FONASA y
+>   pasaportes, y sobrevive a que RAYEN renombre las etiquetas;
+> - **+ lista explícita de tipos que son válidos en forma pero incorrectos en
+>   significado** — hoy solo `RUN Responsable`.
+>
+> Ninguno de los dos chequeos basta solo.
+
+**Además: `Número` debe ser ÚNICO tras el filtro.** Assert explícito; si hay
+duplicados, `ArchivoInvalido` (quedó una colisión sin resolver). Es barato y ataja
+justo el modo de falla que este caso introduce.
+
+En la práctica un RN de <1 mes no va a tener diagnóstico SM activo, así que el impacto
+numérico en el P6 es ~0 — pero **se excluye explícitamente y se lista en `P6_Revisar`**
+con su motivo, no se descarta callado. Y los cuatro tipos no-RUN juntos deberían ser
+un puñado de personas: si superan el techo del 5%, salta el guardarraíl de §5.5.1.
 
 ### 5.6 Cómo llega el resultado al SP: COPY-PASTE en bloques *(decidido)*
 
