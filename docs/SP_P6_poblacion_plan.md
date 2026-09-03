@@ -71,9 +71,15 @@ walker openpyxl del A05 es correcto para un mes, no para el histórico.
 
 | # | Export | Ventana | Obligatorio |
 |---|---|---|---|
-| 1 | **Informe Inscritos / Adscritos** (IRIS) | snapshot actual | sí |
-| 2 | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
-| 3 | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
+| **1** | **Informe Inscritos / Adscritos** (IRIS) — *«Inscritos y Adscritos», NO «archivo Excel» a secas* | snapshot actual | sí |
+| **2** | **Formulario «Control de Salud Mental»** (IRIS) | **histórico completo** | sí |
+
+**Este orden (1 Inscritos · 2 Formulario · 3 ADA) es el que debe mostrar la GUI**, en las
+instrucciones y en los selectores de carga. Cada slot se rotula con el **nombre del
+reporte tal como se descarga**, nunca «archivo Excel»: el usuario baja todo desde
+RAYEN/IRIS con nombres parecidos y necesita saber cuál va en cada casilla.
+
+| **3** | **ATENCIONESDIAGNOSTICOSACTIVIDADES (ADA)** | **13 meses** (acepta LISTA de archivos, como el A23) | sí |
 | — | Recetas Vigentes / Recetas Externas | — | **no** (§3.1) |
 
 ### 3.1 Por qué el ADA no necesita el histórico completo
@@ -168,9 +174,24 @@ de ansiedad, demencia, etc. → la persona desaparece del P6 completo.
 en `rem_saludmental`: 4→5, 18→19, 41→42, …).
 
 ⚠ Consecuencia: **la tabla intermedia deja de cuadrar 1:1 con el export PowerBI**.
-Para que la diferencia sea explicable y no misteriosa, el módulo emite además una
-columna de auditoría con el valor que habría dado el PowerBI y un aviso en el log
-(«N personas / M diagnósticos difieren por egreso multi-dx»). Fail loud, §CLAUDE.md.
+Para que la diferencia sea explicable y no misteriosa, el módulo emite la hoja
+**`Egreso_Divergencias`** y un aviso en el log. Fail loud, §CLAUDE.md.
+
+**La hoja lleva los RUN, no solo el conteo.** Un «N personas × diagnóstico difieren»
+no sirve para revisar nada: hay que poder ir a la ficha. Formato = **tabla anidada por
+diagnóstico** (una sección por dx, igual que las listas sectorizadas de §8):
+
+```
+Depresión (form)                                    3 personas
+    RUN            Port        PowerBI
+    11111111-1     Activo      Egresado
+    …
+Ansiedad (form)                                     1 persona
+    RUN            Port        PowerBI
+    …
+```
+
+Columnas por fila: `RUN · Valor_port · Valor_PowerBI`. Sin datos de contacto (§8.4).
 
 ### 4.4 El Inscritos es un snapshot, pero los SP/SA anteriores existen
 
@@ -537,6 +558,33 @@ P6 afectada y el motivo:
 Diseño: una sola hoja, columnas `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`,
 ordenada por motivo. **Fail loud** (§CLAUDE.md): si la hoja trae filas, el log lo
 grita con el conteo por motivo; nunca un número plausible y callado.
+
+#### 5.5.1 🔴 Guardarraíl: un filtro que descarta demasiado es un BUG del filtro
+
+**Lección de la primera corrida real (sep-2026).** El validador de «identificador
+no-RUT» comparaba `Tipo de identificación` contra el literal `"RUT"`. El export trae
+otro texto, así que **descartó las 55.331 personas del padrón** — el 100%. El módulo
+no se quejó: siguió adelante y emitió un `P6_A1` lleno de ceros, que es exactamente
+«un número plausible pero callado y errado».
+
+**Regla:** todo filtro de exclusión declara un **techo esperado**. Si lo supera, es el
+filtro el que está roto, no los datos → **`ArchivoInvalido` con mensaje explícito**,
+nunca seguir y emitir ceros.
+
+| Filtro | Techo razonable | Si lo supera |
+|---|---|---|
+| Identificador no-RUT | **5%** del padrón | error: «el validador de RUT descartó N de M personas; revisa los valores de `TIPO IDENTIFICACION`» |
+| Fallecidos (§8.3) | 2% | aviso ruidoso |
+| Edad ilegible / sin banda | 1% | aviso ruidoso |
+
+**Y el filtro en sí va por FORMA, no por etiqueta.** El texto del tipo de
+identificación es un rótulo que RAYEN puede cambiar (RUT / RUN / R.U.T. / Cédula de
+Identidad) y cada variante rompe una whitelist. Lo estable es el **formato del
+identificador**: `^\d{6,9}-[\dkK]$` sobre `Número` ya normalizado (el proyecto ya fija
+ese formato, ver `CONTEXTO_REM_general` §quirks). La etiqueta se conserva **solo como
+dato informativo** en `P6_Revisar`, no como criterio.
+
+Aplica igual a cualquier filtro futuro: **validar la forma del dato, no cómo se llama.**
 
 ### 5.6 Cómo llega el resultado al SP: COPY-PASTE en bloques *(decidido)*
 
