@@ -371,6 +371,30 @@ def test_violencia_bucket_tipo_y_victima_agresor_mas_abuso_sexual():
     assert _fila_p6(r["grid"], 24)["Ambos"] == 0
 
 
+def test_factor_de_riesgo_sin_diagnostico_se_reporta():
+    """Un FR (violencia/suicidio, 15-23) sin ningún dx de trastorno mental (25-58) es
+    registro incompleto -> se REPORTA en Revisar_Clinico, sin cambiar ningún número.
+    El que además tiene dx NO se reporta."""
+    P = _poblacion([
+        # 11: solo factor de riesgo (violencia), sin diagnóstico -> se reporta
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1),
+         **{_Q[4]: "SI", _Q[5]: "INGRESO", _Q[6]: "Física", _Q[7]: "Víctima"}},
+        # 22: factor de riesgo + diagnóstico (depresión) -> NO se reporta
+        {"rut": "22222222-2", "fecha": date(2026, 7, 1),
+         **{_Q[11]: "SI", _Q[13]: "INGRESO", _Q[12]: "Intento"}},
+        {"rut": "22222222-2", "fecha": date(2026, 7, 1),
+         **{_Q[18]: "SI", _Q[19]: "19.- INGRESO", _Q[20]: "Leve"}},
+    ], [{"rut": "11111111-1"}, {"rut": "22222222-2"}],
+       ada_filas=[_sm("11111111-1"), _sm("22222222-2")])
+    r = _p6(P)
+    rc = r["revisar_clinico"]
+    fr = rc[rc["Motivo"] == "Factor de riesgo SIN diagnóstico"]
+    assert list(fr["RUN"]) == ["11111111-1"]          # solo el que no tiene dx
+    assert "22222222-2" not in list(fr["RUN"])         # el que tiene dx no se reporta
+    assert _fila_p6(r["grid"], 15)["Ambos"] == 1       # el FR igual cuenta (no cambia números)
+    assert _fila_p6(r["grid"], 24)["Ambos"] == 1       # solo 22 tiene dx
+
+
 def test_suicidio_bucket_ideacion_intento():
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[11]: "SI", _Q[13]: "INGRESO", _Q[12]: "Ideación"}},

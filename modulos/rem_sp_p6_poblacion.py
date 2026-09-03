@@ -488,6 +488,24 @@ def construir_p6(P, log=print):
     filas_grid[24] = _grid_y_detalle(sub24, 24, detalle_rows, revisar)
     filas_grid[24]["AV"] = sum(filas_grid[f]["AV"] for f in range(25, 59) if f in filas_grid)
 
+    # Factor de riesgo SIN diagnóstico: registro incompleto (no debería pasar). Un FR
+    # (violencia/suicidio, filas 15-23) sin ningún dx de trastorno mental (25-58) es
+    # población que cuenta en la fila 13 pero no en la 24 -> se REPORTA (no cambia
+    # ningún número), para completar la ficha. Va a Revisar_Clinico.
+    runs_fr = set()
+    for f in range(15, 24):
+        if f in tributarios:
+            runs_fr |= set(tributarios[f]["Número"])
+    fr_sin_dx = runs_fr - runs_24
+    for run in fr_sin_dx:
+        revisar.append({"RUN": run, "Motivo": "Factor de riesgo SIN diagnóstico",
+                        "Fila_P6": "15-23", "Detalle": "tiene FR (violencia/suicidio) pero "
+                        "ningún dx de trastorno mental; completar la ficha", "Valor_crudo": "",
+                        "Categoria": "Clinico"})
+    if fr_sin_dx:
+        log(f"[sp_p6] ⚠ {len(fr_sin_dx)} persona(s) con FACTOR DE RIESGO pero SIN "
+            "diagnóstico de trastorno mental (registro incompleto) -> Revisar_Clinico.")
+
     # Fila 13: SUMA LITERAL de las filas 15-24 (hereda el doble conteo de los FR, §5.2).
     fila13 = {}
     claves = ["Ambos", "Hombres", "Mujeres"] + [f"{l} H" for l in LBL] + [f"{l} M" for l in LBL] + \

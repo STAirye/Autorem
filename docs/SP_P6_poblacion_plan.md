@@ -584,6 +584,7 @@ Ambas: `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`, ordenadas por motiv
 
 | Motivo | Origen |
 |---|---|
+| **Factor de riesgo SIN diagnóstico** — tiene un FR (violencia/suicidio, 15-23) pero ningún dx de trastorno mental (25-58). No debería pasar: registro incompleto → completar la ficha. Solo REPORTA, no cambia números | §5.2 (brecha fila 13 vs 24) |
 | **Dx activo sin subtipo registrado** — está Activo pero el subtipo viene vacío → no tributa a ninguna fila | D5 |
 | **Edad plegada** — fuera del rango etario de su fila; **se cuenta igual** en la banda de borde, con edad real y destino | §5.0.1 |
 | **Egresos por «Otras Causas»** — abandono vs clínica, manual por diseño | `rem_a05_o_egresos` / §CLAUDE.md §7 |
