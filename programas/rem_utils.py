@@ -285,7 +285,11 @@ def fecha_col(serie, log=print, etiqueta="fecha"):
     mes en SILENCIO (subconteo con número plausible); acá se cuenta y se loguea
     (regla fail-loud del proyecto). Devuelve la serie parseada (datetime)."""
     import pandas as pd
-    parsed = pd.to_datetime(serie, errors="coerce", dayfirst=True)
+    # format="mixed": la columna mezcla datetime YA parseados por openpyxl (celdas con
+    # formato fecha) con texto "DD/MM/YYYY" (celdas como texto) -> sin esto pandas
+    # avisa "Could not infer format" y cae a dateutil elemento-por-elemento igual,
+    # pero con warning. Explícito = mismo resultado, sin el ruido (pandas>=2.0).
+    parsed = pd.to_datetime(serie, errors="coerce", dayfirst=True, format="mixed")
     # vacío legítimo = nulo real, o texto en blanco / centinela → NO es "ilegible".
     vacio = serie.isna() | serie.astype(str).str.strip().isin(
         ("", "nan", "NaN", "NaT", "None", "<NA>"))

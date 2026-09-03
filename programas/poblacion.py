@@ -417,6 +417,52 @@ def _flags_actividad(d_ada, corte):
     return activos12, rescate6, rescate13
 
 
+def _verificar_cobertura_fechas(form, d_ada, corte, log):
+    """Fail loud (§CLAUDE.md) sobre DESCALCES de fecha entre inputs — hoy el único
+    chequeo que existía era el de la ventana de gestante (3 meses); esto generaliza
+    a TODO lo que corte/ADA/formulario necesitan cubrir. Nunca bloquea (algunos
+    workflows arrancan sin histórico completo a propósito), pero nunca en silencio."""
+    ada_min = d_ada["FECHA"].min() if d_ada["FECHA"].notna().any() else None
+    ada_max = d_ada["FECHA"].max() if d_ada["FECHA"].notna().any() else None
+    form_min = form["FECHA"].min() if form["FECHA"].notna().any() else None
+    form_max = form["FECHA"].max() if form["FECHA"].notna().any() else None
+
+    def _mes(v):
+        return f"{v:%Y-%m}" if v is not None else "?"
+
+    def _ym(v):   # (año, mes) para comparar a nivel de MES, no de timestamp exacto
+        return (v.year, v.month)
+
+    log(f"[poblacion] cobertura de fechas -> corte: {corte:%Y-%m} | formulario SM: "
+        f"{_mes(form_min)}..{_mes(form_max)} | ADA: {_mes(ada_min)}..{_mes(ada_max)}")
+
+    # El ADA debe llegar HASTA el mes reportado -> si no, Activo12m/rescate/gestante
+    # de ESTE mes quedan incompletos (falta la atención más reciente). Comparación por
+    # MES: nada garantiza una atención el último día calendario exacto del mes.
+    if ada_max is not None and _ym(ada_max) < _ym(corte):
+        log(f"[poblacion] ⚠⚠ El ADA NO llega hasta el mes reportado ({corte:%Y-%m}): "
+            f"la atención más reciente cargada es de {ada_max:%Y-%m}. ¿Falta el export "
+            "más nuevo, o se eligió mal el mes? Activo12m/rescate/gestante van a salir "
+            "incompletos para este mes.")
+
+    # El ADA necesita llegar hasta 13 meses atrás (Activo 12m exige un mínimo de 12;
+    # rescate 13m mira específicamente el mes exacto -13; gestante solo 3 meses ->
+    # queda cubierto si esto se cumple). Idem: por MES, no por día exacto.
+    ini13, _ = _mes_offset(corte, 13)
+    if ada_min is not None and _ym(ada_min) > _ym(ini13):
+        log(f"[poblacion] ⚠ El ADA arranca en {ada_min:%Y-%m}, pero Activo12m/rescate "
+            f"13m/gestante necesitan desde {ini13:%Y-%m} (13 meses cerrados) -> pueden "
+            "SUBCONTAR. Carga el histórico de 13 meses del ADA (§3 del plan).")
+
+    # El histórico del formulario debe llegar hasta el mes reportado -> si no, un
+    # ingreso/egreso de ESTE mes no está en los datos y el snapshot queda desfasado.
+    if form_max is not None and _ym(form_max) < _ym(corte):
+        log(f"[poblacion] ⚠⚠ El histórico del formulario SM NO llega hasta el mes "
+            f"reportado ({corte:%Y-%m}): el formulario más reciente cargado es de "
+            f"{form_max:%Y-%m}. Ingresos/egresos de este mes NO se van a reflejar -> "
+            "revisa que el histórico esté actualizado.")
+
+
 def _ultima_respuesta(form, pregunta, corte):
     """Última respuesta NO vacía a `pregunta`, por RUN, hasta `corte` (para
     'Madre <5 años': se reporta con el dato más reciente que exista, sin
@@ -443,6 +489,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     insc = cargar_inscritos(inscritos, log=log)
     form = cargar_formulario_sm(formulario_sm, log=log)
     d_ada = ada if isinstance(ada, pd.DataFrame) else cargar_atenciones(ada, log=log)
+    _verificar_cobertura_fechas(form, d_ada, corte, log)
 
     P = insc.rename(columns={"RUN": "Número", "TIPOID": "Tipo de identificación",
                              "SITUACION": "Situación", "ESTADO": "Estado",
@@ -481,11 +528,9 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     P["¿Última atención hace 6m?"] = np.where(P["Número"].isin(rescate6), "Si", "No")
     P["¿Última atención hace 13m?"] = np.where(P["Número"].isin(rescate13), "Si", "No")
 
-    # ── Gestante (§4.7: 3 meses cerrados, matrona; NO el DAX de 2 meses) ──
+    # ── Gestante (§4.7: 3 meses cerrados, matrona; NO el DAX de 2 meses). Cubierta
+    #     por el chequeo general de cobertura de arriba (13 meses > 3 meses). ──
     ini3 = ini - pd.DateOffset(months=2)
-    if d_ada["FECHA"].notna().any() and d_ada["FECHA"].min() > ini3:
-        log(f"[poblacion] ⚠ GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero "
-            f"el ADA arranca en {d_ada['FECHA'].min():%Y-%m} -> puede SUBCONTAR.")
     gset = gestante_runs(d_ada, ini3, corte)
     P["¿Embarazada?"] = np.where(P["Número"].isin(gset), "SI", "NO")
 
