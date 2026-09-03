@@ -189,7 +189,16 @@ def _base_valida(P, log):
     descarta identificador no-RUT (§5.5, listado antes de eliminar).
     Devuelve (P_filtrada, filas_revisar)."""
     revisar = []
-    no_rut = ~P["Tipo de identificación"].map(norm).isin({"", "RUT"})
+
+    tipoid_n = P["Tipo de identificación"].map(norm)
+    distintos = sorted(v for v in tipoid_n.unique() if v)
+    log(f"[sp_p6] Tipo de identificación en el snapshot: "
+        + (", ".join(distintos) if distintos else "(todo vacío)"))
+    # BLACKLIST (no whitelist): RAYEN no siempre etiqueta el RUT literal como "RUT" (a
+    # veces "RUN"); exigir un match exacto excluía al 100% del snapshot. Se excluye SOLO
+    # lo claramente NO-nacional (pasaporte/DNI/sin documento); todo lo demás se acepta.
+    _TIPOID_SOSPECHOSO = ["PASAPORTE", "DNI", "SIN DOCUMENTO", "EXTRANJER"]
+    no_rut = tipoid_n.map(lambda s: any(k in s for k in _TIPOID_SOSPECHOSO))
     for _, row in P.loc[no_rut].iterrows():
         revisar.append({"RUN": row["Número"], "Motivo": "Identificador no-RUT",
                         "Fila_P6": "", "Detalle": row["Tipo de identificación"], "Valor_crudo": ""})
@@ -551,13 +560,12 @@ def _col_banda_letra(idx, hombre):
 
 
 def escribir(P, resultado, salida):
-    """Escribe PSM_Poblacion (+ Egreso_Divergencias) y las hojas del P6
-    (P6_A1, P6_Detalle, P6_Revisar, P6_Bloques) en un solo .xlsx."""
-    with pd.ExcelWriter(salida) as xw:
+    """Escribe PSM_Poblacion (+ Egreso_Divergencias, colapsable por diagnóstico) y
+    las hojas del P6 (P6_A1, P6_Detalle, P6_Revisar, P6_Bloques) en un solo .xlsx."""
+    from programas.poblacion import escribir_divergencias
+    with pd.ExcelWriter(salida, engine="openpyxl") as xw:
         P.to_excel(xw, index=False, sheet_name="PSM_Poblacion")
-        div = P.attrs.get("egreso_divergencias")
-        if div is not None and len(div):
-            div.to_excel(xw, index=False, sheet_name="Egreso_Divergencias")
+        escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
         resultado["grid"].to_excel(xw, index=False, sheet_name="P6_A1")
         resultado["detalle"].to_excel(xw, index=False, sheet_name="P6_Detalle")
         resultado["revisar"].to_excel(xw, index=False, sheet_name="P6_Revisar")

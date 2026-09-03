@@ -227,12 +227,14 @@ def _crear_log(parent, root, height=10):
     return log, limpiar
 
 
-def _fila_archivo(parent, var_ruta, titulo):
-    """Fila 'Archivo Excel: [___] [Examinar…]'."""
+def _fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:"):
+    """Fila '<etiqueta> [___] [Examinar…]'. `etiqueta` por defecto sirve para pestañas
+    con UN solo archivo (ambiguo si no se pasa nada distinto); en pestañas con varios
+    inputs, pasa una etiqueta específica para no confundir cuál es cuál."""
     from tkinter import ttk, filedialog
     fila = ttk.Frame(parent)
     fila.pack(fill="x", pady=(6, 6))
-    ttk.Label(fila, text="Archivo Excel:").pack(side="left")
+    ttk.Label(fila, text=etiqueta).pack(side="left")
     ttk.Entry(fila, textvariable=var_ruta).pack(side="left", fill="x", expand=True, padx=6)
 
     def examinar():
@@ -1021,11 +1023,11 @@ def _tab_beta(nb, root):
         "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
         "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
         "pegar. Ver docs/SP_P6_poblacion_plan.md.\n"
-        "1.  Informe Inscritos y Adscritos (IRIS)  →  snapshot actual, un archivo.\n"
-        "2.  Formulario 'Control de Salud Mental' (IRIS)  →  HISTÓRICO COMPLETO: carga\n"
+        "1.  Formulario 'Control de Salud Mental' (IRIS)  →  HISTÓRICO COMPLETO: carga\n"
         "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click).\n"
-        "3.  Atenciones/Diagnósticos/Actividades (ADA)  →  13 meses (Activo 12m,\n"
+        "2.  Atenciones/Diagnósticos/Actividades (ADA)  →  13 meses (Activo 12m,\n"
         "     Gestante, rescate a 13 meses); acepta varios archivos.\n"
+        "3.  Informe Inscritos y Adscritos (IRIS)  →  snapshot actual, un archivo.\n"
         "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
     )
     caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
@@ -1033,12 +1035,13 @@ def _tab_beta(nb, root):
     ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
     _aviso_sin_modificar(tab)
 
-    var_inscritos = tk.StringVar()
-    _fila_archivo(tab, var_inscritos, "Elige el 'Informe Inscritos y Adscritos'")
-    get_formulario = _fila_archivos(tab, "Formulario SM (histórico):",
+    get_formulario = _fila_archivos(tab, "1. Formulario SM (histórico):",
                                     "Formulario 'Control de Salud Mental' (IRIS) — carga TODO el histórico disponible")
-    get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):",
+    get_ada = _fila_archivos(tab, "2. Atenciones/Diag/Activ (ADA):",
                              "Atenciones / Diagnósticos / Actividades — 13 meses")
+    var_inscritos = tk.StringVar()
+    _fila_archivo(tab, var_inscritos, "Elige el 'Informe Inscritos y Adscritos'",
+                 etiqueta="3. Inscritos y Adscritos:")
     get_salida = _fila_carpeta_salida(tab)
 
     y0, m0 = mes_anterior()
@@ -1054,9 +1057,6 @@ def _tab_beta(nb, root):
 
     def on_procesar():
         limpiar()
-        entrada = _valida_ruta(var_inscritos.get(), messagebox)
-        if entrada is None:
-            return
         formularios = get_formulario()
         if not formularios:
             messagebox.showwarning("Falta el histórico", "Carga el histórico del formulario "
@@ -1066,6 +1066,9 @@ def _tab_beta(nb, root):
         if not ada:
             messagebox.showwarning("Falta el ADA", "Carga al menos un archivo de "
                                    "Atenciones / Diagnósticos / Actividades.")
+            return
+        entrada = _valida_ruta(var_inscritos.get(), messagebox)
+        if entrada is None:
             return
         try:
             y, m = int(var_anio.get()), int(var_mes.get())

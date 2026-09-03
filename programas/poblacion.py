@@ -477,7 +477,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     P["Madre <5 años"] = P["Número"].map(m5).fillna("")
 
     # ── Los 28 diagnósticos/factores de riesgo (motor único, ver _estado_dx) ──
-    divergencias = []
+    divergencias_detalle = []   # 1 fila por (Diagnóstico, RUN) que diverge — auditoría §4.3
     egreso_bug_runs = _egreso_powerbi_bug(form, mes_ini, mes_fin)
     for spec in TODAS_LAS_SPECS:
         est = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin,
@@ -490,13 +490,16 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
             P[spec["subtipo2_col"]] = P["Número"].map(est.get("subtipo2", pd.Series(dtype=object))).fillna("")
 
         # Auditoría §4.3: valor que habría dado el PowerBI (bug cross-dx de egreso).
+        # Se guarda el RUN (no solo el conteo) para que Egreso_Divergencias sea auditable.
         base = P["Número"].map(est["activo_base"]).fillna(False)
         pbi = np.where(base & P["Número"].isin(egreso_bug_runs), "Egresado",
                        np.where(base, "Activo", ""))
-        diverge = (P[spec["col"]] != pbi) & base
-        n = int(diverge.sum())
-        if n:
-            divergencias.append({"Diagnostico": spec["col"], "N_personas": n})
+        diverge = ((P[spec["col"]] != pbi) & base).to_numpy()
+        if diverge.any():
+            for run, nuestro, pbi_v in zip(P.loc[diverge, "Número"], P.loc[diverge, spec["col"]],
+                                           pbi[diverge]):
+                divergencias_detalle.append({"Diagnostico": spec["col"], "RUN": run,
+                                             "Nuestro_estado": nuestro, "Estado_PowerBI_bug": pbi_v})
 
     P = _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
 
@@ -504,12 +507,15 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     cols_dx = [s["col"] for s in TODAS_LAS_SPECS]
     P["¿Ingresado?"] = np.where((P[cols_dx] == "Activo").any(axis=1), "SI", "NO")
 
-    div_df = pd.DataFrame(divergencias, columns=["Diagnostico", "N_personas"])
+    div_df = pd.DataFrame(divergencias_detalle,
+                          columns=["Diagnostico", "RUN", "Nuestro_estado", "Estado_PowerBI_bug"])
     if len(div_df):
-        total = int(div_df["N_personas"].sum())
-        log(f"[poblacion] ⚠ §4.3 egreso por diagnóstico: {total} persona(s)×diagnóstico "
-            f"difieren del PowerBI (que egresaba TODOS los dx con cualquier egreso del "
-            f"RUN en el mes). Detalle en la hoja 'Egreso_Divergencias'. Esperado, no es bug.")
+        div_df = div_df.sort_values(["Diagnostico", "RUN"]).reset_index(drop=True)
+        resumen = div_df.groupby("Diagnostico", sort=False).size()
+        log(f"[poblacion] ⚠ §4.3 egreso por diagnóstico: {len(div_df)} persona(s)×diagnóstico "
+            f"difieren del PowerBI (que egresaba TODOS los dx con cualquier egreso del RUN en "
+            f"el mes). Detalle (con RUT) en la hoja 'Egreso_Divergencias'. Esperado, no es bug. "
+            + " · ".join(f"{d}={n}" for d, n in resumen.items()))
     else:
         log("[poblacion] §4.3: sin divergencias de egreso este mes.")
 
@@ -530,12 +536,44 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     return P_out
 
 
+def escribir_divergencias(wb, div, sheet_name="Egreso_Divergencias"):
+    """Escribe `div` (columnas Diagnostico/RUN/Nuestro_estado/Estado_PowerBI_bug, YA
+    ordenado por Diagnostico) como bloques COLAPSABLES por diagnóstico (agrupación de
+    filas de Excel, +/- en el margen izquierdo): 1 fila de cabecera con el diagnóstico
+    y el total, y debajo el detalle por RUN. `wb` = Workbook openpyxl. Nada que escribir
+    -> no crea la hoja."""
+    if div is None or not len(div):
+        return None
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    ws = wb.create_sheet(sheet_name)
+    ws.sheet_properties.outlinePr.summaryBelow = False   # cabecera ARRIBA de su detalle -> el
+                                                          # +/- de colapsar queda junto a ella
+    ws.append(["Diagnóstico", "N personas", "RUN", "Nuestro estado", "Estado PowerBI (con el bug §4.3)"])
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    r = 2
+    for diag, sub in div.groupby("Diagnostico", sort=False):
+        ws.cell(row=r, column=1, value=diag).font = Font(bold=True)
+        ws.cell(row=r, column=2, value=len(sub))
+        r += 1
+        for _, fila in sub.iterrows():
+            ws.cell(row=r, column=3, value=fila["RUN"])
+            ws.cell(row=r, column=4, value=fila["Nuestro_estado"])
+            ws.cell(row=r, column=5, value=fila["Estado_PowerBI_bug"])
+            ws.row_dimensions[r].outline_level = 1   # colapsable bajo la cabecera del diagnóstico
+            r += 1
+    ws.freeze_panes = "A2"
+    for i, w in enumerate([38, 11, 14, 16, 26], 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    return ws
+
+
 def escribir(P, salida):
     """Escribe `PSM_Poblacion` (la tabla intermedia, snapshot mensual archivable)
-    + `Egreso_Divergencias` (auditoría §4.3, si hubo alguna) en un solo .xlsx."""
-    with pd.ExcelWriter(salida) as xw:
+    + `Egreso_Divergencias` (auditoría §4.3, con RUT y colapsable por diagnóstico —
+    ver `escribir_divergencias`) en un solo .xlsx."""
+    with pd.ExcelWriter(salida, engine="openpyxl") as xw:
         P.to_excel(xw, index=False, sheet_name="PSM_Poblacion")
-        div = P.attrs.get("egreso_divergencias")
-        if div is not None and len(div):
-            div.to_excel(xw, index=False, sheet_name="Egreso_Divergencias")
+        escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
     return str(salida)
