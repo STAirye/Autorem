@@ -36,9 +36,9 @@ egreso del Programa de Salud Mental) y, por cada aplicación, reporta:
 Dos formatos (perfiles), igual que el A05: IRIS y Administrativo. Se autodetectan.
 
 CORE: 1 fila por aplicación con ambos resultados + estamento (IRIS directo, o
-Administrativo vía lookup 'Utilización de Cupos' → programas/estamentos.py).
+Administrativo vía lookup 'Utilización de Cupos' -> programas/estamentos.py).
 
-REPORTE UNIFICADO (procesar_unificado): junta los 3 instrumentos → tabla A03·D.3
+REPORTE UNIFICADO (procesar_unificado): junta los 3 instrumentos -> tabla A03·D.3
 lista para copiar-pegar al SA_26 (Evaluación ingreso/egreso × Bajo/Medio/Alto ×
 banda etaria × sexo, con `rem_utils.grid`) + hoja de DETALLE auditable al final.
 Solo INGRESADOS al PSM; 'Sin riesgo' (bajo el corte) va al detalle pero NO al D.3
@@ -60,9 +60,9 @@ from programas import formatos
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
                                   faltantes, estamentos_conocidos, aplicar_resoluciones)
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  CORTES (REM SA 2026 = los que pasó DISAM). Reclasifican el puntaje.|
+# +===================================================================+
 # Resultado para PSC/PSC-Y bajo el corte REM (<33): NO es una de las 3 bandas de
 # riesgo del REM, pero es un resultado VÁLIDO y el MÁS común (la mayoría de los
 # tamizajes salen negativos). Antes se perdía como None (celda vacía, sin contar,
@@ -86,7 +86,7 @@ def clasificar_ghq12(p):
     if 7 <= p <= 12: return "Alto"
     return None
 
-# ── RESULTADO de RAYEN -> banda canónica ──────────────────────────────
+# -- RESULTADO de RAYEN -> banda canónica ------------------------------
 # OJO: RAYEN NO usa un vocabulario único. PSC / PSC-Y dicen 'Bajo/Medio/Alto' (y
 # blanco bajo el corte), pero GHQ-12 (Goldberg) usa frases clínicas:
 #   'Ausencia de psicopatología'              -> Bajo   (0-4)
@@ -136,7 +136,7 @@ _ORDEN_DETECCION = ["PSC-Y", "GHQ-12", "PSC"]
 NOMBRE_HOJA_SALIDA = "A03_D3_Instrumentos"
 
 
-# ── Localización de encabezado / detección de instrumento ─────────────
+# -- Localización de encabezado / detección de instrumento -------------
 def _fila_encabezado(ws, formato):
     """Ubica el header. Admin comparte params (`formatos.HEADER_ADMIN`); el IRIS
     de instrumentos NO trae banner (n_hardcode=0), distinto al A05."""
@@ -172,7 +172,7 @@ def detectar_instrumento(ws, formato, header_idx, headers_norm):
     return None
 
 
-# ── Apertura + validación ─────────────────────────────────────────────
+# -- Apertura + validación ---------------------------------------------
 def abrir_validado(entrada):
     """Carga el workbook y valida que sea un export de instrumentos RAYEN
     (formato reconocido + columnas PUNTAJE y RESULTADO). Devuelve
@@ -204,7 +204,7 @@ def abrir_validado(entrada):
     return wb, ws, formato, header_idx
 
 
-# ── Núcleo ────────────────────────────────────────────────────────────
+# -- Núcleo ------------------------------------------------------------
 def procesar(entrada, salida=None, instrumento=None, estamentos=None,
              resolver_estamento=None, log=print):
     """Detecta formato + instrumento, arma la hoja de instrumentos y guarda.
@@ -289,7 +289,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
             "fila": r,
         })
 
-    # ── Estamento (Administrativo): rellenar por nombre desde el lookup ──
+    # -- Estamento (Administrativo): rellenar por nombre desde el lookup --
     # Failsafe: los funcionarios sin match se resuelven a mano (o se IGNORAN, p.ej.
     # externos que prestan servicios transitorios) vía el callback resolver_estamento.
     n_estam = 0
@@ -321,7 +321,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     filas.sort(key=lambda e: (orden_mom.get(norm(e["momento"]), 9),
                               str(e["resu_disam"]), str(e["rut"])))
 
-    # ── hoja de salida (solo si hay `salida`; el reporte unificado no escribe acá) ──
+    # -- hoja de salida (solo si hay `salida`; el reporte unificado no escribe acá) --
     if salida is not None:
         if NOMBRE_HOJA_SALIDA in wb.sheetnames:
             del wb[NOMBRE_HOJA_SALIDA]
@@ -365,8 +365,8 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
             "con DISAM; agrégala a _MAP_RESULTADO): "
             + " · ".join(f"{k!r}: {v}" for k, v in no_reconocidos.items()))
     if fuera_rango:
-        log(f"[aviso] ⚠ {len(fuera_rango)} puntaje(s) FUERA del rango del corte "
-            f"({inst['nombre']}) → sin banda, NO tributan al D.3. Valores: "
+        log(f"[aviso] {len(fuera_rango)} puntaje(s) FUERA del rango del corte "
+            f"({inst['nombre']}) -> sin banda, NO tributan al D.3. Valores: "
             f"{sorted(set(fuera_rango))}. ¿El instrumento cambió de scoring (p.ej. "
             "GHQ-12 en Likert 0–36 en vez del binario 0–12)? Revisar el export.")
 
@@ -380,9 +380,9 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     }
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  REPORTE UNIFICADO A03·D.3 (tabla copy-paste al SA_26, pestaña A03)║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  REPORTE UNIFICADO A03·D.3 (tabla copy-paste al SA_26, pestaña A03)|
+# +===================================================================+
 # El D.3 registra el resultado del MONITOREO al ingreso/egreso del PSM (solo personas
 # INGRESADAS; los instrumentos de TAMIZAJE van al A03·H, hoy fuera de alcance). Los 3
 # instrumentos colapsan en UNA tabla: 6 filas (ingreso/egreso × Bajo/Medio/Alto) ×
@@ -432,7 +432,7 @@ def _escribir_unificado(det, tabla, salida):
 def procesar_unificado(por_instrumento, salida, estamentos=None,
                        resolver_estamento=None, log=print):
     """Reporte A03·D.3 UNIFICADO de los 3 instrumentos de monitoreo. `por_instrumento`
-    = dict {instrumento: ruta} (carga los que existan, ≥1; el slot fija el instrumento,
+    = dict {instrumento: ruta} (carga los que existan, >=1; el slot fija el instrumento,
     sin autodetección). Junta las aplicaciones, arma DETALLE + tabla D.3, y escribe UN
     .xlsx. Devuelve resumen con `.attrs`-free tabla para el mensaje final."""
     import pandas as pd
@@ -450,14 +450,14 @@ def procesar_unificado(por_instrumento, salida, estamentos=None,
     tabla = _tabla_d3(det)
     _escribir_unificado(det, tabla, salida)
     log(f"[a03] D.3 unificado: {len(todas)} aplicaciones de {len(resumen)} instrumento(s) "
-        f"→ {salida}")
+        f"-> {salida}")
     return {"salida": str(salida), "total": len(todas), "por_instrumento": resumen,
             "tabla": tabla}
 
 
-# ── Descriptor para el registro de tareas (lo consume autorem.py) ──
+# -- Descriptor para el registro de tareas (lo consume autorem.py) --
 # OJO: es un REPORTE distinto al 'Control de Salud Mental' (otros perfiles y
-# autodetección propia). La GUI ahora usa `procesar_unificado` (3 slots → tabla D.3).
+# autodetección propia). La GUI ahora usa `procesar_unificado` (3 slots -> tabla D.3).
 TAREA = {
     "id": "a03_d3_instrumentos",
     "nombre": "A03 D.3 · Instrumentos (PSC/PSC-Y/GHQ-12)",

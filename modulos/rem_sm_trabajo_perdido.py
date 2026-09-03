@@ -27,12 +27,12 @@ FUNCIONARIOS (nombre y apellido, columna 'PROFESIONAL ATENCION') las registran, 
 corregirlos.
 
 CLASIFICACIÓN (autoridad = Maestro de Actividades; ver rem_utils.cargar_maestro):
-  - Actividad SM-ish EN el Maestro → tributa sii su NUM REM ∈ {A04,A06,19A,A26,A27,A32}.
-    Si su NUM REM es otro (REM-Gestion, A03 screening, A28, B17…) → PERDIDA (se muestra
+  - Actividad SM-ish EN el Maestro -> tributa sii su NUM REM en {A04,A06,19A,A26,A27,A32}.
+    Si su NUM REM es otro (REM-Gestion, A03 screening, A28, B17…) -> PERDIDA (se muestra
     el NUM REM para que el referente vea por qué y refine).
-  - Actividad SM-ish que NO está en el Maestro (RAYEN la agregó después) → heurística
+  - Actividad SM-ish que NO está en el Maestro (RAYEN la agregó después) -> heurística
     de respaldo: tributa sii matchea los patrones de rem_sm_actividades.mask_tributa_ada.
-  - Sin Maestro cargado → todo por heurística (menos preciso).
+  - Sin Maestro cargado -> todo por heurística (menos preciso).
 
 Recicla el módulo de actividades (mismo ADA): `cargar_atenciones`, `_rango_mes` y la
 heurística `mask_tributa_ada`. No es un fork: reporte aparte que comparte código.
@@ -199,7 +199,7 @@ def escribir(E, salida):
     return str(salida)
 
 
-# ── Descriptor para el registro (lo consume autorem.py) ──
+# -- Descriptor para el registro (lo consume autorem.py) --
 TAREA = {
     "id": "sm_trabajo_perdido",
     "nombre": "SM · Trabajo perdido",

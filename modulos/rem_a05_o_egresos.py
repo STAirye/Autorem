@@ -39,7 +39,7 @@ USO como librería:
 
 import programas.rem_saludmental as sm
 
-# ── Config específica del EGRESO (lo único propio de este módulo) ──────
+# -- Config específica del EGRESO (lo único propio de este módulo) ------
 NOMBRE_HOJA_SALIDA = "A05_Egresos"
 BUSQUEDAS = {
     "Alta":        ["EGRESO", "ALTA"],
@@ -81,7 +81,7 @@ def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print, mes=None):
     return res
 
 
-# ── Descriptor para el registro de tareas (lo consume autorem.py) ──
+# -- Descriptor para el registro de tareas (lo consume autorem.py) --
 # La tarea es agnóstica al formato; el perfil (IRIS/admin) lo elige el usuario y
 # lo pasa el dispatcher. Egresos e ingresos leen el mismo formulario.
 TAREA = {

@@ -38,7 +38,7 @@ import re
 import sys
 from pathlib import Path   # reexport de conveniencia para los módulos
 
-# ── Versión del proyecto (fuente única de verdad) ──
+# -- Versión del proyecto (fuente única de verdad) --
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
@@ -67,10 +67,10 @@ class ArchivoInvalido(Exception):
         super().__init__(mensaje)
 
 
-# ── Normalización y parsing de celdas ─────────────────────────────────
+# -- Normalización y parsing de celdas ---------------------------------
 def norm(v):
     """Texto en MAYÚSCULA, sin tildes/ñ, con espacios colapsados. '' si es None/NaN."""
-    if v is None or v != v: return ""   # v != v capta NaN (float) → '' (celda vacía)
+    if v is None or v != v: return ""   # v != v capta NaN (float) -> '' (celda vacía)
     s = str(v).upper().strip()
     for a, b in zip("ÁÉÍÓÚÜÑ", "AEIOUUN"): s = s.replace(a, b)
     return re.sub(r"\s+", " ", s)
@@ -106,7 +106,7 @@ def edad_anios(v):
     return solo_entero(v)
 
 
-# ── Búsqueda de columnas / numeración de preguntas RAYEN ──────────────
+# -- Búsqueda de columnas / numeración de preguntas RAYEN --------------
 def buscar_col(headers_norm, tokens=None, exacto=None):
     """Índice 1-based de la 1ª columna cuyo header (ya normalizado) contiene
     TODOS los `tokens`, o coincide exactamente con `exacto`. None si no hay."""
@@ -122,7 +122,7 @@ def num_pregunta(header):
     return int(m.group(1)) if m else None
 
 
-# ── Localización de la fila de encabezado (banner + filtros arriba) ────
+# -- Localización de la fila de encabezado (banner + filtros arriba) ----
 def encontrar_fila_encabezado(ws, ancla, usar_blanco_en_a=True,
                               n_hardcode=16, max_filas=60):
     """Ubica la fila del encabezado real saltando el banner y los filtros que
@@ -144,7 +144,7 @@ def encontrar_fila_encabezado(ws, ancla, usar_blanco_en_a=True,
     return n_hardcode + 1, "hardcode"
 
 
-# ── Lectura + clasificación de reportes (compartido; usado por módulos pandas) ──
+# -- Lectura + clasificación de reportes (compartido; usado por módulos pandas) --
 def leer_xlsx(entrada, ancla=None, max_scan=40):
     """Lee un .xlsx con openpyxl y devuelve (headers, filas_de_datos). ROBUSTO a
     la 'dimension' rota de los exports copy-paste / de BD (con la que
@@ -166,7 +166,7 @@ def verificar_hoja_unica(entrada):
     """Guarda de integridad de los exports RAYEN/IRIS: SIEMPRE bajan UNA hoja con
     datos + 2 vacías. Si hay datos en más de una hoja, el archivo fue MODIFICADO
     (típicamente se le agregó una tabla dinámica) y sus resultados no son confiables
-    → levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx:
+    -> levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx:
     itera celdas (corta en la 1ª no vacía), no confía en max_row."""
     wb = openpyxl.load_workbook(entrada, data_only=True, read_only=True)
     con_datos = [ws.title for ws in wb.worksheets
@@ -207,10 +207,10 @@ def resolver_columnas(headers, mapa):
 # Mapa de columnas del reporte de ATENCIONES, compartido por los módulos que lo
 # consumen (respiratorio A23, y a futuro cualquier otro programa). Alternativas
 # IRIS | Admin ('Monitoreo de Actividades').
-# ⚠ El Monitoreo admin queda INCOMPLETO (IRIS es la fuente plena):
-#   (a) DEMOGRAFÍA: no trae nacionalidad/pueblo/fecha nac/nombres → origen-migrante
+# El Monitoreo admin queda INCOMPLETO (IRIS es la fuente plena):
+#   (a) DEMOGRAFÍA: no trae nacionalidad/pueblo/fecha nac/nombres -> origen-migrante
 #       y nombre completo salen vacíos; edad desde 'AÑOS'.
-#   (b) DIAGNÓSTICO EN TEXTO, sin código ICD → los indicadores que matchean por
+#   (b) DIAGNÓSTICO EN TEXTO, sin código ICD -> los indicadores que matchean por
 #       código (Ira Alta 'j0', Bronquitis 'J20', EPOC Exacerbado 'J44.1') salen 0.
 #       Los de texto (Neumonía/Influenza/Coqueluche) y los de ACTIVIDAD (KTR,
 #       espirometría, controles…) sí cuadran (verificado vs IRIS, jul-2026).
@@ -290,13 +290,13 @@ def fecha_col(serie, log=print, etiqueta="fecha"):
     # avisa "Could not infer format" y cae a dateutil elemento-por-elemento igual,
     # pero con warning. Explícito = mismo resultado, sin el ruido (pandas>=2.0).
     parsed = pd.to_datetime(serie, errors="coerce", dayfirst=True, format="mixed")
-    # vacío legítimo = nulo real, o texto en blanco / centinela → NO es "ilegible".
+    # vacío legítimo = nulo real, o texto en blanco / centinela -> NO es "ilegible".
     vacio = serie.isna() | serie.astype(str).str.strip().isin(
         ("", "nan", "NaN", "NaT", "None", "<NA>"))
     ilegible = parsed.isna() & ~vacio
     n = int(ilegible.sum())
     if n:
-        log(f"[fecha] ⚠ {n} valor(es) de «{etiqueta}» ilegibles → NaT: quedan "
+        log(f"[fecha] {n} valor(es) de «{etiqueta}» ilegibles -> NaT: quedan "
             f"FUERA del filtro por fecha (revisar el export).")
     return parsed
 
@@ -325,9 +325,9 @@ def cargar_atenciones(entrada, log=print):
     return d
 
 
-# ── Maestro de Actividades (catálogo RAYEN: actividad ↔ estamento ↔ casilla REM) ──
+# -- Maestro de Actividades (catálogo RAYEN: actividad <-> estamento <-> casilla REM) --
 # Referencia transversal (no solo SM): mapea cada actividad a su NUM REM oficial. Una
-# fila por (actividad × instrumento). Banner en fila 1 → ancla en la fila de headers.
+# fila por (actividad × instrumento). Banner en fila 1 -> ancla en la fila de headers.
 # Se actualiza ~semestralmente. Usos: clasificar (¿tributa y a qué casilla?), validar
 # la clasificación RAYEN vs la nuestra (el referente técnico arbitra), y chequear que
 # cada estamento tenga las actividades que el exe reporta.
@@ -372,7 +372,7 @@ def _guard_maestro(col):
                          "y/o 'NUM REM'). ¿Es el archivo correcto?")
 
 
-# ── Grilla de agregación edad×sexo (tablas REM copy-paste; SM · A23 · A03) ──
+# -- Grilla de agregación edad×sexo (tablas REM copy-paste; SM · A23 · A03) --
 # Forma del template MINSAL: Ambos·Hombres·Mujeres + cada banda etaria × (H/M).
 # Bandas inclusive; el último tramo (80,200) = '80 y más'. A04 separa <1 y 1-4;
 # A06/A32/A03·D.3 agrupan 0-4. Compartido para no re-implementar en cada módulo.
@@ -491,7 +491,7 @@ def maestro_rem_map(dfm):
     return dict(zip(dfm["ACT_n"], dfm["NUMREM_n"]))
 
 
-# ── Demografía por atención (columnas del REM: SENAME, migrante, pueblos…) ──
+# -- Demografía por atención (columnas del REM: SENAME, migrante, pueblos…) --
 # Fuente = ADA IRIS (ALERTAS ADMINISTRATIVAS / ES IMIGRANTE / PUEBLO / DIAG / ACT).
 # El grupal y el Monitoreo admin NO traen estos campos -> todos los flags quedan
 # en False (limitación conocida). Reutilizable por cualquier módulo (A23, SM…).
@@ -541,9 +541,9 @@ def trans_map(entrada):
     """Lee el 'Informe Inscritos y Adscritos' -> dict RUN -> 'M' | 'F' | 'X' para
     personas TRANS. RAYEN ahora permite seleccionar TRANS directamente en GÉNERO
     ('Transgénero Masculino/Femenina', 'Femenino Trans'), así que se usa ESE campo
-    (la vieja heurística género≠sexo quedó obsoleta y era ruidosa). La dirección
+    (la vieja heurística género!=sexo quedó obsoleta y era ruidosa). La dirección
     (M/F) alimenta el split TRANS Masculino/Femenina del template. Archivo ENORME
-    (toda la población del CESFAM) → se carga solo si el usuario lo aporta."""
+    (toda la población del CESFAM) -> se carga solo si el usuario lo aporta."""
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
     i_run = indice_col(hn, "NUMERO", "IDENTIFICACION")
@@ -564,7 +564,7 @@ def trans_map(entrada):
 
 def atenid_multiprofesional(entrada):
     """Set de ATEN ID MULTIPROFESIONALES (2+ profesionales), del reporte 'Monitoreo
-    Multiprofesional': la columna 'Multiprofesional-1' no vacía = tuvo ≥1 profesional
+    Multiprofesional': la columna 'Multiprofesional-1' no vacía = tuvo >=1 profesional
     adicional. Sirve para marcar composición (Un Profesional vs Dos o Más). Opcional:
     sin este reporte, todo se asume mono-profesional."""
     hdr, filas = leer_xlsx(entrada)
@@ -609,7 +609,7 @@ def contiene_alguno(serie, subs):
     return m
 
 
-# ── Utilidad de SO ────────────────────────────────────────────────────
+# -- Utilidad de SO ----------------------------------------------------
 def abrir_carpeta(carpeta: Path):
     """Abre el explorador de archivos en `carpeta` (Windows / macOS / Linux)."""
     import subprocess

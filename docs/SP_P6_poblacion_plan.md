@@ -174,7 +174,7 @@ de ansiedad, demencia, etc. → la persona desaparece del P6 completo.
 `ESTADO` de *su propio bloque* de preguntas trae «egreso» (el bloque ya está mapeado
 en `rem_saludmental`: 4→5, 18→19, 41→42, …).
 
-⚠ Consecuencia: **la tabla intermedia deja de cuadrar 1:1 con el export PowerBI**.
+Consecuencia: **la tabla intermedia deja de cuadrar 1:1 con el export PowerBI**.
 Para que la diferencia sea explicable y no misteriosa, el módulo emite la hoja
 **`Egreso_Divergencias`** y un aviso en el log. Fail loud, §CLAUDE.md.
 
@@ -300,7 +300,7 @@ Tres consecuencias de diseño:
    partida en **bloques pegables** — rectángulos maximales sin celdas bloqueadas,
    saltando la fila 14 (§5.6).
 
-#### 5.0.1 🔴 Rangos etarios recortados: se PLIEGAN al rango reportable más cercano
+#### 5.0.1 Rangos etarios recortados: se PLIEGAN al rango reportable más cercano
 
 **El SP y el SA·A05 N/O recortan rangos etarios en filas DISTINTAS.** Un paciente
 fuera del rango de su fila no tiene celda donde caer — y **si se descarta, desaparece
@@ -309,7 +309,7 @@ reportable de esa fila**, y eso es lo que hay que automatizar en cada planilla.
 
 **Recortes del SP·P6 A.1** — leídos de la máscara de protección del `.xlsm`:
 
-> 📌 **Regla de implementación: la máscara se EXTRAE del archivo, no se transcribe.**
+> **Regla de implementación: la máscara se EXTRAE del archivo, no se transcribe.**
 > `ws.cell(f, c).protection.locked` sobre las 46 filas de la sección A.1, comparadas
 > una por una. Esta tabla es documentación; **la fuente de verdad es el archivo**.
 > No es teórico: transcribir a mano ya metió un error acá (la fila 38 abre hasta
@@ -321,7 +321,7 @@ reportable de esa fila**, y eso es lo que hay que automatizar en cada planilla.
 | 38 Otros trastornos infancia | **0-24** | ≥25 → **banda 20-24** |
 | 28 Depresión post parto | mujeres 10-59 | ≥60 → **banda 55-59** |
 | 22-23 Suicidio | 5 y más | 0-4 → **banda 5-9** *(único recorte por el extremo inferior; a confirmar)* |
-| **35 TDAH** | **0-80+ — SIN recorte** | **no se pliega nada** ⚠ ver abajo |
+| **35 TDAH** | **0-80+ — SIN recorte** | **no se pliega nada** ver abajo |
 
 **Recortes del SA·A05 N/O** (`SA_26_V1.2.xlsm`, secciones N ingresos y su gemela de
 egresos) — es **donde el plegado pesa más**:
@@ -332,11 +332,11 @@ egresos) — es **donde el plegado pesa más**:
 | 219 / 271 | Disocial desafiante y oposicionista | 0-24 | ≥25 → banda 20-24 |
 | 220 / 272 | Ansiedad de separación en la infancia | 0-24 | ≥25 → banda 20-24 |
 
-> ⚠ **TDAH es el caso más significativo**, y va **al revés** de lo intuitivo: en el
+> **TDAH es el caso más significativo**, y va **al revés** de lo intuitivo: en el
 > **SP no hay tope** (el adulto con TDAH se cuenta en su banda real), pero en el
 > **SA·A05 sí** (se pliega a 20-24). **No plegar TDAH en el P6.**
 
-> 📌 **Dato desactualizado en `CONTEXTO_REM_general`:** dice «edad ≥30 → forzar bucket
+> **Dato desactualizado en `CONTEXTO_REM_general`:** dice «edad ≥30 → forzar bucket
 > **25-29** en el SA». En `SA_26_V1.2` la columna 25-29 (P/Q) está **bloqueada**: el
 > último rango reportable es **20-24** (F..O). La plantilla MINSAL cambió. Usar 20-24.
 
@@ -344,7 +344,7 @@ egresos) — es **donde el plegado pesa más**:
 banda de destino. El número entra al REM (que es lo correcto), pero queda la
 trazabilidad de que esa persona se contó en una banda que no es la suya.
 
-⚠ **Impacto en la fase 4 (delta P → A05 N/O):** como SA y SP recortan filas distintas,
+**Impacto en la fase 4 (delta P → A05 N/O):** como SA y SP recortan filas distintas,
 el delta **no va a cuadrar banda por banda** en las filas recortadas — TDAH sobre todo.
 Hay que conciliar a nivel de fila (total), no de celda, o aplicar el truncamiento de
 cada planilla por separado antes de comparar. Anotarlo **antes** de perseguir un
@@ -465,7 +465,7 @@ por **sexo registral**, no por género. Las fórmulas de validación son
 | AV | Plan de Cuidado Integral Elaborado | **MANUAL — no hay fuente** (§5.4.2) | — |
 | AW/AX | TRANS Masculino / Femenino | `Trans` = 1, split por género | `rem_utils.trans_map()` |
 
-⚠ **Foot-gun de AW/AX:** el control de errores compara `AW ≤ E (Mujeres)` y
+**Foot-gun de AW/AX:** el control de errores compara `AW ≤ E (Mujeres)` y
 `AX ≤ D (Hombres)`. O sea «TRANS Masculino» = **sexo registral mujer**, género
 masculino. Las etiquetas se invierten respecto del sexo registral; `trans_map()` ya
 hace ese split, hay que respetar la orientación al escribir.
@@ -540,7 +540,7 @@ a ser una línea de config y se automatiza como el resto.
 (depresión post parto), y si hay otras filas GES que hoy queden fuera de la regla
 (esquizofrenia primer episodio, consumo perjudicial en menores de 20).
 
-⚠ **Hallazgo colateral (fuera del alcance de este plan):** hoy
+**Hallazgo colateral (fuera del alcance de este plan):** hoy
 `rem_saludmental.DEMOGRAFIA["Madre_menor5"]` es solo `pregunta 1 == "SI"`, **sin
 filtro de sexo** → la columna `Madre_menor5` del **A05 egresos/ingresos** sobrecuenta
 a los hombres mal marcados. Es un fix aparte de este módulo; conviene extraer la
@@ -601,7 +601,7 @@ Ambas: `RUN · Motivo · Fila_P6 · Detalle · Valor_crudo`, ordenadas por motiv
 por motivo y por hoja; nunca un número plausible y callado. Ambas hojas se emiten
 siempre (aunque vengan vacías), para que su ausencia no se confunda con «no revisé».
 
-#### 5.5.1 🔴 Guardarraíl: un filtro que descarta demasiado es un BUG del filtro
+#### 5.5.1 Guardarraíl: un filtro que descarta demasiado es un BUG del filtro
 
 **Lección de la primera corrida real (sep-2026).** El validador de «identificador
 no-RUT» comparaba `Tipo de identificación` contra el literal `"RUT"`. El export trae
@@ -626,11 +626,11 @@ la whitelist contra el literal `"RUT"` descartara a todo el mundo:
 
 | Valor | ¿Entra al P6? | Por qué |
 |---|---|---|
-| **`RUN`** | ✅ **sí** | es el identificador válido; la inmensa mayoría del padrón |
-| `Número de identificador FONASA` | ❌ no | no es RUT |
-| `Número de Pasaporte` | ❌ no | no es RUT |
-| `Pasaporte/Otros` | ❌ no | no es RUT |
-| **`RUN Responsable`** | ❌ **no — y es el caso delicado** | ver abajo |
+| **`RUN`** | **sí** | es el identificador válido; la inmensa mayoría del padrón |
+| `Número de identificador FONASA` | no | no es RUT |
+| `Número de Pasaporte` | no | no es RUT |
+| `Pasaporte/Otros` | no | no es RUT |
+| **`RUN Responsable`** | **no — y es el caso delicado** | ver abajo |
 
 **`RUN Responsable` = recién nacido de menos de un mes que todavía no tiene su RUT.**
 Se le inscribe con el RUN de un tercero, **habitualmente la madre**. Consecuencias:
@@ -640,7 +640,7 @@ Se le inscribe con el RUN de un tercero, **habitualmente la madre**. Consecuenci
    SM, mezclar las dos fichas corrompe la fila.
 2. **Un chequeo por FORMA no lo detecta** — el RUN de la madre tiene formato válido.
 
-> ⚠ **Corrección a §5.5.1:** dije «validar la forma del dato, no cómo se llama».
+> **Corrección a §5.5.1:** dije «validar la forma del dato, no cómo se llama».
 > Está incompleto. `RUN Responsable` prueba que **la etiqueta lleva información que la
 > forma no tiene**. La regla correcta es **las dos cosas**:
 >
@@ -660,7 +660,7 @@ se ve por salud mental prácticamente por definición, así que el impacto numé
 P6 es ~0. Al descartar la fila del RN, **la fila de la madre queda intacta** — que es
 la que sí importa.
 
-> ⚠ **El escenario de riesgo es concreto, no teórico.** La fila 28 del P6 es
+> **El escenario de riesgo es concreto, no teórico.** La fila 28 del P6 es
 > **depresión post parto**. La paciente con más probabilidad de tener un
 > `RUN Responsable` colisionando con su ficha es justamente la que acaba de parir —
 > o sea la candidata natural a un dx SM activo de esa misma fila. Resolver mal la
@@ -797,7 +797,7 @@ Sirve para dos cosas distintas:
    se identifica, cae en el residual «abandono» del delta P(m)−P(m−1) y ensucia la
    parte O.
 
-⚠ **La cohorte del mes NO alcanza para el filtro de rescate.** `Rescate_6m` mira
+**La cohorte del mes NO alcanza para el filtro de rescate.** `Rescate_6m` mira
 6 meses atrás y `Rescate_13m` mira 13: alguien que falleció hace 8 meses **no** está
 en `Fallecidos_mes` pero **sí** puede aparecer en `Rescate_13m` — dejó de asistir,
 por razones evidentes. Entonces:
@@ -883,7 +883,7 @@ eso es justamente lo que hace útil el reporte.
 | `Fecha último formulario` | hace cuánto que está sin médico |
 | `Dx que entran solo por no-médico` | si tiene otros dx que sí tienen control médico, se ve al tiro |
 
-> 🔴 **Guardarraíl obligatorio: el toggle NO cambia lo que tributa al REM.**
+> **Guardarraíl obligatorio: el toggle NO cambia lo que tributa al REM.**
 > El P6 se tabula **siempre** con `exigir_medico = True`. `P_todos` existe únicamente
 > para calcular la brecha. El módulo **no debe** poder emitir una hoja `P6_A1` con el
 > toggle apagado; si alguien lo intenta, error explícito. Sin esto, un día alguien

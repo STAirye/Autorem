@@ -39,7 +39,7 @@ from pathlib import Path
 
 import openpyxl
 
-# Windows: consola cp1252 revienta con ✔·→ (UnicodeEncodeError ⊂ ValueError). Ver §4.5.
+# Windows: consola cp1252 revienta con OK·-> (UnicodeEncodeError en ValueError). Ver §4.5.
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except (AttributeError, ValueError):
@@ -50,8 +50,8 @@ CARPETA = Path(__file__).resolve().parent.parent / "refs tablas"
 
 # Se conservan intactos (tienen fórmulas/estructura que depende de sus filas).
 DENY_EXT = {".xlsm", ".xltx", ".xltm", ".dotx", ".potx"}
-# 'maestro' = Maestro de Actividades (catálogo completo RAYEN act↔profesional, 217k
-# filas, sin PII de paciente). Es REFERENCIA de por vida → se mantiene INTACTO.
+# 'maestro' = Maestro de Actividades (catálogo completo RAYEN act<->profesional, 217k
+# filas, sin PII de paciente). Es REFERENCIA de por vida -> se mantiene INTACTO.
 DENY_NOMBRE = ("minimanual", "comentado", "calculador", "manual", "arsenal", "maestro")
 
 # Fila de header = primera fila con al menos esta cantidad de celdas no vacías.
@@ -87,7 +87,7 @@ def recortar(p: Path, aplicar: bool) -> tuple[str, int, int]:
     for ws in wb.worksheets:
         h = _fila_header(ws)
         antes += ws.max_row
-        if h is None:                      # hoja sin header reconocible → no tocar
+        if h is None:                      # hoja sin header reconocible -> no tocar
             despues += ws.max_row
             continue
         if ws.max_row > h:
@@ -114,14 +114,14 @@ def main(argv):
     tocados = 0
     for p in objetivos:
         if not p.exists():
-            print(f"  ✗ no existe: {p.name}")
+            print(f"  X no existe: {p.name}")
             continue
         if not _es_referencia_export(p):
             print(f"  — omitido (denylist/no-export): {p.name}")
             continue
         estado, antes, despues = recortar(p, aplicar)
-        marca = "·" if estado == "ya limpio" else "✔"
-        print(f"  {marca} {estado}: {p.name}  ({antes} → {despues} filas)")
+        marca = "·" if estado == "ya limpio" else "OK"
+        print(f"  {marca} {estado}: {p.name}  ({antes} -> {despues} filas)")
         if estado in ("recortado", "recortaría"):
             tocados += 1
     if not aplicar and tocados:

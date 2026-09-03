@@ -54,10 +54,10 @@ from programas.rem_utils import (
 )
 from programas import formatos
 
-# ── Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) ──
+# -- Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) --
 # Header en fila 9 (banner Comuna/Establecimiento/Mes/Año/'Utilización de Cupos'
 # arriba). Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento).
-# Es un export Administrativo → comparte los params de encabezado con A05/A03
+# Es un export Administrativo -> comparte los params de encabezado con A05/A03
 # (`formatos.HEADER_ADMIN`), pero con su PROPIA ancla (Profesional/Instrumento).
 ANCLA = ["PROFESIONAL", "INSTRUMENTO"]
 MAX_FILAS_HEADER = 40
@@ -140,7 +140,7 @@ def buscar_estamento(nombre, tabla):
     return tabla.get(norm(nombre), "")
 
 
-# ── Failsafe: resolución manual de funcionarios sin match ─────────────
+# -- Failsafe: resolución manual de funcionarios sin match -------------
 # Estamentos estándar del CESFAM (opciones del selector manual cuando un
 # profesional no aparece en 'Utilización de Cupos'). Superset de lo visto en el
 # reporte real; los 4 primeros son los que aplican screening.
@@ -187,7 +187,7 @@ def aplicar_resoluciones(tabla, resoluciones):
     return tabla
 
 
-# ── Persistencia entre corridas (caché local) ─────────────────────────
+# -- Persistencia entre corridas (caché local) -------------------------
 # La tabla funcionario->estamento se guarda en el HOME del usuario (no en el repo,
 # no junto al .exe) para que persista entre meses/carpetas: cargar 'Utilización de
 # Cupos' una vez y que el mes siguiente se autocomplete sin volver a cargarlo.
@@ -226,7 +226,7 @@ def tabla_efectiva(entrada=None, log=print):
 
     - El reporte fresco GANA sobre el caché (los profesionales cambian).
     - Los nombres que solo están en el caché se CONSERVAN (funcionarios de meses
-      previos + resoluciones manuales) → un mes sin cargar el reporte igual rellena.
+      previos + resoluciones manuales) -> un mes sin cargar el reporte igual rellena.
     - Persiste el merge de vuelta al caché.
     Devuelve la tabla (dict); {} si no hay ni caché ni archivo."""
     cache = cargar_cache(log=log)

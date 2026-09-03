@@ -36,9 +36,9 @@ Un 'perfil' encapsula esas diferencias de formato; las tareas (egresos/ingresos)
 son agnósticas al formato. Lo consumen rem_a05_o_egresos.py y rem_a05_n_ingresos.py.
 La GUI/CLI (autorem.py) deja elegir el perfil al inicio.
 
-╔══════════════════════════════════════════════════════════════════════╗
-║  Aquí vive la CONFIGURACIÓN CLÍNICA del formulario.                    ║
-╚══════════════════════════════════════════════════════════════════════╝
++======================================================================+
+|  Aquí vive la CONFIGURACIÓN CLÍNICA del formulario.                    |
++======================================================================+
 """
 
 import re
@@ -52,7 +52,7 @@ from programas.rem_utils import (
 )
 from programas import formatos
 
-# ── Diagnósticos con subtipo (clave = N.- diagnóstico, valor = N.- subtipo) ──
+# -- Diagnósticos con subtipo (clave = N.- diagnóstico, valor = N.- subtipo) --
 # La numeración de preguntas es IDÉNTICA en IRIS y en el Administrativo.
 DIAGNOSTICOS_CON_SUBTIPO = {
     4:  6,    # Violencia   -> 6.- TIPO DE VIOLENCIA
@@ -131,7 +131,7 @@ OVERRIDE_SUBTIPO = {
     ],
 }
 
-# ── Detección de columnas de identificación (RUT/edad/sexo, ambos formatos) ──
+# -- Detección de columnas de identificación (RUT/edad/sexo, ambos formatos) --
 # El eje IRIS/Admin y la resolución de identidad viven en `programas.formatos`
 # (compartidos con A03/estamentos). El QUIRK de 'AÑO APLICACIÓN FORMULARIO' (que
 # trae la EDAD, no el año) está documentado allá.
@@ -155,18 +155,18 @@ DEMOGRAFIA_SOLO_FEMENINO = {"Madre_menor5"}
 COL_GENERO_TOKENS = ["GENERO"]   # Trans: valor de GÉNERO si contiene "TRANS" (solo IRIS)
 # (los "vacío de pueblo" se comparten con pandas: rem_utils.PUEBLO_VACIO, ver flag_demo)
 
-# ── Config técnica compartida ──
+# -- Config técnica compartida --
 HOJA = None
 ANIO_COL_FALLBACK = 11                 # último recurso para la edad (layout IRIS)
 MAX_FILAS_BUSQUEDA_HEADER = formatos.MAX_FILAS_HEADER
 
-# ── Layout de salida (compartido por egresos/ingresos) ──
+# -- Layout de salida (compartido por egresos/ingresos) --
 ANCHOS_BASE = [14, 8, 8, 13, 44, 26, 13]   # RUT, Edad, Sexo, Tipo, Patologia, Subtipo, Falta
 ANCHO_DEMO = 11
 ANCHOS_COLA = [16, 11]                      # Trans, Fila_Origen
 
 
-# ── Helpers de estructura del formulario ──────────────────────────────
+# -- Helpers de estructura del formulario ------------------------------
 def es_estado(h):
     return norm(h).endswith("ESTADO")
 
@@ -229,7 +229,7 @@ def encontrar_diagnostico(headers, c0):
     return c0
 
 
-# ── DETECCIÓN Y VALIDACIÓN DE FORMATO ─────────────────────────────────
+# -- DETECCIÓN Y VALIDACIÓN DE FORMATO ---------------------------------
 # La detección del eje IRIS/Admin vive en `formatos.detectar_eje` (compartida con
 # A03/estamentos, con las firmas RAYEN estándar). Acá solo los validadores con los
 # mensajes específicos del formulario 'Control de Salud Mental'.
@@ -258,7 +258,7 @@ def validar_iris(ws):
             "Elegiste el formato IRIS, pero este archivo parece el REPORTE "
             "ADMINISTRATIVO de RAYEN.\n\n"
             "Cambia el selector de formato a «Administrativo», o descarga el "
-            "export de IRIS (Formularios RAYEN → 'Control de Salud Mental').")
+            "export de IRIS (Formularios RAYEN -> 'Control de Salud Mental').")
     raise ArchivoInvalido("desconocido", _MSG_DESCONOCIDO)
 
 
@@ -278,12 +278,12 @@ def validar_admin(ws):
     raise ArchivoInvalido("desconocido", _MSG_DESCONOCIDO)
 
 
-# ── PERFILES DE FORMATO ───────────────────────────────────────────────
+# -- PERFILES DE FORMATO -----------------------------------------------
 _DISCLAIMER_ADMIN = (
-    "⚠ Formato ADMINISTRATIVO: esta herramienta fue hecha para IRIS.\n"
+    "Formato ADMINISTRATIVO: esta herramienta fue hecha para IRIS.\n"
     "Funciona, pero OJO:\n"
     "  • Las columnas Pueblos Originarios, SENAME, Proteccion Niñez, Migrante y\n"
-    "    Trans NO son calculables desde este export → saldrán VACÍAS.\n"
+    "    Trans NO son calculables desde este export -> saldrán VACÍAS.\n"
     "  • La edad se toma de 'Edad de registro formulario' (formato en años).\n"
     "    y no de la edad real del Usuario que se informa por fecha de nacimiento.\n"
     "Revisa los resultados antes de tabular."
@@ -317,7 +317,7 @@ def perfil_por_id(perfil_id):
     return None
 
 
-# ── Apertura + preparación de columnas ────────────────────────────────
+# -- Apertura + preparación de columnas --------------------------------
 def abrir_validado(entrada, perfil):
     """Carga el workbook, toma la hoja de trabajo y valida contra el `perfil`.
     Devuelve (wb, ws). Levanta ImportError si falta openpyxl, ArchivoInvalido si
@@ -373,7 +373,7 @@ def _preparar(ws, perfil, log):
     }
 
 
-# ── MOTOR DE MARCADO (compartido egresos/ingresos, agnóstico al formato) ──
+# -- MOTOR DE MARCADO (compartido egresos/ingresos, agnóstico al formato) --
 def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_salida,
                    tipo_col_header, avisar_sin_subtipo=frozenset(), etiqueta="evento",
                    mes=None, log=print):
@@ -483,7 +483,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
                 "Si querías todo, elige «Archivo completo».")
         log(f"[mes] {filas_en_mes} formulario(s) en {mes[1]:02d}/{mes[0]}")
 
-    # ── hoja nueva (la original intacta) ──
+    # -- hoja nueva (la original intacta) --
     if hoja_salida in wb.sheetnames:
         del wb[hoja_salida]
     ws2 = wb.create_sheet(hoja_salida)

@@ -34,7 +34,7 @@ USO como librería:
 
 import programas.rem_saludmental as sm
 
-# ── Config específica del INGRESO ─────────────────────────────────────
+# -- Config específica del INGRESO -------------------------------------
 NOMBRE_HOJA_SALIDA = "A05_Ingresos"
 BUSQUEDAS = {"Ingreso": ["INGRESO"]}     # la columna '...ESTADO' muestra 'Ingreso'.
 # Match por SUBCADENA: 'REINGRESO' también tributa aquí A PROPÓSITO — para el REM un
@@ -73,7 +73,7 @@ def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print, mes=None):
     return res
 
 
-# ── Descriptor para el registro de tareas (lo consume autorem.py) ──
+# -- Descriptor para el registro de tareas (lo consume autorem.py) --
 TAREA = {
     "id": "a05_n_ingresos",
     "nombre": "A05 · Ingresos",

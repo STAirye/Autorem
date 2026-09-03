@@ -108,7 +108,7 @@ def _a06_tot(tabla, col):
     return int(ests[col].sum())
 
 
-# ── A04: consultas médicas SM (solo médico) ──
+# -- A04: consultas médicas SM (solo médico) --
 def test_a04_solo_medico():
     E, t = _run([
         {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
@@ -121,7 +121,7 @@ def test_a04_solo_medico():
     assert _cell(t["A04_Consultas_Medicas"], "Consulta", "Salud Mental", "Mujeres") == 1
 
 
-# ── A06: controles por estamento + SENAME excluido ──
+# -- A06: controles por estamento + SENAME excluido --
 def test_a06_controles_estamento_y_sename():
     E, t = _run([
         {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
@@ -139,7 +139,7 @@ def test_a06_controles_estamento_y_sename():
     assert _cell(a06, "Profesional", "Psicólogo/a", "5-9 M") == 1   # edad 8, mujer
 
 
-# ── ADA cuenta por ATEN ID (distinct), no por fila ──
+# -- ADA cuenta por ATEN ID (distinct), no por fila --
 def test_ada_conteo_por_atenid():
     E, _ = _run([
         {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
@@ -149,7 +149,7 @@ def test_ada_conteo_por_atenid():
     assert _n(E, "A06") == 2   # dos ATEN ID distintos (la fila repetida NO suma)
 
 
-# ── Grupal cuenta por ASISTENCIA (sin dedup) + filtro Asiste=SI ──
+# -- Grupal cuenta por ASISTENCIA (sin dedup) + filtro Asiste=SI --
 def test_grupal_por_asistencia():
     E, t = _run([], grupal_rows=[
         # EDAD en TEXTO ('30 años…') como viene del export crudo del grupal
@@ -163,7 +163,7 @@ def test_grupal_por_asistencia():
     assert pg["30-34 M"] == 2      # ambas mujeres 30/31 caen en la banda 30-34 (EDAD texto parseada)
 
 
-# ── Ventana de mes (por FECHA ATENCIÓN) ──
+# -- Ventana de mes (por FECHA ATENCIÓN) --
 def test_ventana_de_mes():
     E, _ = _run(
         [{"run": "A", "id": "1", "fecha": date(2026, 6, 30), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
@@ -174,7 +174,7 @@ def test_ventana_de_mes():
     assert _n(E, "A06PG") == 0      # la grupal es de agosto
 
 
-# ── A19a: ADA (individual) + grupal, y el guion evita comerse las VDI de A26 ──
+# -- A19a: ADA (individual) + grupal, y el guion evita comerse las VDI de A26 --
 def test_a19a_ada_mas_grupal_sin_vdi():
     E, t = _run(
         [{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Psicólogo(a)",
@@ -191,7 +191,7 @@ def test_a19a_ada_mas_grupal_sin_vdi():
     assert fila["Total Actividades"] == 2 and fila["  · desde ADA (individual)"] == 1 and fila["  · desde Grupal"] == 1
 
 
-# ── A26: split etario 5-9 (A.31) excluye de A.30, + secuencia de visita ──
+# -- A26: split etario 5-9 (A.31) excluye de A.30, + secuencia de visita --
 def test_a26_split_5a9_y_visita():
     E, t = _run([
         {"run": "K", "id": "1", "fecha": date(2026, 7, 3), "instr": "Médico", "edad": 7,
@@ -223,7 +223,7 @@ def test_a26_multiprofesional():
     assert r30["Total"] == 2 and r30["Dos o Más Prof."] == 1 and r30["Un Profesional"] == 1
 
 
-# ── A32 F1: desagregado llamada / videollamada / mensaje (video ≠ llamada) ──
+# -- A32 F1: desagregado llamada / videollamada / mensaje (video != llamada) --
 def test_a32f1_desagregado():
     E, t = _run([
         {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Psicólogo(a)", "edad": 30,
@@ -240,7 +240,7 @@ def test_a32f1_desagregado():
     assert _n(E, "A32F1") == 3
 
 
-# ── A27: A = asistentes (usuarios), B = sesiones (por prestador/fecha/actividad) ──
+# -- A27: A = asistentes (usuarios), B = sesiones (por prestador/fecha/actividad) --
 def test_a27_asistentes_y_sesiones():
     E, t = _run([], grupal_rows=[
         {"run": "X", "fecha": date(2026, 7, 10), "asiste": "SI", "edad": 30, "prest": "Dra A",
@@ -254,7 +254,7 @@ def test_a27_asistentes_y_sesiones():
     assert fila["B · Sesiones (actividades)"] == 1
 
 
-# ── Demografía: SENAME / Mejor Niñez / migrante / pueblo / demencia (Beneficiarios=todos) ──
+# -- Demografía: SENAME / Mejor Niñez / migrante / pueblo / demencia (Beneficiarios=todos) --
 def test_demografia_flags():
     E, t = _run([
         {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
@@ -275,7 +275,7 @@ def test_demografia_flags():
     assert _a06_tot(a06, "TRANS Masculino") == 0 and _a06_tot(a06, "TRANS Femenina") == 0   # sin inscritos
 
 
-# ── Gestante: matrona + control prenatal en la ventana → flag en el evento SM ──
+# -- Gestante: matrona + control prenatal en la ventana -> flag en el evento SM --
 def test_gestante_flag():
     E, _ = _run([
         {"run": "G", "id": "1", "fecha": date(2026, 7, 2), "act": "Control Prenatal  ;",
@@ -314,7 +314,7 @@ def _cell_row(tabla, col_key, col_val):
     return tabla[tabla[col_key] == col_val].iloc[0]
 
 
-# ── TRANS: selección explícita en GÉNERO del padrón de Inscritos, split M/F ──
+# -- TRANS: selección explícita en GÉNERO del padrón de Inscritos, split M/F --
 def test_trans_flag():
     ins = _mk_inscritos([
         {"NUMERO TIPO IDENTIFICACION": "T", "SEXO": "Mujer", "GENERO": "Transgénero Masculino"},

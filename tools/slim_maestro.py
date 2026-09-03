@@ -55,7 +55,7 @@ def main(argv):
         pass
     full = Path(argv[0]) if argv else FULL_DEFAULT
     if not full.exists():
-        print(f"✗ No encuentro el Maestro completo: {full}")
+        print(f"X No encuentro el Maestro completo: {full}")
         print("  Deja 'Maestro_de_Actividades.xlsx' en 'refs tablas/' o pásalo como argumento.")
         return 1
     print(f"Leyendo Maestro completo: {full.name}")
@@ -64,7 +64,7 @@ def main(argv):
     slim.columns = [nombre for _, nombre in _SALIDA]
     slim.to_csv(SLIM, index=False, compression="gzip")
     mb = SLIM.stat().st_size / 1e6
-    print(f"✔ Slim escrito: {SLIM.relative_to(REPO)}  ({len(slim)} filas, {mb:.2f} MB)")
+    print(f"OK Slim escrito: {SLIM.relative_to(REPO)}  ({len(slim)} filas, {mb:.2f} MB)")
     print("  Versionar:  git add -f \"refs tablas/maestro_slim.csv.gz\"")
     return 0
 

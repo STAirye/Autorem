@@ -31,7 +31,7 @@ import modulos.rem_a03_d3_instrumentos as scr   # noqa: E402
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_scr_"))
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────
+# -- Fixtures ----------------------------------------------------------
 def _iris(fn, formulario, filas):
     """Export IRIS de instrumento: encabezado en fila 1 + filas de datos.
     `filas` = lista de (rut, edad, sexo, funcionario, estamento, estado, puntaje, resultado)."""
@@ -80,7 +80,7 @@ def _quiet(*_a, **_k):
     pass
 
 
-# ── Pruebas ───────────────────────────────────────────────────────────
+# -- Pruebas -----------------------------------------------------------
 def test_clasificadores():
     assert scr.clasificar_psc(None) is None          # sin puntaje -> None
     assert scr.clasificar_psc(0) == "Sin riesgo"     # <33: bajo el corte (lo más común)
@@ -246,7 +246,7 @@ def test_tabla_d3_excluye_sin_riesgo():
         return int(f[col])
     assert cel("ingreso", "Bajo", "Ambos") == 1 and cel("ingreso", "Bajo", "5-9 H") == 1
     assert cel("ingreso", "Alto", "5-9 M") == 1
-    assert cel("egreso", "Medio", "40-44 M") == 1     # edad 40 → banda 40-44
+    assert cel("egreso", "Medio", "40-44 M") == 1     # edad 40 -> banda 40-44
     assert int(t["Ambos"].sum()) == 3, "'Sin riesgo' no debe contar en el D.3"
 
 
@@ -282,7 +282,7 @@ def test_ghq12_en_rango_no_avisa():
 
 
 def test_procesar_unificado():
-    """3 instrumentos → 1 tabla D.3 + detalle auditable al final (con los 'Sin riesgo')."""
+    """3 instrumentos -> 1 tabla D.3 + detalle auditable al final (con los 'Sin riesgo')."""
     ppsc = _iris("u_psc.xlsx", "Cuestionario para Padres PSC", [
         ("1-1", 7, "Hombre", "", "", "Ingreso", 40, "Bajo"),   # Bajo
         ("2-2", 8, "Mujer",  "", "", "Ingreso", 72, "Alto"),   # Alto
@@ -302,7 +302,7 @@ def test_procesar_unificado():
     wb.close()
 
 
-# ── Runner propio ─────────────────────────────────────────────────────
+# -- Runner propio -----------------------------------------------------
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

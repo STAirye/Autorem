@@ -19,8 +19,8 @@
 formatos.py — EJE de formato IRIS vs Administrativo de los exports RAYEN.
 
 RAYEN entrega el MISMO reporte en dos formatos ("ejes"):
-  - IRIS          → export pleno (códigos ICD, demografía, columnas completas).
-  - Administrativo → mismo dato, PARCIAL (banner 'Servicio de Salud', header más
+  - IRIS          -> export pleno (códigos ICD, demografía, columnas completas).
+  - Administrativo -> mismo dato, PARCIAL (banner 'Servicio de Salud', header más
     abajo, sin varias columnas). El Monitoreo Admin de atenciones es aún más pobre.
 
 Este módulo NO es de ninguna sección del REM. Es la capa que reconoce y ubica ese
@@ -30,9 +30,9 @@ el MECANISMO (barrer la hoja, decidir el eje, resolver identidad, ubicar header
 por eje) vive acá una sola vez.
 
   rem_utils (primitivas de celda: norm, buscar_col, encontrar_fila_encabezado)
-      ↑
+      ^
   formatos (este módulo: eje IRIS/Admin)
-      ↑
+      ^
   rem_saludmental / rem_a03_d3_instrumentos / estamentos / … (reportes concretos)
 
 Nota de lenguaje: acá "perfil"/"eje" = formato del export. NO confundir con los
@@ -48,7 +48,7 @@ Qué es compartido y qué es por-reporte:
 
 from programas.rem_utils import norm, buscar_col, encontrar_fila_encabezado
 
-# ── Vocabulario del eje (firmas RAYEN estándar del formulario clínico) ──
+# -- Vocabulario del eje (firmas RAYEN estándar del formulario clínico) --
 ANCLA_IRIS   = ["AÑO", "APLICACION", "FORMULARIO"]      # encabezado IRIS
 ANCLA_ADMIN  = ["EDAD", "REGISTRO", "FORMULARIO"]       # encabezado Administrativo (fila 9)
 ADMIN_BANNER = "SERVICIO DE SALUD"                      # A1 del Administrativo
@@ -56,12 +56,12 @@ ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMU
 MAX_FILAS_HEADER = 60                                   # tope del barrido de firmas
 
 # Params de localización de encabezado del lado ADMIN. TRANSVERSAL: mismo banner
-# (col A con blancos → no fiarse del blanco; header en fila 9 = n_hardcode+1 como
+# (col A con blancos -> no fiarse del blanco; header en fila 9 = n_hardcode+1 como
 # último recurso) en A05, A03 y 'Utilización de Cupos'. El lado IRIS varía por
 # reporte, así que cada perfil define su propio n_hardcode.
 HEADER_ADMIN = dict(usar_blanco_en_a=False, n_hardcode=8)
 
-# ── Identidad del paciente (RUT/edad/sexo), aceptando AMBOS formatos ──
+# -- Identidad del paciente (RUT/edad/sexo), aceptando AMBOS formatos --
 # QUIRK RAYEN (IRIS): 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la EDAD a la
 # fecha de LLENADO. En el Administrativo el equivalente es 'Edad de registro
 # formulario' ('99 años 12 meses 31 días'; edad_anios lo parsea).
@@ -83,7 +83,7 @@ def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
     ancla = [norm(t) for t in iris_ancla]
     rut = [norm(t) for t in (iris_rut or [])]
     ok_ancla = False
-    ok_rut = not rut                      # sin tokens de RUT → no se exige
+    ok_rut = not rut                      # sin tokens de RUT -> no se exige
     for r in range(1, tope + 1):
         vals = [norm(c.value) for c in ws[r]]
         if all(any(tok in v for v in vals) for tok in ancla):

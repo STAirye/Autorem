@@ -63,9 +63,9 @@ from programas.rem_utils import (
 from programas import formatos
 from programas.rem_saludmental import DIAGNOSTICOS_CON_SUBTIPO
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Tabla A/B — config por diagnóstico (docs/SP_P6_config_por_dx.md, APROBADA)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # El DAX es UNIFORME: TODAS las 28 fórmulas (form) siguen el mismo patrón
 # (§4.2 del plan) -> UNA función parametrizada (_estado_dx) + esta tabla de
 # datos, no 28 casos especiales. `subtipo` se REUSA de rem_saludmental
@@ -78,7 +78,7 @@ def _spec(col, dx, estado, *, instrumento=True, subtipo_col=None,
                 subtipo2=subtipo2, subtipo2_col=subtipo2_col)
 
 
-# Diagnósticos (filas 25-58 del P6): TODOS filtran INSTRUMENTO ⊃ MEDIC (D3).
+# Diagnósticos (filas 25-58 del P6): TODOS filtran INSTRUMENTO contiene MEDIC (D3).
 TABLA_DX = [
     _spec("Depresión (form)", 18, 19, subtipo_col="Depresión gravedad (form)"),
     _spec("Depresión Postparto (form)", 21, 22),
@@ -108,7 +108,7 @@ TABLA_DX = [
 ]
 
 # Factores de riesgo (filas 15-23): NINGUNO filtra por instrumento (D2) —
-# ⚠ contraintuitivo: un factor de riesgo lo puede registrar cualquier
+# contraintuitivo: un factor de riesgo lo puede registrar cualquier
 # estamento, no solo médico. Abuso Sexual ya estaba bien en el DAX (única
 # excepción correcta); Violencia y Suicidio SÍ filtraban y eso era el bug.
 TABLA_FR = [
@@ -150,7 +150,7 @@ ACTIVIDADES_SM_7 = [
     "visita integral de salud mental a domicilio",
 ]
 
-# ── Columnas de salida (nombres = export PowerBI; §3.2 slim) ──
+# -- Columnas de salida (nombres = export PowerBI; §3.2 slim) --
 COL_IDENTIDAD = ["Número", "Tipo de identificación", "Sexo", "Género", "Edad", "Sector",
                  "Situación", "Estado", "Motivo Pasivación", "Fecha Pasivación",
                  "¿Originario o Migrante?", "Pueblo Originario", "PROTECCION NIÑEZ"]
@@ -171,9 +171,9 @@ def _col_dx():
 COLUMNAS_SALIDA = COL_IDENTIDAD + COL_ACTIVIDAD + _col_dx()
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Input 1 — Informe Inscritos y Adscritos (snapshot, IRIS)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 MAPA_INSCRITOS = {
     "RUN":          ("exact", "NUMERO TIPO IDENTIFICACION"),
     "TIPOID":       ("exact", "TIPO IDENTIFICACION"),
@@ -221,9 +221,9 @@ def cargar_inscritos(entrada, log=print):
     return d
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Input 2 — Formulario 'Control de Salud Mental' histórico (IRIS, multi-archivo)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def _leer_formulario_1(entrada, log):
     """Un archivo del histórico -> DataFrame (RUN, FECHA cruda, INSTR, q<N> por
     cada pregunta de QUESTIONS). Reusa la detección de encabezado/identidad de
@@ -306,9 +306,9 @@ def cargar_formulario_sm(entrada, log=print):
     return d
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Motor: último formulario por RUN×diagnóstico (parametrizado, D2/D3/D5/§4.3)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def _mes_offset(corte, n_meses):
     """(inicio, fin) del mes calendario que está `n_meses` ANTES del mes de
     `corte` (Timestamp = último día del mes reportado)."""
@@ -324,8 +324,8 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
               subtipo=None, subtipo2=None):
     """Motor ÚNICO (parametrizado por dx/estado/instrumento) que reemplaza las
     28 fórmulas (form) del DAX (§4.2 del plan): busca, por RUN, el último
-    formulario con `dx`⊃SI & `estado`⊃ingreso|seguimiento (filtrando INSTRUMENTO
-    ⊃ MEDIC solo si `instrumento`=True — D2/D3) hasta `corte`; separa el egreso
+    formulario con `dx`contieneSI & `estado`contieneingreso|seguimiento (filtrando INSTRUMENTO
+    contiene MEDIC solo si `instrumento`=True — D2/D3) hasta `corte`; separa el egreso
     POR DIAGNÓSTICO (§4.3, no el bug del PowerBI): Egresado si ESE mismo bloque
     ESTADO trae 'egreso' dentro del mes reportado [mes_ini, mes_fin].
 
@@ -389,9 +389,9 @@ def _egreso_powerbi_bug(form, mes_ini, mes_fin):
     return set(form.loc[m, "RUN"])
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Actividad SM (Ingresado / Activo 12m / rescate 6m-13m / Gestante)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def _runs_actividad_sm(d_ada, ini, fin):
     w = d_ada[(d_ada["FECHA"] >= ini) & (d_ada["FECHA"] <= fin) &
              contiene_alguno(d_ada["ACT_n"], ACTIVIDADES_SM_7)]
@@ -440,7 +440,7 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
     # de ESTE mes quedan incompletos (falta la atención más reciente). Comparación por
     # MES: nada garantiza una atención el último día calendario exacto del mes.
     if ada_max is not None and _ym(ada_max) < _ym(corte):
-        log(f"[poblacion] ⚠⚠ El ADA NO llega hasta el mes reportado ({corte:%Y-%m}): "
+        log(f"[poblacion] El ADA NO llega hasta el mes reportado ({corte:%Y-%m}): "
             f"la atención más reciente cargada es de {ada_max:%Y-%m}. ¿Falta el export "
             "más nuevo, o se eligió mal el mes? Activo12m/rescate/gestante van a salir "
             "incompletos para este mes.")
@@ -450,14 +450,14 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
     # queda cubierto si esto se cumple). Idem: por MES, no por día exacto.
     ini13, _ = _mes_offset(corte, 13)
     if ada_min is not None and _ym(ada_min) > _ym(ini13):
-        log(f"[poblacion] ⚠ El ADA arranca en {ada_min:%Y-%m}, pero Activo12m/rescate "
+        log(f"[poblacion] El ADA arranca en {ada_min:%Y-%m}, pero Activo12m/rescate "
             f"13m/gestante necesitan desde {ini13:%Y-%m} (13 meses cerrados) -> pueden "
             "SUBCONTAR. Carga el histórico de 13 meses del ADA (§3 del plan).")
 
     # El histórico del formulario debe llegar hasta el mes reportado -> si no, un
     # ingreso/egreso de ESTE mes no está en los datos y el snapshot queda desfasado.
     if form_max is not None and _ym(form_max) < _ym(corte):
-        log(f"[poblacion] ⚠⚠ El histórico del formulario SM NO llega hasta el mes "
+        log(f"[poblacion] El histórico del formulario SM NO llega hasta el mes "
             f"reportado ({corte:%Y-%m}): el formulario más reciente cargado es de "
             f"{form_max:%Y-%m}. Ingresos/egresos de este mes NO se van a reflejar -> "
             "revisa que el histórico esté actualizado.")
@@ -472,9 +472,9 @@ def _ultima_respuesta(form, pregunta, corte):
     return w[q] if q in w.columns else pd.Series(dtype=object)
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Ensamblado: construir_poblacion()
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     """Arma la tabla «Ferrada» SLIM (§3.2): TODOS los inscritos (snapshot), 1
     fila por RUN, sin filtrar por Activo/Ingresado (eso lo aplica quien consuma
@@ -496,18 +496,18 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
                              "FPASIV": "Fecha Pasivación", "MPASIV": "Motivo Pasivación",
                              "SECTOR": "Sector"}).copy()
 
-    # ── Sexo/Género (Sexo vacío -> 'No informado', igual que el DAX) ──
+    # -- Sexo/Género (Sexo vacío -> 'No informado', igual que el DAX) --
     P["Sexo"] = P["SEXO"].where(P["SEXO"].notna() & (P["SEXO"].astype(str).str.strip() != ""),
                                 "No informado")
     P["Género"] = P["GENERO"]
 
-    # ── Edad al CORTE (no a hoy): fecha nacimiento; fallback EDAD AÑOS del snapshot ──
+    # -- Edad al CORTE (no a hoy): fecha nacimiento; fallback EDAD AÑOS del snapshot --
     fnac = fecha_col(P["FNAC"], log, "Fecha Nacimiento (Inscritos)")
     edad_calc = ((corte - fnac).dt.days / 365.25).apply(lambda x: int(x) if pd.notna(x) else np.nan)
     edad_fallback = pd.to_numeric(P["EDADANOS"], errors="coerce")
     P["Edad"] = edad_calc.where(edad_calc.notna(), edad_fallback)
 
-    # ── Pueblo Originario / Migrante (norm-based; más robusto que el literal del DAX) ──
+    # -- Pueblo Originario / Migrante (norm-based; más robusto que el literal del DAX) --
     P["Pueblo Originario"] = P["PUEBLO"]
     nac_n = P["NACIONALIDAD"].map(norm)
     pueblo_n = P["PUEBLO"].map(norm)
@@ -516,30 +516,30 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     P["¿Originario o Migrante?"] = np.select([es_migrante, es_originario],
                                              ["Migrante", "Originario"], default="NO")
 
-    # ── PROTECCION NIÑEZ (SENAME / Mejor Niñez, desde ALERTAS ADMINISTRATIVAS) ──
+    # -- PROTECCION NIÑEZ (SENAME / Mejor Niñez, desde ALERTAS ADMINISTRATIVAS) --
     alertas_n = P["ALERTAS"].map(norm)
     es_sename = alertas_n.str.contains("SENAME", na=False)
     es_mejorninez = alertas_n.str.contains("SPE", na=False) | alertas_n.str.contains("MEJOR NINEZ", na=False)
     P["PROTECCION NIÑEZ"] = np.select([es_sename, es_mejorninez], ["SENAME", "Mejor Niñez"], default="NO")
 
-    # ── Actividad SM (§8.1: misma lista de 7 para las 3 definiciones) ──
+    # -- Actividad SM (§8.1: misma lista de 7 para las 3 definiciones) --
     activos12, rescate6, rescate13 = _flags_actividad(d_ada, corte)
     P["¿Activo 12m?"] = np.where(P["Número"].isin(activos12), "SI", "NO")
     P["¿Última atención hace 6m?"] = np.where(P["Número"].isin(rescate6), "Si", "No")
     P["¿Última atención hace 13m?"] = np.where(P["Número"].isin(rescate13), "Si", "No")
 
-    # ── Gestante (§4.7: 3 meses cerrados, matrona; NO el DAX de 2 meses). Cubierta
-    #     por el chequeo general de cobertura de arriba (13 meses > 3 meses). ──
+    # -- Gestante (§4.7: 3 meses cerrados, matrona; NO el DAX de 2 meses). Cubierta
+    #     por el chequeo general de cobertura de arriba (13 meses > 3 meses). --
     ini3 = ini - pd.DateOffset(months=2)
     gset = gestante_runs(d_ada, ini3, corte)
     P["¿Embarazada?"] = np.where(P["Número"].isin(gset), "SI", "NO")
 
-    # ── Madre <5 años (pregunta 1, última respuesta con dato; SIN filtro de
-    #     sexo acá -- eso es una regla del P6, no de Ferrada, §5.4.1 del plan) ──
+    # -- Madre <5 años (pregunta 1, última respuesta con dato; SIN filtro de
+    #     sexo acá -- eso es una regla del P6, no de Ferrada, §5.4.1 del plan) --
     m5 = _ultima_respuesta(form, 1, corte)
     P["Madre <5 años"] = P["Número"].map(m5).fillna("")
 
-    # ── Los 28 diagnósticos/factores de riesgo (motor único, ver _estado_dx) ──
+    # -- Los 28 diagnósticos/factores de riesgo (motor único, ver _estado_dx) --
     divergencias_detalle = []   # 1 fila por (Diagnóstico, RUN) que diverge — auditoría §4.3
     egreso_bug_runs = _egreso_powerbi_bug(form, mes_ini, mes_fin)
     for spec in TODAS_LAS_SPECS:
@@ -566,7 +566,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
 
     P = _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
 
-    # ── ¿Ingresado? (SI si CUALQUIER dx/FR quedó 'Activo') ──
+    # -- ¿Ingresado? (SI si CUALQUIER dx/FR quedó 'Activo') --
     cols_dx = [s["col"] for s in TODAS_LAS_SPECS]
     P["¿Ingresado?"] = np.where((P[cols_dx] == "Activo").any(axis=1), "SI", "NO")
 
@@ -575,7 +575,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     if len(div_df):
         div_df = div_df.sort_values(["Diagnostico", "RUN"]).reset_index(drop=True)
         resumen = div_df.groupby("Diagnostico", sort=False).size()
-        log(f"[poblacion] ⚠ §4.3 egreso por diagnóstico: {len(div_df)} persona(s)×diagnóstico "
+        log(f"[poblacion] §4.3 egreso por diagnóstico: {len(div_df)} persona(s)×diagnóstico "
             f"difieren del PowerBI (que egresaba TODOS los dx con cualquier egreso del RUN en "
             f"el mes). Detalle (con RUT) en la hoja 'Egreso_Divergencias'. Esperado, no es bug. "
             + " · ".join(f"{d}={n}" for d, n in resumen.items()))
@@ -588,7 +588,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     log(f"[poblacion] Ferrada: {len(P)} personas en el snapshot | {n_ingresados} con "
         f"¿Ingresado?=SI (mes {ini:%Y-%m})")
     if not (1300 <= n_ingresados <= 1500):
-        log(f"[poblacion] ⚠ {n_ingresados} ingresados está fuera del rango histórico "
+        log(f"[poblacion] {n_ingresados} ingresados está fuera del rango histórico "
             "~1300-1500 esperado para este centro (sanity check, no error automático).")
 
     # .attrs de pandas NO se propaga de forma confiable al recortar columnas

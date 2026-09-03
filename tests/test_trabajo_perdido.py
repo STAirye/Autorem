@@ -82,7 +82,7 @@ def _run(ada_rows, con_maestro=True, mes=(2026, 7)):
     return E
 
 
-# ── Tests ──────────────────────────────────────────────────────────────
+# -- Tests --------------------------------------------------------------
 
 def test_gestion_es_perdida():
     E = _run([_a("Consulta De Salud Mental", "ANA"),          # A04 -> tributa

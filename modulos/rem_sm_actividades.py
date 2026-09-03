@@ -25,7 +25,7 @@ A32·F (acciones/controles remotos SM). Salida = tablas listas para copiar-pegar
 al template SA_26. Filtros VALIDADOS casilla por casilla contra el REM manual de
 julio 2026 (ver docs / CLAUDE.md).
 
-Fuentes (mensuales; el export puede venir del AÑO COMPLETO → se filtra el mes):
+Fuentes (mensuales; el export puede venir del AÑO COMPLETO -> se filtra el mes):
   - ADA  = 'Atenciones/Diagnósticos/Actividades' (IRIS). Todo salvo lo grupal.
            Se lee con rem_utils.cargar_atenciones. Conteo por ATEN ID (distinct).
   - Grupal = 'Atenciones Grupales'. Solo A06 psicosocial, A19a grupal y A27.
@@ -58,7 +58,7 @@ DEM_COLS = ["dem_originario", "dem_migrante", "dem_sename", "dem_mejorninez",
 #   'Familias en Riesgo' se OMITEN (no se usan en el centro).
 DEM_A04 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
-# (Campaña de Invierno: write-protected en la hoja de Salud Mental → se omite.)
+# (Campaña de Invierno: write-protected en la hoja de Salud Mental -> se omite.)
 DEM_A06 = [("Beneficiarios", "_total"), ("SENAME", "dem_sename"),
            ("Prot. Especializada", "dem_mejorninez"), ("Pueblos Originarios", "dem_originario"),
            ("Migrantes", "dem_migrante"), ("Demencia", "dem_demencia"),
@@ -105,7 +105,7 @@ def cargar_grupal(entrada, log=print):
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención (grupal)")
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
-    # EDAD del grupal viene en TEXTO ('55 años 3 meses 1 día') → años (nº). Sin esto,
+    # EDAD del grupal viene en TEXTO ('55 años 3 meses 1 día') -> años (nº). Sin esto,
     # la desagregación por banda etaria queda en 0 (pd.to_numeric del texto = NaN).
     d["EDAD"] = d["EDAD"].map(edad_anios)
     return d
@@ -231,7 +231,7 @@ def _grupal_eventos(gm):
     return pd.concat(partes, ignore_index=True) if partes else _empty_ev()
 
 
-# ── Tablas de salida (una por sección REM; forma = template SA_26) ──
+# -- Tablas de salida (una por sección REM; forma = template SA_26) --
 
 def _tabla_a04(E):
     sub = E[E["casilla"] == "A04"]
@@ -244,7 +244,7 @@ def _tabla_a06(E):
     for est in A06_ORDEN:
         s = E[(E["casilla"] == "A06") & (E["estamento_rem"] == est)]
         filas.append({"Profesional": est, **_grid(s, BANDAS_A06, LBL_A06), **_demcols(s, DEM_A06)})
-    # (TOTAL: write-protected en el template — se calcula solo → se omite.)
+    # (TOTAL: write-protected en el template — se calcula solo -> se omite.)
     pg = E[E["casilla"] == "A06PG"]
     filas.append({"Profesional": "Intervención Psicosocial Grupal",
                   **_grid(pg, BANDAS_A06, LBL_A06), **_demcols(pg, DEM_A06)})
@@ -290,7 +290,7 @@ def _tabla_a26(E, multi=None):
         ss = s[msk]
         n, n_dos = len(ss), int(ss["es_multi"].sum())
         # Composición: 'Dos o Más' si la atención está en el Monitoreo Multiprofesional;
-        # el resto 'Un Profesional'. Sin ese reporte, n_dos=0 → todo mono (default).
+        # el resto 'Un Profesional'. Sin ese reporte, n_dos=0 -> todo mono (default).
         filas.append({"Concepto": lbl, "Total": n,
                       "Un Profesional": n - n_dos, "Dos o Más Prof.": n_dos,
                       "Un Prof + Técnico": 0, "Técnico": 0, "Facilitador": 0, "Agente Comunitario": 0,
@@ -379,15 +379,15 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
             tmap = trans_map(inscritos)
         except ValueError as e:                       # archivo modificado / reporte equivocado
             tmap = {}
-            log(f"[sm] ⚠⚠ TRANS NO calculado: {e}  → TRANS queda en 0.")
+            log(f"[sm] TRANS NO calculado: {e}  -> TRANS queda en 0.")
         gen = d["RUN"].map(tmap)                       # M/F/X por RUN (NaN si no TRANS)
         d["dem_trans_m"] = gen.eq("M")
         d["dem_trans_f"] = gen.eq("F")
         if not tmap:
             # 0 TRANS en el padrón COMPLETO es sospechoso -> avisar en vez de callar
-            log("[sm] ⚠⚠ El 'Informe Inscritos' arrojó 0 personas TRANS. En el padrón "
+            log("[sm] El 'Informe Inscritos' arrojó 0 personas TRANS. En el padrón "
                 "COMPLETO del CESFAM eso casi seguro significa que el archivo está "
-                "MODIFICADO/filtrado o es otro reporte → descárgalo de nuevo SIN tocar. "
+                "MODIFICADO/filtrado o es otro reporte -> descárgalo de nuevo SIN tocar. "
                 "(TRANS queda en 0.)")
         else:
             log(f"[sm] Inscritos: {len(tmap)} personas TRANS en el padrón del CESFAM")
@@ -399,8 +399,8 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
             if d["FECHA"].notna().any() else "sin fechas")
     log(f"[sm] ADA: {len(d)} atenciones ({span}) | mes reporte {ini:%Y-%m} -> {len(dm)} atenciones")
     if d["FECHA"].notna().any() and d["FECHA"].min() > ini3:
-        log(f"[sm] ⚠ GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
-            f"arranca en {d['FECHA'].min():%Y-%m} → puede SUBCONTAR. Carga el ADA de los últimos 3 meses.")
+        log(f"[sm] GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
+            f"arranca en {d['FECHA'].min():%Y-%m} -> puede SUBCONTAR. Carga el ADA de los últimos 3 meses.")
     Ea = _ada_eventos(dm)
 
     if grupal is not None:
@@ -418,7 +418,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     # Composición profesional de A26 (opcional): Monitoreo Multiprofesional.
     # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del mes.
     # Debe CUBRIR el mes reportado (bajarlo del año completo sirve). Si no coincide con
-    # ninguna VDI del mes, probablemente es de otro período → avisamos RUIDOSO (fail loud).
+    # ninguna VDI del mes, probablemente es de otro período -> avisamos RUIDOSO (fail loud).
     multi = set()
     if multiprofesional is not None:
         try:
@@ -426,11 +426,11 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
             log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
             a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
             if a26_ids and not (a26_ids & multi):
-                log("[sm] ⚠⚠ el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
-                    f"{len(a26_ids)} VDI de A26 del mes → parece de OTRO período. A26 saldría "
+                log("[sm] el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
+                    f"{len(a26_ids)} VDI de A26 del mes -> parece de OTRO período. A26 saldría "
                     "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
         except ValueError as e:
-            log(f"[sm] ⚠⚠ Multiprofesional NO usado: {e}  → A26 queda todo mono-profesional.")
+            log(f"[sm] Multiprofesional NO usado: {e}  -> A26 queda todo mono-profesional.")
 
     E.attrs["tablas"] = {
         "SM_Resumen": _tabla_resumen(E, ini),

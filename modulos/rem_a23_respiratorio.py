@@ -30,7 +30,7 @@ meses pasados.
 
 Lee atenciones IRIS o Monitoreo admin (rem_utils.cargar_atenciones). SALA bajo
 control + Sección G inasistentes ya integrados. PENDIENTE: agregación mensual por
-edad×sexo; admin es PARCIAL (los dx por código ICD no vienen → Ira Alta/Bronquitis/
+edad×sexo; admin es PARCIAL (los dx por código ICD no vienen -> Ira Alta/Bronquitis/
 EPOC exac. = 0, ver rem_utils.MAPA_ATENCIONES) + formulario Otros Crónicos admin.
 """
 
@@ -45,11 +45,11 @@ from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_cano
 
 _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 
-# ── PRE-ESCRITO (NO activo): Educación GRUPAL A23·M.2 — talleres respiratorios ──
-# Estado ago-2026: los talleres grupales AÚN NO se hacen en el CESFAM → nada que
+# -- PRE-ESCRITO (NO activo): Educación GRUPAL A23·M.2 — talleres respiratorios --
+# Estado ago-2026: los talleres grupales AÚN NO se hacen en el CESFAM -> nada que
 # contar hoy. Se esperan en ~2 meses (Simón envió las actividades candidatas al RT
 # de Respiratorio). La lógica es CASI IDÉNTICA a rem_sm_actividades: conteo por
-# ASISTENCIA del reporte 'Atenciones Grupales' (cada fila Asiste=SI, SIN dedup) →
+# ASISTENCIA del reporte 'Atenciones Grupales' (cada fila Asiste=SI, SIN dedup) ->
 # A23·M.2 (Nº sesiones = grupos distintos; Nº participantes = asistencias). Ver
 # docs/A23_P3_plan.md ("Educación grupal M.2").
 #
@@ -67,7 +67,7 @@ _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 # (mismo reporte grupal), filtrar ACT por _M2_TALLERES + mes por FECHA ATENCIÓN, y
 # armar la tabla con _grid. VALIDAR contra un mes real (como se hizo con SM). OJO:
 # el tabaco INDIVIDUAL ya tributa por otra vía (A23·M.1 'Educación Antitabaco' de
-# _masks_simples y A23·N VDI Hogar Libre de Humo) → no duplicar.
+# _masks_simples y A23·N VDI Hogar Libre de Humo) -> no duplicar.
 
 
 def _masks_simples(d):
@@ -111,8 +111,8 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     """Devuelve el DataFrame DETALLE (1 fila por RUN) con los indicadores REMA23
     del `mes` (año, mes) — default mes anterior.
     `entrada` = export de atenciones. `otros`/`estrat` (opcionales) = formulario
-    'Otros y Respi' + 'Estratificación' → agregan SALA bajo control + Sección G.
-    `inasistentes` (opcional) = reporte NSP → Sección H (citas Control/Ingreso
+    'Otros y Respi' + 'Estratificación' -> agregan SALA bajo control + Sección G.
+    `inasistentes` (opcional) = reporte NSP -> Sección H (citas Control/Ingreso
     IRA/ERA no asistidas, por estamento × tramo etario)."""
     d = cargar_atenciones(entrada, log=log)
     ini, fin = _rango_mes(mes)
@@ -153,7 +153,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     fer["Edad"] = _edad(dem, fin).reindex(fer.index)
     fer["¿Originario o Migrante?"] = _origen(dem).reindex(fer.index)
 
-    # ── Fase 2: SALA bajo control (si se dieron los inputs) ──
+    # -- Fase 2: SALA bajo control (si se dieron los inputs) --
     if otros is not None:
         od, _ = cargar_otros(otros)
         # Sección G solo sirve con historial largo: el inasistente tiene su ÚLTIMO
@@ -163,9 +163,9 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
         # (chequeo por FECHA MÍNIMA, no por span: un solo año da ~365 días pero igual
         # deja fuera el año previo).
         if od["FECHA"].notna().any():
-            limite = ini - pd.DateOffset(months=12)   # G mira ≥12 meses hacia atrás
+            limite = ini - pd.DateOffset(months=12)   # G mira >=12 meses hacia atrás
             if od["FECHA"].min() > limite:
-                log(f"[a23] ⚠⚠ Sección G SUBCONTARÁ: los formularios 'Otros y Respi' "
+                log(f"[a23] Sección G SUBCONTARÁ: los formularios 'Otros y Respi' "
                     f"arrancan en {od['FECHA'].min():%Y-%m}, pero el mes reportado "
                     f"({ini:%Y-%m}) necesita historial hasta {limite:%Y-%m}. Como el "
                     f"reporte se baja POR AÑO, carga AMBOS: el año del reporte Y el "
@@ -191,7 +191,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
         log("[a23] Sección G inasistentes crónicos: " + " · ".join(
             f"{lbl.split()[0]}={d['Total']}" for lbl, d in gcounts.items()))
 
-    # ── Sección H: inasistentes a citación agendada (reporte NSP, independiente) ──
+    # -- Sección H: inasistentes a citación agendada (reporte NSP, independiente) --
     if inasistentes is not None:
         nsp = cargar_inasistentes(inasistentes, log=log)
         h = _seccion_h(nsp, ini, fin)
@@ -222,9 +222,9 @@ def _origen(dem):
                       for m, o in zip(mig, ori)], index=dem.index)
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  FASE 2 — SALA bajo control (formulario 'Otros y Respi' + Estratif) ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  FASE 2 — SALA bajo control (formulario 'Otros y Respi' + Estratif) |
+# +===================================================================+
 
 
 def _resolver_otros(cols):
@@ -355,7 +355,7 @@ def _sala(idx, edad, aten, otros, estrat):
     return s, ing
 
 
-# ── Sección G: INASISTENTES A CONTROL DE CRÓNICOS (del formulario Otros y Respi) ──
+# -- Sección G: INASISTENTES A CONTROL DE CRÓNICOS (del formulario Otros y Respi) --
 # Def. REM (comentario A23 B78-83): paciente con formulario válido (¿Padece?=Si +
 # Estado ingreso/reingreso/seguimiento) cuya ÚLTIMA 'Fecha del Próximo Control' está
 # vencida > umbral por edad al CORTE (último día del mes reportado). NO usa el reporte
@@ -403,7 +403,7 @@ def _seccion_g(otros, corte):
     return counts, flags
 
 
-# ── Sección H: INASISTENTES A CITACIÓN AGENDADA (del reporte NSP) ──
+# -- Sección H: INASISTENTES A CITACIÓN AGENDADA (del reporte NSP) --
 # Citas Control/Ingreso IRA/ERA (NO KTR) que el paciente NO asistió (NSP), por
 # estamento (Médico/Kinesiólogo/Enfermera) y tramo etario (<20 / >=20). Conteo por
 # CITA (cada fila = una inasistencia). Mes por FECHA HORA CITA (no fecha NSP).
@@ -446,10 +446,10 @@ def _seccion_h(nsp, ini, fin):
     return pd.DataFrame(filas)
 
 
-# ── Tablas agregadas edad×sexo (forma exacta del template SA_26, hoja A23) ──
+# -- Tablas agregadas edad×sexo (forma exacta del template SA_26, hoja A23) --
 # Bandas del template (fila 10): Menor de 1 · 1-4 · 5-9 · … · 80 y más (18 bandas).
 # `grid()` emite Ambos·Hombres·Mujeres + por banda H/M, EN EL ORDEN de las columnas
-# del SA_26 → copy-paste directo (la etiqueta va en la col 1).
+# del SA_26 -> copy-paste directo (la etiqueta va en la col 1).
 LBL_A23 = ["Menor de 1", "1-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34",
            "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74",
            "75-79", "80+"]
@@ -462,12 +462,12 @@ def _tablas_a23(fer):
     """Construye las tablas por sección (edad×sexo) con la forma del SA_26. PROTOTIPO:
     cubre las secciones cuyo indicador por-RUN ya existe y es 1:1. Filas sin fuente
     fiable (o de otra forma) van en 0 y ANOTADAS para validar 1:1 contra el PowerBI:
-    A (semántica 'ingreso a sala' ≠ 'tuvo dx'), I espirometría basal/post BD (hoy 1
-    indicador), y O (forma EPOC A/B) → pendientes. B/C/P/Q/M.2/J/K/L fuera de alcance."""
+    A (semántica 'ingreso a sala' != 'tuvo dx'), I espirometría basal/post BD (hoy 1
+    indicador), y O (forma EPOC A/B) -> pendientes. B/C/P/Q/M.2/J/K/L fuera de alcance."""
     import pandas as pd
 
     # FILTRO base del PowerBI: el A23 se reporta SOLO sobre quienes 'Pertenecen a SALA'
-    # (bajo control). Sin el formulario Otros y Respi no hay flags → no se puede filtrar.
+    # (bajo control). Sin el formulario Otros y Respi no hay flags -> no se puede filtrar.
     if "Pertenece a SALA" in fer.columns:
         fer = fer[fer["Pertenece a SALA"].eq("SI")]
 
@@ -492,7 +492,7 @@ def _tablas_a23(fer):
     # SECCIÓN D — Consultas de morbilidad en salas (solo médico)
     tablas["A23_D_Morbilidad"] = pd.DataFrame([fila("Médico/a", g("REMA23 Morbi respiratoria"))])
 
-    # SECCIÓN E — Controles crónicos (Enfermera/o NO existe → 0; ver reglas)
+    # SECCIÓN E — Controles crónicos (Enfermera/o NO existe -> 0; ver reglas)
     med = fer["REMA23 Control SALA Med (act)"].eq("SI")
     kin = fer["REMA23 Control SALA Kine (act)"].eq("SI")
     tablas["A23_E_Controles_Cronicos"] = pd.DataFrame([
@@ -509,7 +509,7 @@ def _tablas_a23(fer):
         fila("Kinesiólogo/a", gmask(ki)),
         fila("TOTAL", gmask(eu | ki))])
 
-    # SECCIÓN I — Procedimientos (espirometría basal/post BD: HOY un solo indicador →
+    # SECCIÓN I — Procedimientos (espirometría basal/post BD: HOY un solo indicador ->
     # va todo a 'basal', post BD queda 0 PENDIENTE de split por texto de actividad).
     tablas["A23_I_Procedimientos"] = pd.DataFrame([
         fila("Espirometría basal", g("REMA23 Espirometría (act)")),
@@ -533,7 +533,7 @@ def _tablas_a23(fer):
     tablas["A23_M1_Educacion_Individual"] = pd.DataFrame(filas_m1)
 
     # SECCIÓN N — Visitas domiciliarias (solo 'Otras visitas' desde VDI Respi; resto
-    # sin fuente → 0). VDI Respi existe solo si se cargó el formulario Otros y Respi.
+    # sin fuente -> 0). VDI Respi existe solo si se cargó el formulario Otros y Respi.
     tablas["A23_N_Visitas"] = pd.DataFrame([
         fila("Hogar libre del humo del tabaco", cero),
         fila("Por muerte de neumonía en domicilio", cero),
@@ -541,10 +541,10 @@ def _tablas_a23(fer):
         fila("Seguimiento telefónico realizado por kinesiologo sala", cero),
         fila("Otras visitas", g("REMA23 VDI Respi"))])
 
-    # SECCIÓN A — Ingresos agudos por diagnóstico. ⚠ PROTOTIPO: mapea los dx directos
+    # SECCIÓN A — Ingresos agudos por diagnóstico. PROTOTIPO: mapea los dx directos
     # que ya tenemos; el resto (Otras IRAS bajas, exacerbación SBOR/Asma/FQ/otras) va 0.
     # OJO semántico: A es 'INGRESO agudo derivado a sala', no 'tuvo una atención con
-    # ese dx' → VALIDAR 1:1 contra el PowerBI antes de confiar.
+    # ese dx' -> VALIDAR 1:1 contra el PowerBI antes de confiar.
     a_dx = [("I.R.A. alta", "REMA23 Ira Alta"), ("Influenza", "REMA23 Influenza"),
             ("Neumonía", "REMA23 Neumonia"), ("Coqueluche", "REMA23 Coqueluche"),
             ("Bronquitis obstructiva aguda", "REMA23 Bronquitis Aguda")]

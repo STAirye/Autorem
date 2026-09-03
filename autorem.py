@@ -26,7 +26,7 @@ La GUI tiene una PESTAÑA por módulo/reporte (cada una autocontenida: su archiv
 sus opciones, sus instrucciones y su log). Al sumar un módulo se agrega su pestaña.
 Hoy:
   - «REM A05 · Egresos / Ingresos»  (formulario Control de Salud Mental; perfil
-    IRIS/Administrativo + tareas egresos/ingresos → un .xlsx con una hoja por tarea).
+    IRIS/Administrativo + tareas egresos/ingresos -> un .xlsx con una hoja por tarea).
   - «REM A03 D.3 · Screening»       (instrumentos PSC/PSC-Y/GHQ-12; autodetecta
     formato e instrumento por contenido).
 
@@ -44,7 +44,7 @@ from programas.rem_utils import VERSION, mes_anterior
 import programas.rem_saludmental as sm
 import programas.estamentos as estam
 
-# ── Registro de módulos de tarea ──────────────────────────────────────
+# -- Registro de módulos de tarea --------------------------------------
 from modulos import rem_a05_o_egresos
 from modulos import rem_a05_n_ingresos
 import modulos.rem_a03_d3_instrumentos as screening   # reporte aparte (su propia pestaña)
@@ -63,7 +63,7 @@ def buscar_tarea(tarea_id):
 
 
 def _forzar_utf8_stdout():
-    """En consola Windows (cp1252) los símbolos ▶ · → «» ✔ revientan con
+    """En consola Windows (cp1252) los símbolos > · -> «» OK revientan con
     UnicodeEncodeError. Forzar UTF-8 en stdout/stderr lo evita (no afecta a la GUI)."""
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -72,7 +72,7 @@ def _forzar_utf8_stdout():
             pass
 
 
-# ── Orquestación (compartida GUI/CLI) ─────────────────────────────────
+# -- Orquestación (compartida GUI/CLI) ---------------------------------
 def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
     """Carga el workbook UNA vez (validando contra `perfil`), cada tarea agrega
     su hoja, y guarda UN solo «…_procesado.xlsx». Devuelve (resultados, salida).
@@ -81,7 +81,7 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
     wb, ws = sm.abrir_validado(entrada, perfil)
     resultados = []
     for tarea in tareas:
-        log(f"▶ {tarea['nombre']}   ({perfil['nombre']})")
+        log(f"> {tarea['nombre']}   ({perfil['nombre']})")
         res = tarea["agregar"](wb, ws, perfil, log=log, mes=mes)
         resultados.append((tarea, res))
 
@@ -100,7 +100,7 @@ def _resumen_texto(resultados, salida):
         det = ""
         if "por_tipo" in res:
             det = " · ".join(f"{t}: {c}" for t, c in res["por_tipo"].items())
-        linea = f"{tarea['nombre']}  →  hoja «{res.get('hoja', '?')}»: {res.get('total', '?')} filas"
+        linea = f"{tarea['nombre']}  ->  hoja «{res.get('hoja', '?')}»: {res.get('total', '?')} filas"
         if det:
             linea += f"  ({det})"
         partes.append(linea)
@@ -110,9 +110,9 @@ def _resumen_texto(resultados, salida):
     return texto
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  INTERFAZ GRÁFICA (Tkinter) — una pestaña por módulo/reporte       ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  INTERFAZ GRÁFICA (Tkinter) — una pestaña por módulo/reporte       |
+# +===================================================================+
 _MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
                 "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
 
@@ -121,7 +121,7 @@ _MSG_NO_XLSX = (
     "El archivo no es un Excel .xlsx válido.\n\n"
     "RAYEN/IRIS entregan varios formatos (.xls antiguo, .csv, .html) y esta "
     "herramienta lee SOLO .xlsx.\n\n"
-    "Ábrelo en Excel y usa «Guardar como» → «Libro de Excel (.xlsx)», y carga ese.\n"
+    "Ábrelo en Excel y usa «Guardar como» -> «Libro de Excel (.xlsx)», y carga ese.\n"
     "(Si un .xlsx te da este error, suele ser un .html/.xls disfrazado: mismo arreglo.)")
 
 
@@ -135,7 +135,7 @@ def _es_error_formato(e):
         InvalidFileException = ()
     return isinstance(e, (zipfile.BadZipFile,) + ((InvalidFileException,) if InvalidFileException else ()))
 
-_AVISO_SIN_MODIFICAR = ("⚠  Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
+_AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
                         "sin abrirlos, editarlos ni re-guardarlos.\n"
                         "     Un export modificado (cambio de formato, columnas, hojas) "
                         "puede fallar en silencio o dar cifras erróneas.")
@@ -202,7 +202,7 @@ def lanzar_gui(ruta_inicial=""):
     root.mainloop()
 
 
-# ── Helpers reutilizables por las pestañas ────────────────────────────
+# -- Helpers reutilizables por las pestañas ----------------------------
 def _crear_log(parent, root, height=10):
     """Caja de log. Devuelve (log, limpiar)."""
     from tkinter import ttk, scrolledtext
@@ -461,7 +461,7 @@ def _correr_con_reloj(root, barra, btn, log, trabajo, al_terminar):
     root.after(80, poll)
 
 
-# ── Estamentos (REUTILIZABLE por cualquier flujo en formato Administrativo) ──
+# -- Estamentos (REUTILIZABLE por cualquier flujo en formato Administrativo) --
 def _bloque_estamentos(parent):
     """Cuadro para cargar la tabla de estamentos ('Utilización de Cupos'), con el
     porqué y las instrucciones. Reutilizable por cualquier módulo que procese
@@ -477,8 +477,8 @@ def _bloque_estamentos(parent):
         "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).")
         ).pack(anchor="w")
     ttk.Label(caja, justify="left", text=(
-        "En RAYEN Administrativo, descarga un reporte desde  Herramientas → Reportes "
-        "Estadísticos → Otros → Utilización de Cupos,\ncon fecha de un día en que hubo "
+        "En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes "
+        "Estadísticos -> Otros -> Utilización de Cupos,\ncon fecha de un día en que hubo "
         "atenciones de TODO tu equipo. Copia el reporte completo, pásalo a Excel y "
         "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(anchor="w", pady=(4, 4))
     var = tk.StringVar()
@@ -523,7 +523,7 @@ def _resolver_estamentos(root, faltantes, opciones):
     return res
 
 
-# ── Pestaña A05: Egresos / Ingresos ───────────────────────────────────
+# -- Pestaña A05: Egresos / Ingresos -----------------------------------
 def _tab_a05(nb, root, ruta_inicial=""):
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -531,11 +531,11 @@ def _tab_a05(nb, root, ruta_inicial=""):
 
     instr = (
         "1.  Descarga el Excel del formulario «Control de Salud Mental»:\n"
-        "     A) IRIS: Formularios RAYEN → Control de Salud Mental → todos los metacampos, Situación TODOS, Estado AMBOS.\n"
-        "     B) RAYEN: Herramientas → Informe Estadístico → Impresión Formularios Clínicos → Reporte Administrativo.\n"
+        "     A) IRIS: Formularios RAYEN -> Control de Salud Mental -> todos los metacampos, Situación TODOS, Estado AMBOS.\n"
+        "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
         "2.  Elige el FORMATO que descargaste y el archivo.\n"
         "3.  Elige el PERÍODO: archivo completo, o un mes puntual (por FECHA FORMULARIO).\n"
-        "4.  Marca la(s) TAREA(s) y «Procesar» → «…_procesado.xlsx» con una hoja por tarea.\n"
+        "4.  Marca la(s) TAREA(s) y «Procesar» -> «…_procesado.xlsx» con una hoja por tarea.\n"
         "     Tu archivo original NO se modifica."
     )
     caja_instr = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
@@ -560,7 +560,7 @@ def _tab_a05(nb, root, ruta_inicial=""):
     var_ruta = tk.StringVar(value=ruta_inicial)
     _fila_archivo(tab, var_ruta, "Elige el export de Control de Salud Mental")
 
-    # ── Período: archivo completo vs. un mes (por FECHA FORMULARIO) ──
+    # -- Período: archivo completo vs. un mes (por FECHA FORMULARIO) --
     _y0, _m0 = mes_anterior()
     caja_per = ttk.LabelFrame(tab, text="Período", padding=8)
     caja_per.pack(fill="x", pady=(2, 6))
@@ -649,7 +649,7 @@ def _tab_a05(nb, root, ruta_inicial=""):
         finally:
             btn.configure(state="normal")
         resumen = _resumen_texto(resultados, salida)
-        log(""); log("✔ " + resumen.replace("\n", " | "))
+        log(""); log("OK " + resumen.replace("\n", " | "))
         if messagebox.askyesno("Listo", resumen + "\n\n¿Abrir la carpeta del resultado?"):
             if salida:
                 _abrir_carpeta(Path(salida).parent)
@@ -661,12 +661,12 @@ def _tab_a05(nb, root, ruta_inicial=""):
 
     on_perfil_change()
     if not sm.OPENPYXL_OK:
-        log("⚠ Falta 'openpyxl'. Instálalo con: pip install openpyxl")
+        log("Falta 'openpyxl'. Instálalo con: pip install openpyxl")
 
 
-# ── Pestaña A03 D.3: Screening (PSC / PSC-Y / GHQ-12) ──────────────────
+# -- Pestaña A03 D.3: Screening (PSC / PSC-Y / GHQ-12) ------------------
 def _bloque_a03(parent):
-    """Los 3 slots de instrumentos A03·D.3 (carga los que existan, ≥1). El slot fija
+    """Los 3 slots de instrumentos A03·D.3 (carga los que existan, >=1). El slot fija
     el instrumento (sin autodetección). Devuelve get() -> dict {instrumento: ruta}."""
     g = {
         "PSC":    _fila_archivos(parent, "PSC (padres, 5-9):", "Cuestionario para Padres PSC"),
@@ -704,7 +704,7 @@ def _correr_a03(root, barra, btn, log, por_inst, salida, est_ruta, messagebox):
         pit = " · ".join(f"{k}: {v}" for k, v in res["por_instrumento"].items())
         txt = (f"Listo. A03·D.3 unificado.\n{res['total']} aplicaciones ({pit}).\n\n"
                f"Guardado en:\n{res['salida']}")
-        log(""); log("✔ A03·D.3 " + txt.replace("\n", " | "))
+        log(""); log("OK A03·D.3 " + txt.replace("\n", " | "))
         if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
             _abrir_carpeta(Path(res["salida"]).parent)
 
@@ -756,7 +756,7 @@ def _tab_a03(nb, root):
     btn.pack(side="left")
 
 
-# ── Pestaña A23 D · Respiratorio ──────────────────────────────────────
+# -- Pestaña A23 D · Respiratorio --------------------------------------
 def _tab_a23(nb, root):
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -764,19 +764,19 @@ def _tab_a23(nb, root):
     tab = _tab_scroll(nb, "REM A23 · Respiratorio")
 
     instr = (
-        "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII → quedan LOCALES.\n"
-        "1.  Atenciones / Diagnósticos / Actividades  →  indicadores del MES (IRA, neumonía, KTR,\n"
+        "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII -> quedan LOCALES.\n"
+        "1.  Atenciones / Diagnósticos / Actividades  ->  indicadores del MES (IRA, neumonía, KTR,\n"
         "     espirometría, controles de sala por profesión, rehab…). Carga el/los archivo(s);\n"
-        "     puede venir del AÑO COMPLETO → se filtra al mes elegido por FECHA ATENCIÓN.\n"
-        "2.  Formulario «Otros Crónicos»  →  SALA bajo control + inasistentes crónicos (Sección G).\n"
-        "     ⚠ Se baja POR AÑO calendario → SELECCIONA VARIOS a la vez (ctrl-click): como MÍNIMO\n"
+        "     puede venir del AÑO COMPLETO -> se filtra al mes elegido por FECHA ATENCIÓN.\n"
+        "2.  Formulario «Otros Crónicos»  ->  SALA bajo control + inasistentes crónicos (Sección G).\n"
+        "     Se baja POR AÑO calendario -> SELECCIONA VARIOS a la vez (ctrl-click): como MÍNIMO\n"
         "        el año del reporte Y el ANTERIOR (ideal 5). El inasistente tiene su último control\n"
         "        hace >1 año, así que sin el año previo la Sección G subcuenta (te avisa si falta).\n"
-        "3.  Estratificación de Riesgo (opcional)  →  mejora la detección de asma/EPOC/FQ/SBOR.\n"
-        "4.  Inasistentes NSP (opcional)  →  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
+        "3.  Estratificación de Riesgo (opcional)  ->  mejora la detección de asma/EPOC/FQ/SBOR.\n"
+        "4.  Inasistentes NSP (opcional)  ->  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
         "     También acepta VARIOS años (ctrl-click); se filtra al mes por FECHA CITA.\n"
         "\n"
-        "⚠ OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
+        "OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
         "   «monitoreo de actividades» mensual — con MUCHO menos info que el export IRIS (y horrible de\n"
         "   parsear). Para los indicadores del mes conviene el export completo de atenciones (IRIS / BD PowerBI).\n"
         "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
@@ -845,7 +845,7 @@ def _tab_a23(nb, root):
             gtxt = " · ".join(f"{lbl.split()[0]}:{d['Total']}" for lbl, d in g.items() if d["Total"])
             txt = (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
                    f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
-            log(""); log("✔ " + txt.replace("\n", " | "))
+            log(""); log("OK " + txt.replace("\n", " | "))
             if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
                 _abrir_carpeta(salida.parent)
 
@@ -857,7 +857,7 @@ def _tab_a23(nb, root):
     btn.pack(side="left")
 
 
-# ── Pestaña SM Actividades: A04 / A06 / A19a / A26 / A27 / A32 ─────────
+# -- Pestaña SM Actividades: A04 / A06 / A19a / A26 / A27 / A32 ---------
 def _tab_sm(nb, root):
     import tkinter as tk
     from tkinter import ttk, messagebox
@@ -865,18 +865,18 @@ def _tab_sm(nb, root):
     tab = _tab_scroll(nb, "REM SM · Actividades")   # scroll: al desplegar cuestionarios crece
 
     instr = (
-        "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) → tablas\n"
+        "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) -> tablas\n"
         "listas para copiar-pegar al template SA_26. Cubre A04·A24, A06·A.1 (controles +\n"
         "psicosocial grupal), A19a·A.3 (consejerías familiares SM/demencia), A26 (VDI SM),\n"
         "A27 (educación prev. SM) y A32·F (acciones/controles remotos SM).\n"
-        "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  →  casi todas las casillas.\n"
-        "2.  Atenciones Grupales  →  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
-        "3.  Inscritos y Adscritos (opcional, ENORME)  →  solo para el flag TRANS (género).\n"
-        "4.  Maestro de Actividades (opcional)  →  clasifica el reporte extra de TRABAJO PERDIDO:\n"
+        "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  ->  casi todas las casillas.\n"
+        "2.  Atenciones Grupales  ->  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
+        "3.  Inscritos y Adscritos (opcional, ENORME)  ->  solo para el flag TRANS (género).\n"
+        "4.  Maestro de Actividades (opcional)  ->  clasifica el reporte extra de TRABAJO PERDIDO:\n"
         "     actividades con 'mental'/'demencia' que NO tributan al REM + qué funcionario las registra.\n"
         "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
         "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
-        "⚠ Para el flag GESTANTE se usa una ventana de 3 MESES → carga el ADA de los últimos 3 meses."
+        "Para el flag GESTANTE se usa una ventana de 3 MESES -> carga el ADA de los últimos 3 meses."
     )
     caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
     caja.pack(fill="x", pady=(0, 8))
@@ -942,7 +942,7 @@ def _tab_sm(nb, root):
         salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
         salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
         mtr = get_maestro()
-        maestro = mtr[0] if mtr else _slim_por_defecto()    # sin selección → Maestro slim del repo/exe
+        maestro = mtr[0] if mtr else _slim_por_defecto()    # sin selección -> Maestro slim del repo/exe
         # Cuestionarios A03·D.3 (opcional): resolver en el hilo GUI (Tk vars no son
         # thread-safe) y pasar los valores capturados al worker.
         incluir_a03 = var_a03.get()
@@ -958,7 +958,7 @@ def _tab_sm(nb, root):
             smact.escribir(E, salida)
             n_tp = None
             if not maestro:
-                log("[tp] ⚠⚠ Maestro de Actividades NO encontrado (ni cargado a mano, ni "
+                log("[tp] Maestro de Actividades NO encontrado (ni cargado a mano, ni "
                     "embebido en el .exe): el Trabajo Perdido usa SOLO la heurística "
                     "(mask_tributa_ada), menos preciso. Para embeberlo, reconstruye el .exe "
                     "con --add-data del maestro_slim.csv.gz (CLAUDE.md §11) o déjalo junto al .exe.")
@@ -969,9 +969,9 @@ def _tab_sm(nb, root):
                 Etp = tpmod.procesar(ada, maestro=maestro, mes=(y, m), log=log, d=d)
                 tpmod.escribir(Etp, salida_tp)
                 n_tp = len(Etp)
-                log(f"✔ Trabajo perdido: {n_tp} atenciones a saco vacío → {salida_tp.name}")
+                log(f"OK Trabajo perdido: {n_tp} atenciones a saco vacío -> {salida_tp.name}")
             except Exception as e:   # noqa: BLE001
-                log(f"[tp] ⚠ no se generó el reporte de trabajo perdido: {e}")
+                log(f"[tp] no se generó el reporte de trabajo perdido: {e}")
             n_a03 = None
             if incluir_a03:
                 if por_inst_a03:
@@ -979,11 +979,11 @@ def _tab_sm(nb, root):
                         r03 = screening.procesar_unificado(por_inst_a03, salida_a03,
                                                            estamentos=None, resolver_estamento=None, log=log)
                         n_a03 = r03["total"]
-                        log(f"✔ A03·D.3: {n_a03} aplicaciones → {salida_a03.name}")
+                        log(f"OK A03·D.3: {n_a03} aplicaciones -> {salida_a03.name}")
                     except Exception as e:   # noqa: BLE001
-                        log(f"[a03] ⚠ no se generó la tabla A03·D.3: {e}")
+                        log(f"[a03] no se generó la tabla A03·D.3: {e}")
                 else:
-                    log("[a03] ⚠ 'Incluir cuestionarios' marcado pero sin archivos → se omite.")
+                    log("[a03] 'Incluir cuestionarios' marcado pero sin archivos -> se omite.")
             return E, n_tp, n_a03
 
         def al_terminar(res, err):
@@ -997,7 +997,7 @@ def _tab_sm(nb, root):
             a03txt = f"\nA03·D.3: {n_a03} aplicaciones." if n_a03 is not None else ""
             txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
                    f"{rtxt}\n\nGuardado en:\n{salida}")
-            log(""); log("✔ REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
+            log(""); log("OK REM SM " + f"{y}-{m:02d} guardado: {salida.name}")
             if messagebox.askyesno("Listo", txt + "\n\n¿Abrir la carpeta del resultado?"):
                 _abrir_carpeta(salida.parent)
 
@@ -1009,25 +1009,25 @@ def _tab_sm(nb, root):
     btn.pack(side="left")
 
 
-# ── Pestaña BETA: SP·P6 · Población en control PSM (en pruebas) ────────
+# -- Pestaña BETA: SP·P6 · Población en control PSM (en pruebas) --------
 def _tab_beta(nb, root):
     import tkinter as tk
     from tkinter import ttk, messagebox
     tab = _tab_scroll(nb, "BETA")
 
     instr = (
-        "⚠ EN PRUEBAS — Fase 1+2 de SP·P6, todavía SIN validar contra un P6 llenado a\n"
+        "EN PRUEBAS — Fase 1+2 de SP·P6, todavía SIN validar contra un P6 llenado a\n"
         "mano. Úsala para ir comparando, no para tabular en producción todavía.\n"
         "Arma la tabla intermedia PSM_Poblacion (port del PowerBI 'Ferrada') y la grilla\n"
         "P6·A.1 lista para copiar-pegar al SP_26.xlsm — respeta la máscara de celdas\n"
         "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
         "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
         "pegar. Ver docs/SP_P6_poblacion_plan.md.\n"
-        "1.  Formulario 'Control de Salud Mental' (IRIS)  →  HISTÓRICO COMPLETO: carga\n"
+        "1.  Formulario 'Control de Salud Mental' (IRIS)  ->  HISTÓRICO COMPLETO: carga\n"
         "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click).\n"
-        "2.  Atenciones/Diagnósticos/Actividades (ADA)  →  13 meses (Activo 12m,\n"
+        "2.  Atenciones/Diagnósticos/Actividades (ADA)  ->  13 meses (Activo 12m,\n"
         "     Gestante, rescate a 13 meses); acepta varios archivos.\n"
-        "3.  Informe Inscritos y Adscritos (IRIS)  →  snapshot actual, un archivo.\n"
+        "3.  Informe Inscritos y Adscritos (IRIS)  ->  snapshot actual, un archivo.\n"
         "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
     )
     caja = ttk.LabelFrame(tab, text="Instrucciones", padding=8)
@@ -1104,7 +1104,7 @@ def _tab_beta(nb, root):
                    f"Revisar_Administrativo: {n_admin} fila(s) · Revisar_Clinico: {n_clin} fila(s) "
                    "— revísalas antes de pegar al SP.\n\n"
                    f"Guardado en:\n{salida}")
-            log(""); log("✔ " + txt.replace("\n", " | "))
+            log(""); log("OK " + txt.replace("\n", " | "))
             if messagebox.askyesno("Listo (BETA)", txt + "\n\n¿Abrir la carpeta del resultado?"):
                 _abrir_carpeta(salida.parent)
 
@@ -1121,9 +1121,9 @@ def _abrir_carpeta(carpeta):
     abrir_carpeta(carpeta)
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  MODO CONSOLA (experto) y ARRANQUE                                 ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  MODO CONSOLA (experto) y ARRANQUE                                 |
+# +===================================================================+
 def main_cli(args):
     # args: entrada.xlsx [--formato iris|administrativo] [--tarea ID[,ID2,...]]
     _forzar_utf8_stdout()

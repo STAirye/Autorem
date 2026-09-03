@@ -23,7 +23,7 @@ y arma la grilla copy-paste al `SP_26_V1.1.xlsm` hoja P6, sección A.1 (filas
 13-58), respetando la máscara de celdas protegidas de la plantilla real. Ver
 `docs/SP_P6_poblacion_plan.md` §5.
 
-⚠ La MÁSCARA (`MASCARA_BANDA`/`EXCLUYE_DEMO`) se extrajo DIRECTO de
+La MÁSCARA (`MASCARA_BANDA`/`EXCLUYE_DEMO`) se extrajo DIRECTO de
 `refs tablas/SP_26_V1.1.xlsm` (protección real de celdas), no de la prosa del
 plan: se encontró y CORRIGIÓ una discrepancia ahí (fila 38 «Otros trastornos
 del comportamiento…infancia»: el plan decía rango reportable 0-19, la
@@ -40,9 +40,9 @@ from programas.rem_utils import (norm, BANDAS_A06 as BANDAS, LBL_A06 as LBL, _ba
                                  _hombre, _mujer, ArchivoInvalido)
 from programas.rem_saludmental import OVERRIDE_SUBTIPO
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Máscara de la plantilla (SP_26_V1.1.xlsm, hoja P6, filas 13-58)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # fila -> (idx_min, idx_max) de banda etaria ABIERTA (0-based sobre las 17
 # bandas de BANDAS_A06/LBL_A06: 0-4,5-9,...,80+). Filas sin recorte = (0,16).
 MASCARA_BANDA = {
@@ -122,9 +122,9 @@ def _mascara_demo(fila):
     return [c for c in DEMO_TODAS if c not in EXCLUYE_DEMO.get(fila, set())]
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Config por diagnóstico: fila P6 -> columna Ferrada (docs/SP_P6_config_por_dx.md)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Filas 25-58 SIN subtipo -> 1:1 con una columna (form) de PSM_Poblacion.
 FILA_SIMPLE = {
     29: "Bipolaridad (form)",
@@ -171,9 +171,9 @@ VIOLENCIA_TIPO_REGLAS = [(["FISICA"], (15, 16)), (["SEXUAL"], (17, 18)), (["PSIC
 GES_FILAS_AV = set(range(15, 24)) | {25, 26, 27, 28, 44, 45, 46}
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Motor
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 _RUT_FORMATO = re.compile(r"^\d{6,9}-[\dkK]$")
 _TECHO_NO_RUT = 0.05   # §5.5.1: si el filtro descarta más de esto, el roto es EL FILTRO
 # §5.5.2: forma válida pero SIGNIFICADO incorrecto -> la forma sola no basta. Hoy solo
@@ -196,7 +196,7 @@ def _base_valida(P, log):
     La etiqueta cruda queda como dato informativo en Revisar_Administrativo.
 
     Guardarraíl (§5.5.1): si el total descartado supera `_TECHO_NO_RUT` del padrón, el
-    filtro es el que está roto, no los datos → `ArchivoInvalido` explícito en vez de
+    filtro es el que está roto, no los datos -> `ArchivoInvalido` explícito en vez de
     seguir y emitir un P6_A1 lleno de ceros en silencio. Y tras filtrar, 'Número' debe
     quedar ÚNICO — si sobrevive una colisión, `ArchivoInvalido` también.
     Devuelve (P_filtrada, filas_revisar)."""
@@ -225,7 +225,7 @@ def _base_valida(P, log):
                         "Detalle": row["Tipo de identificación"], "Valor_crudo": row["Número"],
                         "Categoria": "Administrativo"})
     if n_no_rut:
-        log(f"[sp_p6] ⚠ {n_no_rut} persona(s) descartadas por identificador "
+        log(f"[sp_p6] {n_no_rut} persona(s) descartadas por identificador "
             "(formato no-RUN o RUN Responsable): van a Revisar_Administrativo.")
     P = P.loc[~no_rut].copy()
 
@@ -238,10 +238,22 @@ def _base_valida(P, log):
             f"(§5.5.2): {ruts}. Es una colisión de clave sin resolver (dos personas "
             "con el mismo RUN) — no se puede armar el P6 así.")
 
-    base = ((P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI") &
-           (P["¿Ingresado?"] == "SI"))
-    log(f"[sp_p6] base (Estado=Activo & Activo12m=SI & Ingresado=SI): "
-        f"{int(base.sum())} de {len(P)} personas del snapshot")
+    f_estado = P["Estado"].map(norm) == "ACTIVO"
+    f_a12m = P["¿Activo 12m?"] == "SI"
+    f_ingr = P["¿Ingresado?"] == "SI"
+    base = f_estado & f_a12m & f_ingr
+
+    # CASCADA de filtros: N individual y acumulado por etapa. Sirve para diffear
+    # paso a paso contra la tabla dinámica del PowerBI ('Población SM' -> filtros
+    # globales estado + activo 12m + ingresado) y aislar en CUÁL filtro empieza la
+    # divergencia, en vez de mirar solo el total final.
+    log(f"[sp_p6] --- cascada de filtros (padron con identificador valido: {len(P)}) ---")
+    acum = pd.Series(True, index=P.index)
+    for nombre, f in (("Estado=Activo", f_estado), ("Activo 12m=SI", f_a12m),
+                      ("Ingresado=SI", f_ingr)):
+        acum &= f
+        log(f"[sp_p6]    {nombre:<16} solo={int(f.sum()):>6}   acumulado={int(acum.sum()):>6}")
+    log(f"[sp_p6] base (los 3 filtros): {int(base.sum())} de {len(P)} personas del snapshot")
 
     sexo_raro = P.loc[base, "Sexo"].map(lambda s: not (_hombre(s) or _mujer(s)))
     for run, sx in zip(P.loc[base].loc[sexo_raro, "Número"], P.loc[base].loc[sexo_raro, "Sexo"]):
@@ -249,7 +261,7 @@ def _base_valida(P, log):
         revisar.append({"RUN": run, "Motivo": motivo, "Fila_P6": "", "Detalle": "",
                         "Valor_crudo": sx, "Categoria": "Administrativo"})
     if sexo_raro.any():
-        log(f"[sp_p6] ⚠ {int(sexo_raro.sum())} persona(s) con sexo fuera de "
+        log(f"[sp_p6] {int(sexo_raro.sum())} persona(s) con sexo fuera de "
             "{{Hombre,Mujer}}: no se pueden ubicar en columna H/M del P6 (Revisar_Administrativo).")
 
     return P.loc[base].copy(), revisar
@@ -344,7 +356,7 @@ def _preparar_demografia(P, revisar, log=print):
                         "Valor_crudo": "SI", "Categoria": "Administrativo"})
     n_descartadas = int(descartadas_g.sum()) + int(descartadas_m.sum())
     if n_descartadas:
-        log(f"[sp_p6] ⚠ {n_descartadas} flag(s) de Gestante/Madre<5 descartado(s) por "
+        log(f"[sp_p6] {n_descartadas} flag(s) de Gestante/Madre<5 descartado(s) por "
             "sexo registral no-femenino (§5.4.1, Revisar_Administrativo).")
 
     origen = P["¿Originario o Migrante?"]
@@ -503,7 +515,7 @@ def construir_p6(P, log=print):
                         "ningún dx de trastorno mental; completar la ficha", "Valor_crudo": "",
                         "Categoria": "Clinico"})
     if fr_sin_dx:
-        log(f"[sp_p6] ⚠ {len(fr_sin_dx)} persona(s) con FACTOR DE RIESGO pero SIN "
+        log(f"[sp_p6] {len(fr_sin_dx)} persona(s) con FACTOR DE RIESGO pero SIN "
             "diagnóstico de trastorno mental (registro incompleto) -> Revisar_Clinico.")
 
     # Fila 13: SUMA LITERAL de las filas 15-24 (hereda el doble conteo de los FR, §5.2).
@@ -515,11 +527,11 @@ def construir_p6(P, log=print):
     filas_grid[13] = fila13
 
     if not (1300 <= filas_grid[24]["Ambos"] <= 1500):
-        log(f"[sp_p6] ⚠ fila 24 = {filas_grid[24]['Ambos']} está fuera del rango histórico "
+        log(f"[sp_p6] fila 24 = {filas_grid[24]['Ambos']} está fuera del rango histórico "
             "~1300-1500 (sanity check, no es un error automático).")
     suma_25_58 = sum(filas_grid[f]["Ambos"] for f in range(25, 59) if f in filas_grid)
     if suma_25_58 <= filas_grid[24]["Ambos"]:
-        log(f"[sp_p6] ⚠ suma(25..58)={suma_25_58} no es MAYOR que fila24={filas_grid[24]['Ambos']} "
+        log(f"[sp_p6] suma(25..58)={suma_25_58} no es MAYOR que fila24={filas_grid[24]['Ambos']} "
             "(se esperaba > por comorbilidad; revisar si de verdad no hay nadie con 2+ dx).")
 
     # §5.2: fila 13 vs el DISTINCTCOUNT(RUN) real de "tiene FR o dx" (15-23 UNION 25-58,
@@ -570,9 +582,9 @@ def construir_p6(P, log=print):
            "bloques": bloques_df, "mes": mes}
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # §5.6 — Bloques pegables (rectángulos maximales sin celdas bloqueadas)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def _firma_columnas(fila):
     """Set de columnas EFECTIVAMENTE abiertas para `fila` (bandas + demo),
     para agrupar filas consecutivas con la MISMA firma en un solo bloque."""

@@ -27,7 +27,7 @@ from pathlib import Path
 
 import openpyxl
 
-# ── Acceso al código del proyecto (carpeta padre de tests/) ──
+# -- Acceso al código del proyecto (carpeta padre de tests/) --
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
@@ -39,7 +39,7 @@ import autorem                               # noqa: E402
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_tests_"))
 
 
-# ── Fixtures sintéticas ───────────────────────────────────────────────
+# -- Fixtures sintéticas -----------------------------------------------
 def _iris_fixture():
     """Export estilo IRIS: 1 egreso (Alta+subtipo) y 1 ingreso."""
     p = _TMP / "iris.xlsx"
@@ -115,7 +115,7 @@ def _quiet(*_args, **_kwargs):
     pass
 
 
-# ── Pruebas ───────────────────────────────────────────────────────────
+# -- Pruebas -----------------------------------------------------------
 def test_iris_equivalencia_v12():
     """La salida de egresos (perfil IRIS) es idéntica al monolito validado v1.2."""
     monolito = REPO / "legacy" / "rem_marcar_egresos 1.2.py"
@@ -301,7 +301,7 @@ def test_dispatcher_multisheet():
     assert len(resultados) == 2
 
 
-# ── Runner propio (sin depender de pytest) ────────────────────────────
+# -- Runner propio (sin depender de pytest) ----------------------------
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

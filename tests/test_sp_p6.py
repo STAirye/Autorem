@@ -33,9 +33,9 @@ def _quiet(*_a, **_k):
     pass
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Fixtures — mismo layout que descarga RAYEN/IRIS (banner + encabezado real)
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 _Q = {
     1: "1.- ¿USTED ES MADRE DE HIJO MENOR DE 5 AÑOS?",
     4: "4.- ¿ ES VÍCTIMA O AGRESOR/A DE VIOLENCIA?", 5: "5.- ESTADO",
@@ -192,9 +192,9 @@ def _poblacion_log(formulario_filas, inscritos_filas, ada_filas, mes=(2026, 8)):
     return P, lineas
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # programas/poblacion.py — tabla «Ferrada»
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def test_activo_simple_ingreso_sin_egreso():
     P = _poblacion(
         [{"rut": "11111111-1", "fecha": date(2026, 7, 10), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}],
@@ -222,7 +222,7 @@ def test_egreso_por_diagnostico_no_el_bug_del_powerbi():
 
 def test_d2_factor_riesgo_sin_filtro_de_instrumento():
     """Violencia (factor de riesgo) registrada por Trabajador Social (NO médico)
-    igual cuenta — al revés que los diagnósticos, que sí exigen INSTRUMENTO⊃MEDIC."""
+    igual cuenta — al revés que los diagnósticos, que sí exigen INSTRUMENTOcontieneMEDIC."""
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Trabajador Social",
          **{_Q[4]: "SI", _Q[5]: "INGRESO", _Q[6]: "Física", _Q[7]: "Víctima"}},
@@ -319,9 +319,9 @@ def test_cobertura_avisa_si_ada_no_cubre_13_meses():
     assert not any("El histórico del formulario SM NO llega" in m for m in log)
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # modulos/rem_sp_p6_poblacion.py — grilla P6·A.1
-# ══════════════════════════════════════════════════════════════════════
+# ======================================================================
 def test_base_exige_activo_e_ingresado_y_activo12m():
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[57]: "SI", _Q[58]: "INGRESO"}},   # TDAH, con ADA
@@ -436,8 +436,8 @@ def test_demencia_solo_con_etapa():
 
 
 def test_edad_se_pliega_no_se_descarta_fila37_y_fila38():
-    """37 Ansiedad separación: 0-14 (≥15 pliega a 10-14). 38 Otros infancia: 0-24 en
-    la plantilla REAL (≥25 pliega a 20-24 — corregido; el plan original decía 0-19)."""
+    """37 Ansiedad separación: 0-14 (>=15 pliega a 10-14). 38 Otros infancia: 0-24 en
+    la plantilla REAL (>=25 pliega a 20-24 — corregido; el plan original decía 0-19)."""
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[71]: "SI", _Q[72]: "INGRESO"}},   # 20 años
         {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[73]: "SI", _Q[74]: "INGRESO"}},   # 30 años

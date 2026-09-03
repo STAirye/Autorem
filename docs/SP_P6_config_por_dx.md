@@ -96,10 +96,10 @@ registrar cualquier estamento, no solo médico.
 
 | Fila P6 | Concepto (P6) | Columna | dx | ESTADO | Subtipo | Instrumento |
 |---|---|---|---|---|---|---|
-| **15-20** | Violencia física/sexual/psicológica × víctima/agresor | `Violencia (form)` | 4 | **5** | **6** (tipo) × **7** (en la violencia es) | ⚠ **quitar** (el DAX lo tiene) |
-| **17-18** | Violencia sexual *(también entra por acá)* | `Abuso Sexual (form)` | 9 | 10 | — | ninguno ✔ (el DAX ya estaba bien) |
+| **15-20** | Violencia física/sexual/psicológica × víctima/agresor | `Violencia (form)` | 4 | **5** | **6** (tipo) × **7** (en la violencia es) | **quitar** (el DAX lo tiene) |
+| **17-18** | Violencia sexual *(también entra por acá)* | `Abuso Sexual (form)` | 9 | 10 | — | ninguno (el DAX ya estaba bien) |
 | 21 | Abuso sexual | — | — | — | — | **no capturable** en la plantilla → 0 |
-| **22-23** | Suicidio: ideación / intento *(0-4 se **pliega** a 5-9)* | `Suicidio (form)` | 11 | **13** | **12** (tipo) | ⚠ **quitar** (el DAX lo tiene) |
+| **22-23** | Suicidio: ideación / intento *(0-4 se **pliega** a 5-9)* | `Suicidio (form)` | 11 | **13** | **12** (tipo) | **quitar** (el DAX lo tiene) |
 
 **Regla de violencia sexual** (del `CONTEXTO_REM_general`): `Abuso Sexual (form)` **+**
 `Violencia Tipo (form) ⊃ "sexual"` van **ambos** a las filas 17/18. La fila 21 queda en 0.
@@ -159,7 +159,7 @@ fila 56  =  pregunta 91 activa
 
 Recupera el dato que hoy se pierde y evita doble conteo con las filas 52-55.
 
-> 📌 **Acción upstream del autor:** corregir también el DAX del PowerBI (agregar la
+> **Acción upstream del autor:** corregir también el DAX del PowerBI (agregar la
 > columna de la 91). Mientras no se haga, este es un punto de divergencia esperado
 > entre el port y el export del PowerBI.
 
@@ -171,9 +171,9 @@ estamento, no solo médico.
 
 | Columna | El DAX hoy | Correcto |
 |---|---|---|
-| `Violencia (form)` (4/5) | filtra `médico` | ⚠ **sin filtro** |
-| `Suicidio (form)` (11/13) | filtra `médico` | ⚠ **sin filtro** |
-| `Abuso Sexual (form)` (9/10) | sin filtro | ✔ ya estaba bien |
+| `Violencia (form)` (4/5) | filtra `médico` | **sin filtro** |
+| `Suicidio (form)` (11/13) | filtra `médico` | **sin filtro** |
+| `Abuso Sexual (form)` (9/10) | sin filtro | ya estaba bien |
 
 O sea: la excepción del DAX (Abuso Sexual) era la única **correcta**, y las otras dos
 son las que están mal. **Efecto esperado: suben las filas 15-20 y 22-23.** El log
