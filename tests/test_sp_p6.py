@@ -180,6 +180,15 @@ def _motivos(resultado):
     return list(r["Motivo"]) if len(r) else []
 
 
+def _poblacion_log(formulario_filas, inscritos_filas, ada_filas, mes=(2026, 8)):
+    """Como `_poblacion`, pero devuelve (P, lineas_de_log) para probar avisos."""
+    lineas = []
+    P = pob.construir_poblacion(
+        str(_mk_inscritos(inscritos_filas)), str(_mk_formulario(formulario_filas)),
+        str(_mk_ada(ada_filas)), mes=mes, log=lineas.append)
+    return P, lineas
+
+
 # ══════════════════════════════════════════════════════════════════════
 # programas/poblacion.py — tabla «Ferrada»
 # ══════════════════════════════════════════════════════════════════════
@@ -278,6 +287,33 @@ def test_run_responsable_no_corrompe_a_la_madre():
     assert len(filas) == 1
     assert filas.iloc[0]["Sexo"] == "Mujer"
     assert filas.iloc[0]["Depresión Postparto (form)"] == "Activo"
+
+
+def test_cobertura_avisa_si_ada_no_llega_al_mes_reportado():
+    _, log = _poblacion_log(
+        [{"rut": "11111111-1", "fecha": date(2026, 8, 1), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}],
+        [{"rut": "11111111-1"}],
+        [{"rut": "11111111-1", "fecha": date(2025, 1, 5), "act": "Controles Salud Mental"},   # cubre 13m
+         {"rut": "11111111-1", "fecha": date(2026, 6, 5), "act": "Controles Salud Mental"}],  # pero NO llega a agosto
+        mes=(2026, 8))
+    assert any("El ADA NO llega hasta el mes reportado" in m for m in log)
+    assert not any("necesitan desde" in m and "13 meses cerrados" in m for m in log)   # sí cubre 13 meses
+
+
+def test_cobertura_avisa_si_ada_no_cubre_13_meses():
+    """El caso del autor: formulario con histórico largo (llega hasta el mes) pero
+    ADA que arranca reciente -> no cubre los 13 meses que exigen Activo12m/rescate/
+    gestante, aunque el ADA SÍ llegue hasta el mes reportado."""
+    _, log = _poblacion_log(
+        [{"rut": "11111111-1", "fecha": date(2022, 3, 1), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}},
+         {"rut": "11111111-1", "fecha": date(2026, 8, 1), **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}],
+        [{"rut": "11111111-1"}],
+        [{"rut": "11111111-1", "fecha": date(2026, 7, 1), "act": "Controles Salud Mental"},
+         {"rut": "11111111-1", "fecha": date(2026, 8, 5), "act": "Controles Salud Mental"}],   # arranca en julio
+        mes=(2026, 8))
+    assert any("necesitan desde" in m and "13 meses cerrados" in m for m in log)
+    assert not any("El ADA NO llega hasta el mes reportado" in m for m in log)
+    assert not any("El histórico del formulario SM NO llega" in m for m in log)
 
 
 # ══════════════════════════════════════════════════════════════════════
