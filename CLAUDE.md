@@ -332,10 +332,18 @@ del tamaño equivocado.**
    sigue sirviendo los commits viejos por URL directa de SHA hasta que corra su GC.
 4. **Pre-commit hook** `tools/hook_pre_commit_rut.py` (§8.2).
 
-**Regla que queda.** Un RUT **nunca** es un buen ejemplo, ni en un comentario, ni en
-un docstring, ni en un `.md`, ni en un mensaje de commit. Para ilustrar el formato se
-usa `11111111-1`. Si hace falta un lote para fixtures, cuerpo que empiece en `1000`
-con el DV calculado.
+**Desenlace (sep-2026).** Consultado a jurídica del SSMC: el RUT filtrado **no estaba
+asociado a información clínica demostrable** — aparecía como ejemplo de formato en un
+comentario de código, sin ningún dato de salud adjunto — y los RUT son de facto
+información pública. **No constituye por sí mismo una infracción que requiera
+acciones formales.** Incidente cerrado, sin notificación de brecha.
+
+**Regla que queda.** Que no haya requerido acción formal no cambia la regla: un RUT
+**nunca** es un buen ejemplo, ni en un comentario, ni en un docstring, ni en un `.md`,
+ni en un mensaje de commit. Para ilustrar el formato se usa `11111111-1`. Si hace
+falta un lote para fixtures, cuerpo que empiece en `1000` con el DV calculado.
+La remediación valió igual: el costo de limpiarlo fue una tarde, y el hook (§8.2)
+evita que la próxima vez el dato tenga contexto clínico y sí importe.
 
 ### 8.2 Pre-commit hook anti-RUT
 
