@@ -7,9 +7,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Plan — REM SP·P6 A.1 «Población en control PSM» (módulo nuevo, → 1.9.0)
 
-> **Estado: PLAN aprobado, sin implementar.** Decisiones de diseño cerradas con el
-> autor (sep-2026). Reemplaza en alcance a la nota `A05_poblacion_psm_plan.md`, que
-> sigue vigente para la fase posterior (delta P → A05 N/O).
+> **Estado: IMPLEMENTADO, en VALIDACIÓN contra el REM manual** (sep-2026).
+> Fases 0-3 hechas (`programas/poblacion.py`, `modulos/rem_sp_p6_poblacion.py`,
+> `tests/test_sp_p6.py`, 91 tests verdes). **Queda abierta la brecha del filtro
+> `Ingresado`** — ver §9. La versión sigue en **1.8.2**; el bump a 1.9.0 (Y++) va
+> cuando se cierre la validación.
+>
+> Este documento mezcla **decisiones cerradas** (§3-§6, que ya están en el código) con
+> **planificación** de lo que falta (§8 rescate de inasistentes, fase 4 del delta).
+> Reemplaza en alcance a la nota `A05_poblacion_psm_plan.md`, que sigue vigente para
+> la fase posterior (delta P → A05 N/O).
 
 ## 0. Objetivo en una línea
 
@@ -93,10 +100,12 @@ El ADA entra al DAX en cuatro lugares:
 
 El (4) alimenta únicamente las columnas de diagnóstico **sin** `(form)`
 (`SM Depresión`, `SM Ansiedad`…), y esas solo alimentan `Pertenece a PSM`. El P6
-filtra por `Ingresado = SI`, que depende **exclusivamente de las columnas `(form)`**,
-y `Ingresado=SI ⟹ Pertenece=SI`. **Conclusión: el histórico completo del ADA no
-cambia ni un número del P6.** Solo haría falta para un diff celda-a-celda exacto
-contra el PowerBI.
+filtra por `Ingresado = SI`, que depende **exclusivamente de las columnas `(form)`**.
+**Conclusión: el histórico completo del ADA no cambia ni un número del P6.** Solo
+haría falta para un diff celda-a-celda exacto contra el PowerBI.
+
+(Acá yo había escrito además que `Ingresado=SI ⟹ Pertenece=SI`, para justificar
+descartar `Pertenece`. **Es falso** — el DAX de `Pertenece` tiene un hueco: §3.3.)
 
 ### 3.2 Alcance de la tabla intermedia: SLIM (decidido)
 
@@ -747,12 +756,12 @@ Queda solo un punto menor, ya aceptado y sin acción:
 
 | Fase | Entregable | Validación |
 |---|---|---|
-| **0** | Tabla de config por-dx extraída de las 28 fórmulas `(form)` del spec (§4.2), revisada fórmula por fórmula con el autor. | Revisión humana. |
-| **1** | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
-| **2** | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
-| **3** | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + bump a **1.9.0** (Y++, módulo nuevo) + fila en la matriz de programas de CLAUDE.md. | Suite completa verde. |
-| **3.5** | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
-| **4** *(después)* | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
+| **0** HECHA | Tabla de config por-dx extraída de las 28 fórmulas `(form)` del spec (§4.2), revisada fórmula por fórmula con el autor. | Revisión humana. |
+| **1** HECHA | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
+| **2** HECHA | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
+| **3** casi | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + fila en la matriz de programas de CLAUDE.md (hecho) + bump a **1.9.0** (Y++) — **el bump espera a que cierre la validación §9**. | Suite completa verde: **91/91**. |
+| **3.5** pendiente | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
+| **4** pendiente | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
 
 ---
 
@@ -927,3 +936,67 @@ eso es justamente lo que hace útil el reporte.
 **Ojo:** los **factores de riesgo ya no filtran por estamento** (D2), así que el
 toggle solo mueve los **diagnósticos** (filas 25-58). La brecha es de control médico
 del diagnóstico, que es exactamente lo que interesa.
+
+---
+
+## 9. Estado de la validación (sep-2026) — LO QUE QUEDA ABIERTO
+
+Fases 0-3 implementadas y con tests. Lo que impide cerrar el módulo y bumpear a
+1.9.0 es **una sola brecha**, bien localizada.
+
+### La cascada de filtros la aísla
+
+Comparación contra el PowerBI, mes de agosto:
+
+| Filtro | PowerBI | autoREM | Δ |
+|---|---|---|---|
+| Sin filtro (padrón) | 55699 | 54855 | −844 |
+| `Estado = Activo` | 31001 | 30983 | −18 |
+| `Activo 12m = SI` | 2425 | 2423 | −2 |
+| **`Ingresado = SI`** | **2226** | **2972** | **+746** |
+| `¿Pertenece?` | 5507 | 2941 (24 col) / 2978 (28 col) | no comparable |
+
+`Estado` y `Activo 12m` calzan casi exacto. **Toda la brecha está en `Ingresado`.**
+
+### Hipótesis ya descartadas (con datos, no por argumento)
+
+| Hipótesis | Medición | Veredicto |
+|---|---|---|
+| **D2** — los factores de riesgo sin filtro de estamento inflan `Ingresado` | «SOLO por factor de riesgo» = **34**, no 746 | descartada |
+| **Hueco de `Pertenece`** (24 vs 28 columnas, §3.3) | diferencia = **37** | descartada |
+| **D3** — el match del instrumento (`MEDIC` vs `médico`, tildes) | el PSM solo tiene 4 instrumentos: Médico, Psicólogo(a), Terapeuta Ocupacional, Trabajador(a) Social. Ambos criterios matchean lo mismo | descartada |
+| **Ventana de histórico distinta** | mismos inputs, todo 2021 en adelante | descartada |
+| **Semántica «último formulario médico» vs «alguna vez»** | el DAX, leído literal, también es «alguna vez»: el `LASTDATE` se calcula sobre formularios que YA cumplen las tres condiciones | ambos hacen lo mismo |
+
+### Lo que se sabe de la forma de la brecha
+
+**Casi todos los diagnósticos están inflados en proporción parecida** (total 4279 vs
+2813, ratio global **1.52**), lo que apunta al **motor compartido `_estado_dx`**, no a
+una regla por-diagnóstico:
+
+- los 3 factores de riesgo: ratio **2.1–2.6** (los más altos, coherente con D2)
+- **`Otros (form)`: 2.49** — outlier entre los diagnósticos, no explicado
+- el resto de los dx: **1.2–1.6**
+- los raros (TGD 9/9, Asperger 2/2, Desintegrativo 1/1): **calzan exacto**
+
+### Siguiente paso: dejar de teorizar, ir a los RUN
+
+Cuatro hipótesis fallidas por razonamiento. Lo que zanja esto es **diffear listas**:
+volcar los RUN que autoREM marca `Ansiedad (form) = Activo` (el de mayor volumen,
+1199 vs 777) con la fecha e instrumento del formulario que los activó, filtrar el
+PowerBI al mismo diagnóstico, exportar sus RUN y comparar. Con dos o tres personas
+que difieran se ve la regla.
+
+### Herramientas de diagnóstico ya en el código
+
+El módulo emite en el log, sin cambiar ningún número:
+- **cascada de filtros** — N individual y acumulado por etapa;
+- **desglose de `Ingresado`** — cuántas personas activa cada columna `(form)`, y
+  cuántas entran SOLO por un factor de riesgo;
+- **`¿Pertenece?` en sus dos versiones** (24 del DAX vs 28 reales).
+
+### Nota metodológica
+
+El desglose corre sobre `Ingresado = SI` **sin** `Estado` ni `Activo 12m`, a
+propósito: es el filtro que se está aislando. Al comparar contra el PowerBI hay que
+usar la misma base de los dos lados.
