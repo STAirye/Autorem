@@ -34,6 +34,59 @@ CLASIFICACIÓN (autoridad = Maestro de Actividades; ver rem_utils.cargar_maestro
     de respaldo: tributa sii matchea los patrones de rem_sm_actividades.mask_tributa_ada.
   - Sin Maestro cargado -> todo por heurística (menos preciso).
 
+QUÉ NO ES TRABAJO PERDIDO SM (EXCLUIR_SMISH) — sep-2026
+-------------------------------------------------------
+La red `_SMISH` es un substring sobre la ACTIVIDAD, y eso captura actividades donde la
+palabra gatillo aparece como **descriptor de la persona atendida**, no como materia de
+la atención. Esas NO son Salud Mental y no pertenecen a este reporte — ni como perdidas
+ni como tributadas: **salen del universo**.
+
+Caso vigente: las 24 VDI del **PADDS** (Programa de Atención Domiciliaria a Personas
+con Dependencia Severa):
+
+    Visita domiciliaria integral a personas con PADDS - Familia con integrante con
+    dependencia severa {con diagnóstico de demencia | con etapa terminal (excluye
+    estadíos avanzados de demencia) | sin diagnóstico de demencia ...} -
+    {Elaboración | 1ª/2ª/3ª+ visita anual - Evaluación y actualización}
+    plan de cuidados a cuidador
+
+Por qué se excluyen, en orden de peso:
+
+  1. **No son atención de SM.** La visita es al *cuidador* de una persona con
+     dependencia severa, en el marco del PADDS. La demencia es el criterio que parte
+     la VDI en subtipos (y una variante dice literalmente «SIN diagnóstico de
+     demencia», que el substring captura igual). El sujeto del trabajo es la
+     dependencia, no el trastorno mental.
+  2. **Están bien registradas.** Tributan correctamente a REM-A26·A1. No hay nada que
+     corregirle a nadie — que es todo el propósito de este reporte.
+  3. **Hoy contaminan las dos rutas, en direcciones opuestas.** Con Maestro caían en
+     `TRIBUTA_SM_REM` por su NUM REM (REM-A26, sin sección) -> se daban por tributadas
+     a SM, que es un falso negativo silencioso. Sin Maestro, `mask_tributa_ada` no las
+     matchea -> aparecían como PERDIDAS, un falso positivo. Por eso la exclusión vive
+     al nivel SM-ish y no en `TRIBUTA_SM_REM`: es el único punto que arregla ambas
+     rutas de una vez, y el único que funciona sin Maestro cargado.
+
+El corte es limpio en el Maestro: dentro de la red SM-ish, REM-A26 se parte en
+**sección A = VDI de Salud Mental** (9 actividades, las que sí tributan acá) y
+**sección A1 = las 24 del PADDS**, sin solapamiento.
+
+DÓNDE DEBERÍAN IR (parking lot, no descarte)
+--------------------------------------------
+Esto es una decisión de RUTEO, no un borrado: el trabajo existe y alguien debería
+tabularlo — simplemente no es este módulo. Su lugar natural es un futuro módulo
+**`rem_a26_domiciliaria`** (o el programa «Dependencia/Domiciliaria» de la matriz de
+§9 del CLAUDE.md), que cubriría A26·A1 completo: VDI PADDS por subtipo (con demencia /
+etapa terminal / sin demencia) × (elaboración | 1ª/2ª/3ª+ evaluación), más las
+`Elaboración plan cuidado integral a persona con dependencia severa` y
+`Evaluación y actualización plan de cuidados a cuidador` de la misma sección.
+Ese módulo YA tiene la mitad del camino hecho: la página «Dependencia» del PowerBI y
+`programas/poblacion.py` (tabla Ferrada, transversal) son su base.
+
+Cuando exista, la lista de abajo es su punto de entrada: lo que acá se excluye por no
+ser SM es exactamente lo que allá se cuenta. Mientras tanto, la exclusión **se loguea
+con su conteo en cada corrida** (fail loud, §CLAUDE.md): sale del reporte, pero nunca
+en silencio.
+
 Recicla el módulo de actividades (mismo ADA): `cargar_atenciones`, `_rango_mes` y la
 heurística `mask_tributa_ada`. No es un fork: reporte aparte que comparte código.
 
@@ -49,6 +102,16 @@ from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
 _SMISH = ("mental", "demencia")
+# Actividades que _SMISH captura pero NO son de Salud Mental: la palabra gatillo es
+# DESCRIPTOR de la persona, no materia de la atención. Salen del universo del reporte
+# (ni perdidas ni tributadas). Cada entrada = (patrón normalizado, a-dónde-pertenece).
+# Ver «QUÉ NO ES TRABAJO PERDIDO SM» y «DÓNDE DEBERÍAN IR» en el docstring.
+# Patrón deliberadamente LITERAL, no un 'padds' suelto: excluir de más borra trabajo SM
+# real en silencio; excluir de menos deja ruido VISIBLE en el reporte, que se corrige.
+EXCLUIR_SMISH = [
+    ("a personas con padds",
+     "VDI del PADDS (dependencia severa) -> REM-A26·A1, futuro modulo de domiciliaria"),
+]
 # NUM REM (normalizados) que SÍ tributan a las casillas SM del exe. Lo demás = perdido.
 TRIBUTA_SM_REM = {norm(x) for x in
                   ("REM-A04", "REM-A06", "REM-19A", "REM-A26", "REM-A27", "REM-A32")}
@@ -71,7 +134,11 @@ def analizar(d, ini, fin, rem_map=None, log=print):
     `.attrs['tablas']` = {hoja: DataFrame}."""
     dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)].copy()
     A = dm["ACT_n"]
-    smish = _mask_any(A, _SMISH)
+    # Universo SM-ish MENOS lo que es de otro programa (PADDS/domiciliaria): la
+    # exclusión va acá y no en TRIBUTA_SM_REM para que valga con y sin Maestro.
+    bruto = _mask_any(A, _SMISH)
+    fuera = bruto & _mask_any(A, [p for p, _ in EXCLUIR_SMISH])
+    smish = bruto & ~fuera
     heur = mask_tributa_ada(A)
     if rem_map:
         numrem = A.map(lambda x: rem_map.get(x))          # None si no está en el Maestro
@@ -101,6 +168,13 @@ def analizar(d, ini, fin, rem_map=None, log=print):
         "Por_Funcionario": _por_funcionario(E),
     }
     E.attrs["mes"] = (ini.year, ini.month)
+    if fuera.any():   # fail loud: sale del reporte, pero nunca en silencio
+        log(f"[tp] {int(fuera.sum())} atencion(es) FUERA del universo SM (otro "
+            f"programa, no son trabajo perdido de SM):")
+        for pat, destino in EXCLUIR_SMISH:
+            n = int((fuera & A.str.contains(norm(pat), regex=False, na=False)).sum())
+            if n:
+                log(f"[tp]   · {n} x «{pat}» -> {destino}")
     log(f"[tp] mes {ini:%Y-%m}: {len(E)} atenciones SM a SACO VACÍO (no tributan a "
         f"A04/A06/19A/A26/A27/A32)")
     if len(E):

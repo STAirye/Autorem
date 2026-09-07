@@ -65,6 +65,16 @@ def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026"):
 def _quiet(*_a, **_k): pass
 
 
+# VDI del PADDS: trae 'demencia' (como descriptor, y aquí NEGADO) -> la red SM-ish la
+# capta, pero no es Salud Mental. Debe salir del universo (EXCLUIR_SMISH).
+_PADDS = ("Visita domiciliaria integral a personas con PADDS - Familia con integrante "
+          "con dependencia severa sin diagnóstico de demencia y/o que no se encuentra "
+          "en etapa terminal - Elaboración plan de cuidados a cuidador")
+# VDI de Salud Mental (A26 sección A): parecida en forma, pero SÍ tributa. Guarda
+# contra excluir de más.
+_VDI_SM = ("Visita domiciliaria integral familia con integrante con problema de salud "
+           "mental - Primera visita")
+
 _MAESTRO = [
     ("Consulta De Salud Mental", "REM-A04"),
     ("Controles Salud Mental", "REM-A06"),
@@ -72,6 +82,8 @@ _MAESTRO = [
     ("AG_Atencion de salud mental adolescente", "REM-Gestion"),
     ("Confirmacion diagnostica salud mental", "REM-A03"),      # otro REM real
     ("Curacion simple", "REM-A28"),                            # no SM
+    (_PADDS, "REM-A26"),                                       # A26 pero sección A1
+    (_VDI_SM, "REM-A26"),                                      # A26 sección A -> SM
 ]
 
 
@@ -112,6 +124,36 @@ def test_actividad_nueva_no_en_maestro():
               _a("Controles Salud Mental por chat", "LUCIA")])
     assert len(E) == 1, f"esperaba 1, hubo {len(E)}"
     assert "NO EN MAESTRO" in E.iloc[0]["num_rem"].upper()
+
+
+def test_padds_fuera_del_universo_con_maestro():
+    # Con Maestro el PADDS ya quedaba fuera del reporte, pero por la razón EQUIVOCADA:
+    # caía en TRIBUTA_SM_REM por su NUM REM (REM-A26, sin sección), o sea se daba por
+    # trabajo de SM bien tabulado. La salida (E) no cambia; lo que cambia es que ahora
+    # se declara como exclusión. Por eso el assert va sobre el LOG, no sobre E: es la
+    # única diferencia observable en esta ruta, y es la que hace que el día que
+    # TRIBUTA_SM_REM gane granularidad de sección el PADDS no se vuelva 'perdida'.
+    lineas = []
+    ada = _mk_ada([_a(_PADDS, "SOFIA"), _a("AG_Alta programa salud mental", "JUAN")])
+    E = tp.procesar(ada, maestro=_mk_maestro(_MAESTRO), mes=(2026, 7), log=lineas.append)
+    assert len(E) == 1, f"esperaba 1 perdida (solo JUAN), hubo {len(E)}"
+    assert E.iloc[0]["profesional"] == "JUAN"
+    txt = "\n".join(lineas)
+    assert "FUERA del universo SM" in txt, txt
+    assert "padds" in txt.lower(), txt
+
+
+def test_padds_fuera_del_universo_sin_maestro():
+    # Sin Maestro la heurística NO matchea el PADDS -> antes salía como PERDIDA (falso
+    # positivo). La exclusión vive al nivel SM-ish justamente para cubrir esta ruta.
+    E = _run([_a(_PADDS, "SOFIA")], con_maestro=False)
+    assert len(E) == 0, f"el PADDS no es trabajo perdido de SM, hubo {len(E)}"
+
+
+def test_vdi_sm_no_se_excluye_de_mas():
+    # Guarda simétrica: la VDI de SM (A26 sección A) sigue tributando, con y sin Maestro.
+    assert len(_run([_a(_VDI_SM, "ANA")])) == 0
+    assert len(_run([_a(_VDI_SM, "ANA")], con_maestro=False)) == 0
 
 
 def test_por_funcionario_rankea():
