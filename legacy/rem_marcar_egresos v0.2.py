@@ -28,9 +28,9 @@ except ImportError:
     except EOFError: pass
     sys.exit(1)
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     |
+# +===================================================================+
 
 # Egresos a marcar. Alta y Traslado van a estadística; Otras Causas se flaggea
 # para revisión MANUAL (decidir abandono vs clínica caso a caso).
@@ -64,7 +64,7 @@ OVERRIDE_PATOLOGIA = {
 }
 
 
-# ── Columnas para armar la tabla A05 (se copian al final del archivo) ──
+# -- Columnas para armar la tabla A05 (se copian al final del archivo) --
 # OJO QUIRK RAYEN: el header 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la
 # EDAD a la fecha de LLENADO del formulario (lo que A05 necesita). En cambio
 # 'EDAD PACIENTE' es la edad a la fecha de DESCARGA del reporte -> se ignora.
@@ -76,9 +76,9 @@ SEXO_HEADER = "SEXO"
 NOMBRE_HOJA_SALIDA = "A05_Egresos"
 TIPO_LABEL = {"Alta": "Alta", "Traslado": "Traslado", "OtrasCausas": "Otras Causas"}
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  CONFIG TÉCNICA (rara vez se toca)                                  ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  CONFIG TÉCNICA (rara vez se toca)                                  |
+# +===================================================================+
 HOJA = None
 ANCLA_ENCABEZADO = ["AÑO", "APLICACION", "FORMULARIO"]
 USAR_BLANCO_EN_A = True
@@ -89,7 +89,7 @@ SEP_MULTI = " | "
 MAX_FILAS_BUSQUEDA_HEADER = 60
 
 SUBTIPO_NUMS = set(DIAGNOSTICOS_CON_SUBTIPO.values())
-# ───────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------
 
 
 def norm(v):
@@ -127,7 +127,7 @@ def es_estado(h):
     return norm(h).endswith("ESTADO")
 
 
-# ── LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ──────────
+# -- LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ----------
 def limpiar_patologia(header):
     """'18.- ¿ TIENE  DEPRESIÓN ?' -> 'Depresión'. Solo si LIMPIAR_NOMBRE_PATOLOGIA."""
     n = num_pregunta(header)
@@ -139,7 +139,7 @@ def limpiar_patologia(header):
     s = re.sub(r"^\s*PACIENTE\s+PRESENTA\s+", "", s, flags=re.I)
     s = re.sub(r"\s+", " ", s).strip()
     return s[:1].upper() + s[1:].lower() if s else s
-# ─────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------
 
 
 def limpiar_subtipo(valor, subtipo_header):
@@ -236,7 +236,7 @@ def procesar(entrada: Path, salida: Path):
                     "tipo": k, "pat": pat, "sub": sub, "fila": r,
                 })
 
-    # ── hoja nueva (la original intacta) ──
+    # -- hoja nueva (la original intacta) --
     if NOMBRE_HOJA_SALIDA in wb.sheetnames:
         del wb[NOMBRE_HOJA_SALIDA]
     ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)

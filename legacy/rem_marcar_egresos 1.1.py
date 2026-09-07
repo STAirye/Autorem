@@ -47,9 +47,9 @@ except ImportError:
     except EOFError: pass
     sys.exit(1)
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     |
+# +===================================================================+
 
 # Egresos a marcar. Alta y Traslado van a estadística; Otras Causas se flaggea
 # para revisión MANUAL (decidir abandono vs clínica caso a caso).
@@ -83,7 +83,7 @@ OVERRIDE_PATOLOGIA = {
 }
 
 
-# ── Columnas para armar la tabla A05 (se copian al final del archivo) ──
+# -- Columnas para armar la tabla A05 (se copian al final del archivo) --
 # OJO QUIRK RAYEN: el header 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la
 # EDAD a la fecha de LLENADO del formulario (lo que A05 necesita). En cambio
 # 'EDAD PACIENTE' es la edad a la fecha de DESCARGA del reporte -> se ignora.
@@ -95,7 +95,7 @@ SEXO_HEADER = "SEXO"
 NOMBRE_HOJA_SALIDA = "A05_Egresos"
 TIPO_LABEL = {"Alta": "Alta", "Traslado": "Traslado", "OtrasCausas": "Otras Causas"}
 
-# ── Caracterización demográfica para A05 (devuelve "SI"/"" salvo Trans) ──
+# -- Caracterización demográfica para A05 (devuelve "SI"/"" salvo Trans) --
 # OJO: los keywords de match son SUPUESTOS — los valores reales están raspados
 # en el archivo de prueba. VALIDA contra tu export real y corrige acá.
 # Cada flag: (tokens del header de la columna fuente, regla de match)
@@ -116,9 +116,9 @@ NEGATIVOS_DEMO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION"
 # Avisar egreso por Alta sin subtipo (solo en diagnósticos que SÍ tienen subtipo).
 AVISAR_ALTA_SIN_SUBTIPO = True
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  CONFIG TÉCNICA (rara vez se toca)                                  ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  CONFIG TÉCNICA (rara vez se toca)                                  |
+# +===================================================================+
 HOJA = None
 ANCLA_ENCABEZADO = ["AÑO", "APLICACION", "FORMULARIO"]
 USAR_BLANCO_EN_A = True
@@ -129,7 +129,7 @@ SEP_MULTI = " | "
 MAX_FILAS_BUSQUEDA_HEADER = 60
 
 SUBTIPO_NUMS = set(DIAGNOSTICOS_CON_SUBTIPO.values())
-# ───────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------
 
 
 def norm(v):
@@ -167,7 +167,7 @@ def es_estado(h):
     return norm(h).endswith("ESTADO")
 
 
-# ── LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ──────────
+# -- LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ----------
 def limpiar_patologia(header):
     """'18.- ¿ TIENE  DEPRESIÓN ?' -> 'Depresión'. Solo si LIMPIAR_NOMBRE_PATOLOGIA."""
     n = num_pregunta(header)
@@ -179,7 +179,7 @@ def limpiar_patologia(header):
     s = re.sub(r"^\s*PACIENTE\s+PRESENTA\s+", "", s, flags=re.I)
     s = re.sub(r"\s+", " ", s).strip()
     return s[:1].upper() + s[1:].lower() if s else s
-# ─────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------
 
 
 def limpiar_subtipo(valor, subtipo_header):
@@ -305,7 +305,7 @@ def procesar(entrada: Path, salida: Path):
                 ev.update(demo)
                 eventos.append(ev)
 
-    # ── hoja nueva (la original intacta) ──
+    # -- hoja nueva (la original intacta) --
     if NOMBRE_HOJA_SALIDA in wb.sheetnames:
         del wb[NOMBRE_HOJA_SALIDA]
     ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
@@ -342,7 +342,7 @@ def procesar(entrada: Path, salida: Path):
     n_falta = sum(1 for e in eventos if e["falta_sub"] == "SI")
     print(f"[resumen] eventos de egreso: {len(eventos)}")
     if AVISAR_ALTA_SIN_SUBTIPO:
-        print(f"          ⚠ Altas sin subtipo (debiendo tenerlo): {n_falta}")
+        print(f"          ! Altas sin subtipo (debiendo tenerlo): {n_falta}")
     for k in BUSQUEDAS:
         print(f"          {TIPO_LABEL.get(k,k)}: {n.get(k,0)}")
 
@@ -372,7 +372,7 @@ if __name__ == "__main__":
     try:
         main()
     except PermissionError:
-        print("\n  ⚠  PERMISO DENEGADO al abrir el archivo.")
+        print("\n  !  PERMISO DENEGADO al abrir el archivo.")
         print("     Suele ser porque está ABIERTO EN EXCEL (o bloqueado por OneDrive).")
         print("     Ciérralo en Excel y vuelve a intentar.")
         sin_terminal = True

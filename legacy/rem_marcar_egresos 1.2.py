@@ -54,9 +54,9 @@ except ImportError as _e:
     OPENPYXL_OK = False
     OPENPYXL_ERR = str(_e)
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  ZONA DE CONFIGURACIÓN CLÍNICA  — editar aquí si cambia el form     |
+# +===================================================================+
 
 # Egresos a marcar. Alta y Traslado van a estadística; Otras Causas se flaggea
 # para revisión MANUAL (decidir abandono vs clínica caso a caso).
@@ -90,7 +90,7 @@ OVERRIDE_PATOLOGIA = {
 }
 
 
-# ── Columnas para armar la tabla A05 (se copian al final del archivo) ──
+# -- Columnas para armar la tabla A05 (se copian al final del archivo) --
 # OJO QUIRK RAYEN: el header 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la
 # EDAD a la fecha de LLENADO del formulario (lo que A05 necesita). En cambio
 # 'EDAD PACIENTE' es la edad a la fecha de DESCARGA del reporte -> se ignora.
@@ -102,7 +102,7 @@ SEXO_HEADER = "SEXO"
 NOMBRE_HOJA_SALIDA = "A05_Egresos"
 TIPO_LABEL = {"Alta": "Alta", "Traslado": "Traslado", "OtrasCausas": "Otras Causas"}
 
-# ── Caracterización demográfica para A05 (devuelve "SI"/"" salvo Trans) ──
+# -- Caracterización demográfica para A05 (devuelve "SI"/"" salvo Trans) --
 # Validado (jul-2026) contra los valores DISTINTOS reales de 'ALERTAS
 # ADMINISTRATIVAS':  PRAIS · Fonasa Libre Elección · Jubilación de Vejez ·
 # Atención Preferente (Mayor 60 / Cuidador / Discapacidad) ·
@@ -125,9 +125,9 @@ NEGATIVOS_DEMO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION"
 # Avisar egreso por Alta sin subtipo (solo en diagnósticos que SÍ tienen subtipo).
 AVISAR_ALTA_SIN_SUBTIPO = True
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  CONFIG TÉCNICA (rara vez se toca)                                  ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  CONFIG TÉCNICA (rara vez se toca)                                  |
+# +===================================================================+
 HOJA = None
 ANCLA_ENCABEZADO = ["AÑO", "APLICACION", "FORMULARIO"]
 USAR_BLANCO_EN_A = True
@@ -139,12 +139,12 @@ MAX_FILAS_BUSQUEDA_HEADER = 60
 
 SUBTIPO_NUMS = set(DIAGNOSTICOS_CON_SUBTIPO.values())
 
-# ── Firma del export ADMINISTRATIVO (para rechazarlo con mensaje claro) ──
+# -- Firma del export ADMINISTRATIVO (para rechazarlo con mensaje claro) --
 # El export administrativo trae banner 'Servicio de Salud / Comuna / ...' y un
 # encabezado con estas columnas que el export de IRIS NO tiene.
 ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
 ADMIN_BANNER  = "SERVICIO DE SALUD"
-# ───────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------
 
 
 class ArchivoInvalido(Exception):
@@ -189,7 +189,7 @@ def es_estado(h):
     return norm(h).endswith("ESTADO")
 
 
-# ── LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ──────────
+# -- LIMPIEZA DE NOMBRE DE PATOLOGÍA (pendiente, día de ocio) ----------
 def limpiar_patologia(header):
     """'18.- ¿ TIENE  DEPRESIÓN ?' -> 'Depresión'. Solo si LIMPIAR_NOMBRE_PATOLOGIA."""
     n = num_pregunta(header)
@@ -201,7 +201,7 @@ def limpiar_patologia(header):
     s = re.sub(r"^\s*PACIENTE\s+PRESENTA\s+", "", s, flags=re.I)
     s = re.sub(r"\s+", " ", s).strip()
     return s[:1].upper() + s[1:].lower() if s else s
-# ─────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------
 
 
 def limpiar_subtipo(valor, subtipo_header):
@@ -257,7 +257,7 @@ def encontrar_diagnostico(headers, c0):
     return c0
 
 
-# ── VALIDACIÓN DE FORMATO ─────────────────────────────────────────────
+# -- VALIDACIÓN DE FORMATO ---------------------------------------------
 def validar_formato(ws):
     """Reconoce el export IRIS ('Control de Salud Mental'). Si no lo es, levanta
     ArchivoInvalido distinguiendo el export administrativo del desconocido.
@@ -317,7 +317,7 @@ def validar_formato(ws):
         "  1. Descargarlo desde IRIS  ->  Formularios RAYEN  ->  'Control de Salud Mental'.\n"
         "  2. No haberlo modificado (no borres filas ni columnas del export)."
     )
-# ─────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------
 
 
 def procesar(entrada: Path, salida: Path, log=print):
@@ -402,7 +402,7 @@ def procesar(entrada: Path, salida: Path, log=print):
                 ev.update(demo)
                 eventos.append(ev)
 
-    # ── hoja nueva (la original intacta) ──
+    # -- hoja nueva (la original intacta) --
     if NOMBRE_HOJA_SALIDA in wb.sheetnames:
         del wb[NOMBRE_HOJA_SALIDA]
     ws2 = wb.create_sheet(NOMBRE_HOJA_SALIDA)
@@ -453,9 +453,9 @@ def procesar(entrada: Path, salida: Path, log=print):
     }
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  INTERFAZ GRÁFICA (Tkinter)                                        ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  INTERFAZ GRÁFICA (Tkinter)                                        |
+# +===================================================================+
 def lanzar_gui(ruta_inicial=""):
     import tkinter as tk
     from tkinter import ttk, filedialog, messagebox, scrolledtext
@@ -474,12 +474,12 @@ def lanzar_gui(ruta_inicial=""):
 
     # — Instrucciones —
     instr = (
-        "1.  Descarga el Excel desde IRIS → Formularios RAYEN → «Control de Salud Mental».\n"
+        "1.  Descarga el Excel desde IRIS -> Formularios RAYEN -> «Control de Salud Mental».\n"
         "2.  Elige ese archivo abajo (botón «Examinar…» o pega la ruta).\n"
         "3.  Presiona «Procesar». Se crea una copia «…_procesado.xlsx» con la hoja\n"
         "     «A05_Egresos» lista para tabular. Tu archivo original NO se modifica.\n"
-        "⚠  No sirve el reporte «administrativo»: tiene otro formato.\n"
-        "⚠  No discrimina fecha"
+        "!  No sirve el reporte «administrativo»: tiene otro formato.\n"
+        "!  No discrimina fecha"
     )
     caja_instr = ttk.LabelFrame(cont, text="Instrucciones", padding=8)
     caja_instr.pack(fill="x", pady=(10, 8))
@@ -584,7 +584,7 @@ def lanzar_gui(ruta_inicial=""):
                    f"Altas sin subtipo (revisar): {res['falta_subtipo']}\n\n"
                    f"Guardado en:\n{res['salida']}")
         log("")
-        log("✔ " + resumen.replace("\n\n", "\n"))
+        log("OK " + resumen.replace("\n\n", "\n"))
         if messagebox.askyesno("Listo",
                                resumen + "\n\n¿Abrir la carpeta del resultado?"):
             abrir_carpeta(Path(res["salida"]).parent)
@@ -597,7 +597,7 @@ def lanzar_gui(ruta_inicial=""):
     ttk.Button(fila_btn, text="Salir", command=root.destroy).pack(side="right")
 
     if not OPENPYXL_OK:
-        log("⚠ Falta 'openpyxl'. Instálalo con: pip install openpyxl")
+        log("! Falta 'openpyxl'. Instálalo con: pip install openpyxl")
 
     root.mainloop()
 
@@ -617,9 +617,9 @@ def abrir_carpeta(carpeta: Path):
         pass
 
 
-# ╔═══════════════════════════════════════════════════════════════════╗
-# ║  MODO CONSOLA (experto) y ARRANQUE                                 ║
-# ╚═══════════════════════════════════════════════════════════════════╝
+# +===================================================================+
+# |  MODO CONSOLA (experto) y ARRANQUE                                 |
+# +===================================================================+
 def main_cli(args):
     if not args:
         print("USO: python rem_marcar_egresos.py --cli entrada.xlsx [salida.xlsx]")
