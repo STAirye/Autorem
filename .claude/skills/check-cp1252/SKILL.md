@@ -49,5 +49,7 @@ que se disfraza). El texto en espanol con tildes/enie SI es seguro — no es
 - Por diseno cubre solo `.py` (la logica de la regla es sobre la consola al
   ejecutar codigo, no sobre docs `.md`, que sí pueden llevar emoji/tablas con
   simbolos como parte del contenido).
-- No requiere instalacion como git hook; es standalone, para correr a mano o
-  agregarlo a un hook existente si el usuario lo pide explicitamente.
+- Se puede instalar como hook pre-commit: `python tools/check_cp1252.py --instalar`.
+  Se encadena al pre-commit existente (ej. `hook_pre_commit_rut.py`) sin pisarlo
+  -- idempotente, no reinstala dos veces. Los hooks NO se versionan, asi que hay
+  que correr `--instalar` en cada clon nuevo.
