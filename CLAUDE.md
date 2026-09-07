@@ -525,6 +525,14 @@ pyinstaller --onefile --windowed --name "autoREM" \
 - **Cerrar la validación del SP·P6** (§2.1): la brecha del filtro `Ingresado`
   (2972 vs 2226 PowerBI). Siguiente paso concreto: diffear listas de RUN por
   diagnóstico contra el PowerBI. Al cerrar → **bump a 1.9.0** (Y++).
+- **Hoja «LEEME» de cobertura** — cada `.xlsx` de salida abre con una hoja que dice
+  qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej. las
+  Consultorías A06·A.2, que son manuales), en dos capas: lo estructural + lo que se
+  degradó en **esa corrida** (sin grupal, sin Maestro, perfil admin…). Hoy eso vive
+  en docstrings y en el log de la GUI, que se pierde al cerrar. Plan aprobado y
+  autocontenido en **[docs/hoja_cobertura_plan.md](docs/hoja_cobertura_plan.md)**;
+  fuente única en `programas/cobertura.py`, con test anti-olvido (módulo registrado
+  sin entrada en el catálogo = test roto).
 - **`rem_a26_domiciliaria` (Dependencia/Domiciliaria)** — módulo NUEVO anotado, sin
   implementar. Cubriría **A26·A1**: las 24 VDI del PADDS por subtipo (con demencia /
   etapa terminal / sin demencia) × (elaboración | 1ª/2ª/3ª+ evaluación), más
