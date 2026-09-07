@@ -72,10 +72,40 @@ FUERA       = "FUERA DE ALCANCE" # otro REM, u otro modulo del exe
 OMITIDO     = "OMITIDO"          # existe pero este centro no lo usa
 PENDIENTE   = "PENDIENTE"        # se va a implementar, hoy sale 0
 VALIDACION  = "EN VALIDACION"    # implementado pero los numeros NO estan cerrados
+SIN_REGISTRO = "SIN REGISTRO"    # ver abajo: el 0 es CORRECTO, pero hay trabajo invisible
 
 # Una entrada: (casilla, categoria, motivo, que_hacer)
 # `casilla` = nomenclatura REM tal cual la usa el autor ("A06·A.2").
 # `que_hacer` = accion concreta, o "" si no aplica.
+```
+
+### 2.1.1 `SIN REGISTRO` — la categoria que mas importa
+
+Distinta de `PENDIENTE`. Aca **el codigo funciona y el 0 es correcto**: lo que falta
+no es implementacion ni un input, es que **nadie usa el canal de registro**. El
+trabajo clinico se hace, pero se escribe donde el REM no lo ve (tipicamente en
+**indicaciones** de la ficha, que no tributa).
+
+Es la unica categoria donde el mensaje al usuario es **«no lo arregles a mano»**: si
+llena la casilla asumiendo que autoREM fallo, esta inventando un dato. Y es la misma
+familia que ya persigue el modulo de **Trabajo Perdido** — trabajo real, invisible al
+REM.
+
+Casos actuales:
+
+| Caso | Sintoma | Donde esta escrito |
+|---|---|---|
+| **PIC** (P6, col. AV) | fuente existe en el Maestro, ~1 registro en 8 meses | `SP_P6_poblacion_plan.md` §5.4.2 |
+| **A27 / A32·F2** (SM) | actividad creada hace poco, sin uso | este plan, §3.1 |
+| **A23 · M.2** talleres | los talleres aun no se hacen; lo rotulado grupal cae a `REM-Gestion` | `A23_P3_plan.md` §"Educacion grupal (M.2)" |
+| **A26·A1** VDI del PADDS | bien registradas, pero ningun modulo las tabula | este plan, §3.2 |
+
+Los primeros tres comparten forma con el PIC, cuyo tratamiento **ya esta razonado en
+extenso** en `SP_P6_poblacion_plan.md` §5.4.2 (incluida la condicion de salida: no
+espera un formulario nuevo, espera **registro**). Reusar ese razonamiento, no
+reinventarlo.
+
+```python
 
 COBERTURA = {
     "sm_actividades": {
@@ -120,7 +150,7 @@ parentesis es donde vive hoy la afirmacion.
 | Campana de Invierno (col. demografica) | OMITIDO | Write-protected en la hoja SM del template (`:61`) | — |
 | Demografia de las actividades **grupales** | PENDIENTE | El reporte 'Atenciones Grupales' no trae demografia -> A06 psicosocial / A19a grupal / A27 salen con demografia en 0 | Si se necesita, cruzar a mano contra el padron |
 | Control SM a paciente **SENAME** | OMITIDO | Excluido a proposito: SENAME hace su propio REM (`:34`) | — |
-| **A27** y **A32·F2** | VALIDACION | Los filtros nunca se validaron: 0 casos en el mes de referencia (jul-2026) | Revisar a mano el primer mes con datos |
+| **A27** y **A32·F2** | SIN REGISTRO | **La actividad existe en RAYEN pero no se usa** (se agrego hace poco). El trabajo se registra en la ficha, en **indicaciones**, que no tributa -> **0 actividades realizadas**. El filtro esta implementado pero nunca se pudo validar contra datos reales | El 0 es correcto: **no lo llenes a mano asumiendo que falta**. Si sabes que la actividad se hizo, se registro en un canal que el REM no ve |
 
 ### 3.2 `sm_trabajo_perdido` — auditoria, no tributa
 
@@ -159,9 +189,9 @@ parentesis es donde vive hoy la afirmacion.
 
 | Casilla | Cat. | Motivo | Que hacer |
 |---|---|---|---|
-| **Plan de Cuidado Integral** (col. AV) | MANUAL | No hay reporte ni formulario que lo registre. Hoy el autor reporta PIC = total de pacientes en los GES (depresiones, Alzheimer) y en los factores de riesgo | Llenarlo a mano; fila 24 = suma(25:58) |
+| **Plan de Cuidado Integral** (col. AV) | SIN REGISTRO | **No va vacia ni a mano: la llena una regla operativa WIP** (= total de la fila en GES depresion/Alzheimer y en factores de riesgo; 0 en el resto). La fuente **existe** (actividad `Plan Cuidado Integral Elaborado` del Maestro, llega por el ADA) pero el registro es ~0: 1 caso en 8 meses, porque el PIC se escribe en **indicaciones** de la ficha. Regla completa en `SP_P6_poblacion_plan.md` **§5.4.2** | Revisar **AV24** a mano: si `AV24 > C24` hay comorbilidad depresion+demencia contada dos veces |
 | **Toda la grilla** | VALIDACION | Modulo en validacion: el filtro `Ingresado` da **2972** contra **2226** del PowerBI (ver `SP_P6_poblacion_plan.md` §9) | **Contrastar contra el conteo manual antes de entregar** |
-| Delta P(m) − P(m−1) -> A05 N/O | PENDIENTE | Fase 4 del plan, no implementada | Seguir usando el `CALCULADOR A05` |
+| Delta P(m) - P(m-1) -> A05 N/O | PENDIENTE | Fase 4 del plan, no implementada | Seguir usando el `CALCULADOR A05` |
 
 ---
 

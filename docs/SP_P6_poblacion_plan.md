@@ -552,6 +552,15 @@ incluidos los del PSM). Llega por el **ADA**, que `poblacion.py` ya carga — ca
 **Por qué no se automatiza igual: el registro es ~0.** Sobre el ADA compilado real
 2026 (enero–agosto) hay **una sola persona** con esta actividad, y la registró un
 enfermero que no tributa a SM. No es una muestra chica, es un canal que nadie usa.
+
+**Y se sabe adónde va el trabajo** *(sep-2026)*: el PCI **sí se hace**, pero se
+escribe en la ficha, en la sección **«indicaciones»** — texto libre que no tributa a
+ninguna casilla. O sea, la actividad del Maestro no compite contra el no-registro:
+compite contra un canal más cómodo que ya funciona para el clínico. Eso importa para
+la **condición de salida** de abajo: activar `AV` real no depende de recordarle a
+nadie que registre, depende de que el registro por la actividad sea al menos tan
+barato como escribir en indicaciones. Mientras no lo sea, la regla operativa se
+queda.
 Un `AV` calculado daría 0 en todas las filas, que es *menos* correcto que la regla
 operativa: el PCI en las filas GES sí se hace, solo que no se registra acá.
 
