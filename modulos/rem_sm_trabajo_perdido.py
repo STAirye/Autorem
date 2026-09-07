@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -168,6 +168,7 @@ def analizar(d, ini, fin, rem_map=None, log=print):
         "Por_Funcionario": _por_funcionario(E),
     }
     E.attrs["mes"] = (ini.year, ini.month)
+    E.attrs["avisos"] = []
     if fuera.any():   # fail loud: sale del reporte, pero nunca en silencio
         log(f"[tp] {int(fuera.sum())} atencion(es) FUERA del universo SM (otro "
             f"programa, no son trabajo perdido de SM):")
@@ -248,6 +249,7 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None):
     `maestro` = 'Maestro de Actividades' (opcional; sin él, todo por heurística).
     `mes` = (año, mes) o None (mes anterior). `d` = ADA ya cargado (para leer el ADA
     UNA sola vez cuando lo comparte con el módulo de actividades)."""
+    from pathlib import Path
     d = cargar_atenciones(ada, log=log) if d is None else d
     rem_map = None
     if maestro is not None:
@@ -258,13 +260,28 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None):
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
     log(f"[tp] ADA: {len(d)} atenciones ({span})")
-    return analizar(d, ini, fin, rem_map=rem_map, log=log)
+    E = analizar(d, ini, fin, rem_map=rem_map, log=log)
+    if maestro is None:
+        E.attrs["avisos"].append((
+            "Clasificacion de trabajo perdido", "HEURISTICA",
+            "sin 'Maestro de Actividades' -> clasificacion por heuristica (menos "
+            "precisa que el Maestro)",
+            "Cargar el Maestro de Actividades, o dejar el slim embebido en el exe"))
+    fuentes = [Path(p).name for p in (ada if isinstance(ada, (list, tuple)) else [ada])]
+    if maestro is not None:
+        fuentes.append(Path(maestro).name)
+    E.attrs["fuentes"] = fuentes
+    return E
 
 
 def escribir(E, salida):
     """Escribe el reporte de trabajo perdido (resumen + vistas + detalle auditable)."""
+    from programas import cobertura
     tablas = E.attrs.get("tablas", {})
+    contexto = {"mes": E.attrs.get("mes"), "archivos": E.attrs.get("fuentes")}
     with pd.ExcelWriter(salida) as xw:
+        cobertura.escribir_hoja(xw.book, "sm_trabajo_perdido", contexto,
+                                avisos=E.attrs.get("avisos", ()))
         for nombre, df in tablas.items():
             df.to_excel(xw, index=False, sheet_name=nombre[:31])
         det = E[[c for c in _DET_COLS if c in E.columns]].sort_values(

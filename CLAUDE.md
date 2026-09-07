@@ -39,12 +39,13 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.8.2**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.8.3**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
 (`programas/formatos.py`)** + **SP·P6 Población PSM (en validación, ver §2.1)** +
-dispatcher con perfiles y GUI de pestañas. **94 tests.**
+**hoja «LEEME» de cobertura (`programas/cobertura.py`, ver §12)** +
+dispatcher con perfiles y GUI de pestañas. **100 tests.**
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -55,6 +56,7 @@ programas/            motor y base compartida (paquete)
   rem_saludmental.py      config clínica del formulario 'Control de Salud Mental'
   estamentos.py           lookup Funcionario -> Estamento
   poblacion.py            tabla «Ferrada» por-RUN (port del DAX del PowerBI)
+  cobertura.py            hoja «LEEME»: catalogo de que NO cubre cada modulo
 modulos/              módulos de tarea (paquete)
   rem_a05_o_egresos.py
   rem_a05_n_ingresos.py
@@ -69,7 +71,7 @@ tools/                utilitarios (no-REM)
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
 .claude/skills/       skills del repo: limpiar-refs
 legacy/               versiones viejas (no se importan)
-tests/                pruebas automáticas (94)
+tests/                pruebas automáticas (100)
 docs/                 planes y contexto por módulo
 refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
   specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
@@ -86,7 +88,7 @@ El descriptor y el `id` del `TAREA` la incluyen (ej. `a05_o_egresos`).
 ### 2.1 SP·P6 «Población en control PSM» — estado (sep-2026)
 
 Módulo **nuevo, implementado y con tests, en VALIDACIÓN contra el REM manual**. Por
-eso la versión sigue en 1.8.2: el bump a **1.9.0** (Y++) va cuando se cierre.
+eso la versión sigue en 1.8.x: el bump a **1.9.0** (Y++) va cuando se cierre.
 
 - `programas/poblacion.py` — construye la tabla «Ferrada» (1 fila por RUN) desde 3
   exports: Formulario SM histórico + ADA 13 meses + Informe Inscritos. Es
@@ -120,6 +122,7 @@ diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
 | `modulos/rem_sm_trabajo_perdido.py` | **Reporte SM · Trabajo perdido ("saco vacío"), pandas.** Auditoría (NO tributa al REM): atenciones del ADA cuya ACTIVIDAD trae `mental`/`demencia` (heurístico) pero **no tributan** a las casillas SM del exe (A04/A06/19A/A26/A27/A32), + **qué funcionario** las registra (`PROFESIONAL ATENCION`) → reduce trabajo a saco vacío. **Autoridad = Maestro de Actividades** (`rem_utils.cargar_maestro`/`maestro_rem_map`, actividad→NUM REM); actividad nueva no-en-Maestro → heurística `mask_tributa_ada`. Definición de "perdido" (referente): todo lo SM-ish fuera de esas casillas (incl. REM-Gestion/A03/A28…), con NUM REM visible para refinar. **`EXCLUIR_SMISH` (sep-2026):** lo que la red SM-ish capta pero NO es SM —la palabra gatillo es *descriptor de la persona*, no materia de la atención— sale del universo (ni perdido ni tributado) y **se loguea con conteo**. Hoy: las 24 VDI del **PADDS** (`a personas con padds`), que son A26·**A1** (dependencia severa) y no A26·**A** (VDI de SM); una variante dice literal «SIN diagnóstico de demencia» y el substring la captaba igual. La exclusión vive al nivel SM-ish, no en `TRIBUTA_SM_REM`, porque es el único punto que sirve **con y sin Maestro** (sin Maestro salían como perdidas; con Maestro se daban por tributadas). Pertenecen a un futuro `rem_a26_domiciliaria` — ver docstring del módulo. `escribir()` = `Por_Actividad` + `Por_Funcionario` + `TP_Resumen` + `TP_Detalle`. Recicla el ADA del módulo de actividades (reporte aparte, no fork); la GUI lo genera junto al SM. |
 | `programas/poblacion.py` | **Tabla «Ferrada» por-RUN (port del DAX del PowerBI), pandas.** Construye 1 fila por persona desde Formulario SM histórico + ADA 13m + Informe Inscritos: los 28 diagnósticos/factores de riesgo `(form)` vía un **motor único** `_estado_dx(dx, estado, instrumento)` (el DAX resulta uniforme, §4.2 del plan), `¿Ingresado?`, `¿Activo 12m?`, rescate 6m/13m, `¿Embarazada?`, demografía y `¿Pertenece?` en sus **dos** versiones (24 columnas del DAX vs 28 reales — el DAX tiene un hueco, ver plan §3.3). **Infraestructura transversal:** la misma tabla base alimenta las 8 páginas del PowerBI, así que la reusan los módulos que vengan (Cardiovascular, ECICEP, Dependencia). |
 | `modulos/rem_sp_p6_poblacion.py` | **Módulo REM SP·P6 A.1 «Población en control PSM», pandas.** Consume `PSM_Poblacion` y arma la grilla del SP (filas 13-58 × 17 bandas × sexo + demografía AN..AX). La **máscara de celdas protegidas** se extrajo directo del `SP_26_V1.1.xlsm` (`protection.locked`), no de la prosa: codifica recortes etarios que **se PLIEGAN, no se descartan** (§5.0.1 del plan). Salida: `P6_A1` + `P6_Detalle` + `Revisar_Administrativo` / `Revisar_Clinico` + bloques pegables. Emite **cascada de filtros** y **desglose de Ingresado** en el log para diagnosticar brechas contra el PowerBI. |
+| `programas/cobertura.py` | **Hoja «LEEME»: qué NO cubre autoREM** (§12, `docs/hoja_cobertura_plan.md`). Catálogo declarativo `COBERTURA` (por módulo: REM, casillas que SÍ cubre, y `no_cubre` = tabla de `(casilla, categoría, motivo, qué_hacer)` — categorías `MANUAL`/`FUERA DE ALCANCE`/`OMITIDO`/`PENDIENTE`/`EN VALIDACION`/`SIN REGISTRO`) + `entradas()`/`escribir_hoja()` que crean la hoja `LEEME` como **PRIMERA** del workbook, sirviendo los DOS caminos de escritura del proyecto (pandas `ExcelWriter` vacío, y openpyxl con la hoja de datos ya en el índice 0 — A05/A03). Dos capas: lo ESTRUCTURAL (fijo) + los `avisos` de ESTA corrida (degradación por fuente opcional no cargada), que cada módulo pandas acumula en `.attrs['avisos']` (mismo patrón que `.attrs['tablas']`). `tests/test_cobertura.py` es el guardarraíl anti-olvido: descubre por introspección los módulos de `modulos/` con `escribir()`/`TAREA` y falla si falta su entrada en `COBERTURA`. |
 | `tools/hook_pre_commit_rut.py` | **Pre-commit anti-RUT real** (§8.2). Bloquea cadenas con forma de RUT cuyo **DV cuadre** (módulo 11) en archivos staged y en el mensaje. Los hooks NO se versionan: `python tools/hook_pre_commit_rut.py --instalar` en cada clon. |
 | `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
@@ -408,7 +411,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.8.2**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.8.3**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -420,7 +423,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM, vía `programas/poblacion.py`) | 🚧 implementado (suite: 94 tests) · **en validación**: brecha abierta en el filtro `Ingresado` (2972 vs 2226 PowerBI). Bump a 1.9.0 al cerrar. Ver §2.1 |
+| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM, vía `programas/poblacion.py`) | 🚧 implementado (suite: 100 tests) · **en validación**: brecha abierta en el filtro `Ingresado` (2972 vs 2226 PowerBI). Bump a 1.9.0 al cerrar. Ver §2.1 |
 | **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
 | **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1: VDI PADDS por subtipo × visita, planes de cuidado a usuario y cuidador) | 📌 **anotado, sin implementar.** Nace del descarte del Trabajo Perdido SM (§12): las 24 VDI del PADDS no son SM y hoy no las tabula nadie. Base ya disponible: página «Dependencia» del PowerBI + `programas/poblacion.py` |
 | Cardiovascular | — | pendiente |
@@ -517,22 +520,29 @@ pyinstaller --onefile --windowed --name "autoREM" \
 - **A23 Respiratorio**, **SM Actividades**, **SM Trabajo Perdido**.
 - **`programas/poblacion.py`** — tabla «Ferrada» por-RUN, base transversal a las 8
   páginas del PowerBI. Habilita los módulos de población que vengan.
-- **SP·P6 A.1** implementado (suite: 94 tests) (§2.1, en validación).
+- **SP·P6 A.1** implementado (suite: 100 tests) (§2.1, en validación).
 - **Higiene de privacidad:** todo el código cp1252-safe (los símbolos no-ASCII
   reventaban la consola de Windows) + pre-commit anti-RUT (§8.2).
+- **Hoja «LEEME» de cobertura (v1.8.3)** — cada `.xlsx` de salida abre con una hoja
+  que dice qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej.
+  las Consultorías A06·A.2, que son manuales), en dos capas: lo estructural (fijo) +
+  lo que se degradó en **esa corrida** (sin grupal, sin Maestro, perfil admin…), que
+  cada módulo acumula en `.attrs['avisos']`. Fuente única en `programas/cobertura.py`
+  (catálogo `COBERTURA` + `escribir_hoja()`, sirve los dos caminos de escritura —
+  pandas `ExcelWriter` y openpyxl in-place), enganchada en `sm_actividades`,
+  `sm_trabajo_perdido`, `a23_respiratorio`, `sp_p6_poblacion`, `a03_d3_instrumentos`
+  y el A05 (vía `autorem._correr_tareas`). Test anti-olvido en
+  `tests/test_cobertura.py` (descubre por introspección los módulos de `modulos/`
+  con `escribir()`/`TAREA`; uno sin entrada en el catálogo rompe el test). Plan en
+  **[docs/hoja_cobertura_plan.md](docs/hoja_cobertura_plan.md)**. Pendiente (fuera de
+  alcance de v1, ver el plan §8): checklist completo del REM extraído del
+  `SA_26.xlsm`/`SP_26.xlsm`, y el aviso de "fuente Monitoreo Admin parcial" del A23
+  (depende de `formatos.py` fase 2).
 
 **Pendiente:**
 - **Cerrar la validación del SP·P6** (§2.1): la brecha del filtro `Ingresado`
   (2972 vs 2226 PowerBI). Siguiente paso concreto: diffear listas de RUN por
   diagnóstico contra el PowerBI. Al cerrar → **bump a 1.9.0** (Y++).
-- **Hoja «LEEME» de cobertura** — cada `.xlsx` de salida abre con una hoja que dice
-  qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej. las
-  Consultorías A06·A.2, que son manuales), en dos capas: lo estructural + lo que se
-  degradó en **esa corrida** (sin grupal, sin Maestro, perfil admin…). Hoy eso vive
-  en docstrings y en el log de la GUI, que se pierde al cerrar. Plan aprobado y
-  autocontenido en **[docs/hoja_cobertura_plan.md](docs/hoja_cobertura_plan.md)**;
-  fuente única en `programas/cobertura.py`, con test anti-olvido (módulo registrado
-  sin entrada en el catálogo = test roto).
 - **`rem_a26_domiciliaria` (Dependencia/Domiciliaria)** — módulo NUEVO anotado, sin
   implementar. Cubriría **A26·A1**: las 24 VDI del PADDS por subtipo (con demencia /
   etapa terminal / sin demencia) × (elaboración | 1ª/2ª/3ª+ evaluación), más

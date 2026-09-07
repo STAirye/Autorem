@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -244,6 +244,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     log(f"[cols] RUT=col{rut_col} Edad=col{edad_col} Sexo=col{sexo_col} "
         f"Puntaje=col{punt_col} Resultado=col{resu_col} Momento=col{momento_col} "
         f"Estamento=col{estam_col}")
+    avisos = []   # degradaciones de ESTA corrida -> hoja LEEME (programas/cobertura.py)
     tabla_estam = None
     if estamentos is not None:
         tabla_estam = (estamentos if isinstance(estamentos, dict)
@@ -251,6 +252,9 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     if formato != "iris" and not estam_col and tabla_estam is None:
         log("[estamento] AUSENTE en Administrativo y sin tabla de estamentos -> "
             "columna vacía. (Carga el reporte 'Utilización de Cupos' para rellenarlo.)")
+        avisos.append(("Estamento (detalle)", "VACIA",
+                        "formato Administrativo sin 'Utilizacion de Cupos' cargada",
+                        "Cargar el reporte 'Utilizacion de Cupos'"))
 
     filas = []
     no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
@@ -376,7 +380,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
         "total": len(filas), "discrepancias": n_disc, "por_momento": por_momento,
         "por_resultado": por_resultado, "hoja": NOMBRE_HOJA_SALIDA,
         "estam_rellenados": n_estam, "estam_faltan": len(sin_estam),
-        "filas": filas,
+        "filas": filas, "avisos": avisos,
     }
 
 
@@ -408,10 +412,11 @@ def _tabla_d3(det):
     return pd.DataFrame(filas)
 
 
-def _escribir_unificado(det, tabla, salida):
+def _escribir_unificado(det, tabla, salida, avisos=(), contexto=None):
     """Escribe la tabla D.3 (copy-paste) + SIEMPRE el detalle auditable al FINAL (una
     fila por aplicación, con RUT/puntaje/estamento/funcionario para auditorías)."""
     import pandas as pd
+    from programas import cobertura
     # orden y rótulos del detalle (igual que la hoja del modo single-file)
     ren = [("instrumento", "Instrumento"), ("momento", "Momento"),
            ("resu_disam", "Resultado_DISAM"), ("banda_rayen", "Banda_RAYEN"),
@@ -424,6 +429,7 @@ def _escribir_unificado(det, tabla, salida):
     det2 = det2.assign(_o=det["momento"].map(lambda x: orden.get(norm(x), 9))) \
                .sort_values(["_o", "Resultado_DISAM", "Instrumento"]).drop(columns="_o")
     with pd.ExcelWriter(salida) as xw:
+        cobertura.escribir_hoja(xw.book, "a03_d3_instrumentos", contexto, avisos=avisos)
         tabla.to_excel(xw, index=False, sheet_name="A03_D3")
         det2.to_excel(xw, index=False, sheet_name="A03_D3_Detalle")   # auditable, al final
     return str(salida)
@@ -436,7 +442,8 @@ def procesar_unificado(por_instrumento, salida, estamentos=None,
     sin autodetección). Junta las aplicaciones, arma DETALLE + tabla D.3, y escribe UN
     .xlsx. Devuelve resumen con `.attrs`-free tabla para el mensaje final."""
     import pandas as pd
-    todas, resumen = [], {}
+    from pathlib import Path
+    todas, resumen, avisos, vistos = [], {}, [], set()
     for inst, ruta in por_instrumento.items():
         if not ruta:
             continue
@@ -444,11 +451,15 @@ def procesar_unificado(por_instrumento, salida, estamentos=None,
                        resolver_estamento=resolver_estamento, log=log)
         todas.extend(res["filas"])
         resumen[res["instrumento"]] = res["total"]
+        for a in res.get("avisos", ()):
+            if a not in vistos:
+                vistos.add(a); avisos.append(a)
     if not todas:
         raise ArchivoInvalido("sin_datos", "No hay aplicaciones en los archivos cargados.")
     det = pd.DataFrame(todas)
     tabla = _tabla_d3(det)
-    _escribir_unificado(det, tabla, salida)
+    contexto = {"archivos": [Path(r).name for r in por_instrumento.values() if r]}
+    _escribir_unificado(det, tabla, salida, avisos=avisos, contexto=contexto)
     log(f"[a03] D.3 unificado: {len(todas)} aplicaciones de {len(resumen)} instrumento(s) "
         f"-> {salida}")
     return {"salida": str(salida), "total": len(todas), "por_instrumento": resumen,

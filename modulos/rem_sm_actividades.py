@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -366,8 +366,13 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
     A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
     sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga)."""
+    from pathlib import Path
     d = cargar_atenciones(ada, log=log) if d is None else d
     d = marcar_demografia(d)
+    avisos = []   # degradaciones de ESTA corrida -> hoja LEEME (programas/cobertura.py)
+    fuentes = [Path(p).name for p in (ada if isinstance(ada, (list, tuple)) else [ada])]
+    if grupal is not None:
+        fuentes += [Path(p).name for p in (grupal if isinstance(grupal, (list, tuple)) else [grupal])]
     ini, fin = _rango_mes(mes)
     # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.
     ini3 = ini - pd.DateOffset(months=2)
@@ -389,11 +394,18 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                 "COMPLETO del CESFAM eso casi seguro significa que el archivo está "
                 "MODIFICADO/filtrado o es otro reporte -> descárgalo de nuevo SIN tocar. "
                 "(TRANS queda en 0.)")
+            avisos.append(("Columnas TRANS (A06/A32)", "EN 0",
+                            "el 'Informe Inscritos' dio 0 personas TRANS (sospechoso: "
+                            "revisar si el archivo esta modificado/filtrado)",
+                            "Descargar el 'Informe Inscritos y Adscritos' de nuevo, sin tocar"))
         else:
             log(f"[sm] Inscritos: {len(tmap)} personas TRANS en el padrón del CESFAM")
     else:
         d["dem_trans_m"] = False
         d["dem_trans_f"] = False
+        avisos.append(("Columnas TRANS (A06/A32)", "EN 0",
+                        "no se cargo el 'Informe Inscritos y Adscritos' (opcional)",
+                        "Cargar el 'Informe Inscritos y Adscritos' si se necesita el flag TRANS"))
     dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
@@ -401,6 +413,10 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     if d["FECHA"].notna().any() and d["FECHA"].min() > ini3:
         log(f"[sm] GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
             f"arranca en {d['FECHA'].min():%Y-%m} -> puede SUBCONTAR. Carga el ADA de los últimos 3 meses.")
+        avisos.append(("Gestantes (demografia)", "SUBCONTADO",
+                        f"el ADA arranca en {d['FECHA'].min():%Y-%m}, la ventana de "
+                        f"GESTANTE necesita 3 meses (desde {ini3:%Y-%m})",
+                        "Cargar el ADA de los ultimos 3 meses"))
     Ea = _ada_eventos(dm)
 
     if grupal is not None:
@@ -410,6 +426,9 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         Eg = _grupal_eventos(gm)
     else:
         log("[sm] sin reporte grupal -> A06 psicosocial / A19a grupal / A27 = 0")
+        avisos.append(("A06 psicosocial / A19a grupal / A27", "EN 0",
+                        "no se cargo el reporte 'Atenciones Grupales'",
+                        "Cargar 'Atenciones Grupales'"))
         Eg = _empty_ev()
 
     E = pd.concat([Ea, Eg], ignore_index=True)
@@ -429,9 +448,22 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                 log("[sm] el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
                     f"{len(a26_ids)} VDI de A26 del mes -> parece de OTRO período. A26 saldría "
                     "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
+                avisos.append(("A26 (composicion profesional)", "SUBCONTADO",
+                                "el 'Monitoreo Multiprofesional' no coincide con ninguna VDI "
+                                "del mes (parece de otro periodo)",
+                                "Revisar que el reporte cubra el mes reportado"))
         except ValueError as e:
             log(f"[sm] Multiprofesional NO usado: {e}  -> A26 queda todo mono-profesional.")
+            avisos.append(("A26 (composicion profesional)", "MENOS PRECISO",
+                            f"'Monitoreo Multiprofesional' invalido: {e}",
+                            "Cargar el reporte correcto"))
+    else:
+        avisos.append(("A26 (composicion profesional)", "SIN DESGLOSAR",
+                        "no se cargo 'Monitoreo Multiprofesional' (opcional)",
+                        "Cargar el reporte, o dejar todo como 'Un Profesional'"))
 
+    E.attrs["avisos"] = avisos
+    E.attrs["fuentes"] = fuentes
     E.attrs["tablas"] = {
         "SM_Resumen": _tabla_resumen(E, ini),
         "A04_Consultas_Medicas": _tabla_a04(E),
@@ -451,8 +483,12 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
 def escribir(E, salida):
     """Escribe el detalle auditable (SM_Detalle) + una hoja por sección REM
     (tablas copy-paste al template SA_26) en un solo .xlsx."""
+    from programas import cobertura
     tablas = E.attrs.get("tablas", {})
+    contexto = {"mes": E.attrs.get("mes"), "archivos": E.attrs.get("fuentes")}
     with pd.ExcelWriter(salida) as xw:
+        cobertura.escribir_hoja(xw.book, "sm_actividades", contexto,
+                                avisos=E.attrs.get("avisos", ()))
         for nombre, df in tablas.items():
             df.to_excel(xw, index=False, sheet_name=nombre[:31])
         cols = _EV_COLS + [c for c in DEM_COLS if c in E.columns]

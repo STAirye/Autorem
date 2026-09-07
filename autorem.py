@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -84,6 +84,16 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
         log(f"> {tarea['nombre']}   ({perfil['nombre']})")
         res = tarea["agregar"](wb, ws, perfil, log=log, mes=mes)
         resultados.append((tarea, res))
+
+    from programas import cobertura
+    avisos = []
+    if perfil.get("disclaimer"):
+        avisos.append((
+            "Pueblos Originarios / SENAME / Prot. Ninez / Migrante / Trans", "VACIAS",
+            f"perfil {perfil['nombre']} no trae esas columnas",
+            "Usar el formato IRIS si se necesitan esos flags"))
+    cobertura.escribir_hoja(wb, [t["id"] for t in tareas],
+                            {"mes": mes, "archivos": [entrada.name]}, avisos=avisos)
 
     sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""   # mes elegido -> …_procesado_2026_07.xlsx
     destino = Path(carpeta) if carpeta else entrada.parent

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -685,7 +685,9 @@ def escribir(P, resultado, salida):
     vengan vacías (§5.5: su ausencia no debe confundirse con "no había nada que
     revisar")."""
     from programas.poblacion import escribir_divergencias
+    from programas import cobertura
     with pd.ExcelWriter(salida, engine="openpyxl") as xw:
+        cobertura.escribir_hoja(xw.book, "sp_p6_poblacion", {"mes": resultado.get("mes")})
         P.to_excel(xw, index=False, sheet_name="PSM_Poblacion")
         escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
         resultado["grid"].to_excel(xw, index=False, sheet_name="P6_A1")

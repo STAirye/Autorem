@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -120,8 +120,16 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     log(f"[a23] {len(d)} atenciones | datos {span_min:%Y-%m-%d}..{span_max:%Y-%m-%d} "
         f"| mes reporte {ini:%Y-%m}")
 
+    from pathlib import Path
     runs = pd.Index(d["RUN"].unique(), name="RUN")
     fer = pd.DataFrame(index=runs)
+    fer.attrs["mes"] = (ini.year, ini.month)
+    fer.attrs["avisos"] = []
+    fuentes = [Path(p).name for p in (entrada if isinstance(entrada, (list, tuple)) else [entrada])]
+    for extra in (otros, estrat, inasistentes):
+        if extra is not None:
+            fuentes += [Path(p).name for p in (extra if isinstance(extra, (list, tuple)) else [extra])]
+    fer.attrs["fuentes"] = fuentes
 
     dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]          # atenciones del mes
     log(f"[a23] atenciones en el mes: {len(dm)} | pacientes atendidos: {dm['RUN'].nunique()}")
@@ -170,6 +178,11 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
                     f"({ini:%Y-%m}) necesita historial hasta {limite:%Y-%m}. Como el "
                     f"reporte se baja POR AÑO, carga AMBOS: el año del reporte Y el "
                     f"ANTERIOR (ideal 5, como el PowerBI). Selecciónalos juntos (ctrl-click).")
+                fer.attrs["avisos"].append((
+                    "Seccion G (inasistentes cronicos)", "SUBCONTADO",
+                    f"'Otros y Respi' arranca en {od['FECHA'].min():%Y-%m}, se necesita "
+                    f"historial hasta {limite:%Y-%m}",
+                    "Cargar el año del reporte Y el anterior (ideal 5, como el PowerBI)"))
         est = cargar_estrat(estrat) if estrat is not None else pd.Series(dtype="object")
         sala, _ing = _sala(fer.index, fer["Edad"], d, od, est)
         for c in sala.columns:
@@ -190,6 +203,12 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
         fer.attrs["seccion_g"] = gcounts
         log("[a23] Sección G inasistentes crónicos: " + " · ".join(
             f"{lbl.split()[0]}={d['Total']}" for lbl, d in gcounts.items()))
+    else:
+        fer.attrs["avisos"].append((
+            "SALA bajo control / Seccion G", "NO CALCULADO",
+            "no se cargo el formulario 'Otros Cronicos' -> no se puede filtrar "
+            "'Pertenece a SALA': el A23 NO queda acotado a la poblacion bajo control",
+            "Cargar 'Otros Cronicos' (obligatorio para SALA y Seccion G)"))
 
     # -- Sección H: inasistentes a citación agendada (reporte NSP, independiente) --
     if inasistentes is not None:
@@ -565,7 +584,11 @@ def escribir(fer, salida):
     """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + una
     hoja POR SECCIÓN del REM A23 (forma copy-paste al SA_26) + las Secciones G y H
     agregadas, en un solo .xlsx."""
+    from programas import cobertura
+    contexto = {"mes": fer.attrs.get("mes"), "archivos": fer.attrs.get("fuentes")}
     with pd.ExcelWriter(salida) as xw:
+        cobertura.escribir_hoja(xw.book, "a23_respiratorio", contexto,
+                                avisos=fer.attrs.get("avisos", ()))
         # Detalle: RUN, luego 'Pertenece a SALA' y '¿Atendido 1 mes?' al frente (col 2 y
         # 3) para revisar de un vistazo, y el resto en su orden.
         frente = [c for c in ("Pertenece a SALA", "¿Atendido 1 mes?") if c in fer.columns]
