@@ -260,8 +260,9 @@ anteriores sí se rescatan sin problema. Consecuencias:
 El control de errores del SP (cols CN..CX) cuenta como **error** una celda de
 demografía vacía cuando el total de la fila es > 0. El módulo escribe ceros.
 
-Ojo con `AV` «Plan de Cuidado Integral»: no tiene fuente, pero **tampoco va vacía** —
-se llena por una regla operativa explícita. Ver §5.4.2.
+Ojo con `AV` «Plan de Cuidado Integral»: su fuente existe pero está **sin registrar**
+(1 caso en 8 meses), y **tampoco va vacía** — se llena por una regla operativa
+explícita. Ver §5.4.2.
 
 ### 4.6 Alcance
 
@@ -506,7 +507,7 @@ por **sexo registral**, no por género. Las fórmulas de validación son
 | AR/AS | Migrantes H/M | `¿Originario o Migrante?` = Migrante | idem |
 | AT | SENAME | `PROTECCION NIÑEZ` = «SENAME» (alerta ⊃ SENAME) | `marcar_demografia()` |
 | AU | Mejor Niñez | `PROTECCION NIÑEZ` = «Mejor Niñez» (alerta ⊃ SPE) | idem |
-| AV | Plan de Cuidado Integral Elaborado | **MANUAL — no hay fuente** (§5.4.2) | — |
+| AV | Plan de Cuidado Integral Elaborado | actividad ADA `Plan Cuidado Integral Elaborado` (REM-P6) — **existe pero sin registrar** → regla operativa (§5.4.2) | — |
 | AW/AX | TRANS Masculino / Femenino | `Trans` = 1, split por género | `rem_utils.trans_map()` |
 
 **Foot-gun de AW/AX:** el control de errores compara `AW ≤ E (Mujeres)` y
@@ -530,11 +531,83 @@ AO  =  pregunta 1 == "SI"   AND   sexo registral == Mujer
 
 Lo mismo aplica a AN (gestantes): sexo registral femenino, independiente del género.
 
-#### 5.4.2 `AV` «Plan de Cuidado Integral» (PIC) — sin fuente, con regla operativa
+#### 5.4.2 `AV` «Plan de Cuidado Integral» (PIC) — fuente existe, registro nulo
 
-**No tiene reporte, ni formulario, ni ninguna otra fuente** en RAYEN/IRIS hoy. No es
-`SM Pauta llenada (12m)` ni ninguna otra columna del PowerBI: el dato **no existe**
-en ningún sistema consultable. Es la última casilla del P6·A.1 sin automatizar.
+> **Corregido sep-2026.** Este apartado afirmaba que el dato «no existe en ningún
+> sistema consultable». **Es falso.** La fuente existe y está en el Maestro de
+> Actividades; lo que no existe es el *registro*. La regla operativa de abajo no
+> cambia, pero cambia su fundamento: no es un placeholder por falta de fuente, es
+> una decisión tomada sabiendo que la fuente está vacía.
+
+**La fuente: una actividad del Maestro, mapeada al P6.**
+
+| Actividad (string exacto) | NUM REM | Sección |
+|---|---|---|
+| `Plan Cuidado Integral Elaborado` | `REM-P6` | `A.1,B.1` |
+
+Es la **única** actividad del Maestro que tributa al P6 (43 estamentos habilitados,
+incluidos los del PSM). Llega por el **ADA**, que `poblacion.py` ya carga — calcular
+`AV` real no requiere ningún input nuevo, solo filtrar `ACT_n`.
+
+**Por qué no se automatiza igual: el registro es ~0.** Sobre el ADA compilado real
+2026 (enero–agosto) hay **una sola persona** con esta actividad, y la registró un
+enfermero que no tributa a SM. No es una muestra chica, es un canal que nadie usa.
+Un `AV` calculado daría 0 en todas las filas, que es *menos* correcto que la regla
+operativa: el PCI en las filas GES sí se hace, solo que no se registra acá.
+
+##### El match tiene que ser IGUALDAD EXACTA, no substring
+
+Cuando el registro se sistematice y se automatice `AV`, la comparación va así:
+
+```python
+PCI_ACTIVIDAD = norm("Plan Cuidado Integral Elaborado")
+es_pci = d_ada["ACT_n"] == PCI_ACTIVIDAD          # NO .str.contains(...)
+```
+
+**Por qué.** El Maestro tiene ~100 actividades cuyo nombre cruza «plan» + «cuidado»
++ «integral», y **todas menos esta tributan a otro programa**. Un substring se
+tragaría al menos:
+
+| String parecido | Adónde tributa de verdad |
+|---|---|
+| `Plan de Cuidado Integral` | REM-Gestion (no tributa) |
+| `AG_Plan de cuidado integral (PCI) Elaborados` | REM-Gestion |
+| `AG_PLAN DE CUIDADO INTEGRAL MAS SALUD EN COMUNIDAD` | REM-Gestion |
+| `AG_Alta por cumplimiento al plan de cuidado integral` | REM-Gestion |
+| `Plan de Cuidados Integrales PASMI` | REM-Gestion |
+| `Plan de cuidado elaborado - Riesgo leve/moderado/alto (G1/G2/G3)` | REM-**A05·U** (ECICEP) |
+| `Ingresos del PADDS - … con plan de cuidado integral` | REM-**A05·V** (PADDS) |
+| `Elaboración plan cuidado integral a persona con dependencia severa` | REM-**A26·A1** (dependencia severa) |
+
+Ojo con dos detalles del string canónico: **no lleva «de»** (`Plan Cuidado Integral
+Elaborado`, no «Plan *de* Cuidado…»), y varios strings del Maestro traen
+**non-breaking space** (`\xa0`). Lo segundo lo resuelve `norm()` solo (su
+`re.sub(r"\s+", " ")` colapsa el NBSP); lo primero es justo lo que hace fallar un
+match escrito de memoria.
+
+##### La familia PADDS/demencia NO sirve como proxy para las filas 44–46
+
+Descartado explícitamente. Hay 12 actividades del Maestro que cruzan «plan de
+cuidados» con demencia, y las 12 son la misma familia de VDI PADDS → **REM-A26·A1**:
+
+```
+Visita domiciliaria integral a personas con PADDS - Familia con integrante con
+dependencia severa {con diagnóstico de demencia | con etapa terminal (excluye
+estadíos avanzados de demencia) | sin diagnóstico de demencia ...} -
+{Elaboración | 1ª/2ª/3ª+ visita anual - Evaluación y actualización}
+plan de cuidados a cuidador
+```
+
+No sirven, por dos razones independientes:
+
+1. **El plan es para el *cuidador*, no para la persona con demencia.** `AV` pregunta
+   por el PCI de la persona **en control** en el P6.
+2. **La demencia ahí es el discriminador del subtipo de VDI, no el sujeto del plan** —
+   una de las tres variantes dice literalmente `sin diagnóstico de demencia`, y un
+   match por substring de «demencia» captura las tres, **incluida la negada**.
+
+O sea: las filas 44–46 (demencias/Alzheimer) se quedan con la regla operativa; no hay
+proxy disponible.
 
 **Regla vigente (WIP declarado del autor, sep-2026):** se reporta el PIC solo donde
 es **obligatorio**, y ahí se asume completo —
@@ -577,8 +650,12 @@ cada corrida**: «AV PIC llenado por regla WIP = total de fila en GES + factores
 riesgo; no es un conteo de planes reales». Fail loud (§CLAUDE.md): un número
 asumido, pero nunca un número asumido y callado.
 
-Si algún día aparece una fuente (formulario nuevo, alerta administrativa), esto pasa
-a ser una línea de config y se automatiza como el resto.
+**Condición de salida:** la fuente ya está (arriba), así que esto no espera un
+formulario nuevo — espera **registro**. Cuando la actividad `Plan Cuidado Integral
+Elaborado` empiece a aparecer en el ADA con volumen creíble, `AV` pasa a ser el
+conteo real (igualdad exacta, §arriba) y esta regla se retira. Chequeo barato para
+saber cuándo: contar esa actividad en el ADA del mes y compararla contra el
+denominador GES/FR de la corrida.
 
 *Pendiente de precisar (§6):* si «las depresiones varias» incluye la fila 28
 (depresión post parto), y si hay otras filas GES que hoy queden fuera de la regla
