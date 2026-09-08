@@ -42,6 +42,11 @@ SENSITIVE_PII/
 !refs tablas/goldberg administrativo.xlsx
 !refs tablas/pscy 10 14 administrativo.xlsx
 !refs tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES iris.xlsx
+# Informe de Inscritos/Adscritos: recortado a header-only con tools/limpiar_refs.py
+# (92 nombres de columna, CERO filas de datos). Es la estructura que consume
+# programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible
+# del proyecto (nombre, RUT, direccion, telefonos, email) -> el crudo NUNCA al repo.
+!refs tablas/Informe_Inscritos__Adscritos_heads.xlsx
 # Maestro de Actividades SLIM (catálogo actividad↔estamento↔REM, sin PII de paciente;
 # generado por tools/slim_maestro.py desde el Maestro completo local). Ver §8.
 !refs tablas/maestro_slim.csv.gz
