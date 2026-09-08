@@ -5,18 +5,23 @@ Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-# Plan — REM SP·P6 A.1 «Población en control PSM» (módulo nuevo, → 1.9.0)
+# Plan — REM SP·P6 A.1 «Población en control PSM» (módulo nuevo, → 1.10.0)
 
 > **Estado: IMPLEMENTADO, en VALIDACIÓN contra el REM manual** (sep-2026).
 > Fases 0-3 hechas (`programas/poblacion.py`, `modulos/rem_sp_p6_poblacion.py`,
-> `tests/test_sp_p6.py`, 91 tests verdes). **Queda abierta la brecha del filtro
-> `Ingresado`** — ver §9. La versión sigue en **1.8.2**; el bump a 1.9.0 (Y++) va
-> cuando se cierre la validación.
+> `tests/test_sp_p6.py`) y **§8 el rescate también** (`rem_sm_rescate_inasistentes.py`,
+> v1.8.4, con la corrección de v1.9.1: fallecidos y traslados se **flagean**, no se
+> excluyen). Suite: **124 tests verdes**.
 >
-> Este documento mezcla **decisiones cerradas** (§3-§6, que ya están en el código) con
-> **planificación** de lo que falta (§8 rescate de inasistentes, fase 4 del delta).
+> **Quedan DOS validaciones abiertas**, no una: la brecha del filtro `Ingresado` del
+> P6 (§9) y el rescate contra datos reales. Versión actual **1.9.1**; el bump de la
+> familia va a **1.10.0** (Y++) al cerrar AMBAS — el `1.9.0` se lo llevó la capa de
+> catálogos DEIS (CLAUDE.md §14), no esta familia.
+>
+> Este documento mezcla **decisiones cerradas** (§3-§6 y §8, que ya están en el
+> código) con lo único que sigue siendo planificación: la **fase 4** del delta.
 > Reemplaza en alcance a la nota `A05_poblacion_psm_plan.md`, que sigue vigente para
-> la fase posterior (delta P → A05 N/O).
+> esa fase posterior (delta P → A05 N/O).
 
 ## 0. Objetivo en una línea
 
@@ -845,7 +850,7 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **0** HECHA | Tabla de config por-dx extraída de las 28 fórmulas `(form)` del spec (§4.2), revisada fórmula por fórmula con el autor. | Revisión humana. |
 | **1** HECHA | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
 | **2** HECHA | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
-| **3** casi | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + fila en la matriz de programas de CLAUDE.md (hecho) + bump a **1.9.0** (Y++) — **el bump espera a que cierre la validación §9**. | Suite completa verde: **91/91**. |
+| **3** casi | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + fila en la matriz de programas de CLAUDE.md (hecho) + bump a **1.10.0** (Y++) — **el bump espera a que cierren las DOS validaciones**: la brecha §9 y el rescate contra datos reales. | Suite completa verde: **124/124**. |
 | **3.5** implementada (en validación) | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Fallecidos`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que Fallecidos/Traslados queden flageados (no excluidos) en Rescate_6m/13m. |
 | **4** pendiente | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. |
 
@@ -864,12 +869,22 @@ recicla la tabla en vez de forkearla.
 |---|---|---|
 | `Rescate_6m` | `SM Atendido hace 6m = Si` — su última atención SM fue hace 6 meses | dejó de asistir; rescate temprano |
 | `Rescate_13m` | `SM Atendido hace 13m = Si` — tuvo atención en el mes que acaba de salir de la ventana de 12m y nada después | **se acaba de caer del programa**; rescate antes de perder el bajo-control |
-| `Fallecidos_mes` | cumple criterios SM, **ya no** está Activo+Ingresado, y `Motivo Pasivación = Fallecido` con `Fecha Pasivación` en el mes reportado | **para NO llamarlos**, y para el egreso del A05 (§8.3) |
+| `Fallecidos_mes` | cumple criterios SM, **ya no** está Activo+Ingresado, y `Motivo Pasivación = Fallecido` con `Fecha Pasivación` en el mes reportado | cohorte **del mes**, para el egreso del A05 (§8.3) |
+| `Posibles_Fallecidos` | los de las cohortes de rescate con `Motivo Pasivación = Fallecido` | **agregada en v1.9.1.** Se flagean, **no se excluyen** del rescate — ver la nota de abajo |
 | `Posibles_Traslados` | los de las cohortes de rescate con `Motivo Pasivación` de traslado / cambio de domicilio | **no se excluyen del rescate**: se flagean para confirmar el traslado en vez de perseguir un abandono (§8.5) |
 | `Brecha_Medico` | dx SM activo registrado **solo por otro estamento** | están **al debe de control médico** (§8.6) |
 
 Cada una **agrupada por `Sector`** (una sección por sector, o una hoja por sector si
 se prefiere repartirlas). Ordenadas por sector y luego por fecha de última atención.
+
+> **Corrección v1.9.1 — los fallecidos se FLAGEAN, no se excluyen.** El diseño
+> original sacaba de `Rescate_6m/13m` a quien tuviera `Motivo Pasivación = Fallecido`.
+> Se revirtió por coherencia con Traslados (§8.5): el `Motivo Pasivación` sale del
+> Inscritos, que es un **snapshot**, no un registro civil verificado — puede estar mal
+> registrado o desactualizado. Un filtro duro **borra a un vivo de la lista de rescate
+> en silencio**, que es peor que el bochorno de llamar a la familia de un fallecido,
+> riesgo que el propio `Fallecidos_mes` ya documenta. Ahora las cohortes incluyen a
+> todos y `Posibles_Fallecidos` los marca aparte para confirmar antes de llamar.
 
 ### 8.1 Las dos definiciones del DAX NO son consistentes entre sí
 
@@ -1029,8 +1044,10 @@ del diagnóstico, que es exactamente lo que interesa.
 
 ## 9. Estado de la validación (sep-2026) — LO QUE QUEDA ABIERTO
 
-Fases 0-3 implementadas y con tests. Lo que impide cerrar el módulo y bumpear a
-1.9.0 es **una sola brecha**, bien localizada.
+Fases 0-3 implementadas y con tests. Lo que impide cerrar **el P6** es **una sola
+brecha**, bien localizada — la de abajo. (Para bumpear a **1.10.0** falta además
+validar el rescate de §8 contra datos reales: son dos frentes distintos, este
+apartado cubre solo el primero.)
 
 ### La cascada de filtros la aísla
 

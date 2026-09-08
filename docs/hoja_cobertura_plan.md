@@ -5,14 +5,20 @@ The human author reviewed, modified, and integrated the content.
 Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 Copyright (C) 2026 Simon Tobar
 SPDX-License-Identifier: GPL-3.0-or-later
-Version: 1.8.2
+Version: 1.9.1
 -->
 
 # Plan — Hoja «LEEME»: qué NO cubre autoREM
 
-> **Estado: PLAN aprobado, sin implementar** (sep-2026). Decisiones cerradas con el
-> autor; lo que sigue es escribir el codigo. Documento autocontenido: se puede
-> implementar en una sesion fria sin leer el resto del historial.
+> **Estado: IMPLEMENTADO** (v1.8.3, sep-2026) — `programas/cobertura.py` +
+> `tests/test_cobertura.py`, enchufado a los dos caminos de escritura (§6). El
+> guardarrail anti-olvido del §7 quedo como test que **descubre por introspeccion**
+> los modulos de `modulos/` y falla si a alguno le falta su entrada en `COBERTURA`.
+>
+> Este documento pasa de plan a **referencia del catalogo**: al agregar un modulo o
+> cambiar que cubre, se edita `COBERTURA` y se refleja aca (§3). Lo unico que sigue
+> abierto es el aviso de fuente Admin parcial del A23 — **§4.1**, bloqueado por
+> `formatos.py` fase 2.
 
 ---
 
@@ -241,7 +247,7 @@ Al cerrar `formatos.py` fase 2, ese texto pasa de estructural a aviso dinamico.
 Nombre: **`LEEME`** (primera hoja del libro).
 
 ```
-autoREM 1.8.2 - QUE NO INCLUYE ESTA PLANILLA
+autoREM 1.9.1 - QUE NO INCLUYE ESTA PLANILLA
 REM: SA_26 - Salud Mental (A04 / A06 / A19a / A26 / A27 / A32)
 Mes reportado: 2026-07     Generado: 2026-09-07 18:40
 Entradas: ADA_julio.xlsx · Grupal_julio.xlsx
@@ -340,9 +346,8 @@ Suite actual: **94 tests**. Estos suman ~6.
 
 ---
 
-## 9. Punto abierto (no bloquea)
+## 9. Punto abierto (no bloquea) — RESUELTO
 
-**Version.** Esto no es un modulo/reporte nuevo (no es `Y++`) ni una correccion del
-modulo en curso (`Z++` seria raro: el modulo en curso es el P6 y esto es
-transversal). Candidatos: colgarlo del bump a **1.9.0** que ya espera el cierre de
-la validacion del P6, o sacar **1.8.3**. **Decision del autor al implementar.**
+**Version.** Se resolvio por **`1.8.3`** (`Z++`): no es un modulo/reporte nuevo, asi
+que no gastaba el `Y`. El `1.9.0` termino yendo a la capa de catalogos DEIS
+(CLAUDE.md §14), y el bump de la familia poblacion quedo en **1.10.0**.

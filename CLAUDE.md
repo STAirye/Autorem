@@ -71,6 +71,7 @@ modulos/              módulos de tarea (paquete)
 tools/                utilitarios (no-REM)
   limpiar_refs.py         recorte header-only de refs_tablas/
   slim_maestro.py         genera el Maestro slim comprimido
+  check_cp1252.py         verifica que los .py sean cp1252-safe — INSTALAR (§8.2)
   catalogos_deis.py       --check/--fetch/--slim de los catalogos DEIS (§14)
   scan_catalogo.py        escaner de PII previo a versionar un catalogo (§14)
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
@@ -79,9 +80,9 @@ catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
   eno.csv.gz              Notificacion Obligatoria (Decreto 7/2019), 448 pares
   ges.csv.gz              GES 90 problemas <-> CIE-10, 5.936 pares
   FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
-.claude/skills/       skills del repo: limpiar-refs
+.claude/skills/       skills del repo: limpiar-refs · check-cp1252
 legacy/               versiones viejas (no se importan)
-tests/                pruebas automáticas (110)
+tests/                pruebas automáticas (124)
 docs/                 planes y contexto por módulo
 refs_tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
   specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
@@ -567,6 +568,11 @@ pyinstaller --onefile --windowed --name "autoREM" \
   a los Fallecidos de Rescate_6m/13m en silencio, inconsistente con Traslados — ambos
   motivos vienen de un snapshot del Inscritos, no de un dato verificado). Suite:
   **124 tests** (§2.1, en validación).
+- **Sin espacios en ningún nombre del repo** — `refs tablas/` → **`refs_tablas/`** y
+  el resto de archivos con espacio, renombrados. El espacio obligaba a comillar cada
+  ruta y era un punto de falla recurrente. **Ojo:** las rutas viejas quedan muertas —
+  ahí se rompió el `autoREM.spec` (§12, no versionado). La carpeta PADRE del repo
+  (`Dr tobar/`) queda fuera del rename: está fuera del repo.
 - **Higiene de privacidad:** todo el código cp1252-safe (los símbolos no-ASCII
   reventaban la consola de Windows) + pre-commit anti-RUT (§8.2).
 - **Catálogos oficiales DEIS (v1.9.0)** — `programas/catalogos.py` (§14): CIE-10 +
@@ -608,7 +614,15 @@ pyinstaller --onefile --windowed --name "autoREM" \
 - **Delta P(m) − P(m−1) → A05 N/O**: fase 4 del plan del P6; portar la lógica del
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. Ojo §5.0.1: SA y SP
   recortan filas etarias distintas, el delta no cuadra banda por banda.
-- **Empaquetar a `.exe`** (§11) — pendiente inmediato.
+- **Re-empaquetar el `.exe`** (§11). El empaquetado **ya se probó**: hay un
+  `dist/autoREM.exe` (39,8 MB) del **1-sep**, pero es de la **1.8.2** — anterior a
+  cobertura, rescate y catálogos DEIS. Ojo con dos trampas antes de rebuildear:
+  **(a)** el `autoREM.spec` que quedó en disco todavía apunta a `'refs tablas/...'`
+  **con espacio** (ruta muerta tras el rename) y **no incluye `catalogos/`** → un
+  `pyinstaller autoREM.spec` falla o sale sin catálogos; usar la línea de comando del
+  §11, que sí está al día, y dejar que regenere el spec. **(b)** el `.spec`, `build/`
+  y `dist/` están en `.gitignore`, así que ninguna revisión del repo los va a cachar:
+  hay que mirarlos a mano.
 - **A03 D.3 v2:** conteos agregados por rango etario (extraer del `SA_26`) y CLI
   (hoy solo GUI). Validar la GUI a ojo (doble-clic).
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
