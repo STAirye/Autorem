@@ -10,6 +10,71 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.0] — 2026-09-08
+
+Capa nueva (Y++): **catálogos oficiales DEIS/MINSAL** (CIE-10 · ENO · GES) como
+backend compartido. No llena ninguna casilla del REM por sí sola: es el
+diccionario que le faltaba al resto de la herramienta.
+
+### Agregado
+- **`programas/catalogos.py`** — capa compartida con **registro declarativo**
+  (`CATALOGOS`, mismo patrón que `COBERTURA`): un catálogo nuevo es una entrada en
+  el dict + una función `_leer_*`, no un módulo por catálogo.
+  - `cie10` — Lista Tabular CIE-10 del DEIS, **edición agosto 2026** (12.548
+    códigos: 8.910 cruz o daga, 331 asterisco, 3.307 causa externa).
+  - `eno` — Enfermedades de Notificación Obligatoria (Decreto 7/2019), 56
+    enfermedades → 448 pares enfermedad-código.
+  - `ges` — GES 90 problemas de salud ↔ CIE-10 (5.936 pares).
+  - API: `norm_codigo` / `con_punto` / `en_rango` / `expandir` / `descripcion` /
+    `existe` / `eno_de` / `ges_de` / `anotar` (anotador **batch**: lista de códigos
+    → `COD · DESC · EXISTE · ENO · ENO_TIPO · GES`).
+- **`tools/catalogos_deis.py`** — mantenedor de los catálogos (lado desarrollo, el
+  `.exe` nunca lo corre): `--check` compara la edición publicada por el DEIS contra
+  la vendorizada, `--fetch` baja los `.xlsx`, `--slim` genera los `.csv.gz` +
+  `catalogos/FUENTES.json` (URL, edición, filas, **sha256** del origen, fecha).
+- **`tools/scan_catalogo.py`** — escáner de PII previo a versionar: RUT con DV
+  válido (reusa `hook_pre_commit_rut.sospechosos`, fuente única del módulo 11),
+  emails y teléfonos + volcado de estructura para revisar a ojo. **Existe porque el
+  pre-commit anti-RUT SALTA los binarios** (`.xlsx`, `.gz`): un slim vendorizado no
+  lo revisaba nadie. `--slim` lo corre solo y **se niega a vendorizar** un catálogo
+  con hallazgos. Los tres catálogos actuales escanearon limpios.
+- **`catalogos/`** — carpeta nueva, versionada en bloque (`!catalogos/*.csv.gz`),
+  distinta de `refs_tablas/` (que es "ejemplo anonimizado con whitelist por
+  archivo"; esto es dato público que **shippea** la herramienta). **160 KB** los tres
+  catálogos vs 694 KB de `.xlsx`. Los `.xlsx` originales NO se versionan.
+- **`tests/test_catalogos.py`** — 14 pruebas. **124 tests** en total.
+
+### Decisiones de diseño
+- **Tipo de notificación del ENO transcrito del Decreto 7/2019**, no inferido del
+  orden de las filas del Excel (que hoy calza exacto con los literales a/b/c del
+  art. 1, pero es un accidente que una reordenación del DEIS rompería en silencio).
+  Texto oficial: `leychile.cl/Consulta/obtxml?opt=7&idNorma=1141549`.
+- **Las transitorias se distinguen de las del decreto.** Mpox (inmediata) y
+  *S. pyogenes* (centinela, diaria solo en hospitales) rigen **mientras dure la
+  alerta**, no por el decreto → su campo `ART` dice `alerta vigente`, para que
+  cuando la alerta se levante se sepa que esa clasificación caducó.
+- **Viruela y Tifus de los matorrales quedan SIN clasificar, a propósito**,
+  declaradas en `ENO_SIN_CLASIFICAR` y con aviso ruidoso al generar el slim. Un
+  default silencioso ahí sería un hueco que nadie volvería a mirar. Los oficios del
+  MINSAL no alcanzaron: el de Mpox no cita el literal del art. 1 y el de
+  *S. pyogenes* es un PDF escaneado.
+- **Los rangos NO se expanden.** El ENO trae `J00-J99` en la misma columna que las
+  listas `A000, A001`; se guarda el patrón y lo resuelve `en_rango` comparando
+  lexicográficamente (funciona porque los códigos van con cero a la izquierda).
+- **Fallback ante actualizaciones del DEIS**: `.xlsx` explícito > **drop-in** en
+  `catalogos/` > slim vendorizado. El drop-in hay que ponerlo a propósito (no se
+  barre `refs_tablas/`, donde puede quedar uno viejo) y **avisa ruidoso** de que
+  pisa al catálogo embebido.
+- **Formato canónico de código = SIN punto** (`J209`, como el DEIS). RAYEN usa
+  `J20.9`; todo cruce entre fuentes pasa por `norm_codigo`.
+
+### Pendiente
+- Pestaña de **Consultas** en la GUI (buscador código↔glosa, ENO, GES y el anotador
+  batch sobre un export). Hoy la capa es solo backend.
+- Enchufar `en_rango` en el A23 (asma = J09–J22 menos J19) cuando se toque ese
+  módulo — hoy no lo consume nadie todavía.
+- `Homologación CIE-9 ↔ CIE-10` del DEIS: viene en `.xls`, que openpyxl no lee.
+
 ## [1.8.2] — 2026-09-02
 
 ### Corregido (regla dura: *fallar ruidoso, no callado y mal*)

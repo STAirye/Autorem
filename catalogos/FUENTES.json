@@ -1,0 +1,29 @@
+{
+  "cie10": {
+    "titulo": "Lista Tabular CIE-10 (DEIS/MINSAL)",
+    "url": "https://repositoriodeis.minsal.cl/ContenidoSitioWeb2020/uploads/2021/03/Lista%20tabular%20CIE-10%20-%20agosto%202026.xlsx",
+    "archivo_origen": "DEIS_cie10_2026-08.xlsx",
+    "edicion": "2026-08",
+    "filas": 12548,
+    "sha256_origen": "0d5e19d5d68856aee9379cc91ec16ac931cbfb60dcd06575dec5089cc0a5a75a",
+    "generado": "2026-09-08"
+  },
+  "eno": {
+    "titulo": "Enfermedades de Notificacion Obligatoria (Decreto 7/2019)",
+    "url": "https://repositoriodeis.minsal.cl/ContenidoSitioWeb2020/uploads/2021/03/DEIS-EPI-ENO-Decreto%207%202019%20actualizaci%C3%B3n%20agosto%202026.xlsx",
+    "archivo_origen": "DEIS_eno_2026-08.xlsx",
+    "edicion": "2026-08",
+    "filas": 448,
+    "sha256_origen": "a65bd7153a1a8b8f963c48fc71b7cf1e3ae141b6981432ebccfe138323b2f41c",
+    "generado": "2026-09-08"
+  },
+  "ges": {
+    "titulo": "GES 90 problemas de salud <-> CIE-10",
+    "url": "https://repositoriodeis.minsal.cl/ContenidoSitioWeb2020/uploads/2021/03/GES%2090%20CIE-10%20v1_4.xlsx",
+    "archivo_origen": "DEIS_ges_v1_4.xlsx",
+    "edicion": "v1_4",
+    "filas": 5936,
+    "sha256_origen": "b3a643dd58d17eed71e72a481bf4559c6f54e4d47d5957d22b8194e77c33841f",
+    "generado": "2026-09-08"
+  }
+}
