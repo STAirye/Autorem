@@ -289,11 +289,11 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
         estado, ausentes = formatos.clasificar_fuente(col0, solo_iris)
         d.attrs["fuente"] = (estado, ausentes)
         if estado == formatos.FUENTE_PARCIAL:
-            log(f"[fuente] PARCIAL: el archivo no es el export IRIS pleno (no trae "
+            log(f"[fuente] PARCIAL: el archivo no es el export A/D/A de IRIS (no trae "
                 f"ninguna de: {', '.join(ausentes)}). Los indicadores que dependen "
                 f"de esas columnas van a salir en 0 o incompletos.")
         elif estado == formatos.FUENTE_CAMBIADA:
-            log(f"[fuente] EXPORT CAMBIADO: parece el IRIS pero le faltan columnas "
+            log(f"[fuente] EXPORT CAMBIADO: parece el A/D/A de IRIS pero le faltan columnas "
                 f"que antes traia: {', '.join(ausentes)}. O RAYEN cambio el export, "
                 f"o el archivo fue editado -> revisar MAPA_ATENCIONES.")
     return d, col0

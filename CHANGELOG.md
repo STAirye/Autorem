@@ -13,7 +13,9 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 ## [1.9.2] — 2026-09-08
 
 `formatos.py` **fase 2**: el grupo pandas ya no procesa una fuente degradada en
-silencio. Era el último agujero de "número plausible pero callado y errado" que
+silencio. (Pese al nombre del roadmap **no es detección de eje**: el lado
+Administrativo no tiene equivalente del A/D/A, así que no hay dos formatos del
+mismo reporte entre los que elegir — se verifica la IDENTIDAD del reporte.) Era el último agujero de "número plausible pero callado y errado" que
 quedaba abierto en el proyecto.
 
 ### Agregado
@@ -35,11 +37,12 @@ quedaba abierto en el proyecto.
   trae texto sin código ICD, y por eso Ira Alta / Bronquitis / EPOC exacerbado
   salían 0. `resolver_columnas` no puede ver eso — solo el eje habla de la CALIDAD
   de una columna, no de su existencia.
-- **Firma negativa**, porque no hay muestra versionada del Monitoreo Admin y
-  escribir firmas positivas de ese lado sería inventarlas. Se prueba que ES el IRIS
-  pleno; lo que no se pruebe, avisa. Fail-safe ante formatos que aún no existen.
+- **Firma negativa**, porque no hay UN «otro lado» que reconocer: puede llegar el
+  'Monitoreo de Actividades', un archivo editado, o algo que RAYEN aún no inventa.
+  Se prueba que ES el A/D/A de IRIS; lo que no se pruebe, avisa — sin necesidad de
+  saber qué fue lo que llegó.
 - **Tres estados, no dos.** `cambiada` existe para el día que RAYEN renombre una
-  columna del IRIS: sin ese estado sería un falso «parcial» permanente, y un aviso
+  columna del A/D/A: sin ese estado sería un falso «parcial» permanente, y un aviso
   que grita siempre deja de leerse. `parcial` le habla al usuario («bajaste el
   archivo equivocado»), `cambiada` al dev («hay que actualizar el mapeo»).
 - La firma son **claves canónicas**, no nombres de columna, para que el saber de

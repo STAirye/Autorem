@@ -238,11 +238,12 @@ Tres cosas del diseno que conviene no deshacer:
    ausente: en el Monitoreo Admin `DIAGNOSTICO` **existe y resuelve perfecto**, solo
    que trae texto sin codigo ICD. `resolver_columnas` no puede verlo — solo el eje
    habla de la CALIDAD de una columna, no de su existencia.
-2. **La firma es negativa** (probar que ES el IRIS pleno), porque no hay muestra
-   versionada del Monitoreo Admin y escribir firmas positivas de ese lado seria
-   inventarlas. Sale fail-safe: lo que no se prueba, avisa.
+2. **La firma es negativa** (probar que ES el A/D/A de IRIS), porque no hay UN
+   "otro lado" que reconocer: el eje Administrativo **no tiene equivalente del
+   A/D/A**, asi que lo que llegue puede ser otro reporte, un archivo editado o algo
+   que RAYEN aun no inventa. Sale fail-safe: lo que no se prueba, avisa.
 3. **Tres estados, no dos.** `cambiada` (algunas claves, no ninguna) existe para el
-   dia que RAYEN renombre una columna del IRIS: sin ese estado seria un falso
+   dia que RAYEN renombre una columna del A/D/A: sin ese estado seria un falso
    «parcial» permanente, y un aviso que grita siempre deja de leerse.
 
 **Descubrimiento colateral, peor que el original:** en **SM** la fuente parcial no

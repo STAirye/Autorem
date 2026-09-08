@@ -103,28 +103,37 @@ def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
 
 # -- Fuente PLENA vs PARCIAL en el grupo pandas (fase 2, sep-2026) ------------
 #
-# El grupo pandas (atenciones/NSP/grupal/'Otros y Respi') NO puede usar
+# OJO CON EL NOMBRE: esto NO es deteccion de EJE, aunque viva en formatos.py y el
+# roadmap lo llamara "fase 2 del eje". Un eje es el MISMO reporte en dos formatos
+# (IRIS/Admin), y en el A/D/A eso no existe: **el lado Administrativo no tiene un
+# equivalente del A/D/A** (sep-2026, confirmado por el autor). Lo que hay del otro
+# lado es OTRO reporte, distinto y mas pobre. Asi que aca no se decide un formato:
+# se VERIFICA LA IDENTIDAD DEL REPORTE -- "esto que me diste, ¿es el A/D/A?".
+#
+# El grupo pandas (atenciones/NSP/grupal/'Otros y Respi') tampoco podria usar
 # `detectar_eje`: ese barre una hoja openpyxl buscando el banner y las anclas del
 # FORMULARIO clinico, y estos reportes no los traen.
 #
-# Y el problema de fondo es otro. Aca no falta una columna: la MISMA columna trae
-# menos. En el Monitoreo Administrativo la columna DIAGNOSTICO existe y resuelve
-# perfecto -- solo que viene en TEXTO, sin codigo ICD. `resolver_columnas` ve una
-# columna presente y sigue feliz, y los indicadores que matchean por codigo (Ira
-# Alta 'j0', Bronquitis 'J20', EPOC exacerbado 'J44.1') salen 0 SIN AVISAR. O sea:
-# mapear columnas no alcanza, hay que clasificar la FUENTE. El eje es lo unico que
-# habla de la CALIDAD de una columna, no de su existencia.
+# Y por que no basta con mapear columnas: aca no falta una columna, la MISMA
+# columna trae menos. En el reporte admin que SI existe ('Monitoreo de Actividades')
+# la columna DIAGNOSTICO existe y resuelve perfecto -- solo que viene en TEXTO, sin
+# codigo ICD. `resolver_columnas` ve una columna presente y sigue feliz, y los
+# indicadores que matchean por codigo (Ira Alta 'j0', Bronquitis 'J20', EPOC
+# exacerbado 'J44.1') salen 0 SIN AVISAR. Lo degradado es el CONTENIDO, no la
+# presencia, y eso la resolucion de columnas no puede verlo.
 #
-# Como NO hay muestra versionada del Monitoreo Administrativo, escribir una firma
-# positiva de ese lado seria inventarla -- justo el error que esto viene a evitar.
-# Se hace al reves: se prueba que la fuente es el IRIS PLENO por las claves que
-# SOLO el trae. Sale fail-safe: cualquier cosa que no se pruebe, avisa.
+# COMO se detecta, entonces: NO con una firma positiva del "otro lado", porque no
+# hay UN otro lado -- puede llegar el Monitoreo, un archivo editado, o algo que
+# RAYEN todavia no inventa. Se prueba que la fuente ES el A/D/A de IRIS, por las
+# claves que solo el trae. Fail-safe: lo que no se pruebe, avisa, sin necesidad de
+# saber QUE fue lo que llego. Y el mensaje NUNCA dice "bajaste el gemelo
+# equivocado": esa eleccion no existe.
 #
 # La firma son CLAVES CANONICAS, no nombres de columna: el saber de headers vive
 # solo en MAPA_ATENCIONES y asi no puede desincronizarse de esto.
 #
-# EL CONTEO IMPORTA, no es todo-o-nada. Si RAYEN renombra una columna del IRIS, el
-# archivo SIGUE siendo el IRIS pleno; marcarlo "parcial" seria un falso positivo
+# EL CONTEO IMPORTA, no es todo-o-nada. Si RAYEN renombra una columna del A/D/A, el
+# archivo SIGUE siendo el A/D/A; marcarlo "parcial" seria un falso positivo
 # recurrente, y un aviso que grita siempre deja de leerse -- ahi se pierde el
 # fail-loud entero. Por eso hay un TERCER desenlace, 'cambiada', que no le habla al
 # usuario ("cargaste el archivo equivocado") sino al DEV ("RAYEN movio el piso,
@@ -135,9 +144,9 @@ def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
 # (45 columnas, sep-2026). Ver MAPA_ATENCIONES en rem_utils.
 SOLO_IRIS_ATENCIONES = ("ATENID", "ALERTAS", "PUEBLO", "NACION", "FNAC", "FORMCLIN")
 
-FUENTE_PLENA    = "plena"       # estan todas: es el IRIS completo
-FUENTE_CAMBIADA = "cambiada"    # estan algunas: parece IRIS pero le faltan
-FUENTE_PARCIAL  = "parcial"     # no esta ninguna: no es el IRIS pleno
+FUENTE_PLENA    = "plena"       # estan todas: es el A/D/A de IRIS completo
+FUENTE_CAMBIADA = "cambiada"    # estan algunas: parece el A/D/A pero le faltan
+FUENTE_PARCIAL  = "parcial"     # no esta ninguna: no es el A/D/A de IRIS
 
 
 def clasificar_fuente(col, solo_iris=SOLO_IRIS_ATENCIONES):
@@ -161,9 +170,9 @@ def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos"):
     faltan = ", ".join(ausentes)
     if estado == FUENTE_PARCIAL:
         return (casilla, "FUENTE PARCIAL",
-                f"El archivo no es el export IRIS pleno (no trae NINGUNA de: "
+                f"El archivo no es el export A/D/A de IRIS (no trae NINGUNA de: "
                 f"{faltan}). {consecuencia}",
-                "Descargar el reporte desde IRIS, no el Monitoreo Administrativo")
+                "Bajar 'Atenciones, Diagnosticos y Actividades' desde IRIS")
     return (casilla, "EXPORT CAMBIADO",
             f"Parece el IRIS pero le faltan columnas que antes traia: {faltan}. "
             f"O RAYEN cambio el export, o el archivo fue editado. {consecuencia}",
