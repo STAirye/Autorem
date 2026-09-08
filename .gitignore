@@ -21,35 +21,35 @@
 # así que aquí cae cualquier tipo de archivo, no solo .xlsx.
 SENSITIVE_PII/
 
-# --- Referencias versionadas (refs tablas/) — whitelist POR-ARCHIVO ---
+# --- Referencias versionadas (refs_tablas/) — whitelist POR-ARCHIVO ---
 # Excepción a la regla anti-PII, pero ARCHIVO POR ARCHIVO (no el folder entero):
 # cada planilla se agrega abajo SOLO tras verificar que NO tiene datos reales de
 # pacientes (RUT/nombre/dirección/teléfono/fecha nac.). Un archivo nuevo que caiga
-# en 'refs tablas/' queda IGNORADO hasta vetarlo y listarlo acá. Ver §8.
+# en 'refs_tablas/' queda IGNORADO hasta vetarlo y listarlo acá. Ver §8.
 # Incluye: ejemplos anonimizados (exports RAYEN/IRIS/PBI con datos falsos) +
 # plantillas target SA/SP (para detectar cambios de estructura MINSAL).
-!refs tablas/Atenciones_Grupales iris.xlsx
-!refs tablas/CALCULADOR A05 DESDE P 2.1 junio.xlsx
-!refs tablas/Formulario csm reporte Administrativo.xlsx
-!refs tablas/Formularios_RAYEN csm IRis.xlsx
-!refs tablas/PSC_PSC-Y_GHQ12_comparativo_final.xlsx
-!refs tablas/SA_26_V1.2.xlsm
-!refs tablas/SP_26_V1.1.xlsm
-!refs tablas/goldberg iris.xlsx
-!refs tablas/poblacion sm powerbi.xlsx
-!refs tablas/psc administrativo.xlsx
-!refs tablas/pscy 10 14 iris.xlsx
-!refs tablas/goldberg administrativo.xlsx
-!refs tablas/pscy 10 14 administrativo.xlsx
-!refs tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES iris.xlsx
+!refs_tablas/Atenciones_Grupales iris.xlsx
+!refs_tablas/CALCULADOR A05 DESDE P 2.1 junio.xlsx
+!refs_tablas/Formulario csm reporte Administrativo.xlsx
+!refs_tablas/Formularios_RAYEN csm IRis.xlsx
+!refs_tablas/PSC_PSC-Y_GHQ12_comparativo_final.xlsx
+!refs_tablas/SA_26_V1.2.xlsm
+!refs_tablas/SP_26_V1.1.xlsm
+!refs_tablas/goldberg iris.xlsx
+!refs_tablas/poblacion sm powerbi.xlsx
+!refs_tablas/psc administrativo.xlsx
+!refs_tablas/pscy 10 14 iris.xlsx
+!refs_tablas/goldberg administrativo.xlsx
+!refs_tablas/pscy 10 14 administrativo.xlsx
+!refs_tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES iris.xlsx
 # Informe de Inscritos/Adscritos: recortado a header-only con tools/limpiar_refs.py
 # (92 nombres de columna, CERO filas de datos). Es la estructura que consume
 # programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible
 # del proyecto (nombre, RUT, direccion, telefonos, email) -> el crudo NUNCA al repo.
-!refs tablas/Informe_Inscritos__Adscritos_heads.xlsx
+!refs_tablas/Informe_Inscritos__Adscritos_heads.xlsx
 # Maestro de Actividades SLIM (catálogo actividad↔estamento↔REM, sin PII de paciente;
 # generado por tools/slim_maestro.py desde el Maestro completo local). Ver §8.
-!refs tablas/maestro_slim.csv.gz
+!refs_tablas/maestro_slim.csv.gz
 
 # --- Salidas del script ---
 *_procesado.xlsx

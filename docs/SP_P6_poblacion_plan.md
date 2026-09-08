@@ -28,11 +28,11 @@ copy-paste al `SP_26_V1.1.xlsm` hoja P6, sección A.1.**
 
 ## 1. Fuente de verdad: los specs del PowerBI
 
-`refs tablas/specs/Salud_Mental_spec.md` (generado con la skill `pbip-spec`) trae el
+`refs_tablas/specs/Salud_Mental_spec.md` (generado con la skill `pbip-spec`) trae el
 **DAX completo de las ~150 columnas calculadas** de la tabla `Ferrada`, más los 31
 visuales de la página. El visual **#17 «Población PSM» (`tableEx`)** es exactamente
 la tabla que hoy se exporta a mano; sus nombres de columna de salida están en el
-header de `refs tablas/poblacion sm powerbi.xlsx`.
+header de `refs_tablas/poblacion sm powerbi.xlsx`.
 
 **Hallazgo estructural:** `Ferrada` **no es una tabla de Salud Mental**. Es la tabla
 base por-paciente que usan las 8 páginas del PowerBI (Cardiovascular 335 referencias,

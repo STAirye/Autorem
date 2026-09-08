@@ -19,7 +19,7 @@ del delta mes-a-mes del P** (además de la vía directa por formulario del módu
 actual). Cuadre cruzado a futuro: los ingresos/egresos del A05 deberían conciliar con
 ese delta del P.
 
-**La lógica de la matriz YA está implementada** en `refs tablas/CALCULADOR A05 DESDE
+**La lógica de la matriz YA está implementada** en `refs_tablas/CALCULADOR A05 DESDE
 P 2.1 junio.xlsx` (versionado). Al implementar, portar ESA lógica del delta P(mes) −
 P(mes−1) → N/O en vez de reinventarla; es el referente validado.
 
@@ -67,7 +67,7 @@ revisión manual**, no auto-asignado.
 ## Al implementar (recordatorios)
 - Conseguir el DAX del PowerBI de población PSM (como se hizo con "Pertenece a SALA"
   del A23) y replicarlo 1:1; los 9 filtros globales son la parte fina a alinear.
-- Layout exacto (filas 13, 15-24, dx, FR) se lee del **`refs tablas/SP_26_V1.1.xlsm`**
+- Layout exacto (filas 13, 15-24, dx, FR) se lee del **`refs_tablas/SP_26_V1.1.xlsm`**
   (no del SA). Confirmar numeración de filas contra ese template al implementar.
 - Salida estilo el resto: hoja copy-paste al SP + detalle auditable.
 - Es un módulo/reporte nuevo → al terminar, **Y++** en la versión (§9 de CLAUDE.md).

@@ -13,7 +13,7 @@
 # <https://www.gnu.org/licenses/>.
 # ==========================================================================
 """
-limpiar_refs.py — recorta los EXPORTS de ejemplo de `refs tablas/` a SOLO EL HEADER.
+limpiar_refs.py — recorta los EXPORTS de ejemplo de `refs_tablas/` a SOLO EL HEADER.
 
 Privacidad-by-design (CLAUDE.md §8): cualquier export de RAYEN/IRIS que se agregue a
 la carpeta de referencia puede traer PII de paciente en sus filas. Este tool ubica la
@@ -51,7 +51,7 @@ except (AttributeError, ValueError):
     pass
 
 # Carpeta de referencia (relativa a la raíz del repo = padre de tools/).
-CARPETA = Path(__file__).resolve().parent.parent / "refs tablas"
+CARPETA = Path(__file__).resolve().parent.parent / "refs_tablas"
 
 # Se conservan intactos (tienen fórmulas/estructura que depende de sus filas).
 DENY_EXT = {".xlsm", ".xltx", ".xltm", ".dotx", ".potx"}

@@ -16,7 +16,7 @@ RAYEN **precalcula** por cada aplicación tanto el **PUNTAJE** como un **RESULTA
 - El reporte muestra **las dos** para poder comparar (RAYEN a veces difiere).
 
 Estructura de columnas del export **confirmada** contra ejemplos reales
-anonimizados en `refs tablas/` (goldberg/pscy/psc): ver «Estructura real» abajo.
+anonimizados en `refs_tablas/` (goldberg/pscy/psc): ver «Estructura real» abajo.
 
 ## Setup general
 - **Centro:** CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC, Maipú)
@@ -198,11 +198,11 @@ def clasificar_ghq12(puntaje):
 ## Pendientes antes de codificar
 
 - [x] ~~"cálculo DISAM" vs "real"~~ → RESUELTO: automático = col `RESULTADO`; calculado = `clasificar_*(PUNTAJE)`. Ver arriba.
-- [x] ~~Nombres exactos de columnas~~ → confirmados contra ejemplos en `refs tablas/` (ver «Estructura real»).
+- [x] ~~Nombres exactos de columnas~~ → confirmados contra ejemplos en `refs_tablas/` (ver «Estructura real»).
 - [x] ~~¿Puntaje precalculado?~~ → SÍ, RAYEN lo trae en columna `PUNTAJE`.
 - [x] ~~¿Instrumento distinguible?~~ → SÍ: columna `INSTRUMENTO` (IRIS) o banner (admin). Se exporta 1 archivo por instrumento.
 - [x] ~~Momento (Ingreso/Egreso)~~ → RESUELTO: la columna `1.- ESTADO` es binaria "Ingreso"/"Egreso".
-- [ ] **Rangos etarios** exactos de D.3 en la planilla SA_26 (está en `refs tablas/SA_26_V1.2.xlsm` → se puede extraer).
+- [ ] **Rangos etarios** exactos de D.3 en la planilla SA_26 (está en `refs_tablas/SA_26_V1.2.xlsm` → se puede extraer).
 - [ ] Definir forma de salida: ¿1 fila por aplicación (con ambos resultados, estilo A05) + hoja de conteos agregados para pegar en SA?
 
 ---
@@ -239,5 +239,5 @@ Diseño propuesto:
 ## Archivos de referencia
 - `SA_26_V1_2.xlsm` — planilla SA (ver estructura celdas D.3). **No en el repo** (queda en la carpeta de trabajo).
 - `Manual_Series_REM_2026_SERIE_A.pdf` — pp. 71-72 (definición D.3 y cortes).
-- `refs tablas/PSC_PSC-Y_GHQ12_comparativo_final.xlsx` — tabla comparativa de los instrumentos (en el repo, sin PII).
+- `refs_tablas/PSC_PSC-Y_GHQ12_comparativo_final.xlsx` — tabla comparativa de los instrumentos (en el repo, sin PII).
 - `legacy/rem_marcar_egresos*.py` — referencia de patrón de parsing RAYEN (quirks documentados).

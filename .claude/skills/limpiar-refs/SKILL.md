@@ -1,18 +1,18 @@
 ---
 name: limpiar-refs
-description: Recorta a SOLO EL HEADER cualquier export nuevo agregado a `refs tablas/` (privacy-by-design). Úsalo cuando el usuario agregue/mencione un archivo nuevo de datos en esa carpeta, cuando notes un .xlsx nuevo o modificado ahí, o cuando pida "limpiar refs" / dejar solo encabezados. NO uses para archivos fuera de esa carpeta.
+description: Recorta a SOLO EL HEADER cualquier export nuevo agregado a `refs_tablas/` (privacy-by-design). Úsalo cuando el usuario agregue/mencione un archivo nuevo de datos en esa carpeta, cuando notes un .xlsx nuevo o modificado ahí, o cuando pida "limpiar refs" / dejar solo encabezados. NO uses para archivos fuera de esa carpeta.
 ---
 
-# limpiar-refs — refs tablas/ es zona de solo-estructura
+# limpiar-refs — refs_tablas/ es zona de solo-estructura
 
 Los exports de RAYEN/IRIS pueden traer PII de paciente en sus filas. Regla del
-proyecto (CLAUDE.md §8): en `refs tablas/` solo vive la ESTRUCTURA (encabezados),
+proyecto (CLAUDE.md §8): en `refs_tablas/` solo vive la ESTRUCTURA (encabezados),
 nunca valores. Cuando entra un export nuevo, se recorta a header-only **sin leer los
 datos**.
 
 ## Cuándo dispararlo
-- El usuario dice que agregó (o va a agregar) un archivo de datos a `refs tablas/`.
-- Detectas un `.xlsx` nuevo o modificado en `refs tablas/` durante la sesión.
+- El usuario dice que agregó (o va a agregar) un archivo de datos a `refs_tablas/`.
+- Detectas un `.xlsx` nuevo o modificado en `refs_tablas/` durante la sesión.
 - El usuario pide "limpiar refs", "deja solo los header", o similar.
 
 ## Qué hacer (en orden)

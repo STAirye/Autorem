@@ -29,7 +29,7 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 ### Agregado
 - **`docs/SP_P6_poblacion_plan.md`** — plan del módulo REM **SP·P6 A.1 «Población en
   control PSM»**: IRIS → tabla intermedia (la «Ferrada» del PowerBI, portada desde
-  `refs tablas/specs/Salud_Mental_spec.md`) → tabulación directa del SP. Incluye la
+  `refs_tablas/specs/Salud_Mental_spec.md`) → tabulación directa del SP. Incluye la
   máscara de celdas protegidas del P6 como validador clínico, la hoja de excepciones
   `P6_Revisar`, las unidades de conteo por bloque de filas, y las definiciones cerradas
   de Gestante (3 meses, matrona) y del Plan de Cuidado Integral. Sin implementar.
@@ -219,7 +219,7 @@ batería de tests (**57/57**) y con checks funcionales puntuales.
 
 ### Corregido (empaquetado)
 - **Build del `.exe`**: el comando de PyInstaller (CLAUDE.md §11 + README) ahora
-  incluye `--add-data "refs tablas/maestro_slim.csv.gz;refs tablas"` para EMBEBER el
+  incluye `--add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas"` para EMBEBER el
   Maestro slim. Sin esto el `.exe` no lo traía y el Trabajo Perdido caía a heurística.
 
 ---
@@ -407,7 +407,7 @@ Actividades** como catálogo de clasificación + **guarda de archivo modificado*
   la pestaña SM. Definición de "perdido" (elegida por el referente): **todo lo SM-ish que
   no cae en A04/A06/19A/A26/A27/A32** (incluye REM-Gestion, A03, A28…); el NUM REM se
   muestra para poder refinar.
-- **Maestro SLIM versionado** (`refs tablas/maestro_slim.csv.gz`, ~1.2 MB) + generador
+- **Maestro SLIM versionado** (`refs_tablas/maestro_slim.csv.gz`, ~1.2 MB) + generador
   `tools/slim_maestro.py`: el Maestro completo (7.7 MB) queda LOCAL; el script lo recorta a
   actividad × estamento × clasificación REM (sin las 6 flags) y lo comprime. `cargar_maestro`
   lee `.csv.gz` además de `.xlsx`. Whitelisteado en `.gitignore` (sin PII de paciente).
@@ -419,7 +419,7 @@ Actividades** como catálogo de clasificación + **guarda de archivo modificado*
   actividades del ADA tributan a algún REM SM (la reciclan el módulo y el detector).
 - **`PROFESIONAL ATENCION`** agregado al `MAPA_ATENCIONES` (nombre del funcionario, IRIS).
 - **`tools/limpiar_refs.py`** + **skill `limpiar-refs`** — recorta a solo-header cualquier
-  export nuevo en `refs tablas/` (privacy-by-design, §8), **sin leer valores** (cuenta
+  export nuevo en `refs_tablas/` (privacy-by-design, §8), **sin leer valores** (cuenta
   celdas para ubicar el header). Denylist protege templates/`calculador`/`minimanual`/
   `comentado`/`arsenal`/`maestro`.
 - Tests `tests/test_trabajo_perdido.py` (9/9): clasificación por Maestro, heurística de

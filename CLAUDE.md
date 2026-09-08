@@ -68,14 +68,14 @@ modulos/              módulos de tarea (paquete)
   rem_sp_p6_poblacion.py  grilla SP·P6 A.1
   rem_sm_rescate_inasistentes.py  rescate 6m/13m + fallecidos + traslados + brecha medico
 tools/                utilitarios (no-REM)
-  limpiar_refs.py         recorte header-only de refs tablas/
+  limpiar_refs.py         recorte header-only de refs_tablas/
   slim_maestro.py         genera el Maestro slim comprimido
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
 .claude/skills/       skills del repo: limpiar-refs
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas (110)
 docs/                 planes y contexto por módulo
-refs tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
+refs_tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
   specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
 ```
 
@@ -146,7 +146,7 @@ diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
 
 Los exports con PII (IRIS y Administrativo reales) viven **solo en la carpeta de
 trabajo (OneDrive), NUNCA en el repo** (§8). Las planillas de EJEMPLO van en
-`refs tablas/` y **sí se versionan**, pero con **whitelist POR-ARCHIVO** en el
+`refs_tablas/` y **sí se versionan**, pero con **whitelist POR-ARCHIVO** en el
 `.gitignore` (no del folder entero): cada planilla se habilita a mano SOLO tras
 verificar que no tiene PII. Un `.xlsx` que caiga ahí queda **ignorado** hasta
 vetarlo (así ya se evitó colar un export IRIS real por error, jul-2026).
@@ -491,7 +491,7 @@ Meta: colega no técnico hace doble-clic, sin instalar Python.
 # Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
 # programas/ y modulos/):
 pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs tablas/maestro_slim.csv.gz;refs tablas" autorem.py
+  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" autorem.py
 # -> dist/autoREM.exe
 ```
 
@@ -505,7 +505,7 @@ pyinstaller --onefile --windowed --name "autoREM" \
   (separador **`;`** en Windows, `:` en Linux/Mac). Sin esto, `_slim_por_defecto()`
   devuelve None y el **Trabajo Perdido corre en heurística** (avisa ruidoso en el log).
   Alternativa: dejar el `.gz` junto al `.exe`. Ruta destino dentro del bundle:
-  `refs tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
+  `refs_tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **`--onefile` vs `--onedir` (trade-off, oficial = `--onefile`):** `--onefile` da UN
   solo `.exe` (cómodo de distribuir) pero cada arranque **descomprime ~37 MB a una

@@ -24,7 +24,7 @@ y arma la grilla copy-paste al `SP_26_V1.1.xlsm` hoja P6, sección A.1 (filas
 `docs/SP_P6_poblacion_plan.md` §5.
 
 La MÁSCARA (`MASCARA_BANDA`/`EXCLUYE_DEMO`) se extrajo DIRECTO de
-`refs tablas/SP_26_V1.1.xlsm` (protección real de celdas), no de la prosa del
+`refs_tablas/SP_26_V1.1.xlsm` (protección real de celdas), no de la prosa del
 plan: se encontró y CORRIGIÓ una discrepancia ahí (fila 38 «Otros trastornos
 del comportamiento…infancia»: el plan decía rango reportable 0-19, la
 plantilla real abre hasta 20-24 — ver comentario en MASCARA_BANDA). Si MINSAL
@@ -66,7 +66,7 @@ MASCARA_BANDA = {
 }
 
 # fila -> etiquetas (concepto, subconcepto) — copiadas literal de las columnas
-# A/B de la plantilla (fuente: refs tablas/SP_26_V1.1.xlsm).
+# A/B de la plantilla (fuente: refs_tablas/SP_26_V1.1.xlsm).
 ROW_LABELS = {
     13: ("Número de personas en control en el programa", None),
     15: ("Violencia física", "Víctima"), 16: (None, "Agresor/a"),

@@ -162,7 +162,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 | `modulos/rem_a23_respiratorio.py` | REM A23 (Respiratorio), con pandas. |
 | `modulos/rem_sm_actividades.py` | REM SM Actividades (A04/A06/A19a/A26/A27/A32), con pandas. Tablas copy-paste al SA_26. |
 | `modulos/rem_sm_trabajo_perdido.py` | REM SM · Trabajo perdido: actividades SM que no tributan + qué funcionario las registra. |
-| `tools/limpiar_refs.py` | Recorta a solo-header los exports nuevos de `refs tablas/` (privacy-by-design, sin leer valores). |
+| `tools/limpiar_refs.py` | Recorta a solo-header los exports nuevos de `refs_tablas/` (privacy-by-design, sin leer valores). |
 | `tests/` | Pruebas automáticas (datos sintéticos, sin PII). |
 | `legacy/` | Versiones históricas (referencia validada). |
 
@@ -188,7 +188,7 @@ Para que un colega no técnico lo use con doble-clic, sin instalar Python:
 
 ```bash
 pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs tablas/maestro_slim.csv.gz;refs tablas" autorem.py
+  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" autorem.py
 ```
 
 Correr desde la raíz del repo (con `programas/` y `modulos/` al lado de

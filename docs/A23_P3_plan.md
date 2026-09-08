@@ -178,7 +178,7 @@ agudos de la Sección A/D en general) haría falta un **mapa nombre↔código CI
 **Fuente identificada:** Lista Tabular CIE-10 en español de **DEIS/MINSAL** (oficial,
 dato público → sin problema de licencia). Estructura: hoja `Códigos` con col **Código**
 + **Descripción**, ~8.900 códigos (3 hojas: cruz/daga, asterisco, causa externa). El
-archivo está guardado local en `refs tablas/` pero **gitignored** (no vendorizado aún).
+archivo está guardado local en `refs_tablas/` pero **gitignored** (no vendorizado aún).
 ⚠ Dos quirks al usarla:
 - **Formato de código distinto**: DEIS trae `Annn` (sin punto, p.ej. `J209`), RAYEN
   usa `Ann.n` (`J20.9`) → **normalizar** (lo más simple: quitarle el punto a RAYEN).

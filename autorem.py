@@ -376,9 +376,9 @@ def _slim_por_defecto():
     cands = []
     if getattr(sys, "frozen", False):
         base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-        cands += [base / "refs tablas" / "maestro_slim.csv.gz",
+        cands += [base / "refs_tablas" / "maestro_slim.csv.gz",
                   Path(sys.executable).parent / "maestro_slim.csv.gz"]
-    cands.append(Path(__file__).resolve().parent / "refs tablas" / "maestro_slim.csv.gz")
+    cands.append(Path(__file__).resolve().parent / "refs_tablas" / "maestro_slim.csv.gz")
     return next((str(c) for c in cands if c.exists()), None)
 
 

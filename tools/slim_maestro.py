@@ -18,7 +18,7 @@ slim_maestro.py — genera el Maestro de Actividades SLIM (versionado) desde el 
 El 'Maestro de Actividades' completo (.xlsx, ~7.7 MB, 218k filas × 11 col) es catálogo
 de por vida pero pesa demasiado para el repo. Este script lo recorta a lo que usa la
 herramienta —ACTIVIDAD · INSTRUMENTO ASOCIADO · NUM REM · NUM SECCION · REM (sin las 6
-flags booleanas)— y lo guarda comprimido en `refs tablas/maestro_slim.csv.gz` (~1.2 MB,
+flags booleanas)— y lo guarda comprimido en `refs_tablas/maestro_slim.csv.gz` (~1.2 MB,
 whitelisteado en .gitignore). NO contiene PII de paciente (solo actividades, estamentos
 y su clasificación REM).
 
@@ -38,7 +38,7 @@ sys.path.insert(0, str(REPO))
 
 from programas.rem_utils import cargar_maestro   # noqa: E402
 
-CARPETA = REPO / "refs tablas"
+CARPETA = REPO / "refs_tablas"
 FULL_DEFAULT = CARPETA / "Maestro_de_Actividades.xlsx"
 SLIM = CARPETA / "maestro_slim.csv.gz"
 
@@ -56,7 +56,7 @@ def main(argv):
     full = Path(argv[0]) if argv else FULL_DEFAULT
     if not full.exists():
         print(f"X No encuentro el Maestro completo: {full}")
-        print("  Deja 'Maestro_de_Actividades.xlsx' en 'refs tablas/' o pásalo como argumento.")
+        print("  Deja 'Maestro_de_Actividades.xlsx' en 'refs_tablas/' o pásalo como argumento.")
         return 1
     print(f"Leyendo Maestro completo: {full.name}")
     dfm = cargar_maestro(full)
@@ -65,7 +65,7 @@ def main(argv):
     slim.to_csv(SLIM, index=False, compression="gzip")
     mb = SLIM.stat().st_size / 1e6
     print(f"OK Slim escrito: {SLIM.relative_to(REPO)}  ({len(slim)} filas, {mb:.2f} MB)")
-    print("  Versionar:  git add -f \"refs tablas/maestro_slim.csv.gz\"")
+    print("  Versionar:  git add -f \"refs_tablas/maestro_slim.csv.gz\"")
     return 0
 
 
