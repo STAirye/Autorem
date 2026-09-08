@@ -37,6 +37,7 @@ from programas.rem_utils import (leer_xlsx, resolver_columnas, MAPA_ATENCIONES,
 
 RAIZ = Path(__file__).resolve().parent.parent
 ADA_IRIS = RAIZ / "refs_tablas" / "ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx"
+MONITOREO = RAIZ / "refs_tablas" / "Monitoreo_de_Actividades_anonimizado.xlsx"
 
 TODAS = formatos.SOLO_IRIS_ATENCIONES
 
@@ -122,6 +123,31 @@ def test_cargar_canonico_deja_el_veredicto_en_attrs():
                               solo_iris=formatos.SOLO_IRIS_ATENCIONES,
                               log=lambda *a, **k: None)
     assert d.attrs["fuente"][0] == formatos.FUENTE_PLENA
+
+
+@pytest.mark.skipif(not MONITOREO.exists(), reason="falta el Monitoreo de ejemplo")
+def test_el_monitoreo_real_clasifica_como_parcial():
+    """El otro extremo, contra el archivo REAL (header-only, sep-2026): el
+    'Monitoreo de Actividades' del eje Administrativo tiene que dar 'parcial', con
+    las SEIS claves ausentes. Es la contraparte del test del ADA IRIS: uno protege
+    contra falsos positivos, este contra falsos negativos."""
+    hdr, _filas = leer_xlsx(MONITOREO)
+    col = resolver_columnas(hdr, MAPA_ATENCIONES)
+    estado, ausentes = formatos.clasificar_fuente(col)
+    assert estado == formatos.FUENTE_PARCIAL
+    assert set(ausentes) == set(TODAS)
+
+
+@pytest.mark.skipif(not MONITOREO.exists(), reason="falta el Monitoreo de ejemplo")
+def test_el_monitoreo_igual_pasa_las_requeridas_de_cargar_atenciones():
+    """Por esto el bug era SILENCIOSO y no un ArchivoInvalido: el Monitoreo resuelve
+    TODAS las columnas requeridas, asi que cargaba sin chistar. Lo que faltaba no
+    tenia guardia. Si algun dia esto empieza a fallar, `requeridas` cambio y hay que
+    revisar si el camino admin del A23 sigue vivo."""
+    hdr, _filas = leer_xlsx(MONITOREO)
+    col = resolver_columnas(hdr, MAPA_ATENCIONES)
+    for k in ("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"):
+        assert col.get(k), f"{k} dejo de resolver en el Monitoreo"
 
 
 def test_sin_solo_iris_no_clasifica_nada():

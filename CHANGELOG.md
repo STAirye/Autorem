@@ -28,8 +28,19 @@ quedaba abierto en el proyecto.
   que vivía como advertencia PERMANENTE en `cobertura.py` se borró: ahora sale
   **solo en las corridas donde de verdad pasa**.
 - `tests/test_formatos_fuente.py` (12 tests), con un guardarraíl contra falsos
-  positivos: el export IRIS versionado **tiene** que clasificar como `plena`.
-  **136 tests.**
+  positivos: el export IRIS versionado **tiene** que clasificar como `plena`, y
+  —desde que existe la muestra— el 'Monitoreo de Actividades' real **tiene** que dar
+  `parcial`. Los dos extremos medidos contra archivos de verdad, no maquetas.
+  **138 tests.**
+
+### Documentado
+- **§5.1 de CLAUDE.md: qué soporta realmente el 'Monitoreo de Actividades'.** Con la
+  muestra header-only en `refs_tablas/` se pudo medir en vez de suponer. Resultado:
+  el soporte parcial del **A23 es real** (indicadores por actividad + edad + sexo
+  funcionan; solo caen los 3 por código ICD), y **SM no es usable** con esa fuente
+  (falla el conteo por `ATEN ID` y las edades por `AÑOS ATENCIÓN`). Se confirmó
+  además por qué el bug era silencioso: el Monitoreo **pasa todas las `requeridas`**
+  de `cargar_atenciones`, así que cargaba sin chistar.
 
 ### Notas de diseño
 - **Se clasifica la FUENTE, no las columnas.** El problema nunca fue una columna

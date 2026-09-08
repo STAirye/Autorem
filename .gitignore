@@ -42,6 +42,13 @@ SENSITIVE_PII/
 !refs_tablas/goldberg_administrativo.xlsx
 !refs_tablas/pscy_10_14_administrativo.xlsx
 !refs_tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx
+# 'Monitoreo de Actividades' (eje Administrativo): recortado a header-only con
+# tools/limpiar_refs.py (6599 -> 9 filas: banner + los 26 nombres de columna) y
+# verificado sin PII (0 RUT, 0 correos, 0 telefonos; el 'GENERADO PARA:' viene
+# vacio). Es la contraparte admin del A/D/A de IRIS, y la evidencia de que NO es
+# un gemelo suyo: no trae ATEN ID ni demografia. OJO: el export CRUDO de este
+# reporte SI tiene PII -- lleva columnas RUN y PACIENTE (nombre) -> nunca al repo.
+!refs_tablas/Monitoreo_de_Actividades_anonimizado.xlsx
 # Informe de Inscritos/Adscritos: recortado a header-only con tools/limpiar_refs.py
 # (92 nombres de columna, CERO filas de datos). Es la estructura que consume
 # programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible

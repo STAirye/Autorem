@@ -378,8 +378,9 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     _av = formatos.aviso_fuente(
         *d.attrs.get("fuente", (formatos.FUENTE_PLENA, [])),
         "Sin ATEN ID el conteo por atencion se rompe y las casillas del ADA "
-        "(A04/A06/A19a/A26/A32) salen en 1, no en su valor real. NO copiar esas "
-        "tablas al SA_26.",
+        "(A04/A06/A19a/A26/A32) salen en 1, no en su valor real; y sin 'AÑOS "
+        "ATENCION' las edades quedan vacias y las bandas etarias no se pueden "
+        "armar. NO copiar esas tablas al SA_26.",
         casilla="ADA (fuente de las casillas SM)")
     if _av:
         avisos.append(_av)
