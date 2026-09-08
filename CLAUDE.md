@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.3**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.4**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -72,6 +72,7 @@ tools/                utilitarios (no-REM)
   limpiar_refs.py         recorte header-only de refs_tablas/
   slim_maestro.py         genera el Maestro slim comprimido
   check_cp1252.py         verifica que los .py sean cp1252-safe — INSTALAR (§8.2)
+  check_version.py        coherencia de versionado/contadores (§9) — INSTALAR
   catalogos_deis.py       --check/--fetch/--slim de los catalogos DEIS (§14)
   scan_catalogo.py        escaner de PII previo a versionar un catalogo (§14)
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
@@ -80,7 +81,7 @@ catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
   eno.csv.gz              Notificacion Obligatoria (Decreto 7/2019), 448 pares
   ges.csv.gz              GES 90 problemas <-> CIE-10, 5.936 pares
   FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
-.claude/skills/       skills del repo: limpiar-refs · check-cp1252
+.claude/skills/       skills del repo: limpiar-refs · check-cp1252 · versionar
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas (143)
 docs/                 planes y contexto por módulo
@@ -475,8 +476,31 @@ solo binario, un solo `rem_utils.VERSION`):
 - **Z** = **corrección** del módulo en curso. Reinicia a 0 al sumar un módulo (Y++).
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
-romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.9.3**.
+romperse. Fuente de verdad en `rem_utils.VERSION`. La GUI la muestra en el título.
+Estado actual: **1.9.4**.
+
+**Cada `.py` lleva la versión de SU ÚLTIMO CAMBIO** (corregido sep-2026: este párrafo
+decía «todos se bumpean juntos», que nunca fue lo que pasó — había archivos en 1.8.2,
+1.8.3, 1.8.4, 1.9.0 y 1.9.1 conviviendo). Así el header informa *cuándo cambió ese
+archivo*; sincronizarlos todos ensuciaría el diff de cada versión y no diría nada que
+no diga ya `rem_utils.VERSION`.
+
+**Qué archivos llevan versión** (manifiesto derivado de la RUTA, no una lista a mano):
+`autorem.py`, `programas/`, `modulos/`, `tools/` **sí**; `tests/` y `__init__.py`
+**no**; `legacy/` **exento** — congelado a propósito en 1.1/1.2. Ojo: *exento* no es
+lo mismo que *prohibido*.
+
+**Todo esto lo verifica `tools/check_version.py`**, encadenado al pre-commit
+(§8.2). Revisa el manifiesto en las dos direcciones, que la versión esté declarada en
+§2 y §9, que exista la entrada del CHANGELOG, que los `.py` que commiteas declaren la
+versión actual, y que los contadores de tests calcen (estáticos, no corre pytest).
+`--arreglar` sincroniza lo automático y `--bump X.Y.Z` sube de versión de un viaje.
+Ver la skill **`versionar`**.
+
+**Guardarraíl anti-colisión:** dos sesiones en paralelo quisieron subir a 1.8.4 y a
+1.9.0 el mismo día (sep-2026) y hubo que detener ambas. El árbitro es el CHANGELOG:
+si ya tiene una versión mayor que `rem_utils.VERSION`, otra sesión avanzó y esta copia
+quedó atrás → el check bloquea y `--bump` rechaza cualquier número que no avance.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,

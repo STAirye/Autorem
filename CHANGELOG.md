@@ -10,6 +10,44 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.4] — 2026-09-08
+
+Herramienta de mantención: la versión arrastra cinco archivos y hacerlo a mano venía
+fallando.
+
+### Agregado
+- **`tools/check_version.py` + skill `versionar`**, encadenado al pre-commit detrás
+  del anti-RUT y del cp1252. Verifica:
+  - **el manifiesto en las DOS direcciones** — código distribuible sin `# Version:`,
+    y archivos fuera de esas rutas que se cuelan *con* versión. Se deriva de la RUTA,
+    no es una lista a mano (una lista sería otra cosa que se pudre: ya pasó con el
+    `.spec` ignorado). Al estrenarlo cazó un caso real: un header de versión que se
+    había colado en `tests/test_formatos_fuente.py`.
+  - que la versión esté declarada en **§2 y §9 de CLAUDE.md** (los dos sitios
+    concretos, no «que aparezca en algún lado» — la versión se cita también en prosa
+    y eso hacía pasar el chequeo con §2 desfasada);
+  - que exista la entrada del CHANGELOG;
+  - que los `.py` que se commitean declaren la versión actual;
+  - que los **contadores de tests** de CLAUDE.md calcen. Se cuenta **estáticamente**
+    (`def test_` da 143, igual que pytest): un hook de 30 segundos no lo usa nadie.
+- **`--arreglar`** sincroniza contadores y headers; **`--bump X.Y.Z`** sube la fuente
+  de verdad, los headers de lo modificado y CLAUDE.md de un viaje. La entrada del
+  CHANGELOG queda a mano **a propósito**: el qué y el porqué no los inventa un script.
+- **Guardarraíl anti-colisión.** Dos sesiones en paralelo quisieron subir a 1.8.4 y a
+  1.9.0 el mismo día, y hubo que detener ambas: los dos números eran defendibles por
+  separado, así que nada los frenaba hasta que chocaban. El árbitro es el CHANGELOG —
+  si ya tiene una versión mayor que `rem_utils.VERSION`, otra sesión avanzó y esta
+  copia quedó atrás. El check bloquea y `--bump` rechaza cualquier número que no
+  avance respecto de lo publicado.
+
+### Corregido
+- **CLAUDE.md §9 decía una convención que nunca se cumplió**: «todos los `.py` se
+  bumpean juntos», con archivos en 1.8.2, 1.8.3, 1.8.4, 1.9.0 y 1.9.1 conviviendo. Se
+  corrigió a la práctica real —**cada `.py` lleva la versión de su último cambio**—,
+  que además es más informativa: el header dice cuándo cambió ese archivo.
+- Se quitó el `# Version:` que se había colado en `tests/test_formatos_fuente.py`
+  (los tests no se distribuyen, no llevan versión).
+
 ## [1.9.3] — 2026-09-08
 
 Con la muestra del 'Monitoreo de Actividades' en `refs_tablas/` se pudo medir en vez
