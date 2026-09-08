@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -32,7 +32,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from programas import formatos
-from programas.rem_utils import (leer_xlsx, resolver_columnas, MAPA_ATENCIONES,
+from programas.rem_utils import (leer_xlsx, resolver_columnas, MAPA_ATENCIONES, norm,
                                  cargar_canonico)
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -129,7 +129,7 @@ def test_cargar_canonico_deja_el_veredicto_en_attrs():
 def test_el_monitoreo_real_clasifica_como_parcial():
     """El otro extremo, contra el archivo REAL (header-only, sep-2026): el
     'Monitoreo de Actividades' del eje Administrativo tiene que dar 'parcial', con
-    las SEIS claves ausentes. Es la contraparte del test del ADA IRIS: uno protege
+    las CINCO claves demograficas ausentes. Es la contraparte del test del ADA IRIS: uno protege
     contra falsos positivos, este contra falsos negativos."""
     hdr, _filas = leer_xlsx(MONITOREO)
     col = resolver_columnas(hdr, MAPA_ATENCIONES)
@@ -148,6 +148,83 @@ def test_el_monitoreo_igual_pasa_las_requeridas_de_cargar_atenciones():
     col = resolver_columnas(hdr, MAPA_ATENCIONES)
     for k in ("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"):
         assert col.get(k), f"{k} dejo de resolver en el Monitoreo"
+
+
+# -- Equivalencias admin encontradas con la muestra (v1.9.3) ------------------
+
+@pytest.mark.skipif(not ADA_IRIS.exists(), reason="falta el export IRIS de ejemplo")
+def test_en_iris_la_edad_del_rem_nunca_cae_al_anos_pelado():
+    """GUARDARRAIL de la trampa semantica: 'AÑOS' significa cosas DISTINTAS en los
+    dos reportes (IRIS = edad a la DESCARGA; Monitoreo = edad a la ATENCION). El
+    mapa resuelve por orden, asi que en IRIS debe ganar SIEMPRE 'AÑOS ATENCION'.
+    Si RAYEN lo renombrara, el fallback daria edad-a-la-descarga en silencio: este
+    test es lo unico que lo atrapa."""
+    col = resolver_columnas(leer_xlsx(ADA_IRIS)[0], MAPA_ATENCIONES)
+    assert "ATENCION" in norm(col["ANOS_AT"]), col["ANOS_AT"]
+    assert norm(col["ANOS_AT"]) != norm(col["ANOS"])   # no son la misma columna
+
+
+@pytest.mark.skipif(not MONITOREO.exists(), reason="falta el Monitoreo de ejemplo")
+def test_en_el_monitoreo_las_equivalencias_admin_resuelven():
+    """El Monitoreo no tiene ATEN ID ni 'AÑOS ATENCION', pero SI equivalentes:
+    'N°' agrupa las filas de una atencion, y su 'AÑOS' ya es a la atencion
+    (confirmado por el autor contra enero-2026)."""
+    col = resolver_columnas(leer_xlsx(MONITOREO)[0], MAPA_ATENCIONES)
+    assert col["ATENID"] == "N°"
+    assert norm(col["ANOS_AT"]) == norm("AÑOS")
+    assert col["PROF"] == "FUNCIONARIO"
+
+
+@pytest.mark.skipif(not MONITOREO.exists(), reason="falta el Monitoreo de ejemplo")
+def test_atenid_del_monitoreo_no_entra_en_la_firma_iris():
+    """Al darle equivalente admin a ATENID hubo que sacarlo de SOLO_IRIS_ATENCIONES:
+    si no, el Monitoreo clasificaria 'cambiada' (mensaje para el dev) en vez de
+    'parcial' (mensaje para el usuario)."""
+    assert "ATENID" not in formatos.SOLO_IRIS_ATENCIONES
+    col = resolver_columnas(leer_xlsx(MONITOREO)[0], MAPA_ATENCIONES)
+    assert formatos.clasificar_fuente(col)[0] == formatos.FUENTE_PARCIAL
+
+
+def test_el_correlativo_se_namespacea_por_archivo(tmp_path):
+    """El 'N°' del Monitoreo REINICIA en 1 en cada export. Al concatenar dos
+    archivos, dos atenciones distintas compartirian id y el conteo por-atencion
+    subcontaria EN SILENCIO. Deben quedar 4 ids distintos, no 2."""
+    import openpyxl
+    from programas.rem_utils import ATENID_CORRELATIVO
+    paths = []
+    for n in ("ene.xlsx", "feb.xlsx"):
+        wb = openpyxl.Workbook(); ws = wb.active
+        ws.append([ATENID_CORRELATIVO, "RUN", "FECHA CONSULTA",
+                   "ACTIVIDAD Y/O PROCEDIMIENTO", "DIAGNOSTICO", "INSTRUMENTO",
+                   "TIPO DE ATENCION"])
+        for i in (1, 2):        # el MISMO correlativo en los dos archivos
+            ws.append([i, "11111111-1", "01/01/2026", "act", "dx", "Medico", "Esp"])
+        p = tmp_path / n; wb.save(p); paths.append(p)
+
+    d, _col = cargar_canonico(list(paths), None,
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+                              log=lambda *a, **k: None)
+    assert d["ATENID"].nunique() == 4, "dos atenciones distintas se fusionaron"
+    assert all("|" in v for v in d["ATENID"])
+
+
+def test_el_aten_id_de_iris_NO_se_namespacea(tmp_path):
+    """Contrapartida: el ATEN ID de IRIS es global y unico, asi que si el mismo
+    aparece en dos exports que se solapan tiene que DEDUPLICAR, no contarse dos
+    veces. Namespacearlo romperia eso."""
+    import openpyxl
+    paths = []
+    for n in ("a.xlsx", "b.xlsx"):
+        wb = openpyxl.Workbook(); ws = wb.active
+        ws.append(["ATEN ID", "NUMERO TIPO IDENTIFICACION", "FECHA ATENCION",
+                   "ACTIVIDADES", "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION"])
+        ws.append([9001, "11111111-1", "01/01/2026", "act", "dx", "Medico", "Esp"])
+        p = tmp_path / n; wb.save(p); paths.append(p)
+
+    d, _col = cargar_canonico(list(paths), None,
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+                              log=lambda *a, **k: None)
+    assert d["ATENID"].nunique() == 1, "el ATEN ID global no debe namespacearse"
 
 
 def test_sin_solo_iris_no_clasifica_nada():

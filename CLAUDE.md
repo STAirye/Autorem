@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.2**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.3**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -47,7 +47,7 @@ A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a
 **SM Rescate de Inasistentes (en validación, ver §2.1)** +
 **hoja «LEEME» de cobertura (`programas/cobertura.py`, ver §12)** +
 **catálogos oficiales DEIS: CIE-10 / ENO / GES (`programas/catalogos.py`, ver §14)** +
-dispatcher con perfiles y GUI de pestañas. **138 tests.**
+dispatcher con perfiles y GUI de pestañas. **143 tests.**
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -82,7 +82,7 @@ catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
   FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
 .claude/skills/       skills del repo: limpiar-refs · check-cp1252
 legacy/               versiones viejas (no se importan)
-tests/                pruebas automáticas (138)
+tests/                pruebas automáticas (143)
 docs/                 planes y contexto por módulo
 refs_tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
   specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
@@ -295,18 +295,27 @@ no cosméticas. Banner MINSAL + header en fila 9 (el `HEADER_ADMIN` de siempre).
 
 | Clave | En el Monitoreo | Consecuencia |
 |---|---|---|
-| `RUN` `FECHA` `ACT` `DIAG` `INSTR` `TIPO` `SEXO` `SECTOR` `ANOS` | **sí** | por eso cargaba **sin chistar**: pasa todas las `requeridas` de `cargar_atenciones` |
+| `RUN` `FECHA` `ACT` `DIAG` `INSTR` `TIPO` `SEXO` `SECTOR` | **sí** | por eso cargaba **sin chistar**: pasa todas las `requeridas` de `cargar_atenciones` |
 | `DIAG` (contenido) | texto **sin código ICD** | Ira Alta (`j0`) · Bronquitis (`J20`) · EPOC exac. (`J44.1`) = **0** |
-| `ATENID` | **no** | SM cuenta con `drop_duplicates(casilla, sub, id)` -> **cada casilla colapsa a 1** |
-| `ANOS_AT` (edad a la ATENCIÓN) | **no** (solo `ANOS`, edad a la descarga) | SM: edades vacías -> bandas etarias rotas. **El A23 no se ve afectado: usa `ANOS`** |
-| `ALERTAS` `PUEBLO` `NACION` `FNAC` `FORMCLIN` | **no** | sin demografía (SENAME, Mejor Niñez, migrante, pueblo, gestante) |
-| `PROF` | trae `FUNCIONARIO`, que el mapa no matchea | Trabajo Perdido sin funcionario (§12) |
+| `ATENID` | **equivalente: `N°`** (v1.9.3) | correlativo 1..N que agrupa las filas de una atención. Medido: 2625 atenciones en 6590 filas, **0 con cabecera inconsistente**. Sirve para contar, pero **reinicia en 1 por export** -> `cargar_canonico` lo namespacea con el nombre del archivo |
+| `ANOS_AT` | **equivalente: `AÑOS`** (v1.9.3) | ⚠ **trampa semántica**: en IRIS `AÑOS` es edad a la **descarga** y la buena es `AÑOS ATENCIÓN`; en el Monitoreo **`AÑOS` ya es a la atención** (confirmado contra enero-2026). El mapa resuelve por orden, así que en IRIS gana siempre `AÑOS ATENCIÓN`; hay un test que lo fija |
+| `PROF` | **equivalente: `FUNCIONARIO`** (v1.9.3) | el mismo dato con otro nombre |
+| `ALERTAS` `PUEBLO` `NACION` `FNAC` `FORMCLIN` | **no, y no hay equivalente** | sin demografía: SENAME, Mejor Niñez, migrante, pueblo originario, gestante |
 
-**Veredicto por módulo:** el **A23 sí es usable** con el Monitoreo (indicadores por
-actividad/instrumento/tipo + edad + sexo funcionan; solo caen los 3 por código ICD)
-— o sea el soporte parcial que este archivo documenta hace años **es real, no un
-residuo**. **SM no es usable**: falla el conteo *y* las edades. Desde v1.9.2 ambos
-casos avisan en la hoja LEEME en vez de salir callados.
+**Veredicto por módulo (v1.9.3).** Ambos son usables, con distinto recorte:
+
+- **A23:** indicadores por actividad/instrumento/tipo + edad + sexo funcionan; solo
+  caen los 3 por código ICD. Su `_edad` calcula desde `FECHA NACIMIENTO` a la fecha
+  de corte y cae al fallback `AÑOS` cuando no la hay — que es el caso del Monitoreo.
+- **SM:** los **conteos son válidos** desde v1.9.3 (`N°` + `AÑOS`). Lo que sale en 0
+  es **toda la demografía** (columnas AN–AV del SA_26). O sea: copiar los totales,
+  no las columnas demográficas.
+
+Lo único sin equivalente son las **cinco claves demográficas**, y no es casualidad
+— es exactamente lo que este reporte no puede dar. Por eso son las que forman
+`formatos.SOLO_IRIS_ATENCIONES`. **Al darle equivalente admin a una clave hay que
+sacarla de esa firma**, o el Monitoreo pasa a clasificar `cambiada` (mensaje para el
+dev) en vez de `parcial` (mensaje para el usuario); pasó con `ATENID`.
 
 **PII:** el export CRUDO del Monitoreo trae `RUN` y `PACIENTE` (nombre) -> **nunca
 al repo**. La copia versionada es header-only y verificada (§8).
@@ -467,7 +476,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.9.2**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.9.3**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -479,7 +488,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 138 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
+| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 143 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
 | **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
 | **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1: VDI PADDS por subtipo × visita, planes de cuidado a usuario y cuidador) | 📌 **anotado, sin implementar.** Nace del descarte del Trabajo Perdido SM (§12): las 24 VDI del PADDS no son SM y hoy no las tabula nadie. Base ya disponible: página «Dependencia» del PowerBI + `programas/poblacion.py` |
 | Cardiovascular | — | pendiente |
@@ -612,7 +621,7 @@ pyinstaller --onefile --windowed --name "autoREM" \
   Traslados FLAGEADOS, no excluidos** (corregido v1.9.1: el filtro duro original sacaba
   a los Fallecidos de Rescate_6m/13m en silencio, inconsistente con Traslados — ambos
   motivos vienen de un snapshot del Inscritos, no de un dato verificado). Suite:
-  **138 tests** (§2.1, en validación).
+  **143 tests** (§2.1, en validación).
 - **Sin espacios en ningún nombre del repo** — `refs tablas/` → **`refs_tablas/`** y
   el resto de archivos con espacio, renombrados. El espacio obligaba a comillar cada
   ruta y era un punto de falla recurrente. **Ojo:** las rutas viejas quedan muertas —
@@ -676,12 +685,6 @@ pyinstaller --onefile --windowed --name "autoREM" \
   (hoy solo GUI). Validar la GUI a ojo (doble-clic).
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
   (abandono vs clínica) y sumarlo al reporte final.
-- **`PROF` no resuelve en el 'Monitoreo de Actividades'** — el reporte trae
-  `FUNCIONARIO`, pero `MAPA_ATENCIONES["PROF"]` busca `["PROFESIONAL","ATENCION"]`.
-  Agregar `("exact", "FUNCIONARIO")` como alternativa es una línea. **Prioridad
-  baja a propósito:** el Trabajo Perdido comparte el ADA con SM, y SM con el
-  Monitoreo está roto igual (§5.1), así que arreglar `PROF` no lo vuelve
-  usable — sería codear una ruta que hoy ningún output consume.
 - **GUI 2.0:** migrar a customtkinter, agrupar pestañas por Programa de salud,
   About, **sacar la pestaña A03 standalone** (queda solo dentro de Actividades), y
   **eliminar el selector IRIS/Administrativo del A05** (sep-2026). Motivo: el

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -139,10 +139,18 @@ def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
 # usuario ("cargaste el archivo equivocado") sino al DEV ("RAYEN movio el piso,
 # actualiza el mapeo").
 
-# Claves canonicas presentes SOLO en el export IRIS pleno de atenciones.
-# Verificadas contra refs_tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx
-# (45 columnas, sep-2026). Ver MAPA_ATENCIONES en rem_utils.
-SOLO_IRIS_ATENCIONES = ("ATENID", "ALERTAS", "PUEBLO", "NACION", "FNAC", "FORMCLIN")
+# Claves canonicas presentes SOLO en el A/D/A de IRIS. Verificadas contra los DOS
+# archivos versionados: ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx (45 columnas) y
+# Monitoreo_de_Actividades_anonimizado.xlsx (26). Ver MAPA_ATENCIONES en rem_utils.
+#
+# Son las cinco DEMOGRAFICAS, y no es casualidad: es exactamente lo que el Monitoreo
+# no puede dar. Las de identidad/conteo salieron de esta lista al encontrarseles
+# equivalente admin (ATENID -> 'N°', PROF -> 'FUNCIONARIO', ANOS_AT -> 'AÑOS').
+#
+# OJO AL AGREGAR UN EQUIVALENTE ADMIN A MAPA_ATENCIONES: si la clave estaba aca, hay
+# que sacarla, o el Monitoreo pasa a clasificar 'cambiada' en vez de 'parcial' y el
+# aviso le habla al dev en vez de al usuario. Paso con ATENID (sep-2026).
+SOLO_IRIS_ATENCIONES = ("ALERTAS", "PUEBLO", "NACION", "FNAC", "FORMCLIN")
 
 FUENTE_PLENA    = "plena"       # estan todas: es el A/D/A de IRIS completo
 FUENTE_CAMBIADA = "cambiada"    # estan algunas: parece el A/D/A pero le faltan

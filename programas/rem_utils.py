@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.9.2"
+VERSION = "1.9.3"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -215,14 +215,25 @@ def resolver_columnas(headers, mapa):
 #       Los de texto (Neumonía/Influenza/Coqueluche) y los de ACTIVIDAD (KTR,
 #       espirometría, controles…) sí cuadran (verificado vs IRIS, jul-2026).
 #   (c) Estructura PADRE-HIJO -> forward-fill de cabecera en cargar_atenciones.
+# Nombre EXACTO de la columna correlativa del Monitoreo. Vive fuera del mapa porque
+# `cargar_canonico` necesita reconocerla para namespacearla (ver alla).
+ATENID_CORRELATIVO = "N°"
+
 MAPA_ATENCIONES = {
     "RUN":     [("subs", ["NUMERO", "IDENTIFICACION"]), ("exact", "RUN")],
-    "ATENID":  [("subs", ["ATEN", "ID"]), ("subs", ["ATENCION", "ID"])],  # solo IRIS
+    # IRIS: 'ATEN ID', global y unico. Monitoreo: 'N°', un correlativo 1..N que
+    # agrupa las filas de una misma atencion (verificado: 2625 atenciones en 6590
+    # filas, 0 con cabecera inconsistente). SIRVE para contar, pero REINICIA EN 1 en
+    # cada export -> cargar_canonico lo namespacea por archivo (ver alla). Sin eso,
+    # concatenar dos Monitoreos fusiona atenciones distintas y subcuenta EN SILENCIO.
+    "ATENID":  [("subs", ["ATEN", "ID"]), ("subs", ["ATENCION", "ID"]), ("exact", "N°")],
     "FECHA":   [("exact", "FECHA ATENCION"), ("exact", "FECHA CONSULTA")],
     "ACT":     [("exact", "ACTIVIDADES"), ("subs", ["ACTIVIDAD", "PROCEDIMIENTO"])],
     "DIAG":    [("exact", "DIAGNOSTICOS"), ("exact", "DIAGNOSTICO")],
     "INSTR":   ("exact", "INSTRUMENTO"),
-    "PROF":    ("subs", ["PROFESIONAL", "ATENCION"]),   # NOMBRE del funcionario que atendió (IRIS)
+    # NOMBRE del funcionario que atendió. IRIS lo llama 'PROFESIONAL ATENCION' y el
+    # Monitoreo 'FUNCIONARIO': el mismo dato con otro nombre.
+    "PROF":    [("subs", ["PROFESIONAL", "ATENCION"]), ("exact", "FUNCIONARIO")],
     "TIPO":    ("subs", ["TIPO", "ATENCION"]),          # 'TIPO ATENCION' | 'TIPO DE ATENCION'
     "SEXO":    ("exact", "SEXO"),
     "SECTOR":  ("exact", "SECTOR"),
@@ -236,7 +247,19 @@ MAPA_ATENCIONES = {
     "APAT":    ("subs", ["APELLIDO", "PATERNO"]),       # solo IRIS
     "AMAT":    ("subs", ["APELLIDO", "MATERNO"]),       # solo IRIS
     "ANOS":    ("exact", "AÑOS"),                        # edad a la DESCARGA
-    "ANOS_AT": [("subs", ["AÑOS", "ATENCION"]), ("subs", ["ANOS", "ATENCION"])],  # edad a la ATENCIÓN (REM)
+    # Edad a la ATENCIÓN — la que pide el REM para las bandas etarias.
+    # TRAMPA: el MISMO nombre de columna significa cosas DISTINTAS según el reporte.
+    #   IRIS      -> 'AÑOS' es edad a la DESCARGA; la buena es 'AÑOS ATENCION'.
+    #   Monitoreo -> NO tiene 'AÑOS ATENCION', y su 'AÑOS' YA es a la atención
+    #                (confirmado por el autor contra enero-2026; viene como triple
+    #                numérico AÑOS/MESES/DÍAS en la fila-padre de cada atención).
+    # Por eso el orden IMPORTA: 'AÑOS ATENCION' primero, y sólo si no está se cae al
+    # 'AÑOS' pelado. En IRIS la 1ª opción siempre gana, así que nunca se toma la
+    # edad-a-la-descarga por error. Si RAYEN renombrara 'AÑOS ATENCION' en IRIS, ese
+    # fallback pasaría a dar edad a la descarga EN SILENCIO -> lo cubre un test que
+    # exige que en IRIS esta clave resuelva a una columna que diga ATENCION.
+    "ANOS_AT": [("subs", ["AÑOS", "ATENCION"]), ("subs", ["ANOS", "ATENCION"]),
+                ("exact", "AÑOS")],
 }
 
 
@@ -280,9 +303,17 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
                     "Cárgalo tal como sale de RAYEN/IRIS, sin editar.")
         col0 = col0 or col
         idx = {c: i for i, c in enumerate(hdr)}
-        partes.append(pd.DataFrame(
+        parte = pd.DataFrame(
             {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
-             for k, c in col.items()}))
+             for k, c in col.items()})
+        # ATENID por CORRELATIVO ('N°' del Monitoreo) reinicia en 1 en cada export:
+        # concatenar dos archivos fusionaria atenciones distintas bajo el mismo id y
+        # el conteo por-atencion SUBCONTARIA en silencio. Se namespacea con el nombre
+        # del archivo. NO se toca el 'ATEN ID' de IRIS, que es global y unico: si el
+        # mismo ATEN ID aparece en dos exports que se solapan, tiene que deduplicar.
+        if col.get("ATENID") == ATENID_CORRELATIVO and "ATENID" in parte:
+            parte["ATENID"] = nombre + "|" + parte["ATENID"].astype(str)
+        partes.append(parte)
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
     if solo_iris:
         from programas import formatos

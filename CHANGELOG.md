@@ -10,6 +10,42 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.3] — 2026-09-08
+
+Con la muestra del 'Monitoreo de Actividades' en `refs_tablas/` se pudo medir en vez
+de suponer, y **SM pasó de inusable a usable** con esa fuente.
+
+### Agregado
+- **`ATENID` <- `N°`**: el Monitoreo no tiene ATEN ID, pero su correlativo agrupa las
+  filas de una atención (medido: 2625 atenciones en 6590 filas, **0 con cabecera
+  inconsistente**). Con esto el conteo de SM deja de colapsar cada casilla a 1.
+- **`ANOS_AT` <- `AÑOS`**: confirmado por el autor contra enero-2026 que el `AÑOS` del
+  Monitoreo es edad **a la atención**, no a la descarga.
+- **`PROF` <- `FUNCIONARIO`**: el mismo dato con otro nombre.
+- **Namespacing del correlativo por archivo** en `cargar_canonico`. El `N°` reinicia
+  en 1 en cada export, así que concatenar dos Monitoreos fusionaría atenciones
+  distintas bajo el mismo id y el conteo subcontaría **en silencio**. El `ATEN ID` de
+  IRIS **no** se namespacea: es global y único, y si aparece en dos exports que se
+  solapan tiene que deduplicar. Un test por cada lado. **143 tests.**
+
+### Cambiado
+- **`SOLO_IRIS_ATENCIONES` pierde `ATENID`.** Al darle equivalente admin, el
+  Monitoreo habría pasado a clasificar `cambiada` (mensaje para el dev) en vez de
+  `parcial` (mensaje para el usuario). Quedan las **cinco demográficas**, que es
+  exactamente lo que ese reporte no puede dar. Anotado como regla: dar equivalente
+  admin a una clave obliga a sacarla de la firma.
+- **El aviso de SM cambia de sentido**: ya no dice "los conteos salen en 1", dice que
+  los conteos son válidos y que lo que sale en 0 es **toda la demografía** (AN–AV del
+  SA_26) -> copiar los totales, no esas columnas.
+
+### Notas de diseño
+- ⚠ **Trampa semántica documentada**: `AÑOS` significa cosas DISTINTAS en los dos
+  reportes — en IRIS es edad a la **descarga** (la buena es `AÑOS ATENCIÓN`), en el
+  Monitoreo **ya es a la atención**. El mapa resuelve por orden y en IRIS gana siempre
+  `AÑOS ATENCIÓN`; si RAYEN lo renombrara, el fallback daría edad-a-la-descarga en
+  silencio, así que hay un test que exige que en IRIS resuelva a una columna que diga
+  ATENCIÓN.
+
 ## [1.9.2] — 2026-09-08
 
 `formatos.py` **fase 2**: el grupo pandas ya no procesa una fuente degradada en

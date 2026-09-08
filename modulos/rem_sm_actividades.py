@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.3
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -371,16 +371,16 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     d = cargar_atenciones(ada, log=log) if d is None else d
     d = marcar_demografia(d)
     avisos = []   # degradaciones de ESTA corrida -> hoja LEEME (programas/cobertura.py)
-    # Fuente PARCIAL (fase 2). Acá pega MÁS FUERTE que en el A23: el conteo es
-    # drop_duplicates(casilla, sub, id) con id = ATEN ID. Sin esa columna todas las
-    # filas comparten id "None" y CADA CASILLA COLAPSA A 1 evento. Ver
-    # formatos.clasificar_fuente.
+    # Fuente PARCIAL (fase 2). Desde v1.9.3 el Monitoreo YA NO rompe el conteo: se
+    # le encontró equivalente al ATEN ID ('N°') y a la edad-a-la-atención ('AÑOS').
+    # Lo que sigue sin tener equivalente es la DEMOGRAFÍA — y no por descuido: son
+    # datos que ese reporte simplemente no trae. Ver formatos.SOLO_IRIS_ATENCIONES.
     _av = formatos.aviso_fuente(
         *d.attrs.get("fuente", (formatos.FUENTE_PLENA, [])),
-        "Sin ATEN ID el conteo por atencion se rompe y las casillas del ADA "
-        "(A04/A06/A19a/A26/A32) salen en 1, no en su valor real; y sin 'AÑOS "
-        "ATENCION' las edades quedan vacias y las bandas etarias no se pueden "
-        "armar. NO copiar esas tablas al SA_26.",
+        "Los CONTEOS de A04/A06/A19a/A26/A32 son validos, pero TODA la demografia "
+        "sale en 0 (pueblos originarios, migrante, SENAME, Mejor Ninez, cuidador, "
+        "demencia, gestante): esas columnas no existen en la fuente. Copiar los "
+        "totales, NO las columnas demograficas (AN-AV del SA_26).",
         casilla="ADA (fuente de las casillas SM)")
     if _av:
         avisos.append(_av)
