@@ -68,12 +68,86 @@ diccionario que le faltaba al resto de la herramienta.
 - **Formato canónico de código = SIN punto** (`J209`, como el DEIS). RAYEN usa
   `J20.9`; todo cruce entre fuentes pasa por `norm_codigo`.
 
+### Cambiado
+- **Ningún archivo del repo con espacios en el nombre** (`ffcf800`, `e338e51`):
+  `refs tablas/` → `refs_tablas/` y barrido del resto (`legacy/`, `license ES.txt`,
+  las planillas de `refs_tablas/`). El espacio era un punto de falla real —
+  citarlo mal en un `--add-data`, en una ruta de shell o en un `.gitignore` fallaba
+  de formas poco obvias. `tools/catalogos_deis.py` ya baja los `.xlsx` del DEIS
+  normalizados (`DEIS_cie10_2026-08.xlsx`), aunque el nombre publicado traiga
+  espacios y tildes.
+
 ### Pendiente
 - Pestaña de **Consultas** en la GUI (buscador código↔glosa, ENO, GES y el anotador
   batch sobre un export). Hoy la capa es solo backend.
 - Enchufar `en_rango` en el A23 (asma = J09–J22 menos J19) cuando se toque ese
   módulo — hoy no lo consume nadie todavía.
-- `Homologación CIE-9 ↔ CIE-10` del DEIS: viene en `.xls`, que openpyxl no lee.
+
+### Descartado
+- **`Homologación CIE-9 ↔ CIE-10` del DEIS** — irrelevante: RAYEN ya usa solo
+  CIE-10. (Viene además en `.xls`, que openpyxl no lee.) Si algún día apareciera un
+  export con códigos CIE-9, se reevalúa.
+
+## [1.8.4] — 2026-09-08
+
+### Agregado
+- **Módulo `modulos/rem_sm_rescate_inasistentes.py`** (§8 del plan SP·P6) — reporte
+  OPERATIVO, no tributa al REM: `Rescate_6m` / `Rescate_13m` (misma lista de 7
+  actividades validada que `Activo 12m`, no el `contains "salud mental"` laxo del
+  DAX original), `Fallecidos_mes` (para no llamarlos, y para el egreso del A05 en
+  la fase 4), `Posibles_Traslados` (no se excluyen: se flagean para confirmar en
+  vez de perseguir un abandono) y `Brecha_Medico` (dx SM activo registrado SOLO por
+  un estamento no-médico). Reusa la tabla «Ferrada» que ya arma el P6 y corre junto
+  a él en la pestaña BETA, con `try` propio para que un fallo ahí no tumbe el P6.
+  Sin datos de contacto (§8.4: solo RUN). Hoja «LEEME» enganchada. **110 tests.**
+- **`poblacion.construir_poblacion(exigir_medico=False)`** — segunda pasada sin el
+  filtro de estamento médico, que `Brecha_Medico` necesita para comparar. Va con
+  **guardarraíl**: `rem_sp_p6_poblacion.construir_p6()` la **rechaza** si se la
+  pasan por error, porque esa pasada es exclusiva de esa hoja y alimentar el P6 con
+  ella daría una población inflada sin avisar.
+
+### Corregido
+- **`tools/limpiar_refs.py`: tres defectos**, encontrados al preguntar por qué el
+  `Informe_Inscritos` *header-only* pesaba 14 MB (55.002 × 92 celdas VACÍAS pero con
+  estilo: un recorte manual en Excel borró los valores, no las celdas).
+  - **`ListObject` colgando**: la tabla de Excel conservaba `ref="A1:CN55002"` tras
+    borrar las filas → Excel abría el archivo con «contenido ilegible» y lo
+    reparaba. Ahora se eliminan las tablas y el `auto_filter` de la hoja recortada.
+  - **Hoja sin header reconocible se saltaba EN SILENCIO** y el archivo se reportaba
+    «ya limpio» con miles de filas intactas (una lista angosta de <5 columnas pasaba
+    entera). Ahora emite AVISO por hoja y un total al final.
+  - **`_fila_header` inflaba el archivo**: escaneaba con `iter_rows(max_row=50)`,
+    que MATERIALIZA el rectángulo → agregaba 50 filas a cada hoja vacía del libro y
+    las persistía al guardar. Ahora cuenta sobre `_cells`, sin escribir.
+  - Además, `delete_rows()` de 55k × 92 movía ~5M celdas de a una: sobre
+    `UMBRAL_TRUNCADO` se trunca la cola directo (no hay nada debajo que desplazar).
+  - Resultado: el `Informe_Inscritos` queda en **8 KB** (14.316.495 → 8.257 bytes,
+    1733×) y, verificado header-only, entra a la whitelist del `.gitignore`.
+
+## [1.8.3] — 2026-09-07
+
+### Agregado
+- **Hoja «LEEME» de cobertura** (`programas/cobertura.py`, implementa
+  `docs/hoja_cobertura_plan.md`) — cada `.xlsx` de salida abre con una hoja que dice
+  qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej. las
+  Consultorías A06·A.2, que son manuales). Dos capas: lo **estructural** (catálogo
+  declarativo `COBERTURA`, fijo) + los **avisos de ESA corrida** (degradación por
+  fuente opcional no cargada), que cada módulo pandas acumula en `.attrs['avisos']`.
+  Fuente única que sirve los **dos** caminos de escritura del proyecto (pandas
+  `ExcelWriter` vacío y openpyxl con la hoja ya en el índice 0). Enganchada en
+  `sm_actividades`, `sm_trabajo_perdido`, `a23_respiratorio`, `sp_p6_poblacion`,
+  `a03_d3_instrumentos` y el A05 (vía `autorem._correr_tareas`).
+- **Test anti-olvido** `tests/test_cobertura.py`: descubre **por introspección** los
+  módulos de `modulos/` con `escribir()`/`TAREA` y falla si a alguno le falta su
+  entrada en `COBERTURA`. Un módulo nuevo no puede quedar sin declarar qué no cubre.
+  **100 tests.**
+
+### Herramientas
+- **`tools/check_cp1252.py --instalar`** — engancha el checker al hook `pre-commit`
+  **sin pisar** lo que ya haya (p.ej. `hook_pre_commit_rut.py`): convierte un `exec`
+  previo en invocación normal para poder encadenar y agrega este check a
+  continuación. Idempotente. Verificado en el repo: bloquea un commit con una flecha
+  Unicode de prueba (exit 1, nada se commitea) y deja pasar uno limpio.
 
 ## [1.8.2] — 2026-09-02
 

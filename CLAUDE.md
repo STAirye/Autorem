@@ -730,6 +730,9 @@ Hoy la capa es solo backend. Lo que expone y lo que justificaría UI:
 | **Anotador batch** de un export RAYEN | `anotar` | **sí — la que da sentido a la pestaña** |
 | Chequeo de actualizaciones | `tools/catalogos_deis.py --check` | no (el `.exe` es offline por diseño) |
 
-**Pendientes:** la pestaña misma; enchufar `en_rango` en el A23 (hoy no lo consume
-nadie todavía — regla: no codear lo que no se usa); y la `Homologación CIE-9 ↔
-CIE-10` del DEIS, que viene en `.xls` y openpyxl no lee (§13).
+**Pendientes:** la pestaña misma; y enchufar `en_rango` en el A23 (hoy no lo consume
+nadie todavía — regla: no codear lo que no se usa).
+
+**Descartado:** la `Homologación CIE-9 ↔ CIE-10` que publica el DEIS. **RAYEN ya usa
+solo CIE-10**, así que no hay nada que homologar (y viene en `.xls`, que openpyxl no
+lee, §13). Se reevalúa solo si aparece un export con códigos CIE-9.
