@@ -242,8 +242,55 @@ export es grande. Va con `load_workbook(read_only=True)` y **en un hilo**, con e
 en "detectando..." mientras tanto. Barato, pero no gratis: no llamarlo directo en el
 callback del `Examinar...`.
 
-**Modo oscuro:** el ámbar `#a05a00` sobre fondo oscuro no se lee. Si entra modo oscuro,
-estos colores necesitan su par (ver §4).
+### 5.2 Paleta (medida, no elegida a ojo)
+
+**Esquema tipo semáforo** (decisión del autor): verde-azulado = IRIS/plena, ámbar =
+Administrativo/parcial, rojo = no reconocido. La metáfora se entiende sola en un
+contexto clínico y no hay que enseñarla.
+
+**Por qué IRIS es verde-AZULADO y no verde puro:** verde contra rojo es justamente el
+par que se cae en deuteranopia (~8% de los hombres). Correr el verde hacia el eje azul
+lo separa del rojo para cualquier tipo de daltonismo, sin perder la lectura de "OK".
+No es crítico —la regla 1 de §5.1 ya obliga al label de texto, así que el color nunca
+carga el dato solo— pero sale gratis.
+
+**El texto NO se deriva del fondo en runtime.** Se fija un par (fondo, texto) por
+estado y por modo. Estos ya están medidos en **contraste WCAG** (1:1 = invisible,
+21:1 = negro sobre blanco; el mínimo AA para texto normal es **4.5:1**):
+
+| Estado | Modo | Fondo | Texto | Contraste |
+|---|---|---|---|---|
+| IRIS / `plena` | claro | `#E4F2EF` | `#0F4F45` | 8.20:1 |
+| IRIS / `plena` | oscuro | `#12312C` | `#8FD8C9` | 8.55:1 |
+| Admin / `parcial` | claro | `#FCF0DA` | `#A05A00` | **4.70:1** |
+| Admin / `parcial` | oscuro | `#33280F` | `#F0C070` | 8.60:1 |
+| No reconocido | claro | `#FBE6E4` | `#8C1D18` | 7.61:1 |
+| No reconocido | oscuro | `#3A1A18` | `#F2B8B4` | 9.17:1 |
+
+**Ojo con Admin claro: 4.70:1 es el único par ajustado**, apenas sobre el mínimo. Está
+así a propósito porque reusa el `#A05A00` que ya es el color de aviso del proyecto
+(continuidad con el Tk actual). **No aclarar ese texto ni oscurecer ese fondo** sin
+recalcular; los demás tienen holgura de sobra (todos sobre AAA = 7:1).
+
+Recalcular con esta fórmula si se tocan (WCAG 2.x, luminancia relativa):
+
+```python
+def lin(c):
+    c /= 255
+    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+def L(h):
+    h = h.lstrip("#"); r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+def ratio(a, b):
+    l1, l2 = sorted((L(a), L(b)), reverse=True)
+    return (l1 + 0.05) / (l2 + 0.05)
+```
+
+**Con esta tabla, el modo oscuro deja de ser un riesgo abierto** (§4): los colores
+sueltos que arrastra el Tk actual (`#888`, `#666`, `#c8801a`, `#5a3200`) se reemplazan
+por tokens de `widgets.py` con par claro/oscuro, en vez de quedar hardcodeados en cada
+página. `cambiada` (el estado dev-facing de `clasificar_fuente`) reusa el par ámbar; no
+necesita color propio.
 
 **Lo que NO se hace: permitir forzar el perfil.** Procesar un export con el perfil
 equivocado da números plausibles, callados y errados — exactamente lo que el proyecto
