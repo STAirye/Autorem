@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -60,8 +60,14 @@ except (AttributeError, ValueError):
 
 RAIZ = Path(__file__).resolve().parent.parent
 
+# 'worktrees': los worktrees de sesiones paralelas cuelgan de .claude/worktrees/,
+# o sea DENTRO del repo, y el rglob de abajo los barria. Son una copia de OTRA rama:
+# revisarlos desde aca hacia que un commit en main se cayera por codigo a medio
+# escribir de otra sesion. Se excluye 'worktrees' y no '.claude' entero porque en
+# .claude/ puede vivir un hook .py, y un hook que imprime a la consola de Windows es
+# justo lo que este checker tiene que revisar.
 EXCLUIR_DIRS = {".git", "__pycache__", ".pytest_cache", "build", "dist",
-                "venv", ".venv", ".mypy_cache"}
+                "venv", ".venv", ".mypy_cache", "worktrees"}
 
 # Simbolo problematico -> reemplazo ASCII (mismo criterio que la lista
 # "Usar ASCII" de la memoria 'solo-ascii-en-el-codigo'). Solo se auto-corrigen
