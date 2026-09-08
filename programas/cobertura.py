@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.1
+# Version: 1.9.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -119,12 +119,12 @@ COBERTURA = {
              "Falta la forma A/B -> sale 0", "A mano"),
             ("Formulario 'Otros Cronicos' en formato Administrativo", PENDIENTE,
              "Solo se lee el formato IRIS", "Descargar el formulario en IRIS"),
-            ("Ira Alta / Bronquitis / EPOC exacerbado", PENDIENTE,
-             "Si cargaste el Monitoreo Administrativo en vez del reporte IRIS, estos "
-             "indicadores salen en 0: el monitoreo trae el diagnostico en texto sin "
-             "codigo ICD. autoREM todavia no puede detectar cual de los dos cargaste "
-             "(depende de formatos.py fase 2)",
-             "Verifica que cargaste el export IRIS completo, no el Monitoreo Administrativo"),
+            # El caso "cargaste el Monitoreo Admin -> Ira Alta / Bronquitis / EPOC
+            # salen 0" vivia ACA como advertencia permanente porque el modulo no
+            # tenia como saber que fuente le habian dado. Con la fase 2 del eje de
+            # formatos ya se detecta, asi que paso de estructural a AVISO DINAMICO:
+            # solo aparece en las corridas donde de verdad pasa. Lo emite
+            # rem_a23_respiratorio via formatos.aviso_fuente().
         ],
     },
     "a05_o_egresos": {

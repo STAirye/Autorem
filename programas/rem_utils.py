@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.1
+# Version: 1.9.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.9.1"
+VERSION = "1.9.2"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -240,12 +240,20 @@ MAPA_ATENCIONES = {
 }
 
 
-def cargar_canonico(entrada, ancla, resolver, requeridas=None):
+def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
+                    log=print):
     """Lee UNO o VARIOS .xlsx (los reportes acumulativos necesitan varios años) y
     arma el DataFrame canónico concatenado. `resolver(headers) -> {canon: columna}`.
     `requeridas` = claves canónicas que DEBEN resolverse en CADA archivo; si a alguno
     le faltan, levanta ArchivoInvalido NOMBRANDO ese archivo (los módulos multi-archivo
-    así saben CUÁL falló). Devuelve (df, col_del_primero)."""
+    así saben CUÁL falló). Devuelve (df, col_del_primero).
+
+    `solo_iris` = claves que SOLO trae el export IRIS pleno (ej.
+    `formatos.SOLO_IRIS_ATENCIONES`). Si se pasan, clasifica la FUENTE y deja el
+    resultado en `df.attrs['fuente'] = (estado, ausentes)`, logueando cuando NO es
+    plena. Este es el único cuello de botella de carga del grupo pandas — ADA,
+    grupal, NSP y 'Otros y Respi' pasan todos por acá —, así que la fase 2 del eje
+    de formatos se engancha en UN solo punto. Ver `formatos.clasificar_fuente`."""
     import pandas as pd
     partes, col0 = [], None
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
@@ -276,6 +284,18 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None):
             {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
              for k, c in col.items()}))
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
+    if solo_iris:
+        from programas import formatos
+        estado, ausentes = formatos.clasificar_fuente(col0, solo_iris)
+        d.attrs["fuente"] = (estado, ausentes)
+        if estado == formatos.FUENTE_PARCIAL:
+            log(f"[fuente] PARCIAL: el archivo no es el export IRIS pleno (no trae "
+                f"ninguna de: {', '.join(ausentes)}). Los indicadores que dependen "
+                f"de esas columnas van a salir en 0 o incompletos.")
+        elif estado == formatos.FUENTE_CAMBIADA:
+            log(f"[fuente] EXPORT CAMBIADO: parece el IRIS pero le faltan columnas "
+                f"que antes traia: {', '.join(ausentes)}. O RAYEN cambio el export, "
+                f"o el archivo fue editado -> revisar MAPA_ATENCIONES.")
     return d, col0
 
 
@@ -305,8 +325,10 @@ def cargar_atenciones(entrada, log=print):
     """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico +
     textos normalizados (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
     import pandas as pd
+    from programas.formatos import SOLO_IRIS_ATENCIONES
     d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES),
-                             requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"))
+                             requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"),
+                             solo_iris=SOLO_IRIS_ATENCIONES, log=log)
     # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
     # de actividad, con RUN y datos de cabecera SOLO en la 1ª. Se rellena la cabecera
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su

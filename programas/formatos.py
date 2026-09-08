@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -99,6 +99,75 @@ def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
         if any(any(norm(m) in v for v in vals) for m in admin_markers):
             return "administrativo"
     return "desconocido"
+
+
+# -- Fuente PLENA vs PARCIAL en el grupo pandas (fase 2, sep-2026) ------------
+#
+# El grupo pandas (atenciones/NSP/grupal/'Otros y Respi') NO puede usar
+# `detectar_eje`: ese barre una hoja openpyxl buscando el banner y las anclas del
+# FORMULARIO clinico, y estos reportes no los traen.
+#
+# Y el problema de fondo es otro. Aca no falta una columna: la MISMA columna trae
+# menos. En el Monitoreo Administrativo la columna DIAGNOSTICO existe y resuelve
+# perfecto -- solo que viene en TEXTO, sin codigo ICD. `resolver_columnas` ve una
+# columna presente y sigue feliz, y los indicadores que matchean por codigo (Ira
+# Alta 'j0', Bronquitis 'J20', EPOC exacerbado 'J44.1') salen 0 SIN AVISAR. O sea:
+# mapear columnas no alcanza, hay que clasificar la FUENTE. El eje es lo unico que
+# habla de la CALIDAD de una columna, no de su existencia.
+#
+# Como NO hay muestra versionada del Monitoreo Administrativo, escribir una firma
+# positiva de ese lado seria inventarla -- justo el error que esto viene a evitar.
+# Se hace al reves: se prueba que la fuente es el IRIS PLENO por las claves que
+# SOLO el trae. Sale fail-safe: cualquier cosa que no se pruebe, avisa.
+#
+# La firma son CLAVES CANONICAS, no nombres de columna: el saber de headers vive
+# solo en MAPA_ATENCIONES y asi no puede desincronizarse de esto.
+#
+# EL CONTEO IMPORTA, no es todo-o-nada. Si RAYEN renombra una columna del IRIS, el
+# archivo SIGUE siendo el IRIS pleno; marcarlo "parcial" seria un falso positivo
+# recurrente, y un aviso que grita siempre deja de leerse -- ahi se pierde el
+# fail-loud entero. Por eso hay un TERCER desenlace, 'cambiada', que no le habla al
+# usuario ("cargaste el archivo equivocado") sino al DEV ("RAYEN movio el piso,
+# actualiza el mapeo").
+
+# Claves canonicas presentes SOLO en el export IRIS pleno de atenciones.
+# Verificadas contra refs_tablas/ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx
+# (45 columnas, sep-2026). Ver MAPA_ATENCIONES en rem_utils.
+SOLO_IRIS_ATENCIONES = ("ATENID", "ALERTAS", "PUEBLO", "NACION", "FNAC", "FORMCLIN")
+
+FUENTE_PLENA    = "plena"       # estan todas: es el IRIS completo
+FUENTE_CAMBIADA = "cambiada"    # estan algunas: parece IRIS pero le faltan
+FUENTE_PARCIAL  = "parcial"     # no esta ninguna: no es el IRIS pleno
+
+
+def clasificar_fuente(col, solo_iris=SOLO_IRIS_ATENCIONES):
+    """(estado, claves_ausentes) desde el dict {canonico: columna|None} que
+    devuelve `resolver_columnas`. Ver el bloque de arriba para el porque de los
+    tres estados."""
+    ausentes = [k for k in solo_iris if not col.get(k)]
+    if not ausentes:
+        return FUENTE_PLENA, []
+    return (FUENTE_PARCIAL if len(ausentes) == len(solo_iris)
+            else FUENTE_CAMBIADA), ausentes
+
+
+def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos"):
+    """Tupla (casilla, estado, motivo, que_hacer) para la hoja LEEME, o None si la
+    fuente es plena. `consecuencia` = que se degrada EN ESE MODULO (lo sabe el
+    modulo, no esta capa: al A23 le mata los indicadores por codigo ICD, al SM le
+    mata el ATEN ID que es su unidad de conteo)."""
+    if estado == FUENTE_PLENA:
+        return None
+    faltan = ", ".join(ausentes)
+    if estado == FUENTE_PARCIAL:
+        return (casilla, "FUENTE PARCIAL",
+                f"El archivo no es el export IRIS pleno (no trae NINGUNA de: "
+                f"{faltan}). {consecuencia}",
+                "Descargar el reporte desde IRIS, no el Monitoreo Administrativo")
+    return (casilla, "EXPORT CAMBIADO",
+            f"Parece el IRIS pero le faltan columnas que antes traia: {faltan}. "
+            f"O RAYEN cambio el export, o el archivo fue editado. {consecuencia}",
+            "Avisar al dev: hay que actualizar MAPA_ATENCIONES / SOLO_IRIS_ATENCIONES")
 
 
 def fila_encabezado_admin(ws, ancla=ANCLA_ADMIN, max_filas=MAX_FILAS_HEADER):

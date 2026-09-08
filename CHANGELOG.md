@@ -10,6 +10,48 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.2] — 2026-09-08
+
+`formatos.py` **fase 2**: el grupo pandas ya no procesa una fuente degradada en
+silencio. Era el último agujero de "número plausible pero callado y errado" que
+quedaba abierto en el proyecto.
+
+### Agregado
+- **Clasificación de fuente `plena` / `cambiada` / `parcial`**
+  (`formatos.clasificar_fuente` + `aviso_fuente`), enganchada en
+  `rem_utils.cargar_canonico` — el cuello de botella único por el que pasan ADA,
+  grupal, NSP y 'Otros y Respi', así que la fase 2 entra en UN punto y no en cinco.
+  El veredicto queda en `df.attrs['fuente']` y se loguea cuando no es plena.
+- **Aviso de fuente en la hoja LEEME** para A23 y SM Actividades. El texto del A23
+  que vivía como advertencia PERMANENTE en `cobertura.py` se borró: ahora sale
+  **solo en las corridas donde de verdad pasa**.
+- `tests/test_formatos_fuente.py` (12 tests), con un guardarraíl contra falsos
+  positivos: el export IRIS versionado **tiene** que clasificar como `plena`.
+  **136 tests.**
+
+### Notas de diseño
+- **Se clasifica la FUENTE, no las columnas.** El problema nunca fue una columna
+  ausente: en el Monitoreo Admin `DIAGNOSTICO` existe y resuelve perfecto, solo que
+  trae texto sin código ICD, y por eso Ira Alta / Bronquitis / EPOC exacerbado
+  salían 0. `resolver_columnas` no puede ver eso — solo el eje habla de la CALIDAD
+  de una columna, no de su existencia.
+- **Firma negativa**, porque no hay muestra versionada del Monitoreo Admin y
+  escribir firmas positivas de ese lado sería inventarlas. Se prueba que ES el IRIS
+  pleno; lo que no se pruebe, avisa. Fail-safe ante formatos que aún no existen.
+- **Tres estados, no dos.** `cambiada` existe para el día que RAYEN renombre una
+  columna del IRIS: sin ese estado sería un falso «parcial» permanente, y un aviso
+  que grita siempre deja de leerse. `parcial` le habla al usuario («bajaste el
+  archivo equivocado»), `cambiada` al dev («hay que actualizar el mapeo»).
+- La firma son **claves canónicas**, no nombres de columna, para que el saber de
+  headers viva sólo en `MAPA_ATENCIONES` y no pueda desincronizarse.
+
+### Corregido
+- **Descubrimiento colateral: en SM la fuente parcial no degrada, ROMPE.** El
+  conteo es `drop_duplicates(casilla, sub, id)` con `id = ATEN ID`; sin esa columna
+  todas las filas comparten id `"None"` y **cada casilla colapsa a 1 evento**. Antes
+  eso salía sin una palabra. Ahora el aviso lo dice y pide NO copiar esas tablas al
+  SA_26.
+
 ## [1.9.1] — 2026-09-08
 
 ### Corregido

@@ -5,7 +5,7 @@ The human author reviewed, modified, and integrated the content.
 Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 Copyright (C) 2026 Simon Tobar
 SPDX-License-Identifier: GPL-3.0-or-later
-Version: 1.9.1
+Version: 1.9.2
 -->
 
 # Plan — Hoja «LEEME»: qué NO cubre autoREM
@@ -17,8 +17,8 @@ Version: 1.9.1
 >
 > Este documento pasa de plan a **referencia del catalogo**: al agregar un modulo o
 > cambiar que cubre, se edita `COBERTURA` y se refleja aca (§3). Lo unico que sigue
-> abierto es el aviso de fuente Admin parcial del A23 — **§4.1**, bloqueado por
-> `formatos.py` fase 2.
+> abierto es el checklist completo del REM (D1, §8). El aviso de fuente Admin
+> parcial del A23 quedo CERRADO en v1.9.2 — ver §4.1.
 
 ---
 
@@ -221,24 +221,35 @@ Puntos a instrumentar (linea = donde esta hoy el `log(...)`):
 | `rem_saludmental` | `:366` | perfil **administrativo** | Pueblos Originarios · SENAME · Prot. Ninez · Migrante · Trans salen **vacias** |
 | `rem_a03_d3_instrumentos` | `:253` | sin 'Utilizacion de Cupos' | Columna **Estamento** vacia |
 
-### 4.1 Un aviso que NO se puede emitir todavia — decir la verdad
+### 4.1 El aviso que no se podia emitir — DESBLOQUEADO (v1.9.2)
 
 El caso **«fuente Monitoreo Administrativo -> Ira Alta / Bronquitis / EPOC-exac.
-salen 0»** (A23) es el mas peligroso de todos, y **no se puede implementar en este
-plan**: el grupo pandas hoy **no detecta eje explicito** — `resolver_columnas`
-prueba IRIS/Admin y toma lo que matchee, asi que el modulo no *sabe* que la fuente
-era parcial (CLAUDE.md, `formatos.py` fase 2).
+salen 0»** (A23) era el mas peligroso de todos y quedo fuera de la v1: el grupo
+pandas no detectaba eje, asi que el modulo no *sabia* que la fuente era parcial.
+Vivio como advertencia **estructural** permanente en `cobertura.py`.
 
-**No inventar una deteccion ad-hoc aqui.** Depende de la fase 2 de `formatos.py`.
-Mientras tanto, ponerlo en la capa **estructural** del A23 como advertencia
-permanente:
+**Cerrado por `formatos.py` fase 2** (v1.9.2). Hoy es un **aviso dinamico**: sale
+solo en las corridas donde de verdad pasa, y el texto estructural se borro. Lo
+emiten los modulos con `formatos.aviso_fuente(*d.attrs["fuente"], consecuencia)`.
 
-> *"Si cargaste el **Monitoreo Administrativo** en vez del reporte IRIS, los
-> indicadores de Ira Alta, Bronquitis y EPOC exacerbado salen en **0** — el
-> monitoreo trae el diagnostico en texto sin codigo ICD. autoREM todavia no puede
-> detectar cual de los dos cargaste."*
+Tres cosas del diseno que conviene no deshacer:
 
-Al cerrar `formatos.py` fase 2, ese texto pasa de estructural a aviso dinamico.
+1. **Se clasifica la FUENTE, no las columnas.** El problema nunca fue una columna
+   ausente: en el Monitoreo Admin `DIAGNOSTICO` **existe y resuelve perfecto**, solo
+   que trae texto sin codigo ICD. `resolver_columnas` no puede verlo — solo el eje
+   habla de la CALIDAD de una columna, no de su existencia.
+2. **La firma es negativa** (probar que ES el IRIS pleno), porque no hay muestra
+   versionada del Monitoreo Admin y escribir firmas positivas de ese lado seria
+   inventarlas. Sale fail-safe: lo que no se prueba, avisa.
+3. **Tres estados, no dos.** `cambiada` (algunas claves, no ninguna) existe para el
+   dia que RAYEN renombre una columna del IRIS: sin ese estado seria un falso
+   «parcial» permanente, y un aviso que grita siempre deja de leerse.
+
+**Descubrimiento colateral, peor que el original:** en **SM** la fuente parcial no
+degrada, **rompe**. El conteo es `drop_duplicates(casilla, sub, id)` con
+`id = ATEN ID`; sin esa columna todas las filas comparten id `"None"` y **cada
+casilla colapsa a 1 evento**. El aviso lo dice y pide explicitamente NO copiar esas
+tablas al SA_26.
 
 ---
 
@@ -247,7 +258,7 @@ Al cerrar `formatos.py` fase 2, ese texto pasa de estructural a aviso dinamico.
 Nombre: **`LEEME`** (primera hoja del libro).
 
 ```
-autoREM 1.9.1 - QUE NO INCLUYE ESTA PLANILLA
+autoREM 1.9.2 - QUE NO INCLUYE ESTA PLANILLA
 REM: SA_26 - Salud Mental (A04 / A06 / A19a / A26 / A27 / A32)
 Mes reportado: 2026-07     Generado: 2026-09-07 18:40
 Entradas: ADA_julio.xlsx · Grupal_julio.xlsx
@@ -340,8 +351,7 @@ Suite actual: **94 tests**. Estos suman ~6.
 - **Checklist completo del REM** extraido del `SA_26.xlsm`/`SP_26.xlsm` (D1). Si
   algun dia se quiere: los templates ya estan versionados y la mascara de
   proteccion del P6 es el precedente de "extraer del archivo, no transcribir".
-- Emitir el aviso de **fuente Monitoreo Admin parcial** en el A23 (§4.1): depende
-  de `formatos.py` fase 2.
+- ~~Aviso de fuente Monitoreo Admin parcial en el A23~~ — HECHO en v1.9.2 (§4.1).
 - Tocar el contenido de las hojas existentes. Esto **solo agrega** una hoja.
 
 ---
