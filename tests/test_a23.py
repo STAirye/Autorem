@@ -201,6 +201,58 @@ def test_seccion_h():
     assert h.loc["TOTAL", "Total"] == 3                # junio y Consulta SAC fuera
 
 
+# -- Guardarraíl de mes vacío (CLAUDE.md §3: fail loud, como el A05) --
+def test_mes_sin_atenciones_falla_duro():
+    """Sin atenciones del mes los 27 indicadores salen 'NO' y el detalle se lee como
+    un mes de cero actividad. Es archivo/mes equivocado -> ArchivoInvalido."""
+    from programas.rem_utils import ArchivoInvalido
+    rows = [{"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2025, 7, 10),
+             "DIAGNOSTICOS": "J20.9 Bronquitis aguda", "INSTRUMENTO": "Médico"}]
+    try:
+        a23.procesar(_mk(rows), mes=(2026, 7), log=_quiet)
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "07/2026" in str(e)
+        return
+    raise AssertionError("un export que no cubre el mes debió levantar ArchivoInvalido")
+
+
+def test_indicador_en_cero_con_el_mes_cubierto_no_falla():
+    """La guarda es sobre la FUENTE: con el mes cubierto, un indicador en 0 (acá
+    Bronquitis, que nadie tuvo) es legítimo y la corrida sigue."""
+    rows = [{"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2026, 7, 10),
+             "DIAGNOSTICOS": "J06.9 IRA alta", "INSTRUMENTO": "Médico"}]
+    f = a23.procesar(_mk(rows), mes=(2026, 7), log=_quiet).set_index("RUN")
+    assert f.loc["A", "REMA23 Ira Alta"] == "SI"
+    assert f.loc["A", "REMA23 Bronquitis Aguda"] == "NO"     # 0 legítimo, sin excepción
+
+
+def test_seccion_h_nsp_de_otro_mes_falla_duro():
+    """El NSP es opcional, pero si se carga tiene que cubrir el mes: si no, la
+    Sección H sale en cero y parece que nadie faltó a su cita."""
+    import pandas as pd
+    from programas.rem_utils import ArchivoInvalido
+    nsp = _mk_nsp([{"instr": "Médico", "tipo": "Control IRA", "fecha": "10-06-2026 09:00:00",
+                    "run": "A", "anos": 40}])
+    d = a23.cargar_inasistentes(nsp)
+    try:
+        a23._seccion_h(d, pd.Timestamp(2026, 7, 1), pd.Timestamp(2026, 7, 31))
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "NSP" in str(e)
+        return
+    raise AssertionError("un NSP que no cubre el mes debió levantar ArchivoInvalido")
+
+
+def test_seccion_h_sin_ira_era_en_el_mes_no_falla():
+    """…pero el filtro Control/Ingreso IRA/ERA va DESPUÉS: un mes con inasistencias
+    que no son respiratorias da Sección H = 0, y eso es legítimo."""
+    import pandas as pd
+    nsp = _mk_nsp([{"instr": "Médico", "tipo": "Consulta SAC", "fecha": "11-07-2026 09:00:00",
+                    "run": "F", "anos": 40}])
+    d = a23.cargar_inasistentes(nsp)
+    h = a23._seccion_h(d, pd.Timestamp(2026, 7, 1), pd.Timestamp(2026, 7, 31)).set_index("Profesional")
+    assert h.loc["TOTAL", "Total"] == 0
+
+
 def test_fecha_col_avisa_ilegibles():
     """fecha_col cuenta y AVISA solo los valores no-vacíos ilegibles; los vacíos
     legítimos (blanco / None) quedan callados. Serie limpia -> sin aviso (CORR-1)."""

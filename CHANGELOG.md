@@ -10,6 +10,41 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.5] — 2026-09-08
+
+Los módulos pandas no cumplían la regla de fail loud (CLAUDE.md §3) para un mes SIN
+datos: el A05 levanta `ArchivoInvalido` cuando el mes no tiene formularios, pero
+cargar el export del año pasado —o equivocarse de mes en el spinbox— producía un
+`.xlsx` completo con todas las tablas en cero, con pinta de resultado legítimo y
+copiable al SA_26.
+
+### Agregado
+- **`rem_utils.filtrar_mes(d, ini, fin, fuente)`** — punto único del filtro de mes
+  con guardarraíl. 0 filas del mes -> `ArchivoInvalido("mes_vacio")` con el span real
+  del archivo en el mensaje ("cubre 01/2025 a 12/2025, pediste 07/2026"), y mensaje
+  aparte cuando ninguna fecha es legible (ahí lo que se revisa es el archivo, no el
+  spinbox). Misma categoría que el A05, así que `autorem._manejar_error` ya la muestra.
+- Tests de los DOS casos en A23, SM Actividades, Trabajo Perdido, P6 y Rescate
+  (143 -> 157).
+
+### Cambiado
+- **La guarda va sobre la FUENTE, nunca sobre la casilla.** Esa es la distinción que
+  hace al fix seguro: un mes cubierto con A27/A32·F2 en 0 es LEGÍTIMO y no falla. Por
+  eso los filtros que vienen DESPUÉS del mes se aplican aparte, sobre lo que devuelve
+  `filtrar_mes`: `Asiste=SI` del grupal y Control/Ingreso IRA/ERA de la Sección H.
+- Enganchada en las cinco fuentes que se filtran por mes: ADA de `sm_actividades`,
+  grupal, atenciones del `a23`, NSP de la Sección H y el ADA de `sm_trabajo_perdido`.
+  Las opcionales (grupal, NSP) también fallan duro: cargarlas fue decisión del usuario,
+  y un archivo de otro período deja sus casillas en cero sin que nadie lo note.
+- **NO se engancha** en `om` (el 'Otros y Respi' del A23 es histórico multi-año: un mes
+  sin formulario de calidad de vida es normal) ni en la familia población, donde el mes
+  es un CORTE sobre el snapshot de inscritos y no un filtro de filas.
+- **`poblacion._verificar_cobertura_fechas` ahora DEVUELVE sus avisos** y quedan en
+  `P.attrs['avisos']` -> hoja **LEEME** del P6 y del Rescate. Ahí el desfase no bloquea
+  (elegir un mes que el export no cubre es una decisión legítima del usuario; el mes
+  reportado no tiene por qué ser el anterior), pero deja de vivir solo en el log de la
+  corrida: queda escrito en la planilla, que es lo que se mira después.
+
 ## [1.9.4] — 2026-09-08
 
 Herramienta de mantención: la versión arrastra cinco archivos y hacerlo a mano venía

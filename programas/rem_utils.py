@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.4
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.9.4"
+VERSION = "1.9.5"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -533,6 +533,38 @@ def _rango_mes(mes):
     import pandas as pd
     y, m = mes if mes is not None else mes_anterior()
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
+
+
+def filtrar_mes(d, ini, fin, fuente, col="FECHA"):
+    """Filtra `d` al mes [ini, fin] por `col` y FALLA RUIDOSO si el export no
+    cubre ese mes. Punto ÚNICO donde los módulos pandas cumplen la regla del A05
+    (CLAUDE.md §3): un mes sin datos es un error del USUARIO — archivo del año
+    pasado, o mes mal elegido en el spinbox —, no un .xlsx lleno de ceros con
+    pinta de legítimo que alguien copia al SA_26.
+
+    El guardarraíl va sobre la FUENTE, nunca sobre la casilla: que una casilla
+    concreta dé 0 con el mes cubierto es LEGÍTIMO (A27 y A32·F2 lo hacen de
+    verdad) y no debe fallar. Por eso los filtros que vienen DESPUÉS del mes
+    (Asiste=SI del grupal, tipo de atención de la Sección H) se aplican aparte,
+    sobre lo que esta función devuelve.
+
+    `fuente` = nombre del reporte para el mensaje ('el ADA', 'el reporte NSP'...).
+    """
+    dm = d[(d[col] >= ini) & (d[col] <= fin)]
+    if len(dm):
+        return dm
+    if not d[col].notna().any():
+        raise ArchivoInvalido(
+            "mes_vacio",
+            f"En {fuente} ninguna fila tiene una fecha legible, así que no se "
+            f"puede saber si cubre {ini:%m/%Y}.\n\n"
+            "Revisa que sea el export correcto y que esté SIN modificar "
+            "(una columna de fecha reformateada a mano rompe la lectura).")
+    raise ArchivoInvalido(
+        "mes_vacio",
+        f"No hay filas de {ini:%m/%Y} en {fuente}.\n\n"
+        f"El archivo cargado cubre {d[col].min():%m/%Y} a {d[col].max():%m/%Y}.\n\n"
+        "Revisa el mes/año elegido, o carga el export que cubra ese período.")
 
 
 def mes_de_celda(v):

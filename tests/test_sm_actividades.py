@@ -20,6 +20,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 import modulos.rem_sm_actividades as sm   # noqa: E402
+from programas.rem_utils import ArchivoInvalido   # noqa: E402
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_sm_"))
 
@@ -79,6 +80,13 @@ def _mk_multi(rows):
 
 
 def _quiet(*_a, **_k): pass
+
+
+# El guardarraíl de mes (rem_utils.filtrar_mes) exige que el ADA CUBRA el mes pedido.
+# Los tests que solo miran el grupal necesitan una fila de relleno en el ADA: del mes,
+# pero de una actividad que no tributa a ninguna casilla SM (no mueve ningún conteo).
+_RELLENO_ADA = [{"run": "Z", "id": "Z1", "fecha": date(2026, 7, 15), "act": "Curacion simple",
+                 "instr": "Enfermero(a)", "sexo": "Hombre", "edad": 50}]
 
 
 def _run(ada_rows, grupal_rows=None, mes=(2026, 7)):
@@ -151,7 +159,7 @@ def test_ada_conteo_por_atenid():
 
 # -- Grupal cuenta por ASISTENCIA (sin dedup) + filtro Asiste=SI --
 def test_grupal_por_asistencia():
-    E, t = _run([], grupal_rows=[
+    E, t = _run(_RELLENO_ADA, grupal_rows=[
         # EDAD en TEXTO ('30 años…') como viene del export crudo del grupal
         {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": "30 años 2 meses 1 día"},
         {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "sexo": "Mujer", "edad": "31 años"},  # mismo día, 2º taller -> cuenta 2
@@ -168,10 +176,13 @@ def test_ventana_de_mes():
     E, _ = _run(
         [{"run": "A", "id": "1", "fecha": date(2026, 6, 30), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
          {"run": "B", "id": "2", "fecha": date(2026, 7, 1), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}],
-        grupal_rows=[{"run": "P", "fecha": date(2026, 8, 1), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "edad": 30}],
+        # el grupal SÍ cubre julio (si no, el guardarraíl de mes lo rechazaría), pero
+        # esa fila no asistió; la que asiste es de agosto -> ninguna de las dos cuenta
+        grupal_rows=[{"run": "P", "fecha": date(2026, 7, 20), "act": "Intervencion psicosocial grupal.", "asiste": "NO", "edad": 30},
+                     {"run": "Q", "fecha": date(2026, 8, 1), "act": "Intervencion psicosocial grupal.", "asiste": "SI", "edad": 30}],
     )
     assert _n(E, "A06") == 1        # solo la de julio
-    assert _n(E, "A06PG") == 0      # la grupal es de agosto
+    assert _n(E, "A06PG") == 0      # una es de agosto, la otra no asistió
 
 
 # -- A19a: ADA (individual) + grupal, y el guion evita comerse las VDI de A26 --
@@ -242,7 +253,7 @@ def test_a32f1_desagregado():
 
 # -- A27: A = asistentes (usuarios), B = sesiones (por prestador/fecha/actividad) --
 def test_a27_asistentes_y_sesiones():
-    E, t = _run([], grupal_rows=[
+    E, t = _run(_RELLENO_ADA, grupal_rows=[
         {"run": "X", "fecha": date(2026, 7, 10), "asiste": "SI", "edad": 30, "prest": "Dra A",
          "act": "Educación en grupo - Prevención de salud mental - Prevención trastorno mental"},
         {"run": "Y", "fecha": date(2026, 7, 10), "asiste": "SI", "edad": 40, "prest": "Dra A",
@@ -332,6 +343,71 @@ def test_trans_flag():
     assert _a06_tot(a06, "TRANS Femenina") == 1    # V (Femenino Trans)
     assert not bool(E.loc[E["run"] == "U", "dem_trans_m"].iloc[0])   # U cis
     assert not bool(E.loc[E["run"] == "U", "dem_trans_f"].iloc[0])
+
+
+# ======================================================================
+# Guardarraíl de mes vacío (CLAUDE.md §3: fail loud, como el A05)
+# ======================================================================
+def test_mes_sin_datos_falla_duro():
+    """El ADA del año pasado (o el mes mal elegido en el spinbox) NO puede producir
+    un .xlsx con todas las tablas en cero: eso se copia al SA_26 como si fuera real."""
+    try:
+        _run([{"run": "A", "id": "1", "fecha": date(2025, 7, 3), "act": "Controles Salud Mental  ;",
+               "instr": "Médico", "sexo": "Mujer", "edad": 30}], mes=(2026, 7))
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio"
+        assert "07/2026" in str(e) and "07/2025" in str(e)   # mes pedido y span real
+        return
+    raise AssertionError("un ADA que no cubre el mes debió levantar ArchivoInvalido")
+
+
+def test_fechas_ilegibles_falla_distinto():
+    """Todas las fechas ilegibles no es lo mismo que 'otro mes': mensaje aparte,
+    porque lo que hay que revisar es el archivo, no el spinbox."""
+    try:
+        _run([{"run": "A", "id": "1", "fecha": "no-es-fecha", "act": "Controles Salud Mental  ;",
+               "instr": "Médico", "sexo": "Mujer", "edad": 30}], mes=(2026, 7))
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "legible" in str(e)
+        return
+    raise AssertionError("un ADA sin fechas legibles debió levantar ArchivoInvalido")
+
+
+def test_casilla_en_cero_con_el_mes_cubierto_no_falla():
+    """El corazón del guardarraíl: la guarda es sobre la FUENTE, no sobre la casilla.
+    Con el mes cubierto, A27/A32 en 0 son legítimos (CLAUDE.md los da por esperables)
+    y la corrida tiene que llegar hasta las tablas."""
+    E, t = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+                  "instr": "Médico", "sexo": "Mujer", "edad": 30}])
+    assert _n(E, "A06") == 1
+    a27 = t["A27_Educacion_Prev"]
+    assert int(a27["A · Asistentes (usuarios)"].sum()) == 0        # 0 legítimo, sin excepción
+    assert int(t["A32_F1_Acciones_Remotas"]["Total"].sum()) == 0
+
+
+def test_grupal_de_otro_mes_falla_duro():
+    """El grupal es opcional, pero si se CARGA tiene que cubrir el mes: si no,
+    A06 psicosocial / A19a grupal / A27 salen en cero sin que nadie lo note."""
+    try:
+        _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+               "instr": "Médico", "sexo": "Mujer", "edad": 30}],
+             grupal_rows=[{"run": "P", "fecha": date(2026, 3, 5), "asiste": "SI", "edad": 30,
+                           "act": "Intervencion psicosocial grupal."}])
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "Grupales" in str(e)
+        return
+    raise AssertionError("un grupal que no cubre el mes debió levantar ArchivoInvalido")
+
+
+def test_grupal_del_mes_sin_asistencias_no_falla():
+    """…pero el filtro Asiste=SI va DESPUÉS del guardarraíl: un mes con talleres
+    a los que nadie asistió es un 0 legítimo, no un archivo equivocado."""
+    E, t = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+                  "instr": "Médico", "sexo": "Mujer", "edad": 30}],
+                grupal_rows=[{"run": "P", "fecha": date(2026, 7, 5), "asiste": "NO", "edad": 30,
+                              "act": "Intervencion psicosocial grupal."}])
+    assert _n(E, "A06PG") == 0
+    assert _cell_row(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal")["Ambos"] == 0
 
 
 def _main():

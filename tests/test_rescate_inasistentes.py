@@ -261,6 +261,33 @@ def test_escribir_hoja_leeme_primera_y_las_6_hojas():
         assert hoja in wb.sheetnames, wb.sheetnames
 
 
+# ======================================================================
+# Cobertura de fechas: acá el mes es CORTE, no filtro -> avisa, NO bloquea
+# ======================================================================
+def test_ada_desfasado_avisa_y_no_bloquea():
+    """Elegir agosto con un ADA que llega hasta febrero es una decisión legítima
+    del usuario (el mes NO tiene por qué ser el anterior), así que no se bloquea
+    como en los módulos de actividades — pero el desfase queda ESCRITO en la
+    hoja LEEME, no solo en el log que nadie relee."""
+    P = _poblacion([], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=MES)
+    avisos = P.attrs.get("avisos", [])
+    desfase = [a for a in avisos if a[1] == "INCOMPLETO"]
+    assert desfase, f"esperaba un aviso de desfase, hubo {avisos}"
+    assert "2026-08" in desfase[0][2] and "2026-02" in desfase[0][2]   # mes pedido y tope del ADA
+
+
+def test_aviso_de_desfase_llega_a_la_hoja_leeme():
+    ada_filas = [_sm("10000001-1", date(2026, 2, 10))]
+    E = resc.procesar(str(_mk_inscritos([{"rut": "10000001-1"}])), str(_mk_formulario([])),
+                      str(_mk_ada(ada_filas)), mes=MES, log=_quiet)
+    assert any(a[1] == "INCOMPLETO" for a in E.attrs["avisos"])
+    salida = _TMP / "rescate_desfase.xlsx"
+    resc.escribir(E, salida)
+    ws = openpyxl.load_workbook(salida)["LEEME"]
+    texto = "\n".join(str(c.value) for fila in ws.iter_rows() for c in fila if c.value)
+    assert "2026-08" in texto and "2026-02" in texto, "el desfase debe quedar en el LEEME"
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
               if k.startswith("test_") and callable(v)]

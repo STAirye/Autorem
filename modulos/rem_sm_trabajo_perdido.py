@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.3
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -97,7 +97,7 @@ REM) + Por_Funcionario (a quién avisar) + TP_Detalle (auditable).
 import pandas as pd
 
 from programas.rem_utils import (norm, cargar_atenciones, cargar_maestro, maestro_rem_map,
-                                 _rango_mes)
+                                 _rango_mes, filtrar_mes)
 from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
@@ -132,7 +132,10 @@ def analizar(d, ini, fin, rem_map=None, log=print):
     """`d` = ADA ya cargado (trae ACT_n, FECHA, PROF...). `rem_map` = {ACT_n -> NUM
     REM} del Maestro (opcional). Devuelve DataFrame de eventos PERDIDOS con
     `.attrs['tablas']` = {hoja: DataFrame}."""
-    dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)].copy()
+    # Fail loud (§3): sin atenciones del mes el reporte sale vacío y se lee como
+    # "no hubo trabajo perdido" — la buena noticia que no es. Guarda sobre la FUENTE:
+    # con el mes cubierto, 0 perdidas SÍ es un resultado legítimo (y el ideal).
+    dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)").copy()
     A = dm["ACT_n"]
     # Universo SM-ish MENOS lo que es de otro programa (PADDS/domiciliaria): la
     # exclusión va acá y no en TRIBUTA_SM_REM para que valga con y sin Maestro.

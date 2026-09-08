@@ -593,6 +593,19 @@ def test_bloques_pegables_fila28_es_bloque_propio():
     assert fila28.iloc[0]["Pegar_desde"] == "J28"    # 10-14 años, mujeres = primera banda abierta
 
 
+def test_desfase_de_fechas_queda_en_el_leeme_del_p6():
+    """El P6 usa el mes como CORTE (no filtra filas), así que un ADA que no llega
+    al mes NO bloquea: es decisión del usuario. Pero el desfase tiene que quedar
+    escrito en la hoja LEEME de la planilla, no solo en el log de la corrida."""
+    P = _poblacion([], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
+    assert any(a[1] == "INCOMPLETO" for a in P.attrs.get("avisos", [])), P.attrs.get("avisos")
+    salida = _TMP / "p6_desfase.xlsx"
+    p6mod.escribir(P, _p6(P), salida)
+    ws = openpyxl.load_workbook(salida)["LEEME"]
+    texto = "\n".join(str(c.value) for fila in ws.iter_rows() for c in fila if c.value)
+    assert "2026-08" in texto and "2026-02" in texto, "el desfase debe quedar en el LEEME"
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
               if k.startswith("test_") and callable(v)]

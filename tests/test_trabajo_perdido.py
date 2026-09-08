@@ -179,6 +179,25 @@ def test_solo_del_mes():
     assert len(E) == 1, "solo la atención de julio cuenta"
 
 
+# -- Guardarraíl de mes vacío (CLAUDE.md §3: fail loud, como el A05) --
+def test_mes_sin_datos_falla_duro():
+    """Un ADA que no cubre el mes daría 0 perdidas, y eso se lee como la buena
+    noticia que no es. Es archivo/mes equivocado -> ArchivoInvalido."""
+    try:
+        _run([_a("AG_Alta programa salud mental", "JUAN", fecha="10/07/2025")], mes=(2026, 7))
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "07/2026" in str(e)
+        return
+    raise AssertionError("un ADA que no cubre el mes debió levantar ArchivoInvalido")
+
+
+def test_cero_perdidas_con_el_mes_cubierto_no_falla():
+    """La guarda es sobre la FUENTE: con el mes cubierto, 0 perdidas es un
+    resultado legítimo (y el ideal), no un error."""
+    E = _run([_a("Consulta De Salud Mental", "ANA", fecha="10/07/2026")])   # tributa -> nada perdido
+    assert len(E) == 0
+
+
 def test_guarda_multihoja_rechaza():
     # ADA con datos en 2 hojas = modificado -> el loader debe rechazar.
     p = _TMP / "modificado.xlsx"

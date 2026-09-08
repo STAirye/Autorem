@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.4**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.5**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -47,7 +47,7 @@ A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a
 **SM Rescate de Inasistentes (en validación, ver §2.1)** +
 **hoja «LEEME» de cobertura (`programas/cobertura.py`, ver §12)** +
 **catálogos oficiales DEIS: CIE-10 / ENO / GES (`programas/catalogos.py`, ver §14)** +
-dispatcher con perfiles y GUI de pestañas. **143 tests.**
+dispatcher con perfiles y GUI de pestañas. **157 tests.**
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -83,7 +83,7 @@ catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
   FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
 .claude/skills/       skills del repo: limpiar-refs · check-cp1252 · versionar
 legacy/               versiones viejas (no se importan)
-tests/                pruebas automáticas (143)
+tests/                pruebas automáticas (157)
 docs/                 planes y contexto por módulo
 refs_tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
   specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
@@ -138,7 +138,7 @@ diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
 | Archivo | Rol |
 |---|---|
 | `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos, A03 screening, A23 respiratorio y **SM actividades**. Aviso "cargar exports SIN modificar" en todas las pestañas (`_aviso_sin_modificar`; un archivo tocado rompía el A23 en silencio). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez (`_correr_tareas` acepta `mes`→ filtra por FECHA FORMULARIO y nombra la salida `…_procesado_AAAA_MM.xlsx`). CLI = solo A05 (`--mes AAAA-MM`). Pestaña A05 con caja **Período** (Archivo completo / un mes) y `_tab_scroll`. *(Pendiente v2: migrar a customtkinter + agrupar pestañas por Programa de salud + About.)* |
-| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION`, guarda de `openpyxl`, + **lectura/clasificación de reportes** (compartida, la usan los módulos pandas): `leer_xlsx` (robusto a la 'dimension' rota), `resolver_columnas` (semántico exact/subs), `contiene_todos`/`contiene_alguno` (match por norm). |
+| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION`, guarda de `openpyxl`, + **lectura/clasificación de reportes** (compartida, la usan los módulos pandas): `leer_xlsx` (robusto a la 'dimension' rota), `resolver_columnas` (semántico exact/subs), `contiene_todos`/`contiene_alguno` (match por norm). **`filtrar_mes(d, ini, fin, fuente)` (v1.9.5)** = el filtro de mes de TODOS los módulos pandas, con el guardarraíl de §3: 0 filas del mes -> `ArchivoInvalido("mes_vacio")` (misma categoría que el A05, así `_manejar_error` ya la muestra), con el span real del archivo en el mensaje y un texto aparte si ninguna fecha es legible. **La guarda va sobre la FUENTE, nunca sobre la casilla** — ver §3.1. |
 | `programas/formatos.py` | **EJE de formato IRIS vs Administrativo (RAYEN), compartido.** La capa que reconoce y ubica el formato de un export RAYEN, transversal a CASI TODOS los módulos con entrada RAYEN. Antes duplicada verbatim entre `rem_saludmental` y `a03`. Expone `detectar_eje(ws, …firmas…)` (barrido único; firmas parametrizables por reporte), `resolver_identidad` (RUT/edad/sexo aceptando ambos formatos), `fila_encabezado_admin` + `HEADER_ADMIN` (params de encabezado admin transversales a A05/A03/Utilización de Cupos) y el vocabulario del eje (anclas/banner/markers/tokens). **Diseño: mecanismo compartido + firmas POR-REPORTE** (no un `detectar_formato` único). Cadena: `rem_utils` (primitivas) ← `formatos` (eje) ← módulos. Nombre elegido sobre "perfiles" para no chocar con los *perfiles de usuario* de RAYEN (permisos, sin relación). **Migrados (fase 1):** rem_saludmental, a03, estamentos. **Fase 2 (v1.9.2, HECHA) — y NO es detección de eje, pese al nombre del roadmap:** un *eje* es el mismo reporte en dos formatos, y en el A/D/A eso no existe — **el lado Administrativo no tiene equivalente del A/D/A**; lo que hay del otro lado es OTRO reporte, más pobre ('Monitoreo de Actividades'). Así que acá no se elige formato: se **verifica la identidad del reporte**. Además el grupo pandas no podría usar `detectar_eje` (barre una hoja buscando el banner del FORMULARIO clínico, que estos reportes no traen). Y su problema de fondo es otro: no falta una columna, la **misma columna trae menos** — en el Monitoreo `DIAGNOSTICO` existe y resuelve perfecto, pero viene en texto sin código ICD, así que Ira Alta/Bronquitis/EPOC salían 0 SIN avisar. Por eso se clasifica la **FUENTE**, no las columnas: `clasificar_fuente(col, solo_iris)` + `aviso_fuente(...)`, enganchados en `cargar_canonico` (cuello de botella único de todo el grupo pandas). Como no hay UN «otro lado» que reconocer, la firma es **negativa**: se prueba que es el A/D/A de IRIS por las claves que solo él trae (`SOLO_IRIS_ATENCIONES`, claves canónicas y no nombres de columna, para que el saber de headers viva solo en `MAPA_ATENCIONES`). **Tres estados, no dos:** `plena` / `parcial` (ninguna clave: no es el A/D/A) / **`cambiada`** (algunas: sigue siendo el A/D/A pero RAYEN le movió el piso) — sin ese tercero, un rename de RAYEN daría un falso «parcial» permanente, y un aviso que grita siempre deja de leerse. `cambiada` le habla al DEV, `parcial` al usuario. |
 | `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, **PERFILES IRIS/Admin** (usan el eje de `formatos.py`: `detectar_formato` = wrapper de `detectar_eje`, `_preparar` usa `resolver_identidad`) y el motor `marcar_eventos()`. |
 | `programas/estamentos.py` | **Lookup Funcionario→Estamento (TRANSVERSAL a todo formato Administrativo).** El Admin no trae estamento (solo nombre); esto lo rellena desde el reporte 'Utilización de Cupos'. `cargar_estamentos()` (dedup + aviso conflictos), `buscar_estamento()` (match normalizado), y **failsafe**: `faltantes()` + `aplicar_resoluciones()` (resolver a mano o IGNORAR externos transitorios). GUI reutilizable en `autorem._bloque_estamentos` + diálogo `_resolver_estamentos`. La TABLA de nombres queda LOCAL (no al repo) y **PERSISTE entre corridas** en `~/.autorem/estamentos.json` (`cargar_cache`/`guardar_cache`/`tabla_efectiva`: caché + merge con reporte fresco, el fresco gana; robusto ante caché corrupto). La GUI (`_correr_a03`) pasa `tabla_efectiva(...)` como dict a `procesar_unificado`. |
@@ -205,6 +205,39 @@ Migrante · Trans · Fila_Origen`
 
 Las columnas demográficas se generan **data-driven** desde `DEMOGRAFIA.keys()`:
 agregar/quitar una entrada en ese dict ajusta headers y anchos solos.
+
+### 3.1 Mes vacío = fail loud, y la guarda va sobre la FUENTE (v1.9.5)
+
+La regla del punto 2 (mes sin datos -> `ArchivoInvalido`) valía solo para el A05
+hasta v1.9.5: los módulos pandas filtraban el mes a mano y seguían con el DataFrame
+vacío, escribiendo un `.xlsx` completo con todas las tablas en cero — con pinta de
+resultado legítimo y **copiable al SA_26**. Se dispara con escenarios normales: el
+export del año pasado, o el mes mal elegido en el spinbox.
+
+Ahora ese filtro es `rem_utils.filtrar_mes`, uno solo, y **la guarda va sobre la
+FUENTE, nunca sobre la casilla**. Esa distinción es lo que hace al guardarraíl seguro:
+
+- **el archivo no cubre el mes** (0 filas de la fuente) -> error del usuario, falla duro;
+- **el mes está cubierto y una casilla dio 0** -> LEGÍTIMO (A27 y A32·F2 lo hacen de
+  verdad), no falla. Por eso los filtros que vienen DESPUÉS del mes se aplican aparte,
+  sobre lo que devuelve `filtrar_mes`: `Asiste=SI` del grupal, Control/Ingreso IRA/ERA
+  de la Sección H.
+
+Enganchado en las cinco fuentes que se filtran por mes: ADA de `sm_actividades`,
+grupal, atenciones del `a23`, NSP de la Sección H y el ADA de `sm_trabajo_perdido`.
+Las opcionales (grupal, NSP) **también fallan duro**: cargarlas fue decisión del
+usuario, y un archivo de otro período deja sus casillas en cero sin que nadie lo note.
+
+**Dos lugares donde a propósito NO se engancha:**
+- `om` (el 'Otros y Respi' del A23): es histórico multi-año, un mes sin formulario de
+  calidad de vida es normal.
+- **La familia población** (`poblacion` / P6 / rescate): ahí el mes es un **CORTE**
+  sobre el snapshot de inscritos, no un filtro de filas — no existe el "0 filas del
+  mes" que guardar. Elegir un mes que el export no cubre es una decisión legítima
+  (el mes reportado no tiene por qué ser el anterior), así que `_verificar_cobertura_
+  fechas` sigue avisando sin bloquear; lo que cambió es que **ahora devuelve sus
+  avisos** y quedan en `P.attrs['avisos']` -> hoja **LEEME** del P6 y del Rescate.
+  El desfase deja de vivir solo en el log de la corrida, que nadie relee.
 
 ---
 
@@ -477,7 +510,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`. La GUI la muestra en el título.
-Estado actual: **1.9.4**.
+Estado actual: **1.9.5**.
 
 **Cada `.py` lleva la versión de SU ÚLTIMO CAMBIO** (corregido sep-2026: este párrafo
 decía «todos se bumpean juntos», que nunca fue lo que pasó — había archivos en 1.8.2,
@@ -512,7 +545,7 @@ quedó atrás → el check bloquea y `--bump` rechaza cualquier número que no a
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 143 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
+| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 157 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
 | **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
 | **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1: VDI PADDS por subtipo × visita, planes de cuidado a usuario y cuidador) | 📌 **anotado, sin implementar.** Nace del descarte del Trabajo Perdido SM (§12): las 24 VDI del PADDS no son SM y hoy no las tabula nadie. Base ya disponible: página «Dependencia» del PowerBI + `programas/poblacion.py` |
 | Cardiovascular | — | pendiente |
@@ -645,7 +678,7 @@ pyinstaller --onefile --windowed --name "autoREM" \
   Traslados FLAGEADOS, no excluidos** (corregido v1.9.1: el filtro duro original sacaba
   a los Fallecidos de Rescate_6m/13m en silencio, inconsistente con Traslados — ambos
   motivos vienen de un snapshot del Inscritos, no de un dato verificado). Suite:
-  **143 tests** (§2.1, en validación).
+  **157 tests** (§2.1, en validación).
 - **Sin espacios en ningún nombre del repo** — `refs tablas/` → **`refs_tablas/`** y
   el resto de archivos con espacio, renombrados. El espacio obligaba a comillar cada
   ruta y era un punto de falla recurrente. **Ojo:** las rutas viejas quedan muertas —

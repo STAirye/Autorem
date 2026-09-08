@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.1
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -269,7 +269,7 @@ def procesar(inscritos, formulario_sm, ada, mes=None, log=print, P=None):
     E = pd.DataFrame({"Hoja": list(tablas.keys()), "Filas": [len(t) for t in tablas.values()]})
     E.attrs["tablas"] = tablas
     E.attrs["mes"] = P.attrs.get("mes")
-    E.attrs["avisos"] = []
+    E.attrs["avisos"] = list(P.attrs.get("avisos", ()))   # descalces de fecha (poblacion)
     E.attrs["fuentes"] = _nombres(inscritos) + _nombres(formulario_sm) + _nombres(ada)
     return E
 

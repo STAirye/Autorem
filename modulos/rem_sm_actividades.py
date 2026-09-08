@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.3
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -41,7 +41,7 @@ import pandas as pd
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  marcar_demografia, gestante_runs, trans_map,
-                                 atenid_multiprofesional, _rango_mes,
+                                 atenid_multiprofesional, _rango_mes, filtrar_mes,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
@@ -420,10 +420,13 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         avisos.append(("Columnas TRANS (A06/A32)", "EN 0",
                         "no se cargo el 'Informe Inscritos y Adscritos' (opcional)",
                         "Cargar el 'Informe Inscritos y Adscritos' si se necesita el flag TRANS"))
-    dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
-    log(f"[sm] ADA: {len(d)} atenciones ({span}) | mes reporte {ini:%Y-%m} -> {len(dm)} atenciones")
+    log(f"[sm] ADA: {len(d)} atenciones ({span}) | mes reporte {ini:%Y-%m}")
+    # Fail loud (§3): el ADA sin NINGUNA atención del mes es archivo/mes equivocado,
+    # no un mes de cero actividad. Va sobre la FUENTE; que una casilla dé 0 es legítimo.
+    dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)")
+    log(f"[sm] atenciones en el mes: {len(dm)}")
     if d["FECHA"].notna().any() and d["FECHA"].min() > ini3:
         log(f"[sm] GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
             f"arranca en {d['FECHA'].min():%Y-%m} -> puede SUBCONTAR. Carga el ADA de los últimos 3 meses.")
@@ -435,7 +438,10 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
 
     if grupal is not None:
         g = cargar_grupal(grupal, log=log)
-        gm = g[(g["FECHA"] >= ini) & (g["FECHA"] <= fin) & (g["ASISTE_n"] == "SI")]
+        # El mes se guarda (archivo de otro período = error); Asiste=SI se aplica
+        # DESPUÉS y sí puede dejar 0 (mes con talleres pero nadie asistió: legítimo).
+        gm = filtrar_mes(g, ini, fin, "el reporte 'Atenciones Grupales'")
+        gm = gm[gm["ASISTE_n"] == "SI"]
         log(f"[sm] Grupal: {len(g)} filas | mes {ini:%Y-%m} + Asiste=SI -> {len(gm)} asistencias")
         Eg = _grupal_eventos(gm)
     else:

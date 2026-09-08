@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.4
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -446,7 +446,16 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
     """Fail loud (§CLAUDE.md) sobre DESCALCES de fecha entre inputs — hoy el único
     chequeo que existía era el de la ventana de gestante (3 meses); esto generaliza
     a TODO lo que corte/ADA/formulario necesitan cubrir. Nunca bloquea (algunos
-    workflows arrancan sin histórico completo a propósito), pero nunca en silencio."""
+    workflows arrancan sin histórico completo a propósito), pero nunca en silencio.
+
+    Acá el mes es un CORTE sobre el snapshot de inscritos, no un filtro de filas:
+    no existe el "0 filas del mes" que sí guarda `rem_utils.filtrar_mes` en los
+    módulos de actividades. Por eso avisa en vez de bloquear — y el aviso se
+    DEVUELVE, para que además del log quede escrito en la hoja LEEME del .xlsx
+    (si no, un desfase se lee en la consola y se olvida al mirar la planilla).
+
+    Devuelve la lista de avisos (casilla, estado, motivo, que_hacer) de cobertura."""
+    avisos = []
     ada_min = d_ada["FECHA"].min() if d_ada["FECHA"].notna().any() else None
     ada_max = d_ada["FECHA"].max() if d_ada["FECHA"].notna().any() else None
     form_min = form["FECHA"].min() if form["FECHA"].notna().any() else None
@@ -469,6 +478,12 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
             f"la atención más reciente cargada es de {ada_max:%Y-%m}. ¿Falta el export "
             "más nuevo, o se eligió mal el mes? Activo12m/rescate/gestante van a salir "
             "incompletos para este mes.")
+        avisos.append((
+            "Poblacion en control (corte del mes)", "INCOMPLETO",
+            f"se pidio el mes {corte:%Y-%m} pero el ADA llega solo hasta "
+            f"{ada_max:%Y-%m}: las atenciones del mes reportado NO estan en el "
+            "archivo, asi que Activo 12m / rescate / gestante subcuentan",
+            f"Cargar el ADA hasta {corte:%Y-%m}, o reportar el mes que cubre el archivo"))
 
     # El ADA necesita llegar hasta 13 meses atrás (Activo 12m exige un mínimo de 12;
     # rescate 13m mira específicamente el mes exacto -13; gestante solo 3 meses ->
@@ -478,6 +493,11 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
         log(f"[poblacion] El ADA arranca en {ada_min:%Y-%m}, pero Activo12m/rescate "
             f"13m/gestante necesitan desde {ini13:%Y-%m} (13 meses cerrados) -> pueden "
             "SUBCONTAR. Carga el histórico de 13 meses del ADA (§3 del plan).")
+        avisos.append((
+            "Activo 12m / rescate 13m / gestante", "SUBCONTADO",
+            f"el ADA arranca en {ada_min:%Y-%m} y se necesita desde {ini13:%Y-%m} "
+            "(13 meses cerrados hacia atras)",
+            "Cargar el historico de 13 meses del ADA"))
 
     # El histórico del formulario debe llegar hasta el mes reportado -> si no, un
     # ingreso/egreso de ESTE mes no está en los datos y el snapshot queda desfasado.
@@ -486,6 +506,13 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
             f"reportado ({corte:%Y-%m}): el formulario más reciente cargado es de "
             f"{form_max:%Y-%m}. Ingresos/egresos de este mes NO se van a reflejar -> "
             "revisa que el histórico esté actualizado.")
+        avisos.append((
+            "Diagnosticos / ingresos y egresos del mes", "DESFASADO",
+            f"se pidio el mes {corte:%Y-%m} pero el historico del formulario SM "
+            f"llega solo hasta {form_max:%Y-%m}: los ingresos y egresos del mes "
+            "reportado no estan en el archivo",
+            f"Descargar el historico del formulario SM hasta {corte:%Y-%m}"))
+    return avisos
 
 
 def _ultima_respuesta(form, pregunta, corte):
@@ -520,7 +547,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
     insc = inscritos if isinstance(inscritos, pd.DataFrame) else cargar_inscritos(inscritos, log=log)
     form = formulario_sm if isinstance(formulario_sm, pd.DataFrame) else cargar_formulario_sm(formulario_sm, log=log)
     d_ada = ada if isinstance(ada, pd.DataFrame) else cargar_atenciones(ada, log=log)
-    _verificar_cobertura_fechas(form, d_ada, corte, log)
+    avisos_cobertura = _verificar_cobertura_fechas(form, d_ada, corte, log)
 
     P = insc.rename(columns={"RUN": "Número", "TIPOID": "Tipo de identificación",
                              "SITUACION": "Situación", "ESTADO": "Estado",
@@ -624,6 +651,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
             "Brecha_Medico (rem_sm_rescate_inasistentes). NUNCA para el P6.")
     P.attrs["mes"] = (ini.year, ini.month)
     P.attrs["egreso_divergencias"] = div_df
+    P.attrs["avisos"] = avisos_cobertura
     n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
     log(f"[poblacion] Ferrada: {len(P)} personas en el snapshot | {n_ingresados} con "
         f"¿Ingresado?=SI (mes {ini:%Y-%m})")
@@ -637,6 +665,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
     P_out.attrs["mes"] = P.attrs["mes"]
     P_out.attrs["egreso_divergencias"] = P.attrs["egreso_divergencias"]
     P_out.attrs["exigir_medico"] = exigir_medico
+    P_out.attrs["avisos"] = P.attrs["avisos"]
     return P_out
 
 

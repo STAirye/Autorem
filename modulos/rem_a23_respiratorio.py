@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -38,7 +38,8 @@ import pandas as pd
 
 from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
-                                 contiene_alguno as _any, _rango_mes, _mujer, _hombre,
+                                 contiene_alguno as _any, _rango_mes, filtrar_mes,
+                                 _mujer, _hombre,
                                  grid as _grid, fecha_col, PUEBLO_VACIO, indice_col)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
@@ -142,7 +143,9 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
             fuentes += [Path(p).name for p in (extra if isinstance(extra, (list, tuple)) else [extra])]
     fer.attrs["fuentes"] = fuentes
 
-    dm = d[(d["FECHA"] >= ini) & (d["FECHA"] <= fin)]          # atenciones del mes
+    # Fail loud (§3): sin NINGUNA atención del mes, los 27 indicadores salen "NO" y el
+    # detalle parece un mes de cero actividad. Guarda sobre la FUENTE, no por indicador.
+    dm = filtrar_mes(d, ini, fin, "el export de atenciones (A/D/A)")
     log(f"[a23] atenciones en el mes: {len(dm)} | pacientes atendidos: {dm['RUN'].nunique()}")
 
     masks = _masks_simples(dm)
@@ -459,7 +462,9 @@ def cargar_inasistentes(entrada, log=print):
 def _seccion_h(nsp, ini, fin):
     """Inasistencias a citas Control/Ingreso IRA/ERA del mes, por estamento × tramo
     (<20 / >=20). Devuelve DataFrame con la forma del template (Sección H)."""
-    m = nsp[(nsp["FECHA"] >= ini) & (nsp["FECHA"] <= fin)]
+    # El mes se guarda (NSP de otro período = archivo equivocado); el filtro
+    # Control/Ingreso IRA/ERA va DESPUÉS y sí puede dejar 0 (legítimo).
+    m = filtrar_mes(nsp, ini, fin, "el reporte NSP (inasistentes a citación)")
     t = m["TIPO_n"]
     resp = (t.str.contains(r"\b(?:CONTROL|INGRESO)\b", regex=True, na=False) &
             t.str.contains(r"\b(?:IRA|ERA)\b", regex=True, na=False))    # excluye KTR (sin control/ingreso)
