@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.8.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -47,6 +47,12 @@ Divergencias esperadas contra el PowerBI (documentadas, NO son bugs del port):
     con cualquier egreso del mes). Columna de auditoría + aviso en el log.
   - §4.7: gestante = control prenatal/formulario con matrona en ventana de 3
     meses (vs. los 2 meses off-by-one del DAX).
+
+`construir_poblacion(..., exigir_medico=True)` (§8.6 del plan, para
+rem_sm_rescate_inasistentes.Brecha_Medico): con False, los diagnósticos que
+normalmente exigen INSTRUMENTO contiene MEDIC dejan de filtrar por estamento. NUNCA
+usar False para tabular el P6 — GUARDARRAÍL: rem_sp_p6_poblacion.construir_p6()
+rechaza un `P` construido con el toggle apagado.
 """
 
 from pathlib import Path
@@ -345,9 +351,11 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
     ESTADO trae 'egreso' dentro del mes reportado [mes_ini, mes_fin].
 
     Devuelve DataFrame indexado por RUN: 'activo_base' (bool, antes del egreso —
-    para la auditoría §4.3), 'estado' ('Activo'/'Egresado'/''), y 'subtipo'/
+    para la auditoría §4.3), 'estado' ('Activo'/'Egresado'/''), 'subtipo'/
     'subtipo2' (valor CRUDO del último formulario activo; D5: no se filtra acá
-    si viene vacío — eso lo decide quien consume la tabla)."""
+    si viene vacío — eso lo decide quien consume la tabla), y 'instr'/'fecha'
+    (INSTRUMENTO y FECHA del formulario que ganó — los usa Brecha_Medico, §8.6,
+    para decir QUIÉN registró el dx y HACE CUÁNTO)."""
     qd, qe = f"q{dx}_n", f"q{estado}_n"
     cond_si = df[qd] == "SI"
     cond_ing = cond_si & (df[qe].str.contains("INGRES", na=False) |
@@ -372,6 +380,8 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
     if subtipo2:
         col2 = f"q{subtipo2}"
         out["subtipo2"] = activos[col2].reindex(out.index) if col2 in activos.columns else ""
+    out["instr"] = activos["INSTR"].reindex(out.index) if "INSTR" in activos.columns else ""
+    out["fecha"] = activos["FECHA"].reindex(out.index) if "FECHA" in activos.columns else pd.NaT
     return out
 
 
@@ -490,19 +500,25 @@ def _ultima_respuesta(form, pregunta, corte):
 # ======================================================================
 # Ensamblado: construir_poblacion()
 # ======================================================================
-def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
+def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
+                        exigir_medico=True):
     """Arma la tabla «Ferrada» SLIM (§3.2): TODOS los inscritos (snapshot), 1
     fila por RUN, sin filtrar por Activo/Ingresado (eso lo aplica quien consuma
     la tabla — el P6 filtra, el rescate filtra distinto). `mes`=(año,mes) fija
     el corte (None = mes anterior, como el resto de los módulos pandas).
-    `ada` puede ser un DataFrame ya cargado (para no releer el archivo si el
-    caller ya lo tiene) o ruta(s) del export de Atenciones."""
+    `inscritos`/`formulario_sm`/`ada` aceptan DataFrame ya cargado (para no
+    releer el archivo si el caller ya lo tiene, p.ej. para correr dos pasadas
+    con `exigir_medico` distinto) o ruta(s) del export correspondiente.
+
+    `exigir_medico=False` (§8.6 del plan, SOLO para Brecha_Medico): apaga el
+    filtro INSTRUMENTO contiene MEDIC en los diagnósticos que normalmente lo exigen.
+    NUNCA usar False para el P6 — ver guardarraíl en rem_sp_p6_poblacion."""
     ini, fin = _rango_mes(mes)
     corte = fin
     mes_ini, mes_fin = ini, fin
 
-    insc = cargar_inscritos(inscritos, log=log)
-    form = cargar_formulario_sm(formulario_sm, log=log)
+    insc = inscritos if isinstance(inscritos, pd.DataFrame) else cargar_inscritos(inscritos, log=log)
+    form = formulario_sm if isinstance(formulario_sm, pd.DataFrame) else cargar_formulario_sm(formulario_sm, log=log)
     d_ada = ada if isinstance(ada, pd.DataFrame) else cargar_atenciones(ada, log=log)
     _verificar_cobertura_fechas(form, d_ada, corte, log)
 
@@ -559,8 +575,8 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     egreso_bug_runs = _egreso_powerbi_bug(form, mes_ini, mes_fin)
     for spec in TODAS_LAS_SPECS:
         est = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin,
-                         instrumento=spec["instrumento"], subtipo=spec["subtipo"],
-                         subtipo2=spec["subtipo2"])
+                         instrumento=spec["instrumento"] and exigir_medico,
+                         subtipo=spec["subtipo"], subtipo2=spec["subtipo2"])
         P[spec["col"]] = P["Número"].map(est["estado"]).fillna("")
         if spec["subtipo_col"]:
             P[spec["subtipo_col"]] = P["Número"].map(est.get("subtipo", pd.Series(dtype=object))).fillna("")
@@ -602,6 +618,10 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     else:
         log("[poblacion] §4.3: sin divergencias de egreso este mes.")
 
+    if not exigir_medico:
+        log("[poblacion] §8.6: exigir_medico=False — diagnosticos que exigen estamento "
+            "medico NO estan filtrando por instrumento en esta pasada. Uso exclusivo: "
+            "Brecha_Medico (rem_sm_rescate_inasistentes). NUNCA para el P6.")
     P.attrs["mes"] = (ini.year, ini.month)
     P.attrs["egreso_divergencias"] = div_df
     n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
@@ -616,6 +636,7 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print):
     P_out = P[COLUMNAS_SALIDA].copy()
     P_out.attrs["mes"] = P.attrs["mes"]
     P_out.attrs["egreso_divergencias"] = P.attrs["egreso_divergencias"]
+    P_out.attrs["exigir_medico"] = exigir_medico
     return P_out
 
 

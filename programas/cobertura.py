@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.3
+# Version: 1.8.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -171,6 +171,23 @@ COBERTURA = {
              "Contrastar contra el conteo manual antes de entregar"),
             ("Delta P(m) - P(m-1) -> A05 N/O", PENDIENTE,
              "Fase 4 del plan, no implementada", "Seguir usando el CALCULADOR A05"),
+        ],
+    },
+    "sm_rescate_inasistentes": {
+        "rem": "Auditoria (no tributa a ninguna casilla del REM)",
+        "cubre": [],
+        "no_cubre": [
+            ("(todas)", FUERA,
+             "Este reporte no tributa a ninguna casilla del REM: es auditoria "
+             "operativa de rescate (SP_P6_poblacion_plan.md §8)", "No copiar nada de aqui al SP/SA"),
+            ("Posibles_Traslados", VALIDACION,
+             "El match de 'traslado/cambio de domicilio' es un heuristico sobre "
+             "Motivo Pasivacion sin validar contra los valores reales del export",
+             "Revisar que la lista capture los Motivo Pasivacion de traslado de verdad"),
+            ("Brecha_Medico", VALIDACION,
+             "Compara dos pasadas de poblacion.construir_poblacion (con/sin filtro "
+             "medico); todavia sin validar contra un caso real conocido",
+             "Confirmar a mano un par de RUN antes de usarlo para gestion"),
         ],
     },
     # Gemelo de a05_o_egresos: mismo REM, misma tabla de "no_cubre" (§3.4 del plan).

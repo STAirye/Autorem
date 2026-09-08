@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.3
+# Version: 1.8.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -1032,7 +1032,10 @@ def _tab_beta(nb, root):
         "P6·A.1 lista para copiar-pegar al SP_26.xlsm — respeta la máscara de celdas\n"
         "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
         "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
-        "pegar. Ver docs/SP_P6_poblacion_plan.md.\n"
+        "pegar. También genera, aparte, el reporte de RESCATE DE INASISTENTES (§8: quién\n"
+        "dejó de asistir hace 6/13 meses, fallecidos del mes, posibles traslados y brecha\n"
+        "de control médico) — no tributa al REM, es para gestión.\n"
+        "Ver docs/SP_P6_poblacion_plan.md.\n"
         "1.  Formulario 'Control de Salud Mental' (IRIS)  ->  HISTÓRICO COMPLETO: carga\n"
         "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click).\n"
         "2.  Atenciones/Diagnósticos/Actividades (ADA)  ->  13 meses (Activo 12m,\n"
@@ -1092,6 +1095,7 @@ def _tab_beta(nb, root):
         if carpeta is None:
             return
         salida = carpeta / f"REM_SP_P6_{y}_{m:02d}_BETA.xlsx"
+        salida_rescate = carpeta / f"REM_SM_Rescate_{y}_{m:02d}_BETA.xlsx"
 
         def trabajo(log):
             import programas.poblacion as pob
@@ -1099,20 +1103,34 @@ def _tab_beta(nb, root):
             P = pob.construir_poblacion(str(entrada), formularios, ada, mes=(y, m), log=log)
             resultado = p6.construir_p6(P, log=log)
             p6.escribir(P, resultado, salida)
-            return P, resultado
+            n_rescate = None
+            # Rescate de inasistentes (§8): reutiliza el MISMO P (exigir_medico=True) que
+            # el P6, no lo reconstruye. Try propio para que un fallo acá (p.ej. Brecha_Medico,
+            # todavía en validación) no tumbe el P6, que es lo que sí se copia al SP.
+            try:
+                import modulos.rem_sm_rescate_inasistentes as resc
+                Er = resc.procesar(str(entrada), formularios, ada, mes=(y, m), log=log, P=P)
+                resc.escribir(Er, salida_rescate)
+                n_rescate = {h: len(t) for h, t in Er.attrs["tablas"].items()}
+                log(f"OK Rescate de inasistentes -> {salida_rescate.name}")
+            except Exception as e:   # noqa: BLE001
+                log(f"[rescate] no se generó el reporte de rescate: {e}")
+            return P, resultado, n_rescate
 
         def al_terminar(res, err):
             if err is not None:
                 _manejar_error(err, log, messagebox)
                 return
-            P, resultado = res
+            P, resultado, n_rescate = res
             n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
             n_admin = len(resultado["revisar_administrativo"])
             n_clin = len(resultado["revisar_clinico"])
+            rtxt = ("\nRescate: " + " · ".join(f"{h}={n}" for h, n in n_rescate.items())
+                   if n_rescate is not None else "")
             txt = (f"Listo (BETA, sin validar todavía). SP·P6 {y}-{m:02d}.\n"
                    f"{len(P)} personas en el snapshot, {n_ingresados} con ¿Ingresado?=SI.\n"
                    f"Revisar_Administrativo: {n_admin} fila(s) · Revisar_Clinico: {n_clin} fila(s) "
-                   "— revísalas antes de pegar al SP.\n\n"
+                   f"— revísalas antes de pegar al SP.{rtxt}\n\n"
                    f"Guardado en:\n{salida}")
             log(""); log("OK " + txt.replace("\n", " | "))
             if messagebox.askyesno("Listo (BETA)", txt + "\n\n¿Abrir la carpeta del resultado?"):

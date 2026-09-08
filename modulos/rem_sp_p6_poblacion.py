@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.3
+# Version: 1.8.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -486,6 +486,13 @@ def construir_p6(P, log=print):
     auditable), 'revisar_administrativo'/'revisar_clinico' (DataFrames — §5.5:
     identidad/registro vs criterio clínico, hojas separadas), 'bloques'
     (rectángulos pegables), 'mes' (año,mes)."""
+    if P.attrs.get("exigir_medico") is False:
+        raise ArchivoInvalido(
+            "exigir_medico_apagado",
+            "El P6 NUNCA se tabula con el filtro medico (INSTRUMENTO contiene MEDIC) apagado "
+            "(guardarrail §8.6 de SP_P6_poblacion_plan.md). Este `P` viene de "
+            "construir_poblacion(..., exigir_medico=False) — esa pasada es EXCLUSIVA "
+            "de Brecha_Medico (rem_sm_rescate_inasistentes), nunca del P6.")
     revisar = []
     mes = P.attrs.get("mes")
     Pv, revisar_base = _base_valida(P, log)
