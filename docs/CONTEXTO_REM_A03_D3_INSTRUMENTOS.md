@@ -111,7 +111,7 @@ Desagregación requerida: **rango etario × sexo × resultado (Bajo / Medio / Al
 Se exporta **un archivo por instrumento**. Los DOS formatos del proyecto aplican
 también acá (reutilizar el sistema de perfiles de `rem_saludmental`):
 
-**Perfil IRIS** (`goldberg iris.xlsx`, `pscy 10 14 iris.xlsx`): encabezado arriba,
+**Perfil IRIS** (`goldberg_iris.xlsx`, `pscy_10_14_iris.xlsx`): encabezado arriba,
 1 fila por aplicación. Columnas clave (nombre exacto):
 - ⚠ `INSTRUMENTO` (columna **AH**, entre `FUNCIONARIO` y `ESTABLECIMIENTO INSCRIPCION`) —
   **RAYEN la mal-rotula**: en realidad trae el **ESTAMENTO** de quién aplicó
@@ -129,7 +129,7 @@ también acá (reutilizar el sistema de perfiles de `rem_saludmental`):
 - `N.- PUNTAJE` (ej. goldberg `14.- PUNTAJE`) — el puntaje que suma RAYEN.
 - `N.- RESULTADO` (ej. goldberg `15.- RESULTADO`) — clasificación AUTOMÁTICA de RAYEN.
 
-**Perfil Administrativo** (`psc administrativo.xlsx`): banner filas 1-7, blanco 8,
+**Perfil Administrativo** (`psc_administrativo.xlsx`): banner filas 1-7, blanco 8,
 encabezado **fila 9**. El **instrumento va en el banner** (fila 7, col 3:
 `Formulario: Cuestionario para padres PSC`), NO en columna. RUT en columna `RUT`,
 edad en `Edad de registro formulario` (texto → `edad_anios`). Puntaje/Resultado al

@@ -32,7 +32,7 @@ copy-paste al `SP_26_V1.1.xlsm` hoja P6, sección A.1.**
 **DAX completo de las ~150 columnas calculadas** de la tabla `Ferrada`, más los 31
 visuales de la página. El visual **#17 «Población PSM» (`tableEx`)** es exactamente
 la tabla que hoy se exporta a mano; sus nombres de columna de salida están en el
-header de `refs_tablas/poblacion sm powerbi.xlsx`.
+header de `refs_tablas/poblacion_sm_powerbi.xlsx`.
 
 **Hallazgo estructural:** `Ferrada` **no es una tabla de Salud Mental**. Es la tabla
 base por-paciente que usan las 8 páginas del PowerBI (Cardiovascular 335 referencias,
@@ -847,7 +847,7 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **2** HECHA | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
 | **3** casi | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + fila en la matriz de programas de CLAUDE.md (hecho) + bump a **1.9.0** (Y++) — **el bump espera a que cierre la validación §9**. | Suite completa verde: **91/91**. |
 | **3.5** pendiente | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
-| **4** pendiente | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. |
+| **4** pendiente | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. |
 
 ---
 

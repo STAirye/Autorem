@@ -208,5 +208,5 @@ en paralelo y NO van en el número: se trackean en una matriz aparte (ver
 
 ## Licencia
 
-[GPL-3.0-or-later](LICENSE). `license ES.txt` es una traducción no oficial al
+[GPL-3.0-or-later](LICENSE). `license_ES.txt` es una traducción no oficial al
 español (solo referencia; la versión en inglés es la que vale legalmente).

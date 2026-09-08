@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 > **Estado: REVISADA Y APROBADA** por el autor (sep-2026). Extraída **mecánicamente** de las 28 fórmulas `(form)`
 > de `refs_tablas/specs/Salud_Mental_spec.md` (parseo del DAX, no lectura a ojo) y
 > cruzada con los 92 encabezados de pregunta del export IRIS real
-> (`refs_tablas/Formularios_RAYEN csm IRis.xlsx`) y con el layout del `SP_26_V1.1.xlsm`.
+> (`refs_tablas/Formularios_RAYEN_csm_IRis.xlsx`) y con el layout del `SP_26_V1.1.xlsm`.
 > Al aprobarse, esta tabla se convierte en la constante de `programas/poblacion.py`.
 > Plan general: [SP_P6_poblacion_plan.md](SP_P6_poblacion_plan.md).
 

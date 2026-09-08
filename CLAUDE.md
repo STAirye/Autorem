@@ -39,14 +39,15 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.8.4**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.0**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
 (`programas/formatos.py`)** + **SP·P6 Población PSM (en validación, ver §2.1)** +
 **SM Rescate de Inasistentes (en validación, ver §2.1)** +
 **hoja «LEEME» de cobertura (`programas/cobertura.py`, ver §12)** +
-dispatcher con perfiles y GUI de pestañas. **110 tests.**
+**catálogos oficiales DEIS: CIE-10 / ENO / GES (`programas/catalogos.py`, ver §14)** +
+dispatcher con perfiles y GUI de pestañas. **124 tests.**
 
 **Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
 ```
@@ -70,7 +71,14 @@ modulos/              módulos de tarea (paquete)
 tools/                utilitarios (no-REM)
   limpiar_refs.py         recorte header-only de refs_tablas/
   slim_maestro.py         genera el Maestro slim comprimido
+  catalogos_deis.py       --check/--fetch/--slim de los catalogos DEIS (§14)
+  scan_catalogo.py        escaner de PII previo a versionar un catalogo (§14)
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
+catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
+  cie10.csv.gz            Lista Tabular CIE-10 (ago-2026), 12.548 codigos
+  eno.csv.gz              Notificacion Obligatoria (Decreto 7/2019), 448 pares
+  ges.csv.gz              GES 90 problemas <-> CIE-10, 5.936 pares
+  FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
 .claude/skills/       skills del repo: limpiar-refs
 legacy/               versiones viejas (no se importan)
 tests/                pruebas automáticas (110)
@@ -138,10 +146,13 @@ diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
 | `modulos/rem_sp_p6_poblacion.py` | **Módulo REM SP·P6 A.1 «Población en control PSM», pandas.** Consume `PSM_Poblacion` y arma la grilla del SP (filas 13-58 × 17 bandas × sexo + demografía AN..AX). La **máscara de celdas protegidas** se extrajo directo del `SP_26_V1.1.xlsm` (`protection.locked`), no de la prosa: codifica recortes etarios que **se PLIEGAN, no se descartan** (§5.0.1 del plan). Salida: `P6_A1` + `P6_Detalle` + `Revisar_Administrativo` / `Revisar_Clinico` + bloques pegables. Emite **cascada de filtros** y **desglose de Ingresado** en el log para diagnosticar brechas contra el PowerBI. |
 | `modulos/rem_sm_rescate_inasistentes.py` | **Reporte SM · Rescate de inasistentes, pandas** (§8 del plan SP·P6; NO tributa al REM). Segundo consumidor de `PSM_Poblacion`, mismo patrón que `rem_sm_trabajo_perdido` respecto de `rem_sm_actividades`. `Rescate_6m`/`Rescate_13m` — dejó de asistir hace 6/13 meses (misma lista de 7 actividades validada que `Activo 12m`, no el `contains "salud mental"` laxo del DAX original). **Filtro duro:** `Motivo Pasivación=Fallecido` (cualquier fecha) saca a la persona de AMBAS listas — es justo lo que este reporte existe para evitar. `Fallecidos_mes` — cohorte DEL MES (para no llamarlos, y para el egreso del A05 en la fase 4). `Posibles_Traslados` — NO se excluyen de las listas (a diferencia de los fallecidos): se flagean aparte para confirmar el traslado en vez de perseguir un abandono. `Brecha_Medico` (§8.6) — corre `poblacion.construir_poblacion()` **dos veces** (con/sin el filtro `INSTRUMENTO` contiene `MEDIC`) y reporta a quién le falta control médico del diagnóstico (activo solo por otro estamento), con estamento/fecha del formulario que lo registró. **Guardarraíl obligatorio:** esa segunda pasada (`exigir_medico=False`) es EXCLUSIVA de esta hoja; `rem_sp_p6_poblacion.construir_p6()` la rechaza si se la pasan por error. Todas las hojas sectorizadas (`Sector`) y **sin datos de contacto** (§8.4: solo RUN). Reusa la `P` que ya arma el P6 — wireado junto a él en la pestaña BETA. |
 | `programas/cobertura.py` | **Hoja «LEEME»: qué NO cubre autoREM** (§12, `docs/hoja_cobertura_plan.md`). Catálogo declarativo `COBERTURA` (por módulo: REM, casillas que SÍ cubre, y `no_cubre` = tabla de `(casilla, categoría, motivo, qué_hacer)` — categorías `MANUAL`/`FUERA DE ALCANCE`/`OMITIDO`/`PENDIENTE`/`EN VALIDACION`/`SIN REGISTRO`) + `entradas()`/`escribir_hoja()` que crean la hoja `LEEME` como **PRIMERA** del workbook, sirviendo los DOS caminos de escritura del proyecto (pandas `ExcelWriter` vacío, y openpyxl con la hoja de datos ya en el índice 0 — A05/A03). Dos capas: lo ESTRUCTURAL (fijo) + los `avisos` de ESTA corrida (degradación por fuente opcional no cargada), que cada módulo pandas acumula en `.attrs['avisos']` (mismo patrón que `.attrs['tablas']`). `tests/test_cobertura.py` es el guardarraíl anti-olvido: descubre por introspección los módulos de `modulos/` con `escribir()`/`TAREA` y falla si falta su entrada en `COBERTURA`. |
+| `programas/catalogos.py` | **CAPA COMPARTIDA de catálogos oficiales DEIS/MINSAL** (§14). Backend, no módulo de tarea: no llena ninguna casilla del REM por sí solo, es el **diccionario** que le faltaba al resto (qué significa un código, si es notificable, si es GES). **Registro declarativo** `CATALOGOS` (mismo patrón que `COBERTURA`): un catálogo nuevo = una entrada + una función `_leer_*`, no un módulo por catálogo. Hoy: `cie10` (Lista Tabular ago-2026, 12.548 códigos en 3 hojas cruz-daga/asterisco/causa-externa), `eno` (Decreto 7/2019, 56 enfermedades → 448 pares) y `ges` (90 problemas, 5.936 pares). API: `norm_codigo`/`con_punto` (canónico SIN punto `J209`, como el DEIS; RAYEN usa `J20.9`), `en_rango` (lexicográfico, sirve para asma = J09–J22), `expandir` (el ENO mezcla listas `A000, A001` con rangos `J00-J99` en la misma columna; los rangos NO se expanden), `descripcion`/`existe`/`eno_de`/`ges_de` y **`anotar`** (batch: lista de códigos → `COD·DESC·EXISTE·ENO·ENO_TIPO·GES`). **`ENO_TIPO`** transcribe inmediata/diaria/centinela del **texto del decreto**, no del orden de las filas del Excel (hoy calza, pero una reordenación del DEIS lo rompería callado); las **transitorias** (Mpox, *S. pyogenes*) llevan `ART = alerta vigente` para que se sepa que caducan, y las 2 sin confirmar están declaradas en `ENO_SIN_CLASIFICAR` con aviso ruidoso. |
+| `tools/catalogos_deis.py` | **Mantenedor de los catálogos** (lado desarrollo; el `.exe` no lo corre). `--check` compara la edición publicada por el DEIS contra la vendorizada (scrapea la página por FIRMAS de contenido, porque el nombre del archivo trae la fecha y cambia), `--fetch` baja los `.xlsx` a `refs_tablas/` (gitignored), `--slim` escanea PII, genera `catalogos/*.csv.gz` y actualiza `FUENTES.json`. |
+| `tools/scan_catalogo.py` | **Escáner de PII previo a versionar** (§14). RUT con DV válido (reusa `hook_pre_commit_rut.sospechosos`: fuente única del módulo 11), emails, teléfonos + volcado de estructura para revisar a ojo. **Existe porque el pre-commit anti-RUT SALTA los binarios** (`.xlsx`, `.gz`, su lista `BIN`): un slim vendorizado no lo revisaba nadie. |
 | `tools/hook_pre_commit_rut.py` | **Pre-commit anti-RUT real** (§8.2). Bloquea cadenas con forma de RUT cuyo **DV cuadre** (módulo 11) en archivos staged y en el mensaje. Los hooks NO se versionan: `python tools/hook_pre_commit_rut.py --instalar` en cada clon. |
-| `legacy/rem_marcar_egresos 1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
+| `legacy/rem_marcar_egresos_1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
-| `LICENSE` / `license ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
+| `LICENSE` / `license_ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
 | `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
 
 Los exports con PII (IRIS y Administrativo reales) viven **solo en la carpeta de
@@ -213,7 +224,7 @@ Excel/OneDrive), archivo inexistente, extensión no-xlsx, formato administrativo
 y formato desconocido. En error inesperado vuelca el traceback al log.
 
 ### 4.4 Modularización v1.3
-El monolito `rem_marcar_egresos 1.2.py` se partió en dos:
+El monolito `rem_marcar_egresos_1.2.py` se partió en dos:
 - **`rem_utils.py`** — utilidades genéricas reutilizables por cualquier módulo
   del REM (§2). `encontrar_fila_encabezado` quedó **parametrizado** (recibe
   `ancla, usar_blanco_en_a, n_hardcode, max_filas`) en vez de leer globales.
@@ -426,7 +437,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`; todos los `.py` la repiten en su
-header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.8.4**.
+header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.9.0**.
 
 > ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
 > versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
@@ -438,7 +449,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
 | Programa de salud | Módulos / reportes | Estado |
 |---|---|---|
 | **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 110 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a 1.9.0 al cerrar TODA la familia. Ver §2.1 |
+| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 124 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
 | **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
 | **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1: VDI PADDS por subtipo × visita, planes de cuidado a usuario y cuidador) | 📌 **anotado, sin implementar.** Nace del descarte del Trabajo Perdido SM (§12): las 24 VDI del PADDS no son SM y hoy no las tabula nadie. Base ya disponible: página «Dependencia» del PowerBI + `programas/poblacion.py` |
 | Cardiovascular | — | pendiente |
@@ -450,7 +461,7 @@ header y se bumpean juntos. La GUI la muestra en el título. Estado actual: **1.
   (Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa) + `SPDX-License-Identifier:
   GPL-3.0-or-later` + versión (`X.Y.Z`, sincronizada con `rem_utils.VERSION`).
 - **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`
-  con el texto completo (ya está en el repo; `license ES.txt` es traducción de
+  con el texto completo (ya está en el repo; `license_ES.txt` es traducción de
   referencia).
 - Comentarios y mensajes de usuario en español; nombres de función mixtos OK.
 
@@ -466,7 +477,7 @@ al repo. Arranque sugerido:
 # En la carpeta personal del repo (fuera de OneDrive), con los .py + CLAUDE.md
 # + .gitignore + license.txt ya copiados (SIN ningún .xlsx):
 git init
-git add CLAUDE.md .gitignore "rem_marcar_egresos 1.2.py" license.txt CONTEXTO_COWORK_rem_egresos.md
+git add CLAUDE.md .gitignore "rem_marcar_egresos_1.2.py" license.txt CONTEXTO_COWORK_rem_egresos.md
 git commit -m "Import inicial: módulo egresos A05 v1.2 + contexto"
 ```
 
@@ -491,7 +502,8 @@ Meta: colega no técnico hace doble-clic, sin instalar Python.
 # Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
 # programas/ y modulos/):
 pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" autorem.py
+  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" \
+  --add-data "catalogos;catalogos" autorem.py
 # -> dist/autoREM.exe
 ```
 
@@ -506,6 +518,11 @@ pyinstaller --onefile --windowed --name "autoREM" \
   devuelve None y el **Trabajo Perdido corre en heurística** (avisa ruidoso en el log).
   Alternativa: dejar el `.gz` junto al `.exe`. Ruta destino dentro del bundle:
   `refs_tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
+- **`--add-data` de `catalogos/` (§14):** misma historia que el Maestro slim — los
+  `.csv.gz` son DATOS, no imports, así que PyInstaller no los sigue solo. Sin esto,
+  `catalogos.cargar()` levanta `FileNotFoundError` diciendo cómo regenerarlos. Se
+  pasa la CARPETA entera: incluye `FUENTES.json`, que es lo que permite decir **de
+  qué edición** habla un resultado.
 - El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
 - **`--onefile` vs `--onedir` (trade-off, oficial = `--onefile`):** `--onefile` da UN
   solo `.exe` (cómodo de distribuir) pero cada arranque **descomprime ~37 MB a una
@@ -541,9 +558,13 @@ pyinstaller --onefile --windowed --name "autoREM" \
   (§8 del plan). No tributa al REM; reusa la tabla `Ferrada` del P6 y corre junto a
   él en la pestaña BETA. `Brecha_Medico` requirió agregar `exigir_medico=False` a
   `poblacion.construir_poblacion()` (dos pasadas, con guardarraíl en el P6 para que
-  esa segunda pasada nunca lo alimente). Suite: **110 tests** (§2.1, en validación).
+  esa segunda pasada nunca lo alimente). Suite: **124 tests** (§2.1, en validación).
 - **Higiene de privacidad:** todo el código cp1252-safe (los símbolos no-ASCII
   reventaban la consola de Windows) + pre-commit anti-RUT (§8.2).
+- **Catálogos oficiales DEIS (v1.9.0)** — `programas/catalogos.py` (§14): CIE-10 +
+  ENO + GES como capa compartida, con `tools/catalogos_deis.py`
+  (`--check`/`--fetch`/`--slim`) y `tools/scan_catalogo.py` (PII previa a versionar).
+  Backend puro por ahora: **la pestaña de Consultas en la GUI está pendiente**.
 - **Hoja «LEEME» de cobertura (v1.8.3)** — cada `.xlsx` de salida abre con una hoja
   que dice qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej.
   las Consultorías A06·A.2, que son manuales), en dos capas: lo estructural (fijo) +
@@ -577,7 +598,7 @@ pyinstaller --onefile --windowed --name "autoREM" \
   lista es el punto de entrada de este módulo. Base ya disponible: página
   «Dependencia» del PowerBI + `programas/poblacion.py` (tabla Ferrada).
 - **Delta P(m) − P(m−1) → A05 N/O**: fase 4 del plan del P6; portar la lógica del
-  `CALCULADOR A05 DESDE P 2.1 junio.xlsx`, no reinventarla. Ojo §5.0.1: SA y SP
+  `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. Ojo §5.0.1: SA y SP
   recortan filas etarias distintas, el delta no cuadra banda por banda.
 - **Empaquetar a `.exe`** (§11) — pendiente inmediato.
 - **A03 D.3 v2:** conteos agregados por rango etario (extraer del `SA_26`) y CLI
@@ -620,3 +641,95 @@ pyinstaller --onefile --windowed --name "autoREM" \
   real anonimizado de enero 2026 (393 filas → 16 eventos: 11 Alta, 1 Traslado,
   4 Otras Causas). Correr v1.2 sobre un export IRIS real y revisar los dos flags
   demográficos pendientes (§6).
+
+---
+
+## 14. Catálogos oficiales DEIS/MINSAL (v1.9.0)
+
+Capa **backend compartida** (`programas/catalogos.py`): el diccionario que le
+faltaba a la herramienta. No tributa a ninguna casilla del REM por sí sola.
+Nace de necesitar un mapa CIE-10 para el A23 (§ `docs/A23_P3_plan.md`) después de
+que la autora del repo de terceros nunca respondiera: se arma con las fuentes
+oficiales, que además son públicas y citables.
+
+**Fuente:** <https://deis.minsal.cl/centrofic/#documentacion> (Centro Nacional de
+Referencia FIC). Documentos públicos, sin restricción de licencia.
+
+| id | Catálogo | Edición | Contenido |
+|---|---|---|---|
+| `cie10` | Lista Tabular CIE-10 | **ago-2026** | 12.548 códigos: 8.910 cruz o daga · 331 asterisco · 3.307 causa externa |
+| `eno` | Notificación Obligatoria (Decreto 7/2019) | ago-2026 | 56 enfermedades → 448 pares enfermedad-código |
+| `ges` | GES 90 problemas ↔ CIE-10 | v1_4 | 5.936 pares problema-código |
+
+> ⚠ La nota del `A23_P3_plan` de que la lista DEIS era «de ~2018 y tiene casi 10
+> años» **quedó obsoleta**: la vigente es de agosto 2026. La copia local vieja
+> (`Lista-Tabular-CIE-10-1-1.xlsx`, 8.919 códigos en MAYÚSCULAS) es otra edición.
+
+### Decisiones (NO deshacer sin motivo)
+
+- **Registro declarativo, no un módulo por catálogo.** `CATALOGOS = {id: {...}}`
+  + una función `_leer_*`. Mismo patrón que `COBERTURA` en `cobertura.py`.
+- **Código canónico SIN punto** (`J209`, como el DEIS). RAYEN escribe `J20.9` →
+  todo cruce entre fuentes pasa por `norm_codigo`. `con_punto` es solo display.
+- **Los rangos no se expanden.** El ENO mete `J00-J99` en la misma columna que las
+  listas `A000, A001`; se guarda el patrón y lo resuelve `en_rango`, que compara
+  lexicográficamente. **Funciona porque los códigos llevan cero a la izquierda**
+  (`J09` < `J20` < `J99`); convertir a int lo rompe.
+- **El tipo de notificación del ENO viene del DECRETO, no del Excel.** El `.xlsx`
+  del DEIS no trae la columna. `ENO_TIPO` transcribe los literales a/b/c del art. 1
+  desde el texto oficial (`leychile.cl/Consulta/obtxml?opt=7&idNorma=1141549`).
+  Hoy el orden de las filas del Excel calza exacto con los tres literales, pero
+  inferirlo de ahí sería un acierto accidental que una reordenación rompería en
+  silencio.
+- **Transitorio ≠ decreto.** Mpox (inmediata) y *S. pyogenes* (centinela, diaria
+  solo en hospitales) rigen **mientras dure la alerta**
+  (<https://epi.minsal.cl/alertas-epidemiologicas-vigentes/>), no por el decreto →
+  su `ART` dice `alerta vigente`, para saber que esa clasificación caduca.
+- **Los huecos se declaran, no se rellenan.** Viruela y Tifus de los matorrales
+  siguen sin clasificar: están en `ENO_SIN_CLASIFICAR`, avisan ruidoso al generar
+  el slim y un test compara la lista (una enfermedad nueva sin clasificar **rompe
+  el test**). Un default silencioso ahí es un hueco que nadie vuelve a mirar.
+- **Cascada de carga:** `.xlsx` explícito > **drop-in** en `catalogos/` > slim
+  vendorizado. El drop-in hay que ponerlo **a propósito** (no se barre
+  `refs_tablas/`, donde puede quedar una edición vieja olvidada) y avisa ruidoso de
+  que pisa al catálogo embebido: cambiar la fuente cambia los resultados.
+
+### Privacidad: por qué hay un escáner aparte
+
+El pre-commit anti-RUT (§8.2) **salta los binarios** — `.xlsx`, `.gz`, su lista
+`BIN`. O sea que un `catalogos/*.csv.gz` vendorizado **no lo revisa nadie**. Por
+eso `tools/scan_catalogo.py` (RUT con DV válido reusando la misma función del hook,
++ emails y teléfonos, + volcado de estructura para mirar a ojo), y por eso
+`--slim` lo corre solo y **se niega a vendorizar un catálogo con hallazgos**. Los
+tres actuales escanearon limpios.
+
+### Flujo cuando el DEIS actualiza
+
+```bash
+python tools/catalogos_deis.py --check    # avisa si hay edición nueva publicada
+python tools/catalogos_deis.py --fetch    # baja los .xlsx (gitignored)
+python tools/catalogos_deis.py --slim     # escanea PII + genera .csv.gz + FUENTES.json
+git add catalogos/
+```
+
+`catalogos/FUENTES.json` guarda url · edición · filas · **sha256 del origen** ·
+fecha: es lo que permite decir de qué edición habla un número reportado.
+
+### Utilidades (la pestaña de Consultas, pendiente)
+
+Hoy la capa es solo backend. Lo que expone y lo que justificaría UI:
+
+| Utilidad | API | GUI |
+|---|---|---|
+| Normalizar código `J20.9` ↔ `J209` | `norm_codigo` / `con_punto` | backend |
+| Código → glosa | `descripcion` | sí (buscador) |
+| ¿Existe en la edición vigente? | `existe` | sí |
+| Rango / capítulo (asma = J09–J22 sin J19) | `en_rango` | backend (lo consumirá A23) |
+| ¿Es ENO? → tipo + artículo | `eno_de` | sí |
+| ¿Es GES? → N° de problema | `ges_de` | sí |
+| **Anotador batch** de un export RAYEN | `anotar` | **sí — la que da sentido a la pestaña** |
+| Chequeo de actualizaciones | `tools/catalogos_deis.py --check` | no (el `.exe` es offline por diseño) |
+
+**Pendientes:** la pestaña misma; enchufar `en_rango` en el A23 (hoy no lo consume
+nadie todavía — regla: no codear lo que no se usa); y la `Homologación CIE-9 ↔
+CIE-10` del DEIS, que viene en `.xls` y openpyxl no lee (§13).
