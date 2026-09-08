@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -45,7 +45,6 @@ INSTALACION COMO HOOK
   continuacion sin pisarlo -- no reinstala el otro hook.
 """
 
-import subprocess
 import sys
 import unicodedata
 from pathlib import Path
@@ -138,36 +137,11 @@ def arreglar(ruta):
     return False
 
 
-def _git(*args):
-    return subprocess.run(["git", *args], capture_output=True, text=True,
-                           errors="ignore").stdout
-
-
 def instalar_hook():
-    """Agrega este check al hook pre-commit, encadenado a lo que ya haya."""
-    hooks = Path(_git("rev-parse", "--git-path", "hooks").strip())
-    hooks.mkdir(parents=True, exist_ok=True)
-    destino = hooks / "pre-commit"
-    yo = Path(__file__).resolve()
-    invocacion = f'"{sys.executable}" "{yo}"'
-
-    if destino.exists() and str(yo) in destino.read_text(encoding="utf-8"):
-        print(f"ya instalado: {destino}")
-        return
-
-    lineas = (destino.read_text(encoding="utf-8").rstrip("\n").split("\n")
-              if destino.exists() else ["#!/bin/sh"])
-    # 'exec' reemplaza el proceso -> nada corre despues. Si el hook existente
-    # (ej. hook_pre_commit_rut.py) usa exec, se vuelve invocacion normal para
-    # poder encadenar este check a continuacion.
-    lineas = [f"{l[len('exec '):]} || exit 1" if l.startswith("exec ") else l
-              for l in lineas]
-    lineas.append(f"{invocacion} || exit 1")
-    lineas.append("exit 0")
-
-    destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    destino.chmod(0o755)
-    print(f"instalado: {destino}")
+    """Agrega este check al pre-commit (logica comun en tools/hooks_git.py)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from tools.hooks_git import encadenar
+    encadenar("tools/check_cp1252.py")
 
 
 def main():

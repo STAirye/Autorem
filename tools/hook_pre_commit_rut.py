@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -101,17 +101,13 @@ def revisar_mensaje(ruta):
 
 
 def instalar():
-    hooks = Path(git("rev-parse", "--git-path", "hooks").strip())
-    hooks.mkdir(parents=True, exist_ok=True)
-    yo = Path(__file__).resolve()
+    """Logica de encadenado comun en tools/hooks_git.py (rutas relativas al
+    worktree: el hook es uno solo y compartido, ver ese modulo)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from tools.hooks_git import encadenar
     for nombre in ("pre-commit", "commit-msg"):
-        destino = hooks / nombre
-        destino.write_text(
-            "#!/bin/sh\n"
-            f'exec "{sys.executable}" "{yo}" --hook {nombre} "$@"\n',
-            encoding="utf-8")
-        destino.chmod(0o755)
-        print(f"instalado: {destino}")
+        encadenar("tools/hook_pre_commit_rut.py", hook=nombre,
+                  args=f'--hook {nombre} "$@"')
     print("\nListo. Para saltarlo puntualmente: git commit --no-verify")
 
 

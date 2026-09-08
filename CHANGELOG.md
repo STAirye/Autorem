@@ -10,6 +10,32 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.6] — 2026-09-08
+
+El pre-commit bloqueó un commit hecho desde un **worktree** describiendo con precisión
+un árbol que no se estaba commiteando: reportó headers viejos de `main` mientras el
+worktree ya iba en 1.9.5.
+
+### Corregido
+- **Los hooks ahora resuelven las rutas contra `$REPO = git rev-parse --show-toplevel`,
+  no contra la ruta absoluta del clon donde corriste `--instalar`.** Los hooks viven en
+  el `.git` COMPARTIDO, así que el mismo archivo corre desde el checkout principal y
+  desde cada worktree; con rutas absolutas, un commit hecho en un worktree ejecutaba
+  los checks del OTRO árbol. Efecto colateral bueno: el hook deja de depender de dónde
+  está clonado el repo, así que sobrevive a mover la carpeta.
+- **`--instalar` migra los hooks viejos en el lugar:** detecta la invocación con ruta
+  absoluta del mismo script y la REEMPLAZA (si solo agregara la nueva, quedarían las
+  dos y la vieja seguiría mirando el árbol equivocado).
+- **Bug latente en `check_cp1252 --instalar`:** su copia del encadenado no sacaba el
+  `exit 0` final, así que instalarlo DESPUÉS de `check_version` dejaba su línea después
+  del `exit` — instalado y sin correr nunca, callado. La copia de `check_version` sí lo
+  hacía; era exactamente la clase de divergencia que justifica el punto siguiente.
+
+### Agregado
+- **`tools/hooks_git.py`** — fuente única de `--instalar`. Los tres hooks
+  (anti-RUT §8.2, cp1252, check_version) encadenan al MISMO `pre-commit` y cada uno
+  traía su propia copia de la lógica; ahora hay una, idempotente y con la migración.
+
 ## [1.9.5] — 2026-09-08
 
 Los módulos pandas no cumplían la regla de fail loud (CLAUDE.md §3) para un mes SIN

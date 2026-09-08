@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.5**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.6**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -76,6 +76,7 @@ tools/                utilitarios (no-REM)
   catalogos_deis.py       --check/--fetch/--slim de los catalogos DEIS (§14)
   scan_catalogo.py        escaner de PII previo a versionar un catalogo (§14)
   hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
+  hooks_git.py            instalador COMUN de los 3 hooks (§10.1) — rutas por $REPO
 catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
   cie10.csv.gz            Lista Tabular CIE-10 (ago-2026), 12.548 codigos
   eno.csv.gz              Notificacion Obligatoria (Decreto 7/2019), 448 pares
@@ -155,7 +156,8 @@ diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
 | `programas/catalogos.py` | **CAPA COMPARTIDA de catálogos oficiales DEIS/MINSAL** (§14). Backend, no módulo de tarea: no llena ninguna casilla del REM por sí solo, es el **diccionario** que le faltaba al resto (qué significa un código, si es notificable, si es GES). **Registro declarativo** `CATALOGOS` (mismo patrón que `COBERTURA`): un catálogo nuevo = una entrada + una función `_leer_*`, no un módulo por catálogo. Hoy: `cie10` (Lista Tabular ago-2026, 12.548 códigos en 3 hojas cruz-daga/asterisco/causa-externa), `eno` (Decreto 7/2019, 56 enfermedades → 448 pares) y `ges` (90 problemas, 5.936 pares). API: `norm_codigo`/`con_punto` (canónico SIN punto `J209`, como el DEIS; RAYEN usa `J20.9`), `en_rango` (lexicográfico, sirve para asma = J09–J22), `expandir` (el ENO mezcla listas `A000, A001` con rangos `J00-J99` en la misma columna; los rangos NO se expanden), `descripcion`/`existe`/`eno_de`/`ges_de` y **`anotar`** (batch: lista de códigos → `COD·DESC·EXISTE·ENO·ENO_TIPO·GES`). **`ENO_TIPO`** transcribe inmediata/diaria/centinela del **texto del decreto**, no del orden de las filas del Excel (hoy calza, pero una reordenación del DEIS lo rompería callado); las **transitorias** (Mpox, *S. pyogenes*) llevan `ART = alerta vigente` para que se sepa que caducan, y las 2 sin confirmar están declaradas en `ENO_SIN_CLASIFICAR` con aviso ruidoso. |
 | `tools/catalogos_deis.py` | **Mantenedor de los catálogos** (lado desarrollo; el `.exe` no lo corre). `--check` compara la edición publicada por el DEIS contra la vendorizada (scrapea la página por FIRMAS de contenido, porque el nombre del archivo trae la fecha y cambia), `--fetch` baja los `.xlsx` a `refs_tablas/` (gitignored), `--slim` escanea PII, genera `catalogos/*.csv.gz` y actualiza `FUENTES.json`. |
 | `tools/scan_catalogo.py` | **Escáner de PII previo a versionar** (§14). RUT con DV válido (reusa `hook_pre_commit_rut.sospechosos`: fuente única del módulo 11), emails, teléfonos + volcado de estructura para revisar a ojo. **Existe porque el pre-commit anti-RUT SALTA los binarios** (`.xlsx`, `.gz`, su lista `BIN`): un slim vendorizado no lo revisaba nadie. |
-| `tools/hook_pre_commit_rut.py` | **Pre-commit anti-RUT real** (§8.2). Bloquea cadenas con forma de RUT cuyo **DV cuadre** (módulo 11) en archivos staged y en el mensaje. Los hooks NO se versionan: `python tools/hook_pre_commit_rut.py --instalar` en cada clon. |
+| `tools/hook_pre_commit_rut.py` | **Pre-commit anti-RUT real** (§8.2). Bloquea cadenas con forma de RUT cuyo **DV cuadre** (módulo 11) en archivos staged y en el mensaje. Los hooks NO se versionan: `python tools/hook_pre_commit_rut.py --instalar` en cada clon (la lógica de instalación vive en `tools/hooks_git.py`, §10.1). |
+| `tools/hooks_git.py` | **Instalador COMÚN de los 3 hooks** (v1.9.6, §10.1). Los tres (`hook_pre_commit_rut`, `check_cp1252`, `check_version`) encadenan al MISMO `.git/hooks/pre-commit` y cada uno traía su propia copia del encadenado — copias ya divergidas. `encadenar(script, hook, args)` escribe la invocación contra **`$REPO = git rev-parse --show-toplevel`**, no contra la ruta absoluta del clon: los hooks viven en el `.git` compartido y corren también desde los worktrees. Idempotente, y **migra en el lugar** las invocaciones viejas con ruta absoluta. |
 | `legacy/rem_marcar_egresos_1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
 | `legacy/…` (1.1, v0.2, .py) | Históricas. |
 | `LICENSE` / `license_ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
@@ -510,7 +512,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`. La GUI la muestra en el título.
-Estado actual: **1.9.5**.
+Estado actual: **1.9.6**.
 
 **Cada `.py` lleva la versión de SU ÚLTIMO CAMBIO** (corregido sep-2026: este párrafo
 decía «todos se bumpean juntos», que nunca fue lo que pasó — había archivos en 1.8.2,
@@ -587,6 +589,34 @@ de seguridad.
   utils/A05). Tag `v1.2` en el import.
 - Los módulos de tarea ya tienen nombre limpio y con convención
   (`rem_a05_o_egresos.py` / `rem_a05_n_ingresos.py`, sin versión ni espacios).
+
+### 10.1 Worktrees: qué se comparte (sep-2026)
+
+Claude Code trabaja en **worktrees** bajo `.claude/worktrees/<nombre>/`. Un worktree
+NO es un clon: es otro árbol de trabajo **del mismo repositorio**. Su `.git` es un
+archivo de una línea que apunta a `.git/worktrees/<nombre>/`.
+
+| Compartido (uno solo) | Propio de cada worktree |
+|---|---|
+| commits/objetos, refs, `config`, **hooks**, **el stash** | archivos en disco, index, `HEAD`, rama |
+
+Consecuencias que ya mordieron:
+
+- **Un commit hecho en el worktree existe de inmediato para `main`** — mismo `.git`.
+  No hay push entre worktrees; lo único que no ve `main` es el archivo en disco.
+- **Los hooks son UNO SOLO** y corren desde cualquier árbol. Por eso `tools/hooks_git.py`
+  los escribe con rutas relativas a `$REPO` (`git rev-parse --show-toplevel`): con la
+  ruta absoluta del clon, un commit desde el worktree ejecutaba el `check_version.py`
+  de `main` y auditaba archivos que no se estaban commiteando. Bloqueó un commit
+  reportando headers de 1.9.4 con el worktree ya en 1.9.5 — un "callado y errado" al
+  revés: ruidoso y errado.
+- **El stash es compartido.** Dos sesiones en paralelo (§9) comparten la pila: un
+  `git stash pop` puede levantar lo de la otra. Usar commits WIP, no stash.
+- Una rama **no puede estar checkouteada en dos worktrees a la vez** (git lo rechaza).
+
+Cerrar un worktree: mergear a `main` (o cherry-pick), y después
+`git worktree remove <ruta>`; borrar la carpeta a mano deja basura en
+`.git/worktrees/` que se limpia con `git worktree prune`.
 
 ---
 
