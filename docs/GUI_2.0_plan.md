@@ -23,6 +23,9 @@ y `CLAUDE.md`. Estado al 8-sep-2026, sobre `autorem.py` v1.9.4 (1274 líneas).
 | Alcance funcional | Entra **todo** el roadmap de GUI 2.0: About/contacto/licencia · agrupar por Programa de salud · sacar la pestaña A03 standalone · sacar el selector IRIS/Administrativo. |
 | GUI antigua | **Congelada y comprimida** en `legacy/autorem_gui_tk_1.9.4.py.gz` (§8). |
 | Base | `customtkinter` — **6.0.0 ya instalado** en la máquina del autor. |
+| Contacto en el About | **Solo URL del repo + licencia. Sin correo** (§7). |
+| Formato IRIS/Admin | Detección al elegir el archivo, y **la GUI cambia de color** según el formato (§5). |
+| Dónde se desarrolla | Rama `gui-2.0`, **sin bumpear versión en la rama** (§9). |
 
 **Ojo con CTk 6:** cambió API respecto de la serie 5.x, que es la de casi todos los
 ejemplos que circulan. Verificar cada widget contra la doc/fuente de la versión
@@ -187,17 +190,60 @@ llaman a `detectar_formato` y **bloquean** si tu elección no coincide. La únic
 es cambiar el selector hasta que calce. O sea la detección ya es la autoridad única y
 el selector solo aporta una forma de equivocarse.
 
-**Diseño propuesto (revisar con el autor antes de implementar):**
+**Diseño (decidido con el autor):**
 
-1. Al elegir el archivo, se abre y se corre `sm.detectar_formato(ws)`.
-2. El resultado se muestra **en la página**, como label vivo:
+1. Al **elegir el archivo** —no al procesar— se abre y se corre `sm.detectar_formato(ws)`.
+2. El resultado se muestra **en la página** como label vivo:
    `Formato detectado: IRIS` / `Formato detectado: Administrativo`.
-3. Si es **Administrativo**, junto al label va el disclaimer (`_DISCLAIMER_ADMIN`:
+3. **La página cambia de color según el formato** (§5.1). Confirmación visual antes de
+   apretar Procesar: si el color no es el que esperabas, cargaste otra cosa.
+4. Si es **Administrativo**, junto al label va el disclaimer (`_DISCLAIMER_ADMIN`:
    sin demografía) **más un checkbox de acuse** — "Entiendo que las columnas
    demográficas saldrán vacías". Ese formato **degrada datos**, y ahí sí se justifica
    una fricción explícita.
-4. Si es `desconocido`, **fail loud**: no se procesa, y el mensaje dice qué se buscó
+5. Si es `desconocido`, **fail loud**: no se procesa, y el mensaje dice qué se buscó
    (ancla IRIS / banner + markers admin) para que el usuario sepa qué revisar.
+
+### 5.1 El color como canal de estado de la fuente
+
+Dos reglas para que no se degrade a decoración:
+
+- **El color nunca es el único canal.** Va *encima* del label de texto del punto 2, no
+  en vez de. Daltonismo, y además un color sin leyenda no se aprende solo. Si el
+  usuario tapa el color, la página sigue diciendo qué detectó.
+- **El color significa, no solo distingue.** Administrativo es el formato que
+  **degrada datos** -> **ámbar**, que ya es el color de aviso del proyecto
+  (`#a05a00`). IRIS, que trae todo -> frío/neutro. Así el color dice "cuidado", no
+  "opción B". Un esquema tipo rojo/verde arbitrario no serviría para nada.
+
+**Dónde se pinta:** una franja/banner en el borde superior del área de contenido, más
+el borde del bloque de inputs. **No** la ventana entera ni el sidebar: el sidebar es
+navegación y su color tiene que ser estable, y teñir todo pelea con el tema.
+
+**Widget reutilizable `BannerFuente`.** El mismo problema existe en los módulos pandas:
+`formatos.clasificar_fuente` devuelve `plena` / `parcial` / `cambiada` (A23 y SM con el
+Monitoreo Admin), que es exactamente el mismo eje "qué tan completa viene la fuente".
+Mismo widget, tres estados:
+
+| Estado | Color | Mensaje |
+|---|---|---|
+| `plena` / IRIS | neutro frío | — |
+| `parcial` / Administrativo | ámbar | qué se pierde (le habla al USUARIO) |
+| `cambiada` | ámbar fuerte | RAYEN movió el piso (le habla al DEV) |
+
+**Asimetría honesta que hay que respetar:** en A05 la detección es barata (solo mira el
+encabezado), así que se puede pintar **al elegir el archivo**. En los módulos pandas la
+clasificación ocurre dentro de `cargar_canonico`, o sea **durante** el proceso: ahí el
+banner se pinta cuando arranca la corrida, no antes. No se puede prometer preview donde
+no lo hay.
+
+**Costo práctico:** abrir el `.xlsx` al seleccionarlo **congela la ventana** si el
+export es grande. Va con `load_workbook(read_only=True)` y **en un hilo**, con el label
+en "detectando..." mientras tanto. Barato, pero no gratis: no llamarlo directo en el
+callback del `Examinar...`.
+
+**Modo oscuro:** el ámbar `#a05a00` sobre fondo oscuro no se lee. Si entra modo oscuro,
+estos colores necesitan su par (ver §4).
 
 **Lo que NO se hace: permitir forzar el perfil.** Procesar un export con el perfil
 equivocado da números plausibles, callados y errados — exactamente lo que el proyecto
@@ -253,10 +299,10 @@ Contenido:
   incluyó `catalogos/`, esta pantalla es donde se nota.
 - Crédito de asistencia de IA (ya está en el header de cada archivo).
 
-**Decisión pendiente del autor: qué dato de contacto va.** Un correo en un archivo
-versionado de un repo público es una decisión, no un default. Opciones: correo
-personal, correo institucional, solo la URL del repo (issues de GitHub), o nada.
-**No inventarlo al implementar: preguntar.**
+**Contacto: SOLO la URL del repo. Sin correo** (decidido, sep-2026). Un correo en un
+archivo versionado de un repo público es exposición innecesaria; los issues de GitHub
+cumplen la misma función y no publican una dirección. **No agregar un correo al
+implementar, aunque parezca que falta.**
 
 ---
 
@@ -297,16 +343,29 @@ Confirmar también que `.gitignore` no lo atrapa (hoy ignora `*.xlsx/xls/csv`; u
 Un rediseño completo de la GUI es **X** por §9 de CLAUDE.md ("cambio grande de
 arquitectura"): **2.0.0**.
 
-**Colisión a resolver antes de bumpear:** CLAUDE.md §12 tiene comprometido el
-**1.10.0** para cuando cierre la validación de la familia población (P6 + rescate).
-Si la GUI 2.0 aterriza primero, ese 1.10.0 deja de existir y la familia población
-pasará a ser 2.1.0. **Decidir el orden con el autor**, y si la GUI va primero,
-corregir esa línea de §12 en el mismo commit.
+**Colisión con el 1.10.0:** CLAUDE.md §12 tiene comprometido el 1.10.0 para cuando
+cierre la validación de la familia población (P6 + rescate). Los dos trabajos avanzan
+en paralelo y ninguno debe esperar al otro.
 
-Vale el guardarraíl anti-colisión de §9: **el árbitro es el CHANGELOG**. Antes de
-bumpear, si el CHANGELOG ya tiene una versión mayor que `rem_utils.VERSION`, otra
-sesión avanzó — parar. Usar la skill `versionar` (`tools/check_version.py --bump`),
-que arrastra headers, contadores de tests y entrada del CHANGELOG.
+**Solución: rama `gui-2.0`, y NO se bumpea versión dentro de la rama.**
+
+- `rem_utils.VERSION` se queda en **1.9.4** durante todo el desarrollo de la rama.
+- Los `gui/*.py` nuevos nacen con header **1.9.4**, que es la versión actual — así el
+  pre-commit (`check_version.py`) queda contento en cada commit de la rama, sin
+  inventar una versión que todavía no existe.
+- El bump a **2.0.0** se hace en **UN solo commit al mergear**, con la skill
+  `versionar` (`tools/check_version.py --bump 2.0.0`), que arrastra headers,
+  contadores de tests y la entrada del CHANGELOG de un viaje.
+
+Con esto el **guardarraíl anti-colisión del §9 nunca tiene que arbitrar**: la rama no
+toca el CHANGELOG, así que población puede cerrar en `main` y llevarse el 1.10.0
+tranquila; la rama mergea después y se lleva el 2.0.0. Si el orden se da al revés,
+también funciona: el número se decide recién en el commit de merge.
+
+**Superficie de conflicto: baja.** La GUI 2.0 casi solo **crea** archivos bajo `gui/`
+y **borra** de `autorem.py`; el trabajo de población vive en `modulos/` y `programas/`.
+El punto de roce real es `autorem.py` si población necesitara tocar la pestaña BETA
+mientras tanto — si eso pasa, se hace en la rama, no en `main`.
 
 ---
 
@@ -352,6 +411,7 @@ es donde una migración de este tamaño pierde cosas en silencio.
 
 Cada paso deja el árbol funcionando; no hay un estado "la GUI está a medias y no abre".
 
+0. **Crear la rama `gui-2.0`** y no tocar `rem_utils.VERSION` hasta el merge (§9).
 1. **Verificar la API de CTk 6** contra la versión instalada. Escribir un spike de
    ~40 líneas: ventana + sidebar + un frame que se intercambia. Nada más.
 2. **`--collect-data customtkinter` en el `.spec` y compilar el `.exe` con el spike.**
@@ -363,7 +423,9 @@ Cada paso deja el árbol funcionando; no hay un estado "la GUI está a medias y 
    declarativa no le calza a A23, el diseño está mal y conviene saberlo con una página
    hecha, no con cinco.
 6. SM Actividades (ejercita `extras`: checkbox A03 + la relajación de obligatorios de §6).
-7. A05 (ejercita `extras`: caja Período) + **sacar el selector de perfil** (§5).
+7. A05 (ejercita `extras`: caja Período) + **sacar el selector de perfil** y estrenar
+   el `BannerFuente` con cambio de color (§5, §5.1). Al quedar hecho, engancharlo
+   también en A23/SM contra `formatos.clasificar_fuente`.
 8. Población: P6 + rescate, saliendo de la pestaña BETA a Salud Mental con badge (§4).
 9. `inicio.py` + `about.py` (§7).
 10. `tests/test_gui_registro.py` (§11).
