@@ -499,9 +499,25 @@ de seguridad.
 
 ---
 
-## 11. Empaquetado a .exe (pendiente inmediato)
+## 11. Empaquetado a .exe
 
 Meta: colega no técnico hace doble-clic, sin instalar Python.
+
+**La forma oficial de construir es el `.spec` versionado** (sep-2026):
+
+```bash
+pyinstaller --clean autoREM.spec
+# -> dist/autoREM.exe
+```
+
+`autoREM.spec` **SÍ está en el repo** — es la única excepción al `*.spec` del
+`.gitignore`. Dejó de ser un artefacto generado: lleva a mano el contrato de
+`--add-data` y el `hiddenimports` de `programas.catalogos`. Mientras estuvo
+ignorado se pudrió sin que nadie lo viera (apuntaba a `'refs tablas/'` tras el
+rename a `refs_tablas/`, y le faltaban los catálogos). **Si cambias qué datos
+shippea el exe, se edita el `.spec` y se commitea.**
+
+La línea de comando equivalente, por si hay que regenerarlo desde cero:
 
 ```bash
 # Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
@@ -509,10 +525,14 @@ Meta: colega no técnico hace doble-clic, sin instalar Python.
 pyinstaller --onefile --windowed --name "autoREM" \
   --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" \
   --add-data "catalogos;catalogos" autorem.py
-# -> dist/autoREM.exe
 ```
 
 **Gotchas:**
+- **`--clean` puede fallar con `PermissionError: [WinError 5]` sobre
+  `build/autoREM/localpycs`.** NO es falta de privilegios y **correr como admin no
+  lo arregla**: la carpeta queda con el atributo **ReadOnly** y el `shutil.rmtree`
+  de PyInstaller no lo limpia antes del `rmdir`. Se arregla con
+  `attrib -R "build\*" /S /D` (o borrando `build/` a mano). A `dist/` le pasa igual.
 - Entry point = `autorem.py` (raíz). Los paquetes `programas/` y `modulos/` deben
   estar junto a él; PyInstaller sigue los `import programas.x` / `from modulos
   import x` solo y los empaqueta. Si por algún motivo no los encuentra, agregar
@@ -571,8 +591,9 @@ pyinstaller --onefile --windowed --name "autoREM" \
 - **Sin espacios en ningún nombre del repo** — `refs tablas/` → **`refs_tablas/`** y
   el resto de archivos con espacio, renombrados. El espacio obligaba a comillar cada
   ruta y era un punto de falla recurrente. **Ojo:** las rutas viejas quedan muertas —
-  ahí se rompió el `autoREM.spec` (§12, no versionado). La carpeta PADRE del repo
-  (`Dr tobar/`) queda fuera del rename: está fuera del repo.
+  ahí se rompió el `autoREM.spec`, que por estar gitignoreado nadie vio (por eso
+  ahora **se versiona**, §11). La carpeta PADRE del repo (`Dr tobar/`) queda fuera
+  del rename: está fuera del repo.
 - **Higiene de privacidad:** todo el código cp1252-safe (los símbolos no-ASCII
   reventaban la consola de Windows) + pre-commit anti-RUT (§8.2).
 - **Catálogos oficiales DEIS (v1.9.0)** — `programas/catalogos.py` (§14): CIE-10 +
@@ -614,15 +635,9 @@ pyinstaller --onefile --windowed --name "autoREM" \
 - **Delta P(m) − P(m−1) → A05 N/O**: fase 4 del plan del P6; portar la lógica del
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. Ojo §5.0.1: SA y SP
   recortan filas etarias distintas, el delta no cuadra banda por banda.
-- **Re-empaquetar el `.exe`** (§11). El empaquetado **ya se probó**: hay un
-  `dist/autoREM.exe` (39,8 MB) del **1-sep**, pero es de la **1.8.2** — anterior a
-  cobertura, rescate y catálogos DEIS. Ojo con dos trampas antes de rebuildear:
-  **(a)** el `autoREM.spec` que quedó en disco todavía apunta a `'refs tablas/...'`
-  **con espacio** (ruta muerta tras el rename) y **no incluye `catalogos/`** → un
-  `pyinstaller autoREM.spec` falla o sale sin catálogos; usar la línea de comando del
-  §11, que sí está al día, y dejar que regenere el spec. **(b)** el `.spec`, `build/`
-  y `dist/` están en `.gitignore`, así que ninguna revisión del repo los va a cachar:
-  hay que mirarlos a mano.
+- **Validar el `.exe` 1.9.1 a ojo** (§11): que abran las pestañas nuevas (rescate),
+  que la hoja **LEEME** aparezca en una salida, y que el Trabajo Perdido **no** diga
+  «heurística» en el log (si lo dice, el maestro slim no llegó al bundle).
 - **A03 D.3 v2:** conteos agregados por rango etario (extraer del `SA_26`) y CLI
   (hoy solo GUI). Validar la GUI a ojo (doble-clic).
 - **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
