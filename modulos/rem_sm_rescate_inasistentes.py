@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.4
+# Version: 1.9.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -22,16 +22,17 @@ Segundo consumidor de la tabla «Ferrada» (`programas.poblacion`), en el mismo
 patrón que `rem_sm_trabajo_perdido` respecto de `rem_sm_actividades`: reporte
 OPERATIVO, no casilla del REM. Ver `docs/SP_P6_poblacion_plan.md` §8.
 
-Cinco hojas, todas SECTORIZADAS (columna `Sector`) y SIN datos de contacto
+Seis hojas, todas SECTORIZADAS (columna `Sector`) y SIN datos de contacto
 (§8.4 del plan — solo RUN, nunca nombre/dirección/teléfono/mail):
 
   - `Rescate_6m` / `Rescate_13m` — dejó de asistir hace 6 / 13 meses (§8.1: las
     dos usan la MISMA lista de 7 actividades validada de `poblacion.ACTIVIDADES_SM_7`,
     no el `contains "salud mental"` laxo del DAX original).
-  - `Fallecidos_mes` — para NO llamarlos, y para el egreso del A05 (fase 4).
-  - `Posibles_Traslados` — de las cohortes de rescate, quienes se pasivaron por
-    traslado/cambio de domicilio: NO se excluyen (§8.5), se flagean para
-    confirmar en vez de perseguir un abandono.
+  - `Fallecidos_mes` — cohorte DEL MES (para el egreso del A05, fase 4).
+  - `Posibles_Fallecidos` / `Posibles_Traslados` — de las cohortes de rescate, quienes
+    figuran Fallecido / traslado-cambio de domicilio en `Motivo Pasivación`: NO se
+    excluyen de Rescate_6m/13m (§8.3/§8.5, corregido sep-2026 — ver más abajo), se
+    FLAGEAN para confirmar antes de llamar, mismo tratamiento para ambos motivos.
   - `Brecha_Medico` (§8.6) — corre `programas.poblacion.construir_poblacion()`
     dos veces (con/sin el filtro INSTRUMENTO contiene MEDIC) y reporta a quién le
     falta control médico del diagnóstico (lo tiene solo por otro estamento).
@@ -39,11 +40,15 @@ Cinco hojas, todas SECTORIZADAS (columna `Sector`) y SIN datos de contacto
     esta hoja — `rem_sp_p6_poblacion.construir_p6()` la rechaza si se le pasa
     por error.
 
-Filtro duro (§8.3): CUALQUIER paciente con `Motivo Pasivación = Fallecido`
-(cualquier fecha, no solo el mes reportado) sale de Rescate_6m/13m — llamar a
-la familia de alguien fallecido es exactamente lo que este reporte existe para
-evitar. `Fallecidos_mes` es la cohorte DEL MES (para el A05); el filtro del
-rescate mira el histórico completo.
+**Fallecidos: FLAGEADOS, no excluidos (corregido sep-2026).** El plan original
+(§8.3) pedía un filtro duro que sacara a TODO paciente con
+`Motivo Pasivación = Fallecido` de Rescate_6m/13m. Se revirtió por coherencia con
+Traslados (§8.5): un `Motivo Pasivación` mal registrado o desactualizado en RAYEN
+no debería hacer desaparecer a alguien de la lista de rescate en silencio — mismo
+riesgo que documenta el propio `Fallecidos_mes` (los datos vienen del Inscritos,
+un snapshot, no de un registro civil verificado). Ahora Rescate_6m/13m incluyen a
+TODOS los de la cohorte, y `Posibles_Fallecidos` los marca aparte para que se
+confirme antes de llamar — igual que `Posibles_Traslados`.
 """
 
 from pathlib import Path
@@ -63,8 +68,8 @@ _COLS_DX = [s["col"] for s in TODAS_LAS_SPECS]
 # del export (mismo espíritu que EXCLUIR_SMISH en rem_sm_trabajo_perdido: mejor
 # ruido visible en el reporte que un descarte silencioso).
 _TRASLADO_KW = ["TRASLADO", "CAMBIO DE DOMICILIO", "CAMBIO DOMICILIO"]
-# §5.5.1/§8.3: si más de esto de la cohorte de rescate resulta fallecida, avisa
-# fuerte (no es un error automático, pero es una señal de que algo puede estar mal).
+# §5.5.1/§8.3: si más de esto de la cohorte de rescate figura Fallecido, avisa
+# fuerte (no excluye — solo una señal de que 'Motivo Pasivación' puede venir mal).
 _TECHO_FALLECIDOS_RESCATE = 0.02
 
 
@@ -106,59 +111,70 @@ def _tabla(sub, ultima=None, extra=(), orden_extra=None):
     return pd.DataFrame(d)[cols].sort_values(orden, na_position="last").reset_index(drop=True)
 
 
+def _flagear(pool6, pool13, mask6, mask13):
+    """{RUN flageados de pool6/pool13 por `mask6`/`mask13`} -> DataFrame único,
+    sin duplicar RUN. .attrs.clear(): pandas intenta comparar .attrs al concatenar
+    (contiene un DataFrame -> "truth value ambiguous"), mismo fix que
+    rem_sp_p6_poblacion._base_valida."""
+    a, b = pool6[mask6].copy(), pool13[mask13].copy()
+    a.attrs.clear(); b.attrs.clear()
+    return pd.concat([a, b]).drop_duplicates(subset="Número")
+
+
 def construir_rescate(P, d_ada, mes=None, log=print):
     """Cohortes de rescate (§8): Rescate_6m, Rescate_13m, Fallecidos_mes,
-    Posibles_Traslados. `P` = `programas.poblacion.construir_poblacion()` (la
-    corrida NORMAL, `exigir_medico=True`). `d_ada` = ADA ya cargado (para la
-    fecha real de última atención, que `P` no trae). Devuelve {hoja: DataFrame}."""
+    Posibles_Fallecidos, Posibles_Traslados. `P` = `programas.poblacion.
+    construir_poblacion()` (la corrida NORMAL, `exigir_medico=True`). `d_ada` =
+    ADA ya cargado (para la fecha real de última atención, que `P` no trae).
+    Devuelve {hoja: DataFrame}.
+
+    Fallecidos y Traslados reciben el MISMO tratamiento (corregido sep-2026, ver
+    docstring del módulo): NINGUNO se excluye de Rescate_6m/13m — ambos se
+    FLAGEAN aparte para confirmar antes de llamar."""
     mes_ini, mes_fin = _rango_mes(mes)
     corte = mes_fin
     ultima = _ultima_atencion_sm(d_ada, corte)
 
+    rescate6 = P[P["¿Última atención hace 6m?"] == "Si"]
+    rescate13 = P[P["¿Última atención hace 13m?"] == "Si"]
+
     es_fallecido_hist = P["Motivo Pasivación"].map(norm).str.contains("FALLECI", na=False)
-    n_fall_padron = int(es_fallecido_hist.sum())
-    if n_fall_padron:
-        log(f"[rescate] {n_fall_padron} persona(s) con Motivo Pasivación=Fallecido en el "
-            "padrón completo -> excluidas de TODAS las listas de rescate (filtro duro, §8.3).")
-
-    pool6 = P[P["¿Última atención hace 6m?"] == "Si"]
-    pool13 = P[P["¿Última atención hace 13m?"] == "Si"]
-    n_pool = len(pool6) + len(pool13)
-    n_excl = int(es_fallecido_hist.loc[pool6.index].sum()) + int(es_fallecido_hist.loc[pool13.index].sum())
-    if n_pool and n_excl / n_pool > _TECHO_FALLECIDOS_RESCATE:
-        log(f"[rescate] AVISO: {n_excl} de {n_pool} ({n_excl / n_pool:.0%}) de la cohorte de "
-            f"rescate son fallecidos -> por encima del {_TECHO_FALLECIDOS_RESCATE:.0%} esperado "
-            "(§5.5.1/§8.3). Revisa que 'Motivo Pasivación' venga bien en el Informe Inscritos.")
-
-    rescate6 = pool6.loc[~es_fallecido_hist.loc[pool6.index]]
-    rescate13 = pool13.loc[~es_fallecido_hist.loc[pool13.index]]
+    n_pool = len(rescate6) + len(rescate13)
+    n_marc = int(es_fallecido_hist.loc[rescate6.index].sum()) + int(es_fallecido_hist.loc[rescate13.index].sum())
+    if n_marc:
+        log(f"[rescate] {n_marc} de {n_pool} en la cohorte de rescate figuran Fallecido en "
+            "'Motivo Pasivación' -> NO se excluyen (§8.3, corregido), quedan flageados en "
+            "Posibles_Fallecidos para confirmar antes de llamar.")
+    if n_pool and n_marc / n_pool > _TECHO_FALLECIDOS_RESCATE:
+        log(f"[rescate] AVISO: {n_marc} de {n_pool} ({n_marc / n_pool:.0%}) por encima del "
+            f"{_TECHO_FALLECIDOS_RESCATE:.0%} esperado (§5.5.1) — revisa que 'Motivo Pasivación' "
+            "venga bien en el Informe Inscritos.")
+    fallecidos_flag = _flagear(rescate6, rescate13,
+                               es_fallecido_hist.loc[rescate6.index], es_fallecido_hist.loc[rescate13.index])
 
     patron_traslado = "|".join(norm(k) for k in _TRASLADO_KW)
     es_traslado6 = rescate6["Motivo Pasivación"].map(norm).str.contains(patron_traslado, regex=True, na=False)
     es_traslado13 = rescate13["Motivo Pasivación"].map(norm).str.contains(patron_traslado, regex=True, na=False)
-    # .attrs.clear(): pandas intenta comparar .attrs al concatenar (contiene un
-    # DataFrame -> "truth value ambiguous"), mismo fix que rem_sp_p6_poblacion._base_valida.
-    t6, t13 = rescate6[es_traslado6].copy(), rescate13[es_traslado13].copy()
-    t6.attrs.clear(); t13.attrs.clear()
-    traslados = pd.concat([t6, t13]).drop_duplicates(subset="Número")
+    traslados = _flagear(rescate6, rescate13, es_traslado6, es_traslado13)
 
     cumple_sm = P["¿Pertenece? (28 real)"] == "SI"
     ya_no_activo_ingresado = ~((P["Estado"].map(norm) == "ACTIVO") & (P["¿Ingresado?"] == "SI"))
     fpasiv = fecha_col(P["Fecha Pasivación"], log, "Fecha Pasivación")
     fallecido_mes = es_fallecido_hist & fpasiv.between(mes_ini, mes_fin)
-    fallecidos = P[cumple_sm & ya_no_activo_ingresado & fallecido_mes]
+    fallecidos_mes = P[cumple_sm & ya_no_activo_ingresado & fallecido_mes]
 
     log(f"[rescate] mes {mes_ini:%Y-%m}: Rescate_6m={len(rescate6)} · Rescate_13m={len(rescate13)} "
-        f"· Fallecidos_mes={len(fallecidos)} · Posibles_Traslados={len(traslados)}")
+        f"· Fallecidos_mes={len(fallecidos_mes)} · Posibles_Fallecidos={len(fallecidos_flag)} "
+        f"· Posibles_Traslados={len(traslados)}")
 
+    extra_pasiv = [("Motivo Pasivación", "Motivo Pasivación"), ("Fecha Pasivación", "Fecha Pasivación")]
     return {
         "Rescate_6m": _tabla(rescate6, ultima),
         "Rescate_13m": _tabla(rescate13, ultima),
-        "Fallecidos_mes": _tabla(fallecidos, extra=[("Fecha Pasivación", "Fecha Pasivación")],
+        "Fallecidos_mes": _tabla(fallecidos_mes, extra=[("Fecha Pasivación", "Fecha Pasivación")],
                                  orden_extra="Fecha Pasivación"),
-        "Posibles_Traslados": _tabla(traslados, ultima,
-                                     extra=[("Motivo Pasivación", "Motivo Pasivación"),
-                                           ("Fecha Pasivación", "Fecha Pasivación")]),
+        "Posibles_Fallecidos": _tabla(fallecidos_flag, ultima, extra=extra_pasiv),
+        "Posibles_Traslados": _tabla(traslados, ultima, extra=extra_pasiv),
     }
 
 

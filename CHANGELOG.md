@@ -10,6 +10,17 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.1] — 2026-09-08
+
+### Corregido
+- **`rem_sm_rescate_inasistentes`: Fallecidos ya NO se excluyen de Rescate_6m/13m,
+  se FLAGEAN** — mismo tratamiento que Traslados. El filtro duro original (§8.3 del
+  plan) sacaba en silencio a todo paciente con `Motivo Pasivación=Fallecido`; era
+  inconsistente con Traslados (§8.5, ya flageado desde el 1.8.4) y ambos motivos
+  vienen del mismo lugar: un snapshot del Informe Inscritos, no un dato verificado.
+  Nueva hoja **`Posibles_Fallecidos`** (mismo formato que `Posibles_Traslados`).
+  `Fallecidos_mes` (cohorte del mes, para el A05) no cambió. **124 tests.**
+
 ## [1.9.0] — 2026-09-08
 
 Capa nueva (Y++): **catálogos oficiales DEIS/MINSAL** (CIE-10 · ENO · GES) como

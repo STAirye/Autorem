@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.4
+# Version: 1.9.1
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -180,10 +180,11 @@ COBERTURA = {
             ("(todas)", FUERA,
              "Este reporte no tributa a ninguna casilla del REM: es auditoria "
              "operativa de rescate (SP_P6_poblacion_plan.md §8)", "No copiar nada de aqui al SP/SA"),
-            ("Posibles_Traslados", VALIDACION,
-             "El match de 'traslado/cambio de domicilio' es un heuristico sobre "
-             "Motivo Pasivacion sin validar contra los valores reales del export",
-             "Revisar que la lista capture los Motivo Pasivacion de traslado de verdad"),
+            ("Posibles_Fallecidos / Posibles_Traslados", VALIDACION,
+             "El match de 'fallecido' / 'traslado-cambio de domicilio' es un heuristico "
+             "sobre Motivo Pasivacion sin validar contra los valores reales del export. "
+             "NINGUNO se excluye de Rescate_6m/13m (corregido sep-2026): quedan flageados",
+             "Revisar que las listas capturen los Motivo Pasivacion de verdad"),
             ("Brecha_Medico", VALIDACION,
              "Compara dos pasadas de poblacion.construir_poblacion (con/sin filtro "
              "medico); todavia sin validar contra un caso real conocido",

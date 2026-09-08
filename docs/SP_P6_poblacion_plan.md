@@ -846,7 +846,7 @@ Queda solo un punto menor, ya aceptado y sin acción:
 | **1** HECHA | `programas/poblacion.py` + hoja `PSM_Poblacion`. | **Diff por RUN contra el export PowerBI real del mismo mes.** Las únicas diferencias esperadas son las del §4.3 (egreso por dx), y salen listadas en el log. |
 | **2** HECHA | `modulos/rem_sp_p6_poblacion.py` + hojas `P6_A1` y `P6_Detalle`. | Contra un **P6 llenado a mano de un mes ya cerrado**, casilla por casilla (como se validó el SM Actividades vs jul-2026). Sanity check del plan: total de fila 24 siempre ~1300-1500. |
 | **3** casi | Pestaña en la GUI + tests (`tests/test_sp_p6.py`) + fila en la matriz de programas de CLAUDE.md (hecho) + bump a **1.9.0** (Y++) — **el bump espera a que cierre la validación §9**. | Suite completa verde: **91/91**. |
-| **3.5** pendiente | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que ningún fallecido aparezca en el rescate. |
+| **3.5** implementada (en validación) | `modulos/rem_sm_rescate_inasistentes.py` — `Rescate_6m`, `Rescate_13m`, `Fallecidos_mes`, `Posibles_Fallecidos`, `Posibles_Traslados`, `Brecha_Medico` (§8). Recicla la tabla `Ferrada`; no toca el REM. | Revisión a ojo de las listas por sector + que Fallecidos/Traslados queden flageados (no excluidos) en Rescate_6m/13m. |
 | **4** pendiente | Delta P(m) − P(m−1) → A05 N/O. | Ver `docs/A05_poblacion_psm_plan.md`; portar la lógica del `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. |
 
 ---
@@ -930,19 +930,21 @@ Sirve para dos cosas distintas:
 **La cohorte del mes NO alcanza para el filtro de rescate.** `Rescate_6m` mira
 6 meses atrás y `Rescate_13m` mira 13: alguien que falleció hace 8 meses **no** está
 en `Fallecidos_mes` pero **sí** puede aparecer en `Rescate_13m` — dejó de asistir,
-por razones evidentes. Entonces:
+por razones evidentes.
 
-> **Filtro duro en las listas de rescate: se excluye a TODO paciente con
-> `Motivo Pasivación = Fallecido`, sin importar la fecha de pasivación.**
-> `Fallecidos_mes` es la cohorte del mes (para el A05); el filtro del rescate es
-> sobre el histórico completo.
+> **Corregido sep-2026.** Acá decía que las listas de rescate aplicaban un **filtro
+> duro**: excluir a TODO paciente con `Motivo Pasivación = Fallecido`, sin importar la
+> fecha. **Se revirtió por coherencia con Traslados (§8.5):** `Motivo Pasivación` viene
+> de un snapshot del Inscritos, no de un registro civil verificado — un dato mal
+> cargado o desactualizado en RAYEN haría desaparecer a alguien de la lista **en
+> silencio**, justo lo que la regla "fallar ruidoso" del proyecto existe para evitar.
+> **Ahora Fallecidos y Traslados reciben el MISMO tratamiento: NINGUNO se excluye de
+> Rescate_6m/13m.** Ambos quedan flageados en su propia tabla chica —
+> `Posibles_Fallecidos` (nueva) y `Posibles_Traslados` — para que se confirme antes de
+> llamar. `Fallecidos_mes` no cambia: sigue siendo la cohorte del mes, para el A05.
 
-Cuando el filtro saque a alguien, el log lo dice con el conteo: es información útil
-(«N de la cohorte de rescate estaban fallecidos»), no ruido.
-
-*A confirmar:* los pasivados por **traslado / cambio de domicilio** tampoco son
-rescatables (ya no pertenecen al centro). ¿Se excluyen también de las listas, o se
-dejan para que alguien confirme el traslado?
+Cuando alguien de la cohorte de rescate figure Fallecido, el log lo dice con el
+conteo: es información útil («N de la cohorte de rescate figuran Fallecido»), no ruido.
 
 ### 8.4 Privacidad: SOLO RUN + Sector *(decidido)*
 
@@ -965,23 +967,23 @@ accionable (no se puede priorizar a quién llamar primero) y no son datos de con
 — el criterio de §8 CLAUDE.md es que **el RUT sea el único identificador**, y se
 respeta. Si igual se quieren fuera, es borrar tres columnas de una constante.
 
-### 8.5 Traslados: NO se excluyen, se FLAGEAN aparte *(decidido)*
+### 8.5 Traslados (y Fallecidos, desde la corrección de §8.3): NO se excluyen, se FLAGEAN aparte *(decidido)*
 
-A diferencia de los fallecidos (§8.3, filtro duro), los pasivados por **cambio de
-domicilio / traslado de inscripción** **siguen en las listas de rescate**. Un traslado
-registrado no siempre significa que la persona se fue de verdad, y confirmarlo es
-parte del trabajo de rescate.
+Los pasivados por **cambio de domicilio / traslado de inscripción** **siguen en las
+listas de rescate**. Un traslado registrado no siempre significa que la persona se fue
+de verdad, y confirmarlo es parte del trabajo de rescate. Desde la corrección de §8.3,
+los **Fallecidos** reciben exactamente el mismo tratamiento y por la misma razón: el
+dato viene de un snapshot, no de un registro verificado.
 
-Salida: una **segunda tabla chica**, `Posibles_Traslados`, con los RUN de las cohortes
-de rescate cuyo `Motivo Pasivación` es de traslado, y su motivo. Quien llame la mira
-primero y sabe que ahí **la gestión es confirmar el traslado**, no perseguir un
-abandono.
+Salida: dos **tablas chicas**, `Posibles_Traslados` y `Posibles_Fallecidos`, con los RUN
+de las cohortes de rescate cuyo `Motivo Pasivación` matchea cada motivo. Quien llame las
+mira primero y sabe que ahí **la gestión es confirmar**, no perseguir un abandono.
 
 Mismas columnas que las listas de rescate + `Motivo Pasivación` + `Fecha Pasivación`.
 
 | Situación | En las listas de rescate | Tabla aparte |
 |---|---|---|
-| `Motivo Pasivación = Fallecido` | **NO** (filtro duro, cualquier fecha) | `Fallecidos_mes` (solo cohorte del mes, para el A05) |
+| `Motivo Pasivación = Fallecido` | **SÍ** (corregido sep-2026, ver §8.3) | `Posibles_Fallecidos` (flag) + `Fallecidos_mes` (cohorte del mes, para el A05) |
 | Traslado / cambio de domicilio | **SÍ** | `Posibles_Traslados` (flag) |
 
 ---

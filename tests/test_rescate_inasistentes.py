@@ -137,15 +137,17 @@ def test_rescate_6m_trae_sector_y_ultima_atencion():
     assert fila["Fecha última atención SM"].date() == date(2026, 2, 10)
 
 
-def test_fallecido_nunca_aparece_en_rescate():
-    """§8.3: filtro DURO — Motivo Pasivación=Fallecido saca a la persona de
-    Rescate_6m/13m sin importar que su última atención SM caiga justo en la ventana."""
+def test_fallecido_no_se_excluye_pero_se_flagea():
+    """§8.3 (corregido sep-2026): Motivo Pasivación=Fallecido NO saca a la persona
+    de Rescate_6m — sigue ahí, y además queda flageada en Posibles_Fallecidos
+    (mismo tratamiento que Posibles_Traslados)."""
     ada_filas = [_sm("22222222-2", date(2026, 2, 10))]
     P = _poblacion([], [{"rut": "22222222-2", "mpasiv": "Fallecido", "estado": "Pasivo"}], ada_filas)
     d_ada = pob.cargar_atenciones(_mk_ada(ada_filas), log=_quiet)
     tablas = resc.construir_rescate(P, d_ada, mes=MES, log=_quiet)
-    assert "22222222-2" not in set(tablas["Rescate_6m"]["RUN"])
-    assert "22222222-2" not in set(tablas["Rescate_13m"]["RUN"])
+    assert "22222222-2" in set(tablas["Rescate_6m"]["RUN"])
+    assert "22222222-2" in set(tablas["Posibles_Fallecidos"]["RUN"])
+    assert tablas["Posibles_Fallecidos"].iloc[0]["Motivo Pasivación"] == "Fallecido"
 
 
 def test_fallecidos_mes_exige_fecha_pasivacion_en_el_mes_reportado():
@@ -241,9 +243,9 @@ def test_procesar_rechaza_P_con_exigir_medico_apagado():
 
 
 # ======================================================================
-# Integración: procesar() + escribir() -> LEEME primera, 5 hojas
+# Integración: procesar() + escribir() -> LEEME primera, 6 hojas
 # ======================================================================
-def test_escribir_hoja_leeme_primera_y_las_5_hojas():
+def test_escribir_hoja_leeme_primera_y_las_6_hojas():
     ada_filas = [_sm("10000001-1", date(2026, 2, 10))]
     inscritos = _mk_inscritos([{"rut": "10000001-1", "sector": "Sur"}])
     formulario = _mk_formulario([])
@@ -254,7 +256,8 @@ def test_escribir_hoja_leeme_primera_y_las_5_hojas():
 
     wb = openpyxl.load_workbook(salida)
     assert wb.sheetnames[0] == "LEEME"
-    for hoja in ("Rescate_6m", "Rescate_13m", "Fallecidos_mes", "Posibles_Traslados", "Brecha_Medico"):
+    for hoja in ("Rescate_6m", "Rescate_13m", "Fallecidos_mes", "Posibles_Fallecidos",
+                "Posibles_Traslados", "Brecha_Medico"):
         assert hoja in wb.sheetnames, wb.sheetnames
 
 
