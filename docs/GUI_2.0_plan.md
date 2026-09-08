@@ -220,6 +220,17 @@ Dos reglas para que no se degrade a decoración:
 el borde del bloque de inputs. **No** la ventana entera ni el sidebar: el sidebar es
 navegación y su color tiene que ser estable, y teñir todo pelea con el tema.
 
+El fondo general queda en el claro/oscuro genérico del tema; el color de estado vive
+solo en banner y acentos. Además de verse mejor, es lo **verificable**: tiñendo la
+ventana entera habría que comprobar el contraste de cada label, el log, los botones y
+los spinbox contra tres fondos distintos; confinado al banner, los pares que deben
+estar bien son los seis de §5.2.
+
+**Refinamiento: punto de estado en el sidebar.** Un dot de color chico en el item de
+la página deja ver el estado de una pantalla que no estás mirando. Es compatible con
+"el sidebar mantiene color estable" (un punto es acento, no tinte) y con la regla 1:
+el dot es pista **secundaria**, el dato lo carga el label de la página.
+
 **Widget reutilizable `BannerFuente`.** El mismo problema existe en los módulos pandas:
 `formatos.clasificar_fuente` devuelve `plena` / `parcial` / `cambiada` (A23 y SM con el
 Monitoreo Admin), que es exactamente el mismo eje "qué tan completa viene la fuente".
