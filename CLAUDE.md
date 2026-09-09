@@ -472,6 +472,24 @@ del tamaño equivocado.**
 3. Repositorio **borrado y recreado** en GitHub: un `push --force` no basta, GitHub
    sigue sirviendo los commits viejos por URL directa de SHA hasta que corra su GC.
 4. **Pre-commit hook** `tools/hook_pre_commit_rut.py` (§8.2).
+5. **Borrar todo clon anterior a la reescritura** (ver abajo).
+
+**Vector que quedó abierto dos meses: los clones viejos.** Los pasos 1-3 limpian el
+remoto y el árbol desde donde se hizo la purga, pero **no tocan ningún otro clon**.
+`git filter-repo` cambia TODOS los SHA, así que un clon anterior no comparte ni un
+commit con el origin nuevo: su `git pull` no puede hacer fast-forward y, forzado con
+`--allow-unrelated-histories`, intenta mergear dos árboles sin ancestro común →
+conflicto "both added" en todos los archivos, con marcadores `<<<<<<<` dentro del
+propio CLAUDE.md. Ese es el síntoma ruidoso; el problema de fondo es callado: ese
+clon **seguía teniendo el RUT real en sus 49 commits**, en septiembre, con el
+incidente ya dado por cerrado.
+
+**Un `reset --hard` NO lo arregla:** mueve el puntero, pero los objetos viejos siguen
+en `.git/objects`, y cualquier tag o reflog que los ancle los deja ahí indefinidamente.
+
+**Regla:** tras un `filter-repo`, inventariar y **borrar la carpeta entera** de todo
+clon anterior a la reescritura, y volver a clonar de cero. Ojo con las copias que no
+están a la vista — en este caso había además un clon anidado DENTRO del propio repo.
 
 **Desenlace (sep-2026).** Consultado a jurídica del SSMC: el RUT filtrado **no estaba
 asociado a información clínica demostrable** — aparecía como ejemplo de formato en un
@@ -495,7 +513,15 @@ azar casi nunca cuadra el módulo 11.
 
 ```bash
 python tools/hook_pre_commit_rut.py --instalar
+python tools/check_cp1252.py --instalar
+python tools/check_version.py --instalar
 ```
+
+**Son TRES, y cada uno se instala solo.** `tools/hooks_git.py` es la **librería** que
+comparten (expone `encadenar()`, §10.1), **NO un ejecutable**: `python tools/hooks_git.py
+--instalar` corre, no imprime nada, sale 0 y no instala ni un hook — un no-op silencioso
+que se confunde fácil con éxito. Verificar siempre por el resultado: `.git/hooks/pre-commit`
+debe listar los tres scripts y `.git/hooks/commit-msg` el de RUT.
 
 **Los hooks NO se versionan** (viven en `.git/hooks/`): hay que instalarlo **en cada
 clon**, incluido cualquier equipo nuevo. Deja pasar los placeholders obvios
@@ -612,7 +638,8 @@ Consecuencias que ya mordieron:
   ruta absoluta del clon, un commit desde el worktree ejecutaba el `check_version.py`
   de `main` y auditaba archivos que no se estaban commiteando. Bloqueó un commit
   reportando headers de 1.9.4 con el worktree ya en 1.9.5 — un "callado y errado" al
-  revés: ruidoso y errado.
+  revés: ruidoso y errado. `hooks_git.py` es **librería, sin CLI**: el `--instalar`
+  lo expone cada uno de los tres scripts, no ella (§8.2).
 - **El stash es compartido.** Dos sesiones en paralelo (§9) comparten la pila: un
   `git stash pop` puede levantar lo de la otra. Usar commits WIP, no stash.
 - Una rama **no puede estar checkouteada en dos worktrees a la vez** (git lo rechaza).
