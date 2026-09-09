@@ -10,6 +10,33 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.9] — 2026-09-09
+
+### Corregido
+- **El diálogo de dotación arrancaba TODOS los ticks en `False`.** Hoy no mordía
+  porque solo se le pasaban funcionarios sin clasificar, pero en cuanto se le
+  muestra gente ya clasificada (el «Precargar dotación» de abajo) un `Aplicar`
+  le borraba la marca de `externo` a todo el mundo **en silencio**. Ahora el
+  tick nace de `dotacion.clase(...)`; un nombre nuevo sigue dando `desconocido`
+  -> sin tick = interno (el default del plan, §1.3).
+
+### Cambiado
+- **La corrida CERO de dotación era imposible de descubrir.** El cuadro estaba
+  ARRIBA de los selectores de archivo y su único botón («Revisar dotación…»)
+  muestra solo lo YA guardado -> en la primera corrida salía vacío, y nada decía
+  que había que cargar el ADA primero. Tres arreglos:
+  - el cuadro se movió **DEBAJO** del ADA y el grupal (donde ya hay algo que
+    mirar), vía un holder que le reserva el lugar en el orden de `pack`;
+  - botón nuevo **«Precargar dotación…»**: carga el ADA, lo filtra al mes y abre
+    el diálogo con **TODOS** los funcionarios — que es el veto inicial del plan
+    (§3.1) y además permite corregir a alguien ya clasificado, con evidencia
+    (n_atenciones / actividades) que «Revisar dotación…» no puede dar;
+  - el mensaje de vacío de «Revisar dotación…» ahora explica qué hacer en vez de
+    decir solo «se puebla al Procesar».
+- `autorem._dotacion_ada()` unifica cargar-ADA + filtrar-mes + evidencia +
+  diálogo: lo usan el botón nuevo y `on_procesar` (que ya lo hacía inline).
+  Devuelve el ADA cargado, así que sigue sin releerse para el worker.
+
 ## [1.9.8] — 2026-09-09
 
 ### Agregado

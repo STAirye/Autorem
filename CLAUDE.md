@@ -39,7 +39,7 @@ Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.8**
+Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.9**
 (esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
 A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
 + **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
@@ -514,7 +514,7 @@ solo binario, un solo `rem_utils.VERSION`):
 
 Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
 romperse. Fuente de verdad en `rem_utils.VERSION`. La GUI la muestra en el título.
-Estado actual: **1.9.8**.
+Estado actual: **1.9.9**.
 
 **Cada `.py` lleva la versión de SU ÚLTIMO CAMBIO** (corregido sep-2026: este párrafo
 decía «todos se bumpean juntos», que nunca fue lo que pasó — había archivos en 1.8.2,

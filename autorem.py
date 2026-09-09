@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.8
+# Version: 1.9.9
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -535,22 +535,79 @@ def _resolver_estamentos(root, faltantes, opciones):
 
 
 # -- Dotación: separar funcionarios EXTERNOS (docs/dotacion_externos_plan.md) --
-def _bloque_dotacion(parent, modulo="sm"):
-    """Cuadro informativo + botón 'Revisar dotación…'. Reutilizable por
-    cualquier módulo con el mismo problema (hoy solo SM Actividades)."""
-    from tkinter import ttk
+def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
+    """Carga el ADA, lo filtra al `mes` y abre el diálogo de dotación.
+
+    `mask(serie_act_norm)` -> booleana con las filas que TRIBUTAN al REM de ese
+    módulo; sin ella se preguntaría por gente cuyo trabajo no entra a este REM.
+    `todos=True` muestra TODOS los funcionarios del ADA (botón 'Precargar
+    dotación': sirve para el veto inicial y para corregir a alguien ya
+    clasificado); por defecto solo los que faltan clasificar.
+
+    Devuelve `(d, tabla)` — `d` es el ADA YA cargado, para que quien procese
+    después no lo relea. `(None, None)` si el archivo no se pudo leer."""
+    from programas.rem_utils import cargar_atenciones, filtrar_mes, _rango_mes
+    log("[dotacion] cargando el ADA para revisar dotación...")
+    try:
+        d = cargar_atenciones(ada, log=log)
+        ini, fin = _rango_mes(mes)
+        dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)")
+    except Exception as e:   # noqa: BLE001
+        _manejar_error(e, log, messagebox)
+        return None, None
+    tabla = dotacion.cargar(log=log)
+    trib = dm[mask(dm["ACT_n"])] if mask else dm
+    ev = dotacion.evidencia(trib, tabla, modulo=modulo)
+    log(f"[dotacion] {len(ev)} funcionario(s) en {len(trib)} atenciones que tributan.")
+    filas = ev if todos else dotacion.nuevos(ev, tabla, modulo)
+    if len(filas):
+        _dialogo_dotacion(root, tabla, modulo, filas)
+    elif todos:
+        messagebox.showinfo(
+            "Dotación", "El ADA no trae funcionarios con atenciones que tributen a "
+            "este REM en el mes elegido. Revisa el archivo y el mes.")
+    else:
+        log("[dotacion] sin funcionarios nuevos que clasificar.")
+    return d, tabla
+
+
+def _bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
+    """Cuadro informativo + 'Precargar dotación…' y 'Revisar dotación…'.
+    Reutilizable por cualquier módulo con el mismo problema (hoy solo SM).
+
+    VA DEBAJO de los selectores de archivo: necesita el ADA cargado y el mes
+    elegido para tener algo que mostrar. `get_ada`/`get_mes` son los getters de
+    la pestaña; `mask` filtra a lo que tributa a ese REM."""
+    from tkinter import ttk, messagebox
     caja = ttk.LabelFrame(parent, text="Dotación (separar funcionarios externos)", padding=8)
     caja.pack(fill="x", pady=(2, 6))
     ttk.Label(caja, justify="left", foreground="#a05a00", text=(
         "¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que "
         "NO son de tu dotación (p.ej. la sala AIDIA); no deben tributar a este REM (doble "
-        "conteo).\nAl Procesar, si hay funcionarios nuevos se abre un diálogo para "
-        "clasificarlos. La tabla queda GUARDADA (caché en ~/.autorem/dotacion.json): la "
-        "primera vez se revisa el equipo completo, después solo los nombres nuevos.")
+        "conteo).\nLa PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes "
+        "aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo "
+        "por los nombres nuevos.\nLa tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).")
         ).pack(anchor="w")
-    ttk.Button(caja, text="Revisar dotación…",
-              command=lambda: _revisar_dotacion(parent.winfo_toplevel(), modulo)
-              ).pack(anchor="w", pady=(4, 0))
+
+    def _precargar():
+        ada = get_ada()
+        if not ada:
+            messagebox.showwarning(
+                "Falta el ADA", "Primero carga el archivo de Atenciones / Diagnósticos / "
+                "Actividades y elige el mes; recién ahí puedo mostrarte los funcionarios.")
+            return
+        mes = get_mes()
+        if mes is None:
+            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+            return
+        _dotacion_ada(parent.winfo_toplevel(), modulo, ada, mes, log, messagebox,
+                      mask=mask, todos=True)
+
+    barra = ttk.Frame(caja); barra.pack(anchor="w", pady=(4, 0))
+    ttk.Button(barra, text="Precargar dotación…", command=_precargar).pack(side="left")
+    ttk.Button(barra, text="Revisar dotación…",
+               command=lambda: _revisar_dotacion(parent.winfo_toplevel(), modulo)
+               ).pack(side="left", padx=6)
 
 
 def _grupo_dotacion(inner, estamento, filas, checks, tabla, modulo, con_evidencia):
@@ -594,7 +651,12 @@ def _grupo_dotacion(inner, estamento, filas, checks, tabla, modulo, con_evidenci
 
     for _, fila in filas.iterrows():
         nombre = fila["funcionario"]
-        v = tk.BooleanVar(value=False)
+        # El tick arranca en la clase YA guardada, no en False: el diálogo también
+        # se abre mostrando gente ya clasificada (botón 'Precargar dotación'), y con
+        # un default fijo un 'Aplicar' le borraría la marca de externo EN SILENCIO.
+        # Para un nombre nuevo `clase` da 'desconocido' -> False = interno (el default
+        # del plan, §1.3).
+        v = tk.BooleanVar(value=(dotacion.clase(nombre, tabla) == dotacion.EXTERNO))
         checks[nombre] = v
         detalle = ""
         if con_evidencia:
@@ -674,8 +736,11 @@ def _revisar_dotacion(root, modulo="sm"):
     func = tabla.get("funcionarios", {})
     if not func and not tabla.get("omitidos"):
         from tkinter import messagebox
-        messagebox.showinfo("Dotación", "Todavía no hay ningún funcionario clasificado "
-                            "(se puebla al Procesar).")
+        messagebox.showinfo(
+            "Dotación", "Todavía no hay ningún funcionario clasificado.\n\n"
+            "Esta ventana solo muestra lo YA guardado. Para poblarla: carga el ADA, "
+            "elige el mes y aprieta «Precargar dotación…» (o procesa y se preguntará "
+            "por los nombres nuevos).")
         return
     top = tk.Toplevel(root)
     top.title("Revisar dotación")
@@ -1088,10 +1153,14 @@ def _tab_sm(nb, root):
     caja.pack(fill="x", pady=(0, 8))
     ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
     _aviso_sin_modificar(tab)
-    _bloque_dotacion(tab, modulo="sm")
 
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
+    # El cuadro de Dotación va DEBAJO del ADA (necesita el archivo cargado para
+    # mostrar algo), pero se construye más abajo porque depende del spinbox de mes
+    # y del log. Este holder le reserva el lugar en el orden de `pack`.
+    holder_dot = ttk.Frame(tab)
+    holder_dot.pack(fill="x")
     _separador_opcionales(tab)
     get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
     get_multi = _fila_archivos(tab, "Multiprofesional (opc, A26):", "Monitoreo Multiprofesional — composición de VDI en A26")
@@ -1121,6 +1190,17 @@ def _tab_sm(nb, root):
 
     log, limpiar = _crear_log(tab, root)
 
+    def get_mes():
+        """(año, mes) del spinbox, o None si no son números."""
+        try:
+            return int(var_anio.get()), int(var_mes.get())
+        except ValueError:
+            return None
+
+    import modulos.rem_sm_actividades as _smact
+    _bloque_dotacion(holder_dot, "sm", get_ada, get_mes, log,
+                     mask=_smact.mask_tributa_ada)
+
     def on_procesar():
         limpiar()
         ada = get_ada()
@@ -1138,11 +1218,11 @@ def _tab_sm(nb, root):
         inscritos = ins[0] if ins else None
         mp = get_multi()
         multiprofesional = mp[0] if mp else None
-        try:
-            y, m = int(var_anio.get()), int(var_mes.get())
-        except ValueError:
+        mes_sel = get_mes()
+        if mes_sel is None:
             messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
             return
+        y, m = mes_sel
         carpeta = _valida_carpeta(get_salida(), messagebox, defecto=Path(ada[0]).parent)
         if carpeta is None:
             return
@@ -1161,22 +1241,11 @@ def _tab_sm(nb, root):
         # worker (_correr_con_reloj lo manda a un hilo aparte donde tocar widgets
         # revienta). Por eso el ADA se carga y filtra por mes ACÁ (una vez) y se
         # pasa `d` ya listo al worker en vez de recargarlo.
-        from programas.rem_utils import cargar_atenciones, filtrar_mes, _rango_mes
-        import modulos.rem_sm_actividades as smact
-        log("[dotacion] cargando el ADA para revisar dotación…")
-        try:
-            d = cargar_atenciones(ada, log=log)
-            ini_dot, fin_dot = _rango_mes((y, m))
-            dm_dot = filtrar_mes(d, ini_dot, fin_dot, "el ADA (Atenciones Diarias Ambulatorias)")
-        except Exception as e:   # noqa: BLE001
-            _manejar_error(e, log, messagebox)
+        smact = _smact
+        d, tabla_dot = _dotacion_ada(root, "sm", ada, (y, m), log, messagebox,
+                                     mask=smact.mask_tributa_ada)
+        if d is None:
             return
-        tabla_dot = dotacion.cargar(log=log)
-        tributa = dm_dot[smact.mask_tributa_ada(dm_dot["ACT_n"])]
-        ev = dotacion.evidencia(tributa, tabla_dot, modulo="sm")
-        nuevos_dot = dotacion.nuevos(ev, tabla_dot, "sm")
-        if len(nuevos_dot):
-            _dialogo_dotacion(root, tabla_dot, "sm", nuevos_dot)
 
         def trabajo(log):
             E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
