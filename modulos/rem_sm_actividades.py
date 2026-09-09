@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.8
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -112,7 +112,7 @@ def cargar_grupal(entrada, log=print):
     (el export puede venir por período). La fecha viene en TEXTO DD/MM/YYYY."""
     d, col = cargar_canonico(entrada, ["ACTIVIDADES", "FECHA ATENCION"],
                              lambda h: resolver_columnas(h, MAPA_GRUPAL),
-                             requeridas=("ACT", "FECHA", "ASISTE"))
+                             requeridas=("ACT", "FECHA", "ASISTE"), espera="grupal")
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención (grupal)")
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
@@ -223,6 +223,12 @@ ADA_TRIBUTAN = [
     "prioridad - con integrante con demencia",                             # A19a·99
     "visita domiciliaria integral familia con integrante con problema de salud mental",  # A26
     "acciones remotas de salud mental",                                    # A32F1
+    # A32F2. Van APARTE de "controles salud mental" (A06): el nombre real lleva un
+    # "de" en medio ("Controles DE Salud Mental por llamadas telefonicas"), asi que
+    # el patron del A06 NO los captura. Sin estas dos entradas caian como TRABAJO
+    # PERDIDO (fue asi como se descubrio el bug de `ctrl_rem`, mas abajo).
+    "salud mental por llamadas",                                           # A32F2
+    "salud mental por videollamada",                                       # A32F2
 ]
 
 
@@ -240,7 +246,14 @@ def _ada_eventos(dm):
         return _empty_ev()
     A, I = dm["ACT_n"], dm["INSTR_n"]
     remotas = _all(A, "acciones remotas de salud mental")
-    ctrl_rem = _all(A, "controles salud mental por")
+    # A32-F2. OJO con el "de": las actividades reales de RAYEN son "Controles DE Salud
+    # Mental por llamadas telefonicas" y "Controles de salud mental por videollamadas".
+    # El patron viejo era la subcadena contigua "controles salud mental por", que NO
+    # matchea ninguna de las 4 variantes del Maestro -> A32-F2 daba 0 SIEMPRE, y el 0
+    # se leia como "ese mes no hubo" (asi quedo anotado en CLAUDE.md). Numero plausible,
+    # callado y errado: el caso clasico que este proyecto persigue. Ahora son dos
+    # subcadenas en AND, que capturan las 4 y nada mas (verificado contra el Maestro).
+    ctrl_rem = _all(A, "controles", "salud mental por")
     llam = _all(A, "llamada") & ~_all(A, "videollamada")
     specs = [
         ("A04", "", (I == "MEDICO") & _all(A, "consulta de salud mental")),
@@ -564,6 +577,19 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                        if dotacion.clase(n, tabla_dot) == dotacion.EXTERNO}
         log(f"[dotacion] {len(ext_rows)} atencion(es) de {len(nombres_ext)} funcionario(s) "
             "EXTERNO(s) separadas del REM (ver hoja Externos_Delta y columna 'externo' en SM_Detalle).")
+        # Este aviso es el MAS importante de los tres: los otros dos hablan de lo que
+        # falta hacer, este de lo que la herramienta YA HIZO -- sacar atenciones de las
+        # tablas a proposito. Para eso existe la hoja LEEME (decir que NO esta en los
+        # numeros); si el unico rastro fuera el log de la corrida, el mes que alguien
+        # cuadre estas tablas contra RAYEN veria una diferencia sin explicacion.
+        avisos.append((
+            "Atenciones EXCLUIDAS a proposito (funcionarios externos)", cobertura.OMITIDO,
+            f"{len(ext_rows)} atencion(es) de {len(nombres_ext)} funcionario(s) marcados "
+            "EXTERNOS (no son de la dotacion de este centro: las reporta su propio "
+            "dispositivo, contarlas aca seria doble conteo). NO estan en las tablas de "
+            "seccion; SI estan en SM_Detalle (columna 'externo') y en Externos_Delta",
+            "Si algun nombre no corresponde, corregirlo en 'Revisar dotacion...' y "
+            "volver a procesar"))
     if len(desc_rows):
         nombres_desc = sorted({n for f in desc_rows["funcionario"] for n in _nombres_funcionario(f)
                                if dotacion.clase(n, tabla_dot) == dotacion.DESCONOCIDO})

@@ -10,6 +10,55 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.10] — 2026-09-09
+
+### Corregido
+- **A32·F2 daba 0 SIEMPRE, y el 0 se leía como «ese mes no hubo».** El patrón era
+  la subcadena **contigua** `"controles salud mental por"`, y los nombres reales de
+  RAYEN llevan un «de» en medio: `Controles DE Salud Mental por llamadas
+  telefónicas` / `Controles de salud mental por videollamadas`. Ninguna de las 4
+  variantes del Maestro matcheaba -> la casilla era **estructuralmente** cero, con
+  pinta de dato legítimo (así quedó anotado en CLAUDE.md, «sin datos para validar
+  el string»). Se descubrió porque esas atenciones aparecían en el reporte de
+  **Trabajo Perdido**. Ahora son dos subcadenas en AND
+  (`_all(A, "controles", "salud mental por")`), verificadas contra el Maestro:
+  capturan las 4 variantes F2 y nada más.
+  - `ADA_TRIBUTAN` sumó sus dos entradas (`"salud mental por llamadas"` /
+    `"...videollamada"`). Sin eso las F2 seguían contándose como trabajo perdido y
+    quedaban fuera de `mask_tributa_ada`, que es la fuente única de qué tributa.
+  - Regresión cubierta con los nombres literales de RAYEN.
+  - **Moraleja para el resto de los filtros:** un patrón de subcadena *contigua*
+    falla en silencio ante un artículo intercalado. Un 0 en una casilla merece que
+    alguien verifique el string UNA vez antes de anotarlo como «no hubo».
+- **La hoja LEEME no decía que se excluye gente a propósito.** Los avisos de
+  dotación cubrían lo pendiente (sin clasificar) y lo omitido (estamentos), pero el
+  caso en que la herramienta **efectivamente saca atenciones de las tablas** solo
+  salía por el log de la corrida, que se pierde al cerrar. Es justo lo que la hoja
+  existe para decir: sin ese aviso, el mes que alguien cuadre estas tablas contra
+  RAYEN ve una diferencia sin explicación. Ahora sale como `OMITIDO`, con cuántas
+  atenciones, cuántos funcionarios y dónde mirarlas (`SM_Detalle` / `Externos_Delta`).
+- **La hoja LEEME desaconsejaba activamente corregir el 0 de A32·F2.** La
+  entrada `A27 y A32-F2 -> SIN REGISTRO` decía «el 0 es correcto: no lo llenes
+  a mano asumiendo que falta». Para A27 sigue siendo cierto; para F2 era una
+  mentira construida sobre el bug de arriba. F2 salió de esa entrada.
+- **`cobertura.py` afirmaba algo falso sobre A06·A.2.** Decía «no hay reporte ni
+  formulario en RAYEN que las registre»; el Maestro tiene **6** actividades mapeadas
+  a REM-A06 A.2/A.3 (Consultorías y Teleconsultorías de salud mental adulto /
+  infanto adolescente, y los «Casos revisados»). El motivo real es otro: el centro
+  no las registra con esa actividad. La distinción le importa al usuario — no es
+  imposible, es accionable.
+
+### Agregado
+- **Error específico para el ADA y el grupal cargados CRUZADOS** (`formatos.
+  parece_reporte` / `verificar_cruce`, enganchado en `cargar_canonico` vía el
+  parámetro `espera`). Las dos casillas están una al lado de la otra, cruzarlas es
+  fácil, y hasta ahora reventaba con el «no reconozco el archivo / faltan columnas»
+  genérico, que no dice lo único útil. Firmas positivas sobre el header CRUDO; ante
+  empate (o cero evidencia) no acusa nada y cae al mensaje de siempre. Sólo se
+  consulta cuando la carga YA falló -> no puede dar falso positivo sobre un archivo
+  válido. Mismo espíritu que el mensaje cruzado de `validar_iris`/`validar_admin`.
+  Trae un huésped de Walt Whitman.
+
 ## [1.9.9] — 2026-09-09
 
 ### Corregido

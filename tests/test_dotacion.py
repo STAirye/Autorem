@@ -157,6 +157,13 @@ def test_externos_delta_y_detalle_conserva_filas():
     resumen = E.attrs["tablas"]["SM_Resumen"]
     fila_r = resumen[resumen["Casilla"].str.startswith("A06")].iloc[0]
     assert fila_r["Total mes"] == 2   # sin la externa
+    # La hoja LEEME tiene que DECIR que se excluyo gente a proposito: es lo unico
+    # que la herramienta efectivamente saco de las tablas, y sin ese aviso el mes
+    # que alguien cuadre contra RAYEN ve una diferencia sin explicacion.
+    avisos = E.attrs["avisos"]
+    exc = [a for a in avisos if "EXCLUIDAS" in a[0].upper()]
+    assert len(exc) == 1, f"falta el aviso de exclusion en LEEME: {[a[0] for a in avisos]}"
+    assert "1 atencion" in exc[0][2] and "externo" in " ".join(exc[0]).lower()
 
 
 # ======================================================================

@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from programas import formatos
 from programas.rem_utils import (leer_xlsx, resolver_columnas, MAPA_ATENCIONES, norm,
-                                 cargar_canonico)
+                                 cargar_canonico, ArchivoInvalido)
 
 RAIZ = Path(__file__).resolve().parent.parent
 ADA_IRIS = RAIZ / "refs_tablas" / "ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx"
@@ -241,3 +241,28 @@ def test_fuente_parcial_se_loguea_ruidosa():
                     lambda h: {k: None for k in TODAS} | {"RUN": "RUN"},
                     solo_iris=TODAS, log=lambda m: dicho.append(str(m)))
     assert any("PARCIAL" in m for m in dicho)
+
+
+# -- Cruce ADA <-> grupal (formatos.parece_reporte / verificar_cruce) --
+
+def test_parece_reporte_reconoce_cada_lado():
+    ada = ["NUMERO TIPO IDENTIFICACION", "FECHA ATENCION", "ATEN ID",
+           "DIAGNOSTICOS", "ACTIVIDADES", "ALERTAS ADMINISTRATIVAS"]
+    gru = ["FUNCIONARIO PRESTADOR", "RUN FUNCIONARIO", "ACTIVIDADES",
+           "TIPO PARTICIPANTE", "ASISTE"]
+    assert formatos.parece_reporte(ada) == "ada"
+    assert formatos.parece_reporte(gru) == "grupal"
+
+
+def test_parece_reporte_sin_evidencia_no_acusa():
+    """Empate (incluido 0-0) -> None: nunca se acusa un cruce sin evidencia."""
+    assert formatos.parece_reporte(["COLUMNA A", "COLUMNA B"]) is None
+
+
+def test_verificar_cruce_solo_dispara_al_reves():
+    ada = ["ATEN ID", "DIAGNOSTICOS", "ALERTAS ADMINISTRATIVAS"]
+    formatos.verificar_cruce(ada, "ada", "x.xlsx")          # el esperado: no levanta
+    with pytest.raises(ArchivoInvalido) as ex:
+        formatos.verificar_cruce(ada, "grupal", "x.xlsx")   # cruzado: levanta
+    assert ex.value.categoria == "cruzados"
+    assert "multitudes" in str(ex.value)

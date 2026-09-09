@@ -440,3 +440,39 @@ if __name__ == "__main__":
     except Exception:
         pass
     sys.exit(_main())
+
+
+# -- A32·F2: los nombres REALES de RAYEN llevan un "de" en medio --------
+# Regresion de un bug silencioso (sep-2026): el patron era la subcadena contigua
+# "controles salud mental por", que no matchea "Controles DE Salud Mental por
+# llamadas telefonicas" -> F2 daba 0 SIEMPRE y el 0 se leia como "no hubo casos".
+# Se descubrio porque esas atenciones aparecian en el reporte de Trabajo Perdido.
+_F2_REALES = ["Controles de Salud Mental por llamadas telefónicas",
+              "Controles de salud mental por videollamadas"]
+
+
+def test_a32f2_nombres_reales_de_rayen():
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Terapeuta Ocupacional",
+         "edad": 30, "act": _F2_REALES[0] + "  ;"},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "instr": "Psicólogo(a)",
+         "edad": 20, "act": _F2_REALES[1] + "  ;"},
+    ])
+    assert _n(E, "A32F2") == 2, "el patron viejo daba 0: F2 nunca matcheaba"
+    f2ev = E[E["casilla"] == "A32F2"]
+    assert set(f2ev["sub"]) == {"Llamadas Telefónicas", "Videollamadas"}
+    # y llegan a la tabla, en la fila del estamento que las hizo
+    import pandas as pd
+    f2 = t["A32_F2_Controles_Remotos"]
+    bandas = [c for c in f2.columns if c not in ("Control remoto por", "Profesional")]
+    tot = f2[bandas].apply(pd.to_numeric, errors="coerce").sum().sum()
+    assert tot > 0
+
+
+def test_a32f2_tributa_no_es_trabajo_perdido():
+    """`mask_tributa_ada` es la fuente unica de 'que tributa': si no las reconoce,
+    las F2 vuelven a caer como trabajo perdido aunque la casilla ya las cuente."""
+    import pandas as pd
+    from programas.rem_utils import norm
+    A = pd.Series([norm(a) for a in _F2_REALES])
+    assert sm.mask_tributa_ada(A).all()

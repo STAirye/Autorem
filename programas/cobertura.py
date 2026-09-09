@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.2
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -64,9 +64,18 @@ COBERTURA = {
         "rem": "SA_26 - Salud Mental (A04 / A06 / A19a / A26 / A27 / A32)",
         "cubre": ["A04-A24", "A06-A.1", "A19a-A.3", "A26-A", "A27", "A32-F"],
         "no_cubre": [
+            # OJO: hasta sep-2026 esta linea decia "no hay reporte ni formulario en
+            # RAYEN que las registre". Es FALSO y se comprobo contra el Maestro: hay
+            # 6 actividades mapeadas a REM-A06 A.2/A.3 ('Consultorias de salud mental
+            # adulto/infanto adolescente (Individual)', sus 'Teleconsultorias', y los
+            # 'Casos revisados'). El problema no es que no exista la actividad: es que
+            # el centro no la usa, asi que el ADA sale vacio de A.2. Distincion que le
+            # importa al usuario: no es imposible, es accionable.
             ("A06-A.2 Consultorias de Salud Mental", MANUAL,
-             "No hay reporte ni formulario en RAYEN que las registre",
-             "Contarlas a mano y pegarlas en el SA_26"),
+             "La actividad SI existe en RAYEN (6 variantes mapeadas a A06 A.2/A.3), "
+             "pero en este centro no se registra con ella -> no hay nada que contar",
+             "Contarlas a mano; si se empieza a registrar la actividad de RAYEN, "
+             "autoREM puede tabularlas"),
             ("A05 ingresos / egresos", FUERA,
              "Los cubre otro modulo del exe", "Usar la pestana A05"),
             ("A03-H Tamizaje (PSC-17, PHQ-9...)", FUERA,
@@ -82,7 +91,13 @@ COBERTURA = {
              "Si se necesita, cruzar a mano contra el padron"),
             ("Control SM a paciente SENAME", OMITIDO,
              "Excluido a proposito: SENAME hace su propio REM", ""),
-            ("A27 y A32-F2", SIN_REGISTRO,
+            # A32-F2 SALIO de esta entrada en 1.9.10. Estaba junto a A27 diciendo
+            # "el 0 es correcto, no lo llenes a mano" -- y el 0 NO era correcto: el
+            # patron tenia un bug (le faltaba el "de" de "Controles DE Salud Mental
+            # por llamadas...") y la casilla era 0 estructural. O sea la hoja LEEME
+            # estaba ACTIVAMENTE desaconsejando corregir un numero errado. Ahora F2
+            # funciona y no necesita entrada. A27 se queda: ahi el 0 si es real.
+            ("A27 Educacion para la prevencion en SM", SIN_REGISTRO,
              "La actividad existe en RAYEN pero no se usa (se agrego hace poco). El "
              "trabajo se registra en la ficha, en indicaciones, que no tributa -> 0 "
              "actividades realizadas. El filtro esta implementado pero nunca se pudo "

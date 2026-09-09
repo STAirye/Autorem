@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.9
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
 # Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.9.9"
+VERSION = "1.9.10"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -264,7 +264,7 @@ MAPA_ATENCIONES = {
 
 
 def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
-                    log=print):
+                    log=print, espera=None):
     """Lee UNO o VARIOS .xlsx (los reportes acumulativos necesitan varios años) y
     arma el DataFrame canónico concatenado. `resolver(headers) -> {canon: columna}`.
     `requeridas` = claves canónicas que DEBEN resolverse en CADA archivo; si a alguno
@@ -276,7 +276,11 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
     resultado en `df.attrs['fuente'] = (estado, ausentes)`, logueando cuando NO es
     plena. Este es el único cuello de botella de carga del grupo pandas — ADA,
     grupal, NSP y 'Otros y Respi' pasan todos por acá —, así que la fase 2 del eje
-    de formatos se engancha en UN solo punto. Ver `formatos.clasificar_fuente`."""
+    de formatos se engancha en UN solo punto. Ver `formatos.clasificar_fuente`.
+
+    `espera` = 'ada' | 'grupal': si al archivo le faltan columnas Y parece el OTRO
+    reporte del par, se levanta un error que dice CUÁL cruce, en vez del genérico
+    'no reconozco el archivo'. Ver `formatos.verificar_cruce`."""
     import pandas as pd
     partes, col0 = [], None
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
@@ -295,6 +299,12 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
         if requeridas:
             faltan = [k for k in requeridas if not col.get(k)]
             if faltan:
+                # Antes del mensaje generico: si el archivo es claramente el OTRO
+                # reporte del par ADA/grupal, decirlo. Solo se consulta cuando ya
+                # falla -> cero riesgo de falso positivo sobre un archivo valido.
+                if espera:
+                    from programas import formatos
+                    formatos.verificar_cruce(hdr, espera, nombre)
                 raise ArchivoInvalido(
                     "sin_columnas",
                     f"No reconozco el archivo:\n«{nombre}»\n\n"
@@ -359,7 +369,7 @@ def cargar_atenciones(entrada, log=print):
     from programas.formatos import SOLO_IRIS_ATENCIONES
     d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES),
                              requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"),
-                             solo_iris=SOLO_IRIS_ATENCIONES, log=log)
+                             solo_iris=SOLO_IRIS_ATENCIONES, log=log, espera="ada")
     # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
     # de actividad, con RUN y datos de cabecera SOLO en la 1ª. Se rellena la cabecera
     # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su

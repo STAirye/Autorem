@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.9
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -362,8 +362,9 @@ def _manejar_error(e, log, messagebox):
         log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
         messagebox.showerror("Permiso denegado", _MSG_PERMISO)
     elif isinstance(e, sm.ArchivoInvalido):
-        log(f"[archivo inválido] {e}")
-        messagebox.showerror("Archivo inválido", str(e))
+        cruce = getattr(e, "categoria", "") == "cruzados"
+        log(f"[{'archivos cruzados' if cruce else 'archivo inválido'}] {e}")
+        messagebox.showerror("Archivos cruzados" if cruce else "Archivo inválido", str(e))
     elif _es_error_formato(e):
         log(f"[formato no soportado] {e}")
         messagebox.showerror("No es un .xlsx", _MSG_NO_XLSX)
@@ -547,7 +548,16 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
     Devuelve `(d, tabla)` — `d` es el ADA YA cargado, para que quien procese
     después no lo relea. `(None, None)` si el archivo no se pudo leer."""
     from programas.rem_utils import cargar_atenciones, filtrar_mes, _rango_mes
-    log("[dotacion] cargando el ADA para revisar dotación...")
+    # Esto BLOQUEA la GUI y no hay como evitarlo: el dialogo que viene despues es Tk
+    # y tiene que correr en este hilo (mandarlo a un worker revienta). Lo que si se
+    # puede es que no PAREZCA colgada -- reloj de arena + repintar el log antes de
+    # arrancar, para que el usuario vea que esta haciendo algo y no cierre la ventana.
+    log("[dotacion] cargando el ADA (la ventana queda quieta unos segundos)...")
+    try:
+        root.config(cursor="watch")
+        root.update()            # pinta el mensaje y el cursor ANTES de bloquear
+    except Exception:            # noqa: BLE001  (sin GUI / root ya destruido)
+        pass
     try:
         d = cargar_atenciones(ada, log=log)
         ini, fin = _rango_mes(mes)
@@ -555,6 +565,11 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
     except Exception as e:   # noqa: BLE001
         _manejar_error(e, log, messagebox)
         return None, None
+    finally:
+        try:
+            root.config(cursor="")
+        except Exception:    # noqa: BLE001
+            pass
     tabla = dotacion.cargar(log=log)
     trib = dm[mask(dm["ACT_n"])] if mask else dm
     ev = dotacion.evidencia(trib, tabla, modulo=modulo)

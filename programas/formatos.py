@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.3
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -46,7 +46,8 @@ Qué es compartido y qué es por-reporte:
     encabezado del lado IRIS (varían: A05 con banner de 16 filas, instrumentos con 0).
 """
 
-from programas.rem_utils import norm, buscar_col, encontrar_fila_encabezado
+from programas.rem_utils import (norm, buscar_col, encontrar_fila_encabezado,
+                                 ArchivoInvalido)
 
 # -- Vocabulario del eje (firmas RAYEN estándar del formulario clínico) --
 ANCLA_IRIS   = ["AÑO", "APLICACION", "FORMULARIO"]      # encabezado IRIS
@@ -193,6 +194,65 @@ def fila_encabezado_admin(ws, ancla=ANCLA_ADMIN, max_filas=MAX_FILAS_HEADER):
     de Cupos' usa Profesional/Instrumento). Devuelve (fila_idx, modo)."""
     return encontrar_fila_encabezado(ws, ancla, HEADER_ADMIN["usar_blanco_en_a"],
                                      HEADER_ADMIN["n_hardcode"], max_filas)
+
+
+# -- Cruce de reportes: el ADA en la casilla del grupal, o al revés -----
+# Las dos casillas de archivo están una al lado de la otra en la pestaña de SM, así
+# que cruzarlas es un error de usuario REAL y fácil. Sin esto reventaba con el
+# «no reconozco el archivo / faltan columnas» genérico, que no dice lo único útil:
+# los cruzaste. Mismo espíritu que el mensaje cruzado de validar_iris/validar_admin
+# (§5 de CLAUDE.md) y que la regla §7 «detectar por CONTENIDO, nunca por nombre».
+#
+# (Para el que venga y crea que el Whitman es decoración: el grupal SÍ contiene
+# multitudes -- varias personas por sesión, por eso cuenta por ASISTENCIA -- y el
+# ADA es uno a uno, cuenta por ATEN ID. Cruzados, cada uno cuenta lo que no es.
+# El chiste se explica acá y no en el mensaje: al usuario se le cuenta, no se le
+# disecciona.)
+#
+# Firmas POSITIVAS de cada reporte, sobre el header CRUDO (no sobre las claves
+# canónicas: el resolver del grupal ni siquiera tiene una clave para DIAGNOSTICOS,
+# así que desde su dict resuelto el ADA es invisible).
+FIRMAS_CRUCE = {
+    "ada":    (["DIAGNOSTICO"], ["ATEN", "ID"], ["ALERTAS", "ADMINISTRATIVAS"]),
+    "grupal": (["ASISTE"], ["TIPO", "PARTICIPANTE"], ["FUNCIONARIO", "PRESTADOR"],
+               ["RUN", "FUNCIONARIO"]),
+}
+NOMBRE_REPORTE = {
+    "ada":    "Atenciones / Diagnosticos / Actividades (ADA)",
+    "grupal": "Atenciones Grupales",
+}
+
+
+def parece_reporte(hdr):
+    """Qué reporte parece un header CRUDO: 'ada' | 'grupal' | None.
+    Cuenta firmas positivas de cada lado; empate (incluido 0-0) -> None, o sea
+    'no me consta' — nunca se acusa un cruce sin evidencia."""
+    hn = [norm(h) for h in hdr]
+    pts = {k: sum(1 for toks in firmas
+                  if any(all(norm(t) in h for t in toks) for h in hn))
+           for k, firmas in FIRMAS_CRUCE.items()}
+    if pts["ada"] == pts["grupal"]:
+        return None
+    return max(pts, key=pts.get)
+
+
+def verificar_cruce(hdr, espera, nombre_archivo):
+    """Si `hdr` es claramente el OTRO reporte del par ADA/grupal, levanta
+    ArchivoInvalido diciéndolo. Si no consta, no hace nada (el llamador sigue con
+    su error genérico). `espera` = 'ada' | 'grupal'."""
+    otro = parece_reporte(hdr)
+    if not otro or otro == espera:
+        return
+    raise ArchivoInvalido("cruzados", (
+        f"Creo que cruzaste los archivos.\n\n"
+        f"En la casilla de «{NOMBRE_REPORTE[espera]}» pusiste\n"
+        f"«{nombre_archivo}», que parece el reporte de {NOMBRE_REPORTE[otro]}.\n"
+        f"Lo mas probable es que el otro este igual de cruzado.\n\n"
+        f"    Do I contradict myself?\n"
+        f"    Very well then I contradict myself,\n"
+        f"    (I am large, I contain multitudes.)\n"
+        f"        -- Walt Whitman, «Song of Myself», 51\n\n"
+        f"Solucion: intercambia los dos archivos en la pestana."))
 
 
 def resolver_identidad(headers_norm):
