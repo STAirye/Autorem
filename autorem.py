@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.4
+# Version: 1.9.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,6 +43,7 @@ from pathlib import Path
 from programas.rem_utils import VERSION, mes_anterior
 import programas.rem_saludmental as sm
 import programas.estamentos as estam
+from programas import dotacion
 
 # -- Registro de módulos de tarea --------------------------------------
 from modulos import rem_a05_o_egresos
@@ -533,6 +534,201 @@ def _resolver_estamentos(root, faltantes, opciones):
     return res
 
 
+# -- Dotación: separar funcionarios EXTERNOS (docs/dotacion_externos_plan.md) --
+def _bloque_dotacion(parent, modulo="sm"):
+    """Cuadro informativo + botón 'Revisar dotación…'. Reutilizable por
+    cualquier módulo con el mismo problema (hoy solo SM Actividades)."""
+    from tkinter import ttk
+    caja = ttk.LabelFrame(parent, text="Dotación (separar funcionarios externos)", padding=8)
+    caja.pack(fill="x", pady=(2, 6))
+    ttk.Label(caja, justify="left", foreground="#a05a00", text=(
+        "¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que "
+        "NO son de tu dotación (p.ej. la sala AIDIA); no deben tributar a este REM (doble "
+        "conteo).\nAl Procesar, si hay funcionarios nuevos se abre un diálogo para "
+        "clasificarlos. La tabla queda GUARDADA (caché en ~/.autorem/dotacion.json): la "
+        "primera vez se revisa el equipo completo, después solo los nombres nuevos.")
+        ).pack(anchor="w")
+    ttk.Button(caja, text="Revisar dotación…",
+              command=lambda: _revisar_dotacion(parent.winfo_toplevel(), modulo)
+              ).pack(anchor="w", pady=(4, 0))
+
+
+def _grupo_dotacion(inner, estamento, filas, checks, tabla, modulo, con_evidencia):
+    """UN grupo (estamento) del diálogo: cabecera con costo de omitir +
+    colapsar/expandir + 'Omitir estamento', y un Checkbutton por funcionario
+    (tick = externo). `filas` = sub-DataFrame de ese estamento. Devuelve nada:
+    puebla `checks` {nombre: BooleanVar} in-place."""
+    import tkinter as tk
+    from tkinter import ttk
+    n_func = len(filas)
+    n_at = int(filas["n_atenciones"].sum()) if con_evidencia and "n_atenciones" in filas else None
+    cab = ttk.Frame(inner); cab.pack(fill="x", pady=(6, 0))
+    costo = f"{n_func} funcionario(s)" + (f" · {n_at} atenciones" if n_at is not None else "")
+    var_abierto = tk.BooleanVar(value=True)
+    cuerpo = ttk.Frame(inner, padding=(18, 0))
+
+    def _toggle():
+        if var_abierto.get():
+            cuerpo.pack(fill="x")
+        else:
+            cuerpo.pack_forget()
+
+    btn_tog = ttk.Checkbutton(cab, text=f"{estamento or '(sin estamento)'}   {costo}",
+                              variable=var_abierto, command=_toggle, style="Toolbutton")
+    btn_tog.pack(side="left")
+
+    nombres_grupo = list(filas["funcionario"])
+
+    def _omitir():
+        # Inmediato: persiste la omisión YA (§2.1) y saca a estos funcionarios de
+        # `checks` -- si quedaran, un 'Aplicar' posterior los marcaría 'interno'
+        # (tick sin marcar = interno) violando la regla de que un omitido sigue
+        # 'desconocido' hasta que alguien lo revise a mano.
+        dotacion.omitir(tabla, modulo, [estamento])
+        for n in nombres_grupo:
+            checks.pop(n, None)
+        cab.destroy(); cuerpo.destroy()
+
+    ttk.Button(cab, text="Omitir estamento", command=_omitir).pack(side="right")
+    cuerpo.pack(fill="x")
+
+    for _, fila in filas.iterrows():
+        nombre = fila["funcionario"]
+        v = tk.BooleanVar(value=False)
+        checks[nombre] = v
+        detalle = ""
+        if con_evidencia:
+            detalle = f"   ({int(fila.get('n_atenciones', 0))} at.)"
+            act = str(fila.get("actividades", "") or "")
+            if act:
+                detalle += f" — {act}"
+        ttk.Checkbutton(cuerpo, text=f"{nombre}{detalle}", variable=v).pack(anchor="w")
+
+
+def _dialogo_dotacion(root, tabla, modulo, filas, con_evidencia=True,
+                      titulo="Dotación: clasificar funcionarios"):
+    """Diálogo modal: ticks agrupados por estamento (§3.2 del plan). Tick =
+    externo, sin tick = interno (default). 'Omitir estamento' es INMEDIATO (se
+    persiste al click, no espera 'Aplicar') y deja a esos funcionarios
+    `desconocido` — nunca `interno` (§2.1). 'Aplicar' clasifica los ticks
+    restantes vía `dotacion.marcar()` (persiste). 'Cancelar' no clasifica a
+    nadie: los nombres quedan `desconocido` y la corrida sigue igual (§3.2)."""
+    import tkinter as tk
+    from tkinter import ttk
+    if filas is None or filas.empty:
+        return
+    top = tk.Toplevel(root)
+    top.title(titulo)
+    top.transient(root); top.grab_set()
+    top.geometry("720x560")
+    ttk.Label(top, padding=12, justify="left", text=(
+        f"{len(filas)} funcionario(s). Marca el tick de quienes NO son de tu dotación "
+        "(externos). Sin tick = interno.")).pack(anchor="w")
+
+    outer = ttk.Frame(top); outer.pack(fill="both", expand=True, padx=12)
+    canvas = tk.Canvas(outer, highlightthickness=0)
+    vsb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=vsb.set)
+    vsb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    inner = ttk.Frame(canvas)
+    win = canvas.create_window((0, 0), window=inner, anchor="nw")
+    inner.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfigure(win, width=e.width))
+
+    def _wheel(e):
+        canvas.yview_scroll(int(-(e.delta or 0) / 120), "units")
+    canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _wheel))
+    canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+
+    checks = {}
+    por_est = filas.attrs.get("por_estamento") if hasattr(filas, "attrs") else None
+    if por_est is not None and len(por_est):
+        orden = [e for e in por_est["estamento"] if e in set(filas["estamento"])]
+    else:
+        orden = sorted(filas["estamento"].unique())
+    for est in orden:
+        sub = filas[filas["estamento"] == est]
+        if sub.empty:
+            continue
+        _grupo_dotacion(inner, est, sub, checks, tabla, modulo, con_evidencia)
+
+    def aplicar():
+        dotacion.marcar(tabla, {n: v.get() for n, v in checks.items()})
+        top.destroy()
+
+    barra = ttk.Frame(top, padding=12); barra.pack(fill="x")
+    ttk.Button(barra, text="Aplicar", command=aplicar).pack(side="right")
+    ttk.Button(barra, text="Cancelar", command=top.destroy).pack(side="right", padx=6)
+    top.wait_window()
+
+
+def _revisar_dotacion(root, modulo="sm"):
+    """Reabre la clasificación GUARDADA (todos los funcionarios ya vistos +
+    estamentos omitidos), sin necesitar un ADA cargado — por eso NO hay
+    evidencia (n_atenciones/actividades): solo el nombre y su clase actual.
+    Permite revertir una clasificación o una omisión equivocada (§3.3)."""
+    import tkinter as tk
+    from tkinter import ttk
+    tabla = dotacion.cargar()
+    func = tabla.get("funcionarios", {})
+    if not func and not tabla.get("omitidos"):
+        from tkinter import messagebox
+        messagebox.showinfo("Dotación", "Todavía no hay ningún funcionario clasificado "
+                            "(se puebla al Procesar).")
+        return
+    top = tk.Toplevel(root)
+    top.title("Revisar dotación")
+    top.transient(root); top.grab_set()
+    top.geometry("560x560")
+
+    nb = ttk.Notebook(top); nb.pack(fill="both", expand=True, padx=12, pady=12)
+
+    # -- Funcionarios clasificados (lista plana: sin ADA no hay estamento) --
+    tab1 = ttk.Frame(nb, padding=8); nb.add(tab1, text="Funcionarios")
+    ttk.Label(tab1, justify="left", text=(
+        "Tick = externo, sin tick = interno. 'Aplicar' guarda los cambios.")
+        ).pack(anchor="w", pady=(0, 6))
+    cont1 = ttk.Frame(tab1); cont1.pack(fill="both", expand=True)
+    checks = {}
+    for nombre_norm, clase_ in sorted(func.items()):
+        v = tk.BooleanVar(value=(clase_ == dotacion.EXTERNO))
+        checks[nombre_norm] = v
+        ttk.Checkbutton(cont1, text=nombre_norm, variable=v).pack(anchor="w")
+
+    # -- Estamentos omitidos (por módulo) --
+    tab2 = ttk.Frame(nb, padding=8); nb.add(tab2, text="Estamentos omitidos")
+    cont2 = ttk.Frame(tab2); cont2.pack(fill="both", expand=True)
+
+    def _pintar_omitidos():
+        for w in cont2.winfo_children():
+            w.destroy()
+        ests = dotacion.omitidos(tabla, modulo)
+        if not ests:
+            ttk.Label(cont2, text=f"Ningún estamento omitido en '{modulo}'.").pack(anchor="w")
+            return
+        for est in ests:
+            fila = ttk.Frame(cont2); fila.pack(fill="x", pady=1)
+            ttk.Label(fila, text=est).pack(side="left")
+
+            def _quitar(e=est):
+                tabla["omitidos"][modulo] = [x for x in tabla["omitidos"].get(modulo, []) if x != e]
+                dotacion.guardar(tabla)
+                _pintar_omitidos()
+            ttk.Button(fila, text="Quitar omisión", command=_quitar).pack(side="right")
+
+    _pintar_omitidos()
+
+    def aplicar():
+        dotacion.marcar(tabla, {n: v.get() for n, v in checks.items()})
+        top.destroy()
+
+    barra = ttk.Frame(top, padding=(12, 0, 12, 12)); barra.pack(fill="x")
+    ttk.Button(barra, text="Aplicar", command=aplicar).pack(side="right")
+    ttk.Button(barra, text="Cerrar", command=top.destroy).pack(side="right", padx=6)
+    top.wait_window()
+
+
 # -- Pestaña A05: Egresos / Ingresos -----------------------------------
 def _tab_a05(nb, root, ruta_inicial=""):
     import tkinter as tk
@@ -892,6 +1088,7 @@ def _tab_sm(nb, root):
     caja.pack(fill="x", pady=(0, 8))
     ttk.Label(caja, text=instr, justify="left").pack(anchor="w")
     _aviso_sin_modificar(tab)
+    _bloque_dotacion(tab, modulo="sm")
 
     get_ada = _fila_archivos(tab, "Atenciones/Diag/Activ (ADA):", "Atenciones / Diagnósticos / Actividades")
     get_grupal = _fila_archivos(tab, "Atenciones Grupales:", "Reporte de Atenciones Grupales")
@@ -959,12 +1156,32 @@ def _tab_sm(nb, root):
         por_inst_a03 = get_a03_sm() if incluir_a03 else {}
         salida_a03 = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
 
+        # Dotación (interno/externo, docs/dotacion_externos_plan.md §3.3): el
+        # diálogo usa Tk -> tiene que correr ACÁ, en el hilo de la GUI, ANTES del
+        # worker (_correr_con_reloj lo manda a un hilo aparte donde tocar widgets
+        # revienta). Por eso el ADA se carga y filtra por mes ACÁ (una vez) y se
+        # pasa `d` ya listo al worker en vez de recargarlo.
+        from programas.rem_utils import cargar_atenciones, filtrar_mes, _rango_mes
+        import modulos.rem_sm_actividades as smact
+        log("[dotacion] cargando el ADA para revisar dotación…")
+        try:
+            d = cargar_atenciones(ada, log=log)
+            ini_dot, fin_dot = _rango_mes((y, m))
+            dm_dot = filtrar_mes(d, ini_dot, fin_dot, "el ADA (Atenciones Diarias Ambulatorias)")
+        except Exception as e:   # noqa: BLE001
+            _manejar_error(e, log, messagebox)
+            return
+        tabla_dot = dotacion.cargar(log=log)
+        tributa = dm_dot[smact.mask_tributa_ada(dm_dot["ACT_n"])]
+        ev = dotacion.evidencia(tributa, tabla_dot, modulo="sm")
+        nuevos_dot = dotacion.nuevos(ev, tabla_dot, "sm")
+        if len(nuevos_dot):
+            _dialogo_dotacion(root, tabla_dot, "sm", nuevos_dot)
+
         def trabajo(log):
-            from programas.rem_utils import cargar_atenciones
-            import modulos.rem_sm_actividades as smact
-            d = cargar_atenciones(ada, log=log)  # el ADA se lee UNA sola vez y se comparte
             E = smact.procesar(ada, grupal=grupal, inscritos=inscritos,
-                               multiprofesional=multiprofesional, mes=(y, m), log=log, d=d)
+                               multiprofesional=multiprofesional, mes=(y, m), log=log, d=d,
+                               dotacion_tabla=tabla_dot)
             smact.escribir(E, salida)
             n_tp = None
             if not maestro:

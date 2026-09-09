@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.7
+# Version: 1.9.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -34,6 +34,14 @@ Fuentes (mensuales; el export puede venir del AÑO COMPLETO -> se filtra el mes)
 Reglas: mes = FECHA ATENCIÓN (hacia atrás desde el último día del mes). SENAME se
 excluye solo (es un string aparte: 'Control Salud Mental a Paciente SENAME' — ellos
 hacen su propio REM). A05 y las Consultorías A06·A.2 quedan fuera (módulo/manual).
+
+Separación interno/externo (docs/dotacion_externos_plan.md): el ADA trae atenciones
+de funcionarios que NO son de la dotación (p.ej. la sala AIDIA), que no deben
+tributar a este REM. `programas/dotacion.py` clasifica por funcionario (tri-estado
+interno/externo/desconocido, vía `~/.autorem/dotacion.json`); acá se reduce a nivel
+de EVENTO (`clasificar_evento`, caso mixto) y las tablas de sección se calculan
+sobre `E[en_rem]` — el detalle `SM_Detalle` conserva TODAS las filas (marcar, no
+borrar) y la hoja `Externos_Delta` muestra el desglose Total/Externos/REM.
 """
 
 import pandas as pd
@@ -45,6 +53,8 @@ from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_can
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
+from programas import dotacion          # separación interno/externo (docs/dotacion_externos_plan.md)
+from programas import cobertura         # categorías de aviso (PENDIENTE/OMITIDO) para la hoja LEEME
 
 # Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
 # Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
@@ -94,7 +104,7 @@ MAPA_GRUPAL = {
 }
 
 _EV_COLS = ["casilla", "sub", "run", "id", "estamento", "funcionario", "edad", "sexo",
-            "fecha", "actividad", "fuente"]
+            "fecha", "actividad", "fuente", "externo", "tabula_en"]
 
 
 def cargar_grupal(entrada, log=print):
@@ -166,6 +176,26 @@ def _concat_funcionario(E):
         return " · ".join(dict.fromkeys(v for v in s if v))
     E["funcionario"] = E.groupby(["casilla", "sub", "id"])["funcionario"].transform(_join)
     return E
+
+
+def _nombres_funcionario(campo):
+    """'NOMBRE A · NOMBRE B' -> ['NOMBRE A', 'NOMBRE B'] (ver `_concat_funcionario`).
+    Ignora nombres vacíos."""
+    return [n for n in str(campo or "").split(" · ") if n]
+
+
+def clasificar_evento(funcionario, tabla):
+    """Clase dotación (`dotacion.INTERNO`/`EXTERNO`/`DESCONOCIDO`) de UN EVENTO,
+    cuyo campo `funcionario` puede traer VARIOS nombres unidos con ' · ' (visita
+    con más de un profesional). Regla (docs/dotacion_externos_plan.md §4.2):
+    interno si hay al menos uno interno (hubo gente nuestra, es producción
+    nuestra); si no, externo si hay al menos uno externo; si no, desconocido."""
+    clases = {dotacion.clase(n, tabla) for n in _nombres_funcionario(funcionario)}
+    if dotacion.INTERNO in clases:
+        return dotacion.INTERNO
+    if dotacion.EXTERNO in clases:
+        return dotacion.EXTERNO
+    return dotacion.DESCONOCIDO
 
 
 def _demcols(sub, spec):
@@ -374,7 +404,21 @@ def _tabla_resumen(E, ini):
     return df
 
 
-def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print, d=None):
+def _tabla_externos_delta(E, ini):
+    """1 fila por casilla: Total (todo E) · Externos · REM (E[en_rem]). Reusa
+    `_tabla_resumen` sobre los dos subconjuntos (docs/dotacion_externos_plan.md
+    §4.4, fase 1) — ambas llamadas emiten SIEMPRE las mismas filas/orden, así
+    que se alinean por posición sin necesidad de merge."""
+    total = _tabla_resumen(E, ini)
+    rem = _tabla_resumen(E[E["en_rem"]], ini)
+    out = total[["Casilla", "Total mes"]].rename(columns={"Total mes": "Total"})
+    out["REM"] = rem["Total mes"].values
+    out["Externos"] = out["Total"] - out["REM"]
+    return out[["Casilla", "Total", "Externos", "REM"]]
+
+
+def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print, d=None,
+            dotacion_tabla=None, modulo="sm"):
     """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
     `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
     `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
@@ -382,8 +426,14 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0).
     `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
     A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
-    sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga)."""
+    sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga).
+    `dotacion_tabla` = tabla interno/externo YA resuelta (dict de `dotacion.cargar()`,
+    normalmente actualizada por el diálogo de la GUI ANTES de llamar acá); si es
+    None, se carga del caché (`~/.autorem/dotacion.json`) tal cual está — este
+    módulo NO abre ningún diálogo (eso es responsabilidad de la GUI, que corre en
+    el hilo de Tk, no en este worker). Ver docs/dotacion_externos_plan.md."""
     from pathlib import Path
+    tabla_dot = dotacion.cargar(log=log) if dotacion_tabla is None else dotacion_tabla
     d = cargar_atenciones(ada, log=log) if d is None else d
     d = marcar_demografia(d)
     avisos = []   # degradaciones de ESTA corrida -> hoja LEEME (programas/cobertura.py)
@@ -470,6 +520,14 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     E = pd.concat([Ea, Eg], ignore_index=True)
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
 
+    # Separación interno/externo (docs/dotacion_externos_plan.md): marcar, no
+    # borrar (§1.4) — el detalle conserva TODAS las filas; solo las tablas de
+    # sección se calculan sobre E[en_rem] más abajo. `desconocido` cuenta al REM
+    # (§1.3): el default nunca sangra producción propia en silencio.
+    E["externo"] = E["funcionario"].map(lambda f: clasificar_evento(f, tabla_dot))
+    E["en_rem"] = dotacion.en_rem(E["externo"])
+    E["tabula_en"] = E["en_rem"].map({True: "AMBAS", False: "SOLO_TOTAL"})
+
     # Composición profesional de A26 (opcional): Monitoreo Multiprofesional.
     # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del mes.
     # Debe CUBRIR el mes reportado (bajarlo del año completo sirve). Si no coincide con
@@ -498,17 +556,57 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                         "no se cargo 'Monitoreo Multiprofesional' (opcional)",
                         "Cargar el reporte, o dejar todo como 'Un Profesional'"))
 
+    # Avisos de dotación -> hoja LEEME (docs/dotacion_externos_plan.md §4.5).
+    ext_rows = E[E["externo"] == dotacion.EXTERNO]
+    desc_rows = E[E["externo"] == dotacion.DESCONOCIDO]
+    if len(ext_rows):
+        nombres_ext = {n for f in ext_rows["funcionario"] for n in _nombres_funcionario(f)
+                       if dotacion.clase(n, tabla_dot) == dotacion.EXTERNO}
+        log(f"[dotacion] {len(ext_rows)} atencion(es) de {len(nombres_ext)} funcionario(s) "
+            "EXTERNO(s) separadas del REM (ver hoja Externos_Delta y columna 'externo' en SM_Detalle).")
+    if len(desc_rows):
+        nombres_desc = sorted({n for f in desc_rows["funcionario"] for n in _nombres_funcionario(f)
+                               if dotacion.clase(n, tabla_dot) == dotacion.DESCONOCIDO})
+        muestra = ", ".join(nombres_desc[:10]) + (", ..." if len(nombres_desc) > 10 else "")
+        log(f"[dotacion] {len(desc_rows)} atencion(es) de {len(nombres_desc)} funcionario(s) SIN "
+            f"clasificar (cuentan al REM por defecto, §1.3): {muestra}")
+        avisos.append(("Funcionarios sin clasificar (dotacion)", cobertura.PENDIENTE,
+                        f"{len(desc_rows)} atenciones de {len(nombres_desc)} funcionario(s) sin "
+                        f"clasificar interno/externo: {muestra}",
+                        "Clasificarlos en 'Revisar dotacion...' de la pestana"))
+    ests_omit = dotacion.omitidos(tabla_dot, modulo)
+    if ests_omit:
+        om_norm = set(ests_omit)
+        om_rows = E[E["estamento"].map(norm).isin(om_norm)]
+        if len(om_rows):
+            log(f"[dotacion] Estamentos omitidos para '{modulo}': {', '.join(ests_omit)} -> "
+                f"{len(om_rows)} atencion(es) cuentan al REM sin revision individual.")
+            avisos.append((f"Estamentos omitidos ({modulo})", cobertura.OMITIDO,
+                            f"{', '.join(ests_omit)} - {len(om_rows)} atenciones cuentan al REM "
+                            "sin revision individual (funcionarios quedan 'desconocido')",
+                            "Revisar 'Revisar dotacion...' si se quiere clasificar a mano"))
+    if not tabla_dot.get("funcionarios"):
+        log("[dotacion] AVISO: la tabla de dotacion esta VACIA (nunca se clasifico a nadie, o "
+            "se cancelo el dialogo) -> NINGUNA atencion se separo; el total INCLUYE posibles "
+            "externos sin revisar.")
+        avisos.append(("Separacion interno/externo (dotacion)", cobertura.PENDIENTE,
+                        "la tabla de dotacion esta vacia: nunca se clasifico a nadie (o se "
+                        "cancelo el dialogo) -> ninguna atencion se separo del REM",
+                        "Abrir 'Revisar dotacion...' y clasificar al equipo"))
+
     E.attrs["avisos"] = avisos
     E.attrs["fuentes"] = fuentes
+    Erem = E[E["en_rem"]]
     E.attrs["tablas"] = {
-        "SM_Resumen": _tabla_resumen(E, ini),
-        "A04_Consultas_Medicas": _tabla_a04(E),
-        "A06_Controles": _tabla_a06(E),
-        "A19a_Consejerias_Fam": _tabla_a19a(E),
-        "A26_VDI_SM": _tabla_a26(E, multi),
-        "A27_Educacion_Prev": _tabla_a27(E),
-        "A32_F1_Acciones_Remotas": _tabla_a32f1(E),
-        "A32_F2_Controles_Remotos": _tabla_a32f2(E),
+        "SM_Resumen": _tabla_resumen(Erem, ini),
+        "Externos_Delta": _tabla_externos_delta(E, ini),
+        "A04_Consultas_Medicas": _tabla_a04(Erem),
+        "A06_Controles": _tabla_a06(Erem),
+        "A19a_Consejerias_Fam": _tabla_a19a(Erem),
+        "A26_VDI_SM": _tabla_a26(Erem, multi),
+        "A27_Educacion_Prev": _tabla_a27(Erem),
+        "A32_F1_Acciones_Remotas": _tabla_a32f1(Erem),
+        "A32_F2_Controles_Remotos": _tabla_a32f2(Erem),
     }
     E.attrs["mes"] = (ini.year, ini.month)
     log("[sm] resumen: " + " · ".join(

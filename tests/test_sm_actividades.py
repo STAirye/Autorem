@@ -82,6 +82,12 @@ def _mk_multi(rows):
 def _quiet(*_a, **_k): pass
 
 
+# Tabla de dotación VACÍA explícita en cada llamada a procesar(): sin esto,
+# procesar() cae al caché real del usuario (~/.autorem/dotacion.json) y estos
+# tests dejarían de ser deterministas apenas alguien use el diálogo de verdad.
+_SIN_DOTACION = {"funcionarios": {}, "omitidos": {}}
+
+
 # El guardarraíl de mes (rem_utils.filtrar_mes) exige que el ADA CUBRA el mes pedido.
 # Los tests que solo miran el grupal necesitan una fila de relleno en el ADA: del mes,
 # pero de una actividad que no tributa a ninguna casilla SM (no mueve ningún conteo).
@@ -92,7 +98,7 @@ _RELLENO_ADA = [{"run": "Z", "id": "Z1", "fecha": date(2026, 7, 15), "act": "Cur
 def _run(ada_rows, grupal_rows=None, mes=(2026, 7)):
     ada = _mk_ada(ada_rows)
     grupal = _mk_grupal(grupal_rows) if grupal_rows is not None else None
-    E = sm.procesar(ada, grupal=grupal, mes=mes, log=_quiet)
+    E = sm.procesar(ada, grupal=grupal, mes=mes, log=_quiet, dotacion_tabla=_SIN_DOTACION)
     return E, E.attrs["tablas"]
 
 
@@ -228,7 +234,7 @@ def test_a26_multiprofesional():
          "act": "Visita domiciliaria integral familia con integrante con problema de salud mental - Primera visita  ;"},
     ])
     mp = _mk_multi([{"aten": "1", "m1": "Enfermero(a)"}, {"aten": "2", "m1": ""}])  # solo la 1 es multi
-    E = sm.procesar(ada, multiprofesional=str(mp), mes=(2026, 7), log=_quiet)
+    E = sm.procesar(ada, multiprofesional=str(mp), mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
     r30 = _cell_row(E.attrs["tablas"]["A26_VDI_SM"], "Concepto",
                     "A.30 Familia con integrante con problema de salud mental")
     assert r30["Total"] == 2 and r30["Dos o Más Prof."] == 1 and r30["Un Profesional"] == 1
@@ -316,7 +322,7 @@ def test_trans_inscritos_modificado():
     assert raised
     ada = _mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
                     "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}])
-    E = sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet)   # no debe crashear
+    E = sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)   # no debe crashear
     a06 = E.attrs["tablas"]["A06_Controles"]
     assert _a06_tot(a06, "TRANS Masculino") == 0 and _a06_tot(a06, "TRANS Femenina") == 0
 
@@ -337,7 +343,7 @@ def test_trans_flag():
         {"run": "U", "id": "2", "fecha": date(2026, 7, 4), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
         {"run": "V", "id": "3", "fecha": date(2026, 7, 5), "act": "Controles Salud Mental  ;", "instr": "Psicólogo(a)", "edad": 30},
     ])
-    E = sm.procesar(ada, inscritos=ins, mes=(2026, 7), log=_quiet)
+    E = sm.procesar(ada, inscritos=ins, mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
     a06 = E.attrs["tablas"]["A06_Controles"]
     assert _a06_tot(a06, "TRANS Masculino") == 1   # T (Transgénero Masculino)
     assert _a06_tot(a06, "TRANS Femenina") == 1    # V (Femenino Trans)

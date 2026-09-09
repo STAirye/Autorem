@@ -5,14 +5,19 @@ The human author reviewed, modified, and integrated the content.
 Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 Copyright (C) 2026 Simon Tobar
 SPDX-License-Identifier: GPL-3.0-or-later
-Version: 1.9.7
+Version: 1.9.8
 -->
 
 # Plan — `programas/dotacion.py`: separar atenciones de funcionarios EXTERNOS
 
-> **Estado: PLANIFICADO** (sep-2026). Capa compartida nueva + wiring en
-> `modulos/rem_sm_actividades.py`. Documento **autocontenido**: se puede
-> implementar sin haber participado de la conversación que lo originó.
+> **Estado: IMPLEMENTADO — fase 1** (v1.9.8, sep-2026). Capa compartida
+> `programas/dotacion.py` + wiring en `modulos/rem_sm_actividades.py` + diálogo
+> en `autorem.py`. Pendiente: validar contra la lista real de la sala AIDIA (o
+> lo que responda Estadística SSMC, §0.1/§2.4) y la fase 2 (§4.4: bloques
+> apilados REM/externos dentro de cada hoja de sección — hoy alcanza con
+> `Externos_Delta` para comparar contra el conteo manual). Documento
+> **autocontenido**: se puede seguir trabajando sin haber participado de la
+> conversación que lo originó.
 
 ---
 

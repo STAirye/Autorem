@@ -10,6 +10,36 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.8] — 2026-09-09
+
+### Agregado
+- **`programas/dotacion.py`: separar atenciones de funcionarios EXTERNOS** (no
+  son de la dotación del CESFAM — hoy la sala AIDIA) de las de la dotación
+  propia. Capa compartida nueva, gemela estructural de `estamentos.py` (misma
+  persistencia/merge/failsafe): tri-estado `interno`/`externo`/`desconocido`
+  por funcionario, cacheado en `~/.autorem/dotacion.json` (`funcionarios`
+  global, `omitidos` por módulo). `en_rem = (clase != externo)`: un
+  `desconocido` CUENTA al REM por defecto (nunca sangra producción propia en
+  silencio), pero se reporta siempre. Ver `docs/dotacion_externos_plan.md`.
+- **Wiring en `modulos/rem_sm_actividades.py`:** cada EVENTO se clasifica
+  (`clasificar_evento`, caso mixto — visita con más de un profesional: interno
+  si hay al menos uno interno, si no externo si hay al menos uno externo, si no
+  desconocido) y las tablas de sección pasan a calcularse sobre `E[en_rem]`.
+  `SM_Detalle` conserva TODAS las filas (marcar, no borrar) con las columnas
+  nuevas `externo`/`tabula_en`; hoja nueva `Externos_Delta` (Total/Externos/REM
+  por casilla). Avisos de dotación (externos separados, sin clasificar,
+  estamentos omitidos) van a la hoja LEEME.
+- **GUI (`autorem.py`):** cuadro informativo + botón "Revisar dotación..." en
+  la pestaña SM; al Procesar, si hay funcionarios nuevos tributando, se abre un
+  diálogo (ticks agrupados por estamento, con el costo de omitir a la vista)
+  ANTES de lanzar el worker — el diálogo usa Tk y no puede correr en el hilo de
+  fondo, así que el ADA se carga y filtra por mes en el hilo de la GUI y se
+  comparte con `procesar()`.
+- `tests/test_dotacion.py` (8 pruebas): clasificación, first-run, persistencia,
+  `en_rem` con desconocido, caso mixto, wiring en sm_actividades
+  (`Externos_Delta` cuadra, `SM_Detalle` conserva filas externas), omisión por
+  módulo, un omitido nunca queda `interno`.
+
 ## [1.9.7] — 2026-09-09
 
 ### Agregado
