@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.7
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -93,7 +93,7 @@ MAPA_GRUPAL = {
     "MULTIPROF": ("subs", ["MULTIPROFESIONAL"]),
 }
 
-_EV_COLS = ["casilla", "sub", "run", "id", "estamento", "edad", "sexo",
+_EV_COLS = ["casilla", "sub", "run", "id", "estamento", "funcionario", "edad", "sexo",
             "fecha", "actividad", "fuente"]
 
 
@@ -136,7 +136,7 @@ def _empty_ev():
     return pd.DataFrame({c: pd.Series(dtype="object") for c in _EV_COLS + DEM_COLS})
 
 
-def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente):
+def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente, prof_col):
     s = df.loc[mask]
     if s.empty:
         return None
@@ -145,12 +145,27 @@ def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente):
     base = {
         "casilla": casilla, "sub": sub, "run": s["RUN"].astype(str), "id": ids,
         "estamento": s[est_col].astype(str),
+        "funcionario": s[prof_col].fillna("").astype(str) if prof_col in s.columns else "",
         "edad": pd.to_numeric(s[edad_col].map(edad_anios), errors="coerce"),  # ANOS_AT num o texto verboso
         "sexo": s["SEXO"].astype(str), "fecha": s["FECHA"],
         "actividad": s["ACT"].astype(str), "fuente": fuente}
     for c in DEM_COLS:   # flags demográficos (ADA los trae; grupal -> False)
         base[c] = s[c].values if c in s.columns else False
     return pd.DataFrame(base)
+
+
+def _concat_funcionario(E):
+    """El dedup por (casilla,sub,id) puede colapsar varias filas de UNA misma
+    atención (p.ej. 2 diagnósticos de la misma visita) que traigan distinto
+    `funcionario` (visita con más de un profesional). Antes de deduplicar, junta
+    los nombres ÚNICOS de cada grupo en el ORDEN en que aparecen (no alfabético,
+    para que calce con el orden en que se listan las atenciones)."""
+    if E.empty:
+        return E
+    def _join(s):
+        return " · ".join(dict.fromkeys(v for v in s if v))
+    E["funcionario"] = E.groupby(["casilla", "sub", "id"])["funcionario"].transform(_join)
+    return E
 
 
 def _demcols(sub, spec):
@@ -209,9 +224,10 @@ def _ada_eventos(dm):
         ("A32F2", "Llamadas Telefónicas", ctrl_rem & llam),
         ("A32F2", "Videollamadas", ctrl_rem & _all(A, "videollamada")),
     ]
-    partes = [_ev(dm, m, c, s, "ATENID", "ANOS_AT", "INSTR", "ADA") for c, s, m in specs]
+    partes = [_ev(dm, m, c, s, "ATENID", "ANOS_AT", "INSTR", "ADA", "PROF") for c, s, m in specs]
     partes = [p for p in partes if p is not None]
     E = pd.concat(partes, ignore_index=True) if partes else _empty_ev()
+    E = _concat_funcionario(E)
     return E.drop_duplicates(subset=["casilla", "sub", "id"])
 
 
@@ -227,7 +243,7 @@ def _grupal_eventos(gm):
         ("A27", "suicidio", _all(A, "prevencion") & _all(A, "suicid")),
         ("A27", "trastorno", _all(A, "prevencion trastorno mental")),
     ]
-    partes = [_ev(gm, m, c, s, None, "EDAD", "PREST", "Grupal") for c, s, m in specs]
+    partes = [_ev(gm, m, c, s, None, "EDAD", "PREST", "Grupal", "PREST") for c, s, m in specs]
     partes = [p for p in partes if p is not None]
     return pd.concat(partes, ignore_index=True) if partes else _empty_ev()
 

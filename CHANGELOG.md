@@ -10,6 +10,17 @@ módulo que se está trabajando (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.7] — 2026-09-09
+
+### Agregado
+- **SM Actividades — columna `funcionario` en `SM_Detalle`:** el nombre del
+  profesional que registró cada atención (`PROFESIONAL ATENCION`/`FUNCIONARIO`
+  del ADA, `FUNCIONARIO PRESTADOR`/`NOMBRE PROFESIONAL` del grupal), separada de
+  `estamento` (que en el ADA es la disciplina/`INSTRUMENTO`, no el nombre). Si el
+  dedup por `(casilla, sub, id)` colapsa varias filas de una misma atención con
+  distinto profesional (visita con más de uno), se concatenan los nombres ÚNICOS
+  en el ORDEN en que aparecen (no alfabético).
+
 ## [1.9.6] — 2026-09-08
 
 El pre-commit bloqueó un commit hecho desde un **worktree** describiendo con precisión
