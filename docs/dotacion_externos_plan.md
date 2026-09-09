@@ -122,33 +122,56 @@ están resueltos ahí y se copian tal cual.
 
 ```python
 RUTA_CACHE = Path.home() / ".autorem" / "dotacion.json"
-# {nombre_normalizado: "interno" | "externo"}
+{
+  "funcionarios": {"<nombre_normalizado>": "interno" | "externo"},
+  "omitidos":     {"<modulo>": ["<estamento_norm>", ...]}
+}
 ```
 
-Plano, igual que `estamentos.json`. La clave es `rem_utils.norm(nombre)`.
-Nombres de funcionario **no son PII de paciente** -> cachearlos es aceptable
-(mismo criterio ya documentado en `estamentos.py`). El archivo vive en el HOME,
-**nunca en el repo ni junto al `.exe`**.
+La clave de `funcionarios` es `rem_utils.norm(nombre)`. Nombres de funcionario
+**no son PII de paciente** -> cachearlos es aceptable (mismo criterio ya
+documentado en `estamentos.py`). El archivo vive en el HOME, **nunca en el repo
+ni junto al `.exe`**.
 
 `cargar()` / `guardar()`: copiar literal el patrón de
 `estamentos.cargar_cache` / `guardar_cache` — robustos ante JSON corrupto o
-disco sin permisos, con aviso y sin reventar la corrida.
+disco sin permisos, con aviso y sin reventar la corrida. Un JSON sin la clave
+`omitidos` (o plano, de una versión anterior) se lee como `{}` sin fallar.
+
+#### Por qué DOS claves: la clasificación es global, la omisión es por módulo
+
+Son hechos de naturaleza distinta y mezclarlos rompe otros módulos:
+
+- **Que alguien sea o no de la dotación es un hecho de la persona**, invariante
+  al REM que se esté corriendo -> `funcionarios` es global.
+- **Que un estamento importe o no depende del REM** -> `omitidos` se indexa por
+  módulo. Los kinesiólogos son irrelevantes para SM y **centrales para el A23**:
+  si la omisión fuera global, omitirlos en SM los omitiría en A23.
+
+Corolario importante: **un funcionario omitido NO se marca `interno`.** Queda
+`desconocido` en la tabla global — que es lo honesto, nadie lo miró — y lo único
+que cambia es que el diálogo *de ese módulo* deja de preguntar por él. El
+diálogo del A23 sí le va a preguntar, que es lo correcto.
 
 ### 2.2 API
 
 ```python
-def cargar(log=print) -> dict                  # {norm: clase}; {} si no hay
+def cargar(log=print) -> dict                  # {'funcionarios':…, 'omitidos':…}; vacio si no hay
 def guardar(tabla, log=print) -> None
 def clase(nombre, tabla) -> str                # 'interno'|'externo'|'desconocido'
 def clasificar(serie_nombres, tabla) -> Series # vectorizado, para el DataFrame
-def nuevos(nombres, tabla) -> list             # sin clasificar, unicos, en orden
+def nuevos(ev, tabla, modulo) -> DataFrame     # evidencia SIN clasificar y SIN omitir (§2.3)
 def marcar(tabla, decisiones) -> dict          # {nombre: True(externo)/False}; muta y guarda
+def omitir(tabla, modulo, estamentos) -> dict  # agrega estamentos a omitidos[modulo]; muta y guarda
+def omitidos(tabla, modulo) -> list            # estamentos omitidos para ese modulo
 def en_rem(serie_clase) -> Series              # bool: clase != 'externo'   (§1.3)
-def evidencia(ada, tabla=None) -> DataFrame    # §2.3
+def evidencia(ada, tabla=None, modulo=None) -> DataFrame   # §2.3
 ```
 
-`nuevos()` es el gemelo exacto de `estamentos.faltantes()`: mismo dedup
-normalizado, mismo orden de aparición, ignora vacíos.
+`nuevos()` es el gemelo de `estamentos.faltantes()` (mismo dedup normalizado,
+mismo orden, ignora vacíos), pero devuelve **la evidencia**, no sólo nombres, y
+descuenta dos cosas: los ya clasificados y los de estamentos omitidos para ese
+módulo. Si devuelve vacío, **no se abre el diálogo**.
 
 **Separación de fuentes de nombre.** El nombre del funcionario sale de
 `rem_utils.MAPA_ATENCIONES["PROF"]` (IRIS `PROFESIONAL ATENCION`, Monitoreo
@@ -172,6 +195,26 @@ diálogo se puebla con evidencia, y el mix de actividades es lo más sugerente
 
 Calcular **sólo sobre filas que tributan**: no tiene sentido preguntar por gente
 cuyo trabajo no entra al REM SM de todos modos.
+
+> Esto ya recorta mucho: la lista **no** es "todos los funcionarios del ADA",
+> son los que registran actividades que tributan a SM. Si aun así sale enorme,
+> eso **es información**: significa que `mask_tributa_ada` está pescando ancho y
+> hay que mirarla. Loguear el número (`[dotacion] N funcionarios en M
+> atenciones que tributan`) antes de abrir el diálogo.
+
+#### Agrupación por estamento
+
+`evidencia()` devuelve además el agregado por estamento, que es lo que ordena el
+diálogo (§3.2):
+
+| columna | contenido |
+|---|---|
+| `estamento` | de `INSTR` |
+| `n_funcionarios` | distintos en ese estamento |
+| `n_atenciones` | filas que **tributan**, del estamento completo |
+
+Ordenar los grupos por `n_atenciones` **descendente**: lo que pesa queda arriba y
+la cola larga es fácil de despachar en bloque.
 
 ### 2.4 Cómo enchufan las respuestas de Estadística (cuando lleguen)
 
@@ -206,18 +249,38 @@ Ese veto inicial es **obligatorio**: en las pruebas del beta siempre existe la
 posibilidad de que se haya colado un externo, así que la lista completa se revisa
 a ojo una vez.
 
-### 3.2 Forma: lista de ticks
+### 3.2 Forma: ticks agrupados por estamento
 
 - **Sin tick = interno** (el default, mayoría de casos)
 - **Con tick = externo**
 
-Un `Checkbutton` por fila, con las columnas de `evidencia()` al lado. Debe tener
-**scroll** (en la primera corrida son decenas de nombres). Botones `Aplicar` /
-`Cancelar`.
+Un `Checkbutton` por funcionario, con las columnas de `evidencia()` al lado, y
+**los funcionarios agrupados bajo su estamento** — en la primera corrida son
+decenas de nombres y una lista plana es ilegible. Scroll obligatorio. Botones
+`Aplicar` / `Cancelar`.
+
+Cada grupo lleva una cabecera con **el costo de omitirlo a la vista**:
+
+```
+[v] Psicologo(a)            4 funcionarios · 312 atenciones   [Omitir estamento]
+[v] Kinesiologo(a)          3 funcionarios ·  47 atenciones   [Omitir estamento]
+```
+
+Dos acciones a nivel de grupo:
+
+- **colapsar/expandir** (el `[v]`) — puramente visual, no persiste nada
+- **`Omitir estamento`** — colapsa, deja de preguntar por ese estamento **en este
+  módulo**, y lo persiste en `omitidos[modulo]` (§2.1)
+
+**El contador de atenciones NO es decorativo, es el punto.** Un estamento sólo
+aparece en la lista si tiene atenciones que **tributan al REM de ese módulo**;
+omitirlo significa que esas atenciones **cuentan al REM sin que nadie las haya
+mirado**. Ver `47 atenciones` es lo que convierte un "me da lo mismo" en una
+decisión informada. Sin ese número, omitir es a ciegas.
 
 Patrón de UI: `autorem._resolver_estamentos` (`autorem.py:499`) — mismo
 `Toplevel` + `transient` + `grab_set` + `wait_window`, cambiando `OptionMenu` por
-`Checkbutton`. Reusar, no reinventar.
+`Checkbutton` y agregando el agrupamiento. Reusar, no reinventar.
 
 **`Cancelar` no clasifica a nadie**: los nombres quedan `desconocido`, la corrida
 sigue (§1.3) y el aviso lo dice. Cancelar nunca debe abortar el procesamiento.
@@ -232,8 +295,12 @@ configuración previa de la pestaña.
 Agregar también un cuadro informativo en la pestaña (estilo
 `_bloque_estamentos`) explicando el porqué y que la tabla queda guardada en
 `~/.autorem`, más un botón **"Revisar dotación…"** que reabra el diálogo con
-**todos** los nombres (no sólo los nuevos) para corregir una clasificación
-equivocada. Sin ese botón, un tick mal puesto queda enterrado en un JSON.
+**todos** los nombres (no sólo los nuevos) **y los estamentos omitidos**,
+expandibles, para revertir una clasificación o una omisión equivocada. Sin ese
+botón, un tick mal puesto queda enterrado en un JSON.
+
+El diálogo recibe el `modulo` (`"sm"`, `"a23"`, …) porque las omisiones se
+indexan por él (§2.1). Es el único parámetro que lo hace específico de un REM.
 
 ---
 
@@ -319,6 +386,12 @@ Acumular en `E.attrs["avisos"]` (formato existente:
 - si hay externos: cuántas atenciones se separaron y de cuántos funcionarios
 - si hay `desconocido`: cuántas atenciones, **con los nombres**, categoría
   `PENDIENTE`, y el `que_hacer` = "clasificarlos en el diálogo de dotación"
+- **si hay estamentos omitidos**: cuáles y cuántas atenciones aportan, categoría
+  `OMITIDO`. Texto tipo *"Estamentos omitidos para SM: Kinesiólogo(a),
+  Nutricionista — 47 atenciones cuentan al REM sin revisión individual"*. El
+  atajo se permite, pero **deja huella**: el día que un número no cuadre, ese
+  aviso dice exactamente qué pedazo nunca se miró. Sin él, una omisión en bloque
+  queda indistinguible de un `interno` revisado a mano.
 - si la tabla está vacía y el usuario canceló el diálogo: aviso fuerte de que
   **ninguna atención se separó** y el total incluye externos
 
@@ -343,6 +416,11 @@ Mínimo:
 6. En `sm_actividades`: con un funcionario marcado externo, `Externos_Delta`
    cuadra (`Total == Externos + REM` por casilla) y `SM_Detalle` conserva las
    filas externas.
+7. **Omisión por módulo** (§2.1): omitir `kinesiologo(a)` en `"sm"` NO lo omite
+   en `"a23"`; `nuevos(..., "sm")` deja de devolverlo y `nuevos(..., "a23")`
+   sigue devolviéndolo.
+8. **Un omitido NO queda `interno`**: tras omitir su estamento, `clase(nombre)`
+   sigue siendo `desconocido` y `en_rem` sigue siendo `True`.
 
 Actualizar el contador de tests en `CLAUDE.md` (§2 y §9) — lo verifica
 `tools/check_version.py`.
@@ -352,6 +430,14 @@ Actualizar el contador de tests en `CLAUDE.md` (§2 y §9) — lo verifica
 ## 6. Qué NO hacer
 
 - **No borrar filas externas** de ningún detalle (§1.4).
+- **No marcar como `interno` a los funcionarios de un estamento omitido** (§2.1).
+  Quedan `desconocido`. Marcarlos sería más simple y es exactamente el error: un
+  bloque que nadie miró pasaría a ser indistinguible de gente verificada a mano.
+- **No hacer global la omisión de estamentos** (§2.1). Omitir kinesiólogos en SM
+  no puede omitirlos en A23.
+- **No omitir un estamento automáticamente** por tener pocas atenciones. La
+  omisión es siempre una decisión explícita del usuario; el tool sólo le muestra
+  el costo.
 - **No filtrar por nombre de actividad / agenda / formulario** (§1.1). La
   actividad es evidencia en el diálogo, nunca criterio automático.
 - **No meter la clasificación dentro de `cargar_atenciones`.** Es una decisión
