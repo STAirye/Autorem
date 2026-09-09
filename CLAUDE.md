@@ -614,9 +614,35 @@ Consecuencias que ya mordieron:
   `git stash pop` puede levantar lo de la otra. Usar commits WIP, no stash.
 - Una rama **no puede estar checkouteada en dos worktrees a la vez** (git lo rechaza).
 
-Cerrar un worktree: mergear a `main` (o cherry-pick), y después
-`git worktree remove <ruta>`; borrar la carpeta a mano deja basura en
-`.git/worktrees/` que se limpia con `git worktree prune`.
+### Cerrar un worktree en Windows (sep-2026)
+
+Mergear a `main` (o cherry-pick) y después `git worktree remove <ruta>`. En Windows
+eso falla seguido, con DOS errores que parecen graves y no lo son:
+
+1. **«Deletion of directory … failed. Should I try again? (y/n)»** — no es corrupción:
+   algún proceso tiene la carpeta abierta. En Windows, el `cwd` de un proceso **pinea
+   el directorio** y no se puede borrar mientras esté ahí parado. El sospechoso
+   habitual es la propia sesión de Claude Code (su cwd ES el worktree; el harness la
+   devuelve ahí después de cada comando, así que ni siquiera sirve un `cd ..` desde
+   adentro). Responder **n** — reintentar no sirve —, cerrar la sesión, y recién ahí
+   borrar. Detalle útil: se puede borrar TODO el contenido igual; lo único que no cae
+   es la carpeta raíz.
+2. **`git worktree prune` -> `error: failed to delete '.git/worktrees/<n>': Permission
+   denied`** — tampoco es de permisos. `logs/` y `refs/` de esa carpeta quedan con el
+   atributo **ReadOnly**, y el `rmdir` de git no lo limpia antes de borrar. Es el MISMO
+   gotcha del `build/` de PyInstaller (§11), con el mismo remedio:
+   ```bash
+   attrib -R ".git\worktrees\<nombre>" /S /D
+   ```
+   y volver a correr `git worktree prune -v` (`-v` dice qué está sacando).
+
+**El orden importa:** primero la carpeta del worktree, después `prune` (que limpia
+`.git/worktrees/`), y al final `git branch -d <rama>` — con minúscula, que se niega si
+no está mergeada; si se niega, el problema es el merge, no la rama.
+
+Un worktree que ya NO aparece en `git worktree list` pero cuya carpeta sigue en disco
+es **puro cascarón**: git terminó su parte y los commits viven en el `.git` compartido.
+Nunca hay trabajo en riesgo ahí.
 
 ---
 
