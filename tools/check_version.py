@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.6
+# Version: 1.9.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -64,7 +64,9 @@ CHANGELOG = RAIZ / "CHANGELOG.md"
 TESTS = RAIZ / "tests"
 
 # Codigo DISTRIBUIBLE = lo que viaja dentro del .exe. Eso lleva version.
-DIRS_VERSIONADOS = ("programas", "modulos", "tools")
+# 'gui' se sumo en la rama gui-2.0 (docs/GUI_2.0_plan.md SS9): sus .py nuevos
+# declaran la version vigente EN LA RAMA, sin que eso bumpee rem_utils.VERSION.
+DIRS_VERSIONADOS = ("programas", "modulos", "tools", "gui")
 RAIZ_VERSIONADOS = ("autorem.py",)
 # Exentos: __init__.py (vacios), tests/ (no se distribuyen) y legacy/ (congelado).
 EXENTOS_NOMBRE = ("__init__.py",)
