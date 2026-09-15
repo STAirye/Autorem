@@ -4,8 +4,8 @@ Todos los cambios relevantes de este proyecto se anotan acá.
 Formato inspirado en [Keep a Changelog](https://keepachangelog.com/es/).
 
 **Versionado `X.Y.Z`** (ver [CLAUDE.md](CLAUDE.md) §9):
-`X` = programa · `Y` = módulos de programa acumulados · `Z` = corrección del
-módulo que se está trabajando (reinicia al subir `Y`).
+`X` = arquitectura grande o plantillas REM de un año nuevo · `Y` = módulo o
+reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
