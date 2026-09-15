@@ -16,7 +16,7 @@ Se carga al trabajar en `tools/`. Los `§N` son las anclas del [CLAUDE.md raíz]
 | `hook_pre_commit_rut.py` | **El check anti-RUT** (§8.2), en pre-commit y commit-msg. |
 | `check_cp1252.py` | **El check** de que los `.py` sean cp1252-safe. |
 | `check_version.py` | **El check** de versionado y contadores (§9). `--arreglar` · `--bump X.Y.Z`. |
-| `hooks_git.py` | **El instalador** que comparten los 3 checks (`encadenar()`). Es librería, sin CLI (ver §8.2). |
+| `hooks_git.py` | **El instalador** que comparten los 3 checks (`encadenar()`) + `--instalar`, que instala y verifica los tres (§8.2). |
 | `catalogos_deis.py` | Mantenedor de catálogos: `--check` / `--fetch` / `--slim` (§14). |
 | `scan_catalogo.py` | Escáner de PII antes de versionar un catálogo. |
 | `limpiar_refs.py` | Recorta a solo header lo que entra a `refs_tablas/`. |
@@ -61,15 +61,16 @@ Usar `11111111-1`, y para fixtures un cuerpo que empiece en `1000` con el DV cal
 11), tanto en archivos staged como en el mensaje. Deja pasar los placeholders obvios.
 
 ```bash
-python tools/hook_pre_commit_rut.py --instalar
-python tools/check_cp1252.py --instalar
-python tools/check_version.py --instalar
+python tools/hooks_git.py --instalar
 ```
 
-- **Son tres comandos y cada uno instala solo el suyo.** `python tools/hooks_git.py
-  --instalar` es un **no-op silencioso**: sale 0 y no instala nada. Verificar siempre
-  por el resultado: `.git/hooks/pre-commit` debe listar los tres scripts, y
-  `.git/hooks/commit-msg` el de RUT.
+- **Un solo comando instala los tres** (desde 1.9.15). Llama al instalador de cada
+  check, así los args de cada uno viven en un solo lugar, y después **verifica el
+  resultado**: `pre-commit` debe listar los tres scripts y `commit-msg` el de RUT. Si
+  falta alguno, sale con exit 1. Sin argumentos, muestra el uso y sale con exit 2.
+  Hasta 1.9.14 ese mismo comando era un no-op silencioso.
+- El `--instalar` de cada check (`hook_pre_commit_rut.py`, `check_cp1252.py`,
+  `check_version.py`) sigue funcionando para instalar uno solo.
 - **Los hooks no se versionan** (viven en `.git/hooks/`): hay que instalarlos en cada
   clon y en cada equipo.
 - Se escriben contra `$REPO` (`git rev-parse --show-toplevel`), así corren bien desde

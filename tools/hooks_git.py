@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.6
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,9 +43,17 @@ Si el script no existe en ese arbol (rama vieja, anterior a la herramienta), la
 invocacion falla y BLOQUEA el commit: es raro, se ve en el acto y se destraba con
 --no-verify. Preferible a saltarse en silencio un check de privacidad.
 
-USO (desde los otros tools, no directo)
+USO
+    python tools/hooks_git.py --instalar     # instala los 3 hooks y VERIFICA el resultado
+
+    Desde los checks (cada uno sigue siendo dueno de SUS args):
     from tools.hooks_git import encadenar
     encadenar("tools/check_version.py")
+
+Hasta 1.9.14 este archivo no tenia CLI: `python tools/hooks_git.py --instalar`
+corria, no imprimia nada, salia 0 y no instalaba ni un hook -- un no-op callado
+que se confundia con exito. Ahora instala los tres llamando al instalador de cada
+check (no duplica sus args) y falla con exit 1 si alguno no quedo en el hook.
 """
 
 import subprocess
@@ -99,3 +107,43 @@ def encadenar(script, hook="pre-commit", args=""):
     destino.chmod(0o755)
     print(f"instalado: {destino}")
     return destino
+
+
+# (modulo, funcion instaladora) de cada check. Se llama a SU instalador para que
+# los args (ej. '--hook commit-msg "$@"' del anti-RUT) vivan en un solo lugar.
+INSTALADORES = (("tools.hook_pre_commit_rut", "instalar"),
+                ("tools.check_cp1252", "instalar_hook"),
+                ("tools.check_version", "instalar_hook"))
+# Lo que tiene que quedar escrito: se verifica por el RESULTADO, no por el exit code.
+ESPERADOS = {"pre-commit": ("hook_pre_commit_rut.py", "check_cp1252.py", "check_version.py"),
+             "commit-msg": ("hook_pre_commit_rut.py",)}
+
+
+def instalar_todos():
+    import importlib
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    for modulo, funcion in INSTALADORES:
+        getattr(importlib.import_module(modulo), funcion)()
+    hooks = Path(_git("rev-parse", "--git-path", "hooks").strip())
+    faltan = []
+    for hook, scripts in ESPERADOS.items():
+        texto = (hooks / hook).read_text(encoding="utf-8") if (hooks / hook).exists() else ""
+        faltan += [f"{hook}: {s}" for s in scripts if s not in texto]
+    if faltan:
+        print("\nERROR: estos hooks NO quedaron instalados:\n  " + "\n  ".join(faltan),
+              file=sys.stderr)
+        return 1
+    print(f"\nOK: los 3 hooks estan instalados en {hooks}")
+    return 0
+
+
+def main():
+    if "--instalar" in sys.argv[1:]:
+        return instalar_todos()
+    print("uso: python tools/hooks_git.py --instalar   (instala y verifica los 3 hooks)",
+          file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -10,6 +10,30 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.15] — 2026-09-15
+
+### Agregado
+- **`python tools/hooks_git.py --instalar` instala y verifica los 3 hooks** de un
+  viaje. Hasta ahora ese comando corría, no imprimía nada, salía 0 y no instalaba
+  ningún hook: un no-op silencioso que se confundía con éxito (estaba documentado como
+  trampa en CLAUDE.md §8.2).
+  - Llama al instalador de cada check, así los args de cada uno siguen viviendo en un
+    solo lugar.
+  - Verifica **por el resultado**: `pre-commit` debe listar los tres scripts y
+    `commit-msg` el anti-RUT. Si falta alguno, sale con exit 1.
+  - Sin argumentos muestra el uso y sale con exit 2.
+  - El `--instalar` individual de cada check sigue funcionando.
+- **README: sección «Si clonas este repo».** Instalar los hooks con el comando nuevo.
+  El autor no se hace responsable de PII en clones o forks sin hooks, y no se acepta
+  ningún PR externo sin ellos.
+
+### Documentación
+- Plan GUI 2.0 §7.1: fecha de los catálogos visible + actualización manual en «modo
+  usuario avanzado». Queda anotado que el drop-in necesita un directorio del usuario,
+  porque `_MEIPASS` es temporal.
+- `modulos/CLAUDE.md`: checklist de módulo nuevo, incluida la planilla de ejemplo
+  header-only. Reemplaza la idea de un check automático.
+
 ## [1.9.14] — 2026-09-15
 
 ### Cambiado

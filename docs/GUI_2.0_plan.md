@@ -472,13 +472,35 @@ Contenido:
 - **Ediciones de los catálogos DEIS**, leídas de `catalogos/FUENTES.json` (edición,
   fecha, filas). Es exactamente para lo que se guarda ese archivo: poder decir de qué
   edición hablan los números. Manejar el `FileNotFoundError` — si el `.spec` no
-  incluyó `catalogos/`, esta pantalla es donde se nota.
+  incluyó `catalogos/`, esta pantalla es donde se nota. Detalle en §7.1.
 - Crédito de asistencia de IA (ya está en el header de cada archivo).
 
 **Contacto: SOLO la URL del repo. Sin correo** (decidido, sep-2026). Un correo en un
 archivo versionado de un repo público es exposición innecesaria; los issues de GitHub
 cumplen la misma función y no publican una dirección. **No agregar un correo al
 implementar, aunque parezca que falta.**
+
+### 7.1 Catálogos: fecha visible + actualización manual (agregado sep-2026, pedido del autor)
+
+**a) LASTUPDATE a la vista.** Por cada catálogo (`cie10` · `eno` · `ges`), mostrar la
+edición y la fecha de `FUENTES.json`. Si hay un drop-in que pisa al embebido
+(cascada de `catalogos.cargar`), mostrar **cuál se está usando**. Ese aviso hoy solo
+sale en el log, y cambiar la fuente cambia los resultados.
+
+**b) Actualizar a mano, detrás de un «modo usuario avanzado».** El `.exe` es offline
+por diseño, así que no hay «buscar actualizaciones»: el usuario baja el `.xlsx` del
+DEIS por su cuenta y lo carga.
+- **Confirmación explícita antes de habilitarlo:** «Esto cambia los resultados de
+  todos los reportes que usan catálogos. Solo si sabes qué edición estás cargando».
+- **Escaneo de PII obligatorio** antes de aceptar el archivo, con la misma lógica que
+  `tools/scan_catalogo.py`. Con hallazgos, se rechaza igual que `--slim`.
+- **Hay que decidir dónde queda el archivo.** Dentro del `.exe` la carpeta
+  `catalogos/` vive en el temporal de `_MEIPASS` y se borra al cerrar, así que el
+  drop-in tiene que ir a un directorio del usuario (candidato: `~/.autorem/catalogos/`,
+  junto al caché de estamentos y dotación). Eso obliga a extender la cascada de
+  `catalogos.cargar` con esa ruta. **Es un cambio de lógica de `programas/`: se hace en
+  `main`, no en la rama** (§13), y la GUI solo lo consume.
+- Botón «Volver al catálogo embebido», que borra el drop-in.
 
 ---
 

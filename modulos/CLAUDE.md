@@ -9,6 +9,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 Se carga al trabajar en `modulos/`. Los `§N` son las anclas del [CLAUDE.md raíz](../CLAUDE.md).
 
+## Checklist de módulo nuevo
+
+- **Planilla de ejemplo** de cada export que lee, en `refs_tablas/`: **solo header**
+  (skill `limpiar-refs`) y habilitada a mano en el whitelist del `.gitignore`. Si el
+  módulo no la tiene, **preguntarle al autor si la crea** antes de seguir: sin ella,
+  la próxima sesión no puede ver el formato sin tocar datos reales.
+- Entrada en `programas/cobertura.py` (`test_cobertura` falla si falta).
+- Mes vacío por `rem_utils.filtrar_mes`, nunca un filtro a mano (§3.1).
+- Header con versión + bump **Y** (skill `versionar`).
+- Fila en la tabla de abajo y en la matriz de programas (§9 raíz).
+
 ## Módulos
 
 | Archivo | Qué hace / decisiones clave |

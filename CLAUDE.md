@@ -67,7 +67,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.14** (§9). **174 tests.**
+Versión **1.9.15** (§9). **174 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -140,7 +140,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.14**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.15**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -213,19 +213,13 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   trae RUN: si lo trae, es un merge barato.
 - **GUI 2.0:** `gui/paginas/sm.py` todavía dice «saco vacío» (4 lugares). Pasarlo a
   «saco roto» antes del merge (en `main` se renombró en 1.9.14).
-- **Catálogos:** mostrarle al usuario la edición y fecha de cada fuente
-  (`FUENTES.json`, en LEEME o en la GUI 2.0), y permitir regenerarlos a mano detrás de
-  un aviso de «usuario avanzado».
+- **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
+  avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
+  lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.
 - **Generalizar a otros centros:** un config en vez de constantes locales
   (`EXCLUIR_PATOLOGIA`, externos de dotación, sectores…).
 
 **Dev / repo**
-- **`hooks_git.py` con CLI propio** que instale los 3 hooks de un viaje. Mata el no-op
-  silencioso de hoy (§8.2).
-- **Check dev-facing:** si un módulo o tabla no tiene planilla de ejemplo en
-  `refs_tablas/`, avisar y ofrecer crearla.
-- **README, sección «si clonas este repo»:** instalar los hooks; el autor no responde
-  por PII que aparezca en clones sin hooks; no se acepta ningún PR externo sin ellos.
 - **Pestaña de Consultas de catálogos** + enchufar `en_rango` en el A23.
 - **Deuda:** `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con dtype mixto);
   pandas 4 lo vuelve error.

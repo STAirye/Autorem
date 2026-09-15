@@ -55,6 +55,26 @@ nombre, dirección, teléfono, fecha de nacimiento). **Nunca** se versionan en g
 - El único identificador en la salida es el **RUT / RUN** (necesario para el REM).
 - El procesamiento es local; nada se sube a ningún lado.
 
+### Si clonas este repo
+
+Los hooks de git **no se versionan**: viven en `.git/hooks/` de cada clon. Antes del
+primer commit, instálalos:
+
+```bash
+python tools/hooks_git.py --instalar
+```
+
+Instala **y verifica** tres checks de pre-commit:
+- **Anti-RUT:** bloquea cualquier RUT con dígito verificador válido, en los archivos y
+  en el mensaje del commit.
+- **cp1252:** que el código no reviente la consola de Windows.
+- **Coherencia de versión.**
+
+- **El autor no se hace responsable** de datos personales que aparezcan en un clon o
+  fork donde no se instalaron los hooks.
+- **No se acepta ningún PR externo sin los hooks instalados.** Un PR con commits
+  hechos con `--no-verify`, o que el anti-RUT bloquearía, se rechaza sin revisión.
+
 ---
 
 ## Requisitos
