@@ -34,6 +34,9 @@ EL CONTRATO PANTALLA (lo que expone cada modulo de gui/paginas/*.py):
              "titulo_dialogo": "..."},
             ...
         ],
+        # `obligatorio` puede ser un bool, o callable(getters) -> bool cuando
+        # depende de OTRO input (SM Actividades, docs/GUI_2.0_plan.md SS6: ADA
+        # y Grupal dejan de serlo SOLO en una corrida solo-cuestionarios).
         "mes": True,                   # muestra SelectorMes
         "carpeta_salida": True,        # muestra CarpetaSalida
         "extras": [                    # opcional, ver SS3.1 del plan
@@ -108,6 +111,13 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
     for inp in inputs:
         valor = getters[inp["key"]]()
         obligatorio = inp.get("obligatorio", True)
+        if callable(obligatorio):
+            # SM Actividades lo necesita (docs/GUI_2.0_plan.md SS6): ADA/Grupal
+            # dejan de ser obligatorios SOLO si es una corrida solo-cuestionarios
+            # (checkbox 'Incluir cuestionarios' marcado, con archivos, y ni ADA
+            # ni Grupal elegidos) -- una condicion que depende de OTRO input, no
+            # de esta pantalla en abstracto.
+            obligatorio = obligatorio(getters)
         if inp.get("multi"):
             if obligatorio and not valor:
                 messagebox.showwarning(
@@ -281,10 +291,12 @@ class App(ctk.CTk):
                 pintar_input(inp)
                 pintar_extras(inp["key"])
 
+        # Carpeta ANTES que mes: mismo orden visual que traian A23/SM/BETA en
+        # autorem.py (orden puramente cosmetico, sin efecto funcional).
+        get_carpeta = widgets.fila_carpeta_salida(frame) if pantalla.get("carpeta_salida") else None
+
         if pantalla.get("mes"):
             get_mes[0] = widgets.selector_mes(frame, mes_anterior())
-
-        get_carpeta = widgets.fila_carpeta_salida(frame) if pantalla.get("carpeta_salida") else None
 
         pintar_extras(None)   # los que van "al final", antes del boton Procesar
 
