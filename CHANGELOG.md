@@ -10,6 +10,20 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.12] — 2026-09-15
+
+### Corregido
+- **A23 con un export de atenciones sin filas reventaba con un traceback críptico**
+  (`ValueError: NaTType does not support strftime`) en vez de un error claro. El
+  log del rango de fechas formateaba `min()`/`max()` de una columna vacía antes de
+  llegar a `filtrar_mes`, que sí tenía la guarda. Lo detectó la sesión de la GUI
+  2.0 al probar la página nueva con el export de ejemplo header-only de
+  `refs_tablas/`. Ahora el log tolera NaT y la guarda de `filtrar_mes` hace su
+  trabajo.
+- **`filtrar_mes` dice «no trae ninguna fila» cuando el archivo está vacío.** Antes
+  caía en el mensaje de «ninguna fecha legible», que manda a revisar una columna
+  reformateada cuando el problema es otro. Aplica a todos los módulos pandas.
+
 ## [1.9.11] — 2026-09-15
 
 ### Cambiado

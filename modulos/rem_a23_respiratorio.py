@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.12
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -118,9 +118,11 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     IRA/ERA no asistidas, por estamento × tramo etario)."""
     d = cargar_atenciones(entrada, log=log)
     ini, fin = _rango_mes(mes)
-    span_min, span_max = d["FECHA"].min(), d["FECHA"].max()
-    log(f"[a23] {len(d)} atenciones | datos {span_min:%Y-%m-%d}..{span_max:%Y-%m-%d} "
-        f"| mes reporte {ini:%Y-%m}")
+    # Sin fechas (export vacio o header-only) min/max dan NaT y el strftime revienta
+    # criptico: se loguea igual y el ArchivoInvalido claro lo tira filtrar_mes, abajo.
+    span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
+            if d["FECHA"].notna().any() else "sin fechas")
+    log(f"[a23] {len(d)} atenciones | datos {span} | mes reporte {ini:%Y-%m}")
 
     from pathlib import Path
     runs = pd.Index(d["RUN"].unique(), name="RUN")
