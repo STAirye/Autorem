@@ -78,8 +78,8 @@ no existe en este export.
     `SEXO=Mujer` + `GENERO=Masculino`.
   - Por esta regla **no** cuentan: `No binarie` · `Otra` · `No Revelado` · vacío, ni
     ningún `SEXO` en `Intersexual` / `Desconocido` / `No Informado`. No es un juicio
-    clínico: el REM solo tiene sexo binario + Trans, así que `No binarie` no tiene
-    casilla donde ir. Si MINSAL agrega una, se reabre la regla.
+    clínico: RAYEN sí registra género no binario, pero el REM solo tiene sexo binario +
+    Trans, así que `No binarie` no tiene casilla donde ir. Si MINSAL agrega una, se reabre la regla.
   - Valores de `SEXO`: Hombre · Mujer · Intersexual · Desconocido · No Informado.
   - Valores de `GENERO`: Femenina · Masculino · los 4 trans · No binarie · No Revelado ·
     Otra · (vacías).
