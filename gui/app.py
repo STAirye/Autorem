@@ -173,6 +173,7 @@ class App(ctk.CTk):
         self._frames = {}         # id -> CTkFrame ya construido (perezoso)
         self._logs = {}           # id -> log(msg) (existe recien tras construir la pagina)
         self._on_procesar = {}    # id -> callable, expuesto para poder testear sin click real
+        self._getters = {}        # id -> {key: getter}, idem (inyectar valores sin clickear dialogos)
         self._botones_sidebar = {}
 
         self._construir_sidebar()
@@ -323,6 +324,7 @@ class App(ctk.CTk):
 
         btn.configure(command=on_procesar)
         self._on_procesar[pantalla["id"]] = on_procesar   # testeable sin click real
+        self._getters[pantalla["id"]] = getters           # idem: inyectar valores sin dialogo
         return frame
 
     def _log_de(self, pantalla_id):
