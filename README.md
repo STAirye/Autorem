@@ -207,15 +207,19 @@ python tests/test_sm_actividades.py
 Para que un colega no técnico lo use con doble-clic, sin instalar Python:
 
 ```bash
-pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" autorem.py
+pyinstaller --clean autoREM.spec
+# -> dist/autoREM.exe
 ```
 
-Correr desde la raíz del repo (con `programas/` y `modulos/` al lado de
-`autorem.py`); PyInstaller sigue los `import` solo. El `--add-data` embebe el
-**Maestro de Actividades** (dato, no `import`): sin él, el Trabajo Perdido corre
-en heurística (avisa en el log). Gotchas (SmartScreen, antivirus institucional)
-en [CLAUDE.md](CLAUDE.md) §11.
+Correr desde la raíz del repo, en Windows. El `autoREM.spec` versionado es la forma
+oficial: ya lleva los datos que PyInstaller no sigue solo porque no son `import`.
+- El **Maestro de Actividades**: sin él, el Trabajo Perdido corre en heurística y lo
+  avisa en el log.
+- Los **catálogos DEIS** de `catalogos/`.
+
+Si cambia lo que shippea el exe, se edita el `.spec` y se commitea. Gotchas
+(`PermissionError` de `--clean`, SmartScreen, antivirus institucional) en
+[tools/CLAUDE.md](tools/CLAUDE.md) §11.
 
 ---
 
