@@ -209,8 +209,14 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   hasta recibir la lista de externos).
 
 **Correcciones y mejoras**
-- **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
-  trae RUN: si lo trae, es un merge barato.
+- **Demografía del grupal** (después de la GUI 2.0). El grupal sí trae RUN. Fuente por
+  RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
+  población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
+  dos: un «sin dato» contado como NO subcuenta callado. La cobertura va a la LEEME.
+- **Rendimiento de lectura** (sin urgencia): medir primero dónde se va el tiempo
+  (lectura del `.xlsx` vs cálculos). Si es la lectura, probar `python-calamine`
+  (`engine="calamine"`) contra la «dimension rota» de RAYEN. Cortar un mismo `.xlsx`
+  y leer las partes en paralelo no rinde, porque no hay acceso aleatorio por fila.
 - **GUI 2.0:** `gui/paginas/sm.py` todavía dice «saco vacío» (4 lugares). Pasarlo a
   «saco roto» antes del merge (en `main` se renombró en 1.9.14).
 - **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
