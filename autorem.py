@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -1179,7 +1179,7 @@ def _tab_sm(nb, root):
     _separador_opcionales(tab)
     get_inscritos = _fila_archivos(tab, "Inscritos (opcional, TRANS):", "Informe Inscritos y Adscritos — para el flag TRANS")
     get_multi = _fila_archivos(tab, "Multiprofesional (opc, A26):", "Monitoreo Multiprofesional — composición de VDI en A26")
-    get_maestro = _fila_archivos(tab, "Maestro (opc, saco vacío):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
+    get_maestro = _fila_archivos(tab, "Maestro (opc, saco roto):", "Maestro de Actividades — catálogo RAYEN para clasificar el trabajo perdido")
     get_salida = _fila_carpeta_salida(tab)
 
     y0, m0 = mes_anterior()
@@ -1273,14 +1273,14 @@ def _tab_sm(nb, root):
                     "embebido en el .exe): el Trabajo Perdido usa SOLO la heurística "
                     "(mask_tributa_ada), menos preciso. Para embeberlo, reconstruye el .exe "
                     "con --add-data del maestro_slim.csv.gz (CLAUDE.md §11) o déjalo junto al .exe.")
-            # Trabajo perdido (saco vacío): mismo ADA ya cargado. Try propio para que un
+            # Trabajo perdido (saco roto): mismo ADA ya cargado. Try propio para que un
             # fallo acá (p.ej. Monitoreo admin sin 'PROFESIONAL ATENCION') no tumbe el SM.
             try:
                 import modulos.rem_sm_trabajo_perdido as tpmod
                 Etp = tpmod.procesar(ada, maestro=maestro, mes=(y, m), log=log, d=d)
                 tpmod.escribir(Etp, salida_tp)
                 n_tp = len(Etp)
-                log(f"OK Trabajo perdido: {n_tp} atenciones a saco vacío -> {salida_tp.name}")
+                log(f"OK Trabajo perdido: {n_tp} atenciones a saco roto -> {salida_tp.name}")
             except Exception as e:   # noqa: BLE001
                 log(f"[tp] no se generó el reporte de trabajo perdido: {e}")
             n_a03 = None
@@ -1304,7 +1304,7 @@ def _tab_sm(nb, root):
             E, n_tp, n_a03 = res
             resu = E.attrs["tablas"]["SM_Resumen"]
             rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
-            tptxt = f"\nTrabajo perdido: {n_tp} atenciones a saco vacío." if n_tp is not None else ""
+            tptxt = f"\nTrabajo perdido: {n_tp} atenciones a saco roto." if n_tp is not None else ""
             a03txt = f"\nA03·D.3: {n_a03} aplicaciones." if n_a03 is not None else ""
             txt = (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
                    f"{rtxt}\n\nGuardado en:\n{salida}")

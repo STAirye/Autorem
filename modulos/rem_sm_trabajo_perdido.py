@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -16,13 +16,13 @@
 # General Public License for more details: <https://www.gnu.org/licenses/>.
 # ==========================================================================
 """
-REM Salud Mental — TRABAJO PERDIDO ("saco vacío").
+REM Salud Mental — TRABAJO PERDIDO ("saco roto").
 
 Reporte de auditoría (no tributa a ninguna casilla del REM). Detecta atenciones del
 ADA cuya ACTIVIDAD parece de Salud Mental (contiene 'mental' o 'demencia', heurístico
 —RAYEN agrega actividades nuevas seguido, no hay lista fija—) pero que NO tributan a
 las casillas SM que el exe reporta (A04·A06·19A·A26·A27·A32). Objetivo: disminuir el
-trabajo a "saco vacío" mostrando QUÉ actividades mal elegidas se registran y QUÉ
+trabajo a "saco roto" mostrando QUÉ actividades mal elegidas se registran y QUÉ
 FUNCIONARIOS (nombre y apellido, columna 'PROFESIONAL ATENCION') las registran, para
 corregirlos.
 
@@ -179,7 +179,7 @@ def analizar(d, ini, fin, rem_map=None, log=print):
             n = int((fuera & A.str.contains(norm(pat), regex=False, na=False)).sum())
             if n:
                 log(f"[tp]   · {n} x «{pat}» -> {destino}")
-    log(f"[tp] mes {ini:%Y-%m}: {len(E)} atenciones SM a SACO VACÍO (no tributan a "
+    log(f"[tp] mes {ini:%Y-%m}: {len(E)} atenciones SM a SACO ROTO (no tributan a "
         f"A04/A06/19A/A26/A27/A32)")
     if len(E):
         ta, na = _top(E, "actividad")
@@ -198,7 +198,7 @@ def _top(sub, col):
 
 def _tabla_resumen(E, ini, con_maestro):
     filas = [
-        ("Atenciones SM a saco vacío (no tributan)", len(E)),
+        ("Atenciones SM a saco roto (no tributan)", len(E)),
         ("  · funcionarios involucrados", E["profesional"].nunique() if len(E) else 0),
         ("  · actividades distintas mal usadas", E["actividad"].nunique() if len(E) else 0),
         ("  · pacientes afectados (RUN distintos)", E["run"].nunique() if len(E) else 0),
@@ -228,9 +228,9 @@ def _por_actividad(E):
 
 
 def _por_funcionario(E):
-    """Una fila por FUNCIONARIO: cuántas atenciones a saco vacío y qué actividad más
+    """Una fila por FUNCIONARIO: cuántas atenciones a saco roto y qué actividad más
     repite. Ordena por N (a quién conviene avisar primero)."""
-    cols = ["Funcionario", "Estamento", "N a saco vacío", "Actividad más repetida", "N pacientes"]
+    cols = ["Funcionario", "Estamento", "N a saco roto", "Actividad más repetida", "N pacientes"]
     if not len(E):
         return pd.DataFrame(columns=cols)
     filas = []
@@ -240,11 +240,11 @@ def _por_funcionario(E):
         filas.append({
             "Funcionario": prof,
             "Estamento": (str(est.iloc[0]) if len(est) else ""),
-            "N a saco vacío": len(s),
+            "N a saco roto": len(s),
             "Actividad más repetida": str(top.index[0]),
             "N pacientes": s["run"].nunique(),
         })
-    return pd.DataFrame(filas).sort_values("N a saco vacío", ascending=False, ignore_index=True)
+    return pd.DataFrame(filas).sort_values("N a saco roto", ascending=False, ignore_index=True)
 
 
 def procesar(ada, maestro=None, mes=None, log=print, d=None):

@@ -10,6 +10,24 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.14] — 2026-09-15
+
+### Cambiado
+- **«Saco vacío» → «saco roto»** en todo lo visible: el reporte de Trabajo Perdido,
+  la columna `N a saco roto` de `Por_Funcionario`, la fila del resumen, la etiqueta
+  y los mensajes de la GUI, el README y los comentarios. Las entradas viejas de este
+  CHANGELOG conservan el nombre de su época.
+  - La rama `gui-2.0` todavía lo tiene en `gui/paginas/sm.py`: renombrarlo ahí antes
+    del merge.
+
+### Agregado
+- **Rescate: verificar con el certificado de Fonasa antes de llamar.**
+  - `Posibles_Fallecidos` trae una columna nueva, `Antes de llamar`.
+  - La hoja LEEME del rescate advierte del caso inverso, que el flag no ve: gente
+    fallecida que sigue **Activa** en RAYEN meses después, sin Motivo Pasivación.
+    Caso real, sep-2026. Esas personas aparecen en `Rescate_6m`/`13m`, no en
+    `Posibles_Fallecidos`.
+
 ## [1.9.13] — 2026-09-15
 
 ### Agregado

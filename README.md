@@ -118,7 +118,7 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   (Evaluación ingreso/egreso × Bajo/Medio/Alto × rango etario × sexo) + hoja de detalle
   auditable. Se puede correr en su pestaña, o desde Actividades con el check **"¿Incluir
   cuestionarios?"**. Solo cuenta ingresados al PSM; los "sin riesgo" quedan en el detalle.
-- **REM SM · Trabajo perdido ("saco vacío")** — reporte de auditoría que se genera junto
+- **REM SM · Trabajo perdido ("saco roto")** — reporte de auditoría que se genera junto
   al de Actividades (mismo ADA). Detecta atenciones cuya actividad trae *mental*/*demencia*
   pero **no tributan** a ninguna casilla SM del REM, y **nombra al funcionario** que las
   registra, para reducir el trabajo perdido. Usa el **Maestro de Actividades** (catálogo

@@ -67,7 +67,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.13** (§9). **174 tests.**
+Versión **1.9.14** (§9). **174 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -140,7 +140,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.13**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.14**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -211,10 +211,8 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 **Correcciones y mejoras**
 - **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
   trae RUN: si lo trae, es un merge barato.
-- **Renombrar «saco vacío» → «saco roto»** (Trabajo Perdido). Esperar al merge de la
-  GUI 2.0, porque toca strings de la GUI.
-- **`Posibles_Fallecidos`:** sugerir «verificar con certificado de Fonasa». Caso real
-  (sep-2026): alguien fallecido hace dos meses seguía activo en RAYEN.
+- **GUI 2.0:** `gui/paginas/sm.py` todavía dice «saco vacío» (4 lugares). Pasarlo a
+  «saco roto» antes del merge (en `main` se renombró en 1.9.14).
 - **Catálogos:** mostrarle al usuario la edición y fecha de cada fuente
   (`FUENTES.json`, en LEEME o en la GUI 2.0), y permitir regenerarlos a mano detrás de
   un aviso de «usuario avanzado».

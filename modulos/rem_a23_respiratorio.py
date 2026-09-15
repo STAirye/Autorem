@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.12
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -57,7 +57,7 @@ _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 #
 # Hallazgo Maestro (ago-2026): hoy TODO lo grupal respiratorio cae a REM-Gestion
 # (no tributa). Al activarse, estas deberían apuntar a A23·M.2 (o reclasificarse en
-# el Maestro); mientras tanto caen a 'saco vacío' (las caza Trabajo perdido):
+# el Maestro); mientras tanto caen a 'saco roto' (las caza Trabajo perdido):
 #   _M2_TALLERES = [
 #       "taller grupal cesacion tabaco",   # tema tabaco
 #       "ges tabaco sesion",               # AG_GES TABACO Sesión 1-6

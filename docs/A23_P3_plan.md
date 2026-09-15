@@ -134,7 +134,7 @@ referencia), A19a·A.1 (consejerías individuales), A09·B (consejería breve od
 **Cuando se implemente M.2:** definir con el RT si el Maestro reclasifica esas
 actividades a `REM-A23` (lo ideal) o si se listan explícitamente en el módulo;
 validar contra un mes con datos reales (como se hizo con SM). Mientras tanto, esos
-talleres caen a **saco vacío** (los caza el reporte de Trabajo perdido).
+talleres caen a **saco roto** (los caza el reporte de Trabajo perdido).
 
 ---
 

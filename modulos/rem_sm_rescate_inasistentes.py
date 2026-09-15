@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -144,7 +144,7 @@ def construir_rescate(P, d_ada, mes=None, log=print):
     if n_marc:
         log(f"[rescate] {n_marc} de {n_pool} en la cohorte de rescate figuran Fallecido en "
             "'Motivo Pasivación' -> NO se excluyen (§8.3, corregido), quedan flageados en "
-            "Posibles_Fallecidos para confirmar antes de llamar.")
+            "Posibles_Fallecidos para confirmar antes de llamar (certificado de Fonasa).")
     if n_pool and n_marc / n_pool > _TECHO_FALLECIDOS_RESCATE:
         log(f"[rescate] AVISO: {n_marc} de {n_pool} ({n_marc / n_pool:.0%}) por encima del "
             f"{_TECHO_FALLECIDOS_RESCATE:.0%} esperado (§5.5.1) — revisa que 'Motivo Pasivación' "
@@ -168,12 +168,16 @@ def construir_rescate(P, d_ada, mes=None, log=print):
         f"· Posibles_Traslados={len(traslados)}")
 
     extra_pasiv = [("Motivo Pasivación", "Motivo Pasivación"), ("Fecha Pasivación", "Fecha Pasivación")]
+    posibles_fallecidos = _tabla(fallecidos_flag, ultima, extra=extra_pasiv)
+    # Motivo Pasivacion es un snapshot sin verificar: confirmar el estado vital antes
+    # de llamar. (Y al reves: hay fallecidos que siguen Activos en RAYEN -> LEEME.)
+    posibles_fallecidos["Antes de llamar"] = "Verificar con certificado de Fonasa"
     return {
         "Rescate_6m": _tabla(rescate6, ultima),
         "Rescate_13m": _tabla(rescate13, ultima),
         "Fallecidos_mes": _tabla(fallecidos_mes, extra=[("Fecha Pasivación", "Fecha Pasivación")],
                                  orden_extra="Fecha Pasivación"),
-        "Posibles_Fallecidos": _tabla(fallecidos_flag, ultima, extra=extra_pasiv),
+        "Posibles_Fallecidos": posibles_fallecidos,
         "Posibles_Traslados": _tabla(traslados, ultima, extra=extra_pasiv),
     }
 

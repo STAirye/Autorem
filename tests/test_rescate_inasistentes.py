@@ -148,6 +148,7 @@ def test_fallecido_no_se_excluye_pero_se_flagea():
     assert "22222222-2" in set(tablas["Rescate_6m"]["RUN"])
     assert "22222222-2" in set(tablas["Posibles_Fallecidos"]["RUN"])
     assert tablas["Posibles_Fallecidos"].iloc[0]["Motivo Pasivación"] == "Fallecido"
+    assert "Fonasa" in tablas["Posibles_Fallecidos"].iloc[0]["Antes de llamar"]
 
 
 def test_fallecidos_mes_exige_fecha_pasivacion_en_el_mes_reportado():
