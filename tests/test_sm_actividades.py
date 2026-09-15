@@ -337,16 +337,22 @@ def test_trans_flag():
         {"NUMERO TIPO IDENTIFICACION": "T", "SEXO": "Mujer", "GENERO": "Transgénero Masculino"},
         {"NUMERO TIPO IDENTIFICACION": "U", "SEXO": "Hombre", "GENERO": "Masculino"},       # cis
         {"NUMERO TIPO IDENTIFICACION": "V", "SEXO": "Hombre", "GENERO": "Femenino Trans"},
+        {"NUMERO TIPO IDENTIFICACION": "W", "SEXO": "Mujer", "GENERO": "Masculino"},        # implícita
+        {"NUMERO TIPO IDENTIFICACION": "X", "SEXO": "Hombre", "GENERO": "No binarie"},      # no cuenta
     ])
     ada = _mk_ada([
         {"run": "T", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
         {"run": "U", "id": "2", "fecha": date(2026, 7, 4), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
         {"run": "V", "id": "3", "fecha": date(2026, 7, 5), "act": "Controles Salud Mental  ;", "instr": "Psicólogo(a)", "edad": 30},
+        {"run": "W", "id": "4", "fecha": date(2026, 7, 6), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
+        {"run": "X", "id": "5", "fecha": date(2026, 7, 7), "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30},
     ])
     E = sm.procesar(ada, inscritos=ins, mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
     a06 = E.attrs["tablas"]["A06_Controles"]
-    assert _a06_tot(a06, "TRANS Masculino") == 1   # T (Transgénero Masculino)
+    assert _a06_tot(a06, "TRANS Masculino") == 2   # T (explícita) + W (Mujer + Masculino)
     assert _a06_tot(a06, "TRANS Femenina") == 1    # V (Femenino Trans)
+    assert not bool(E.loc[E["run"] == "X", "dem_trans_m"].iloc[0])   # X no binarie
+    assert not bool(E.loc[E["run"] == "X", "dem_trans_f"].iloc[0])
     assert not bool(E.loc[E["run"] == "U", "dem_trans_m"].iloc[0])   # U cis
     assert not bool(E.loc[E["run"] == "U", "dem_trans_f"].iloc[0])
 

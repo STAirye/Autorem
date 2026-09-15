@@ -10,6 +10,27 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.11] — 2026-09-15
+
+### Cambiado
+- **Regla TRANS única para el A05 y el SM** (`rem_utils.trans_de`), confirmada por
+  el autor. Antes los dos contaban solo la vía **explícita** (GÉNERO trae «Trans»).
+  Ahora suman la **implícita**: sexo registral binario con género binario opuesto
+  (Hombre + Femenina → TRANS Femenina, Mujer + Masculino → TRANS Masculino).
+  - La implícita es estrecha a propósito, solo esos dos cruces. La heurística vieja
+    `género != sexo` se había descartado por ruidosa porque cruzaba contra cualquier
+    valor.
+  - **No cuentan:** `No binarie`, `Otra`, `No Revelado`, vacío, ni los sexos
+    Intersexual / Desconocido / No Informado. RAYEN registra no binario, pero el REM
+    solo tiene binario + Trans y no hay casilla donde ponerlo.
+  - A05: la columna `Trans` muestra el sexo en los casos implícitos
+    (`Femenina (sexo Hombre)`), para poder auditarlos.
+  - SM: `trans_map` ahora exige la columna **SEXO** en el Informe Inscritos, igual
+    que GÉNERO. Sin ella, la vía implícita se perdería en silencio.
+- **Pueblo originario:** la regla acordada (no cuenta vacío / Ninguno / No Sabe /
+  No Contesta; `Otro` sí cuenta) ya estaba implementada en `PUEBLO_VACIO`. Solo se
+  actualizó la documentación.
+
 ## [1.9.10] — 2026-09-09
 
 ### Corregido

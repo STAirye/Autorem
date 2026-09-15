@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -40,9 +40,9 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 
 # -- Versión del proyecto (fuente única de verdad) --
 # Convención X.Y.Z (ver CLAUDE.md §9):
-#   X = programa · Y = módulos de programa acumulados · Z = corrección del módulo actual.
-# Todos los .py comparten esta versión en su header; bumpear aquí al cambiarla.
-VERSION = "1.9.10"
+#   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
+#   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
+VERSION = "1.9.11"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -658,28 +658,49 @@ def marcar_demografia(d):
     return d
 
 
+def trans_de(sexo, genero):
+    """Regla TRANS unica (A05 y SM) -> 'M' | 'F' | 'X' | None. M/F = el GENERO.
+      - explicita: GENERO trae 'TRANS' ('Transgenero Masculino', 'Femenino Trans').
+      - implicita: sexo registral binario y genero binario OPUESTO
+                   (Hombre + Femenina -> F, Mujer + Masculino -> M).
+    Todo lo demas no cuenta: 'No binarie', 'Otra', 'No Revelado', vacio, y los sexos
+    Intersexual/Desconocido/No Informado. No es juicio clinico: RAYEN registra no
+    binario pero el REM solo tiene binario + Trans, no hay casilla donde ponerlo.
+    La implicita es ESTRECHA a proposito (solo los dos cruces binarios): la vieja
+    heuristica genero!=sexo era ruidosa porque cruzaba contra cualquier valor."""
+    g, s = norm(genero), norm(sexo)
+    if "TRANS" in g:
+        return "M" if "MASCULIN" in g else "F" if "FEMENIN" in g else "X"
+    if s == "HOMBRE" and g in ("FEMENINA", "FEMENINO"):
+        return "F"
+    if s == "MUJER" and g in ("MASCULINO", "MASCULINA"):
+        return "M"
+    return None
+
+
 def trans_map(entrada):
     """Lee el 'Informe Inscritos y Adscritos' -> dict RUN -> 'M' | 'F' | 'X' para
-    personas TRANS. RAYEN ahora permite seleccionar TRANS directamente en GÉNERO
-    ('Transgénero Masculino/Femenina', 'Femenino Trans'), así que se usa ESE campo
-    (la vieja heurística género!=sexo quedó obsoleta y era ruidosa). La dirección
-    (M/F) alimenta el split TRANS Masculino/Femenina del template. Archivo ENORME
-    (toda la población del CESFAM) -> se carga solo si el usuario lo aporta."""
+    personas TRANS segun `trans_de` (explicita por GENERO + implicita sexo/genero).
+    La direccion (M/F) alimenta el split TRANS Masculino/Femenina del template.
+    Archivo ENORME (toda la poblacion del CESFAM) -> se carga solo si el usuario lo
+    aporta. SEXO es obligatorio igual que GENERO: sin el, la via implicita se
+    perderia en silencio."""
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
     i_run = indice_col(hn, "NUMERO", "IDENTIFICACION")
     if i_run is None:
         i_run = indice_col(hn, "RUN")
     i_gen = indice_col(hn, "GENERO")
-    if i_run is None or i_gen is None:   # archivo modificado o reporte equivocado
-        falta = " y ".join(c for c, i in [("RUN", i_run), ("GÉNERO", i_gen)] if i is None)
-        raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {falta}. "
+    i_sex = indice_col(hn, "SEXO")
+    faltan = [c for c, i in [("RUN", i_run), ("GÉNERO", i_gen), ("SEXO", i_sex)] if i is None]
+    if faltan:   # archivo modificado o reporte equivocado
+        raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {' y '.join(faltan)}. "
                          "¿Está modificado o es otro reporte? Descárgalo de nuevo SIN tocar.")
     out = {}
     for f in filas:
-        g = norm(f[i_gen]) if i_gen < len(f) else ""
-        if "TRANS" in g:
-            out[str(f[i_run]).strip()] = "M" if "MASCULIN" in g else "F" if "FEMENIN" in g else "X"
+        t = trans_de(f[i_sex] if i_sex < len(f) else "", f[i_gen] if i_gen < len(f) else "")
+        if t:
+            out[str(f[i_run]).strip()] = t
     return out
 
 

@@ -201,6 +201,46 @@ def test_madre_menor5_filtra_por_sexo_no_por_genero():
     assert any("Madre_menor5" in a and "NO " in a for a in avisos)   # avisa, no calla
 
 
+def test_trans_de_reglas():
+    """Regla TRANS única (A05 + SM): explícita por GÉNERO, implícita solo en los dos
+    cruces binarios; no binarie / otra / no revelado / sexos no binarios NO cuentan."""
+    from programas.rem_utils import trans_de
+    assert trans_de("Mujer", "Transgénero Masculino") == "M"
+    assert trans_de("Hombre", "Femenino Trans") == "F"
+    assert trans_de("Hombre", "Femenina") == "F"          # implícita
+    assert trans_de("Mujer", "Masculino") == "M"          # implícita
+    for sexo, gen in [("Mujer", "Femenina"), ("Hombre", "Masculino"),
+                      ("Hombre", "No binarie"), ("Mujer", "Otra"), ("Mujer", "No Revelado"),
+                      ("Mujer", None), ("Intersexual", "Femenina"),
+                      ("Desconocido", "Masculino"), ("No Informado", "Femenina"), ("", "")]:
+        assert trans_de(sexo, gen) is None, (sexo, gen)
+
+
+def test_a05_trans_implicito():
+    """El A05 marca Trans también por la vía implícita, dejando el sexo visible."""
+    p = _TMP / "trans_a05.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio", None]); ws.append(["Filtros", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "GÉNERO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO"])
+    ws.append(["11111111-1", 30, "Hombre", "Femenina",        "SI", "EGRESO ALTA"])
+    ws.append(["22222222-2", 40, "Mujer",  "Femenina",        "SI", "EGRESO ALTA"])
+    ws.append(["33333333-3", 25, "Mujer",  "Trans Masculino", "SI", "EGRESO ALTA"])
+    ws.append(["44444444-4", 35, "Hombre", "No binarie",      "SI", "EGRESO ALTA"])
+    wb.save(p)
+    out = _TMP / "trans_a05_out.xlsx"
+    egresos.procesar(p, out, log=_quiet)
+    ws2 = openpyxl.load_workbook(out)["A05_Egresos"]
+    head = [ws2.cell(row=1, column=c).value for c in range(1, ws2.max_column + 1)]
+    ci = head.index("Trans") + 1
+    trans = {ws2.cell(row=r, column=1).value: (ws2.cell(row=r, column=ci).value or "")
+             for r in range(2, ws2.max_row + 1)}
+    assert trans["11111111-1"] == "Femenina (sexo Hombre)"   # implícita
+    assert trans["22222222-2"] == ""                          # cis
+    assert trans["33333333-3"] == "Trans Masculino"           # explícita
+    assert trans["44444444-4"] == ""                          # no binarie: sin casilla REM
+
+
 def test_edad_anios():
     assert sm.edad_anios("45 años 3 meses 2 días") == 45
     assert sm.edad_anios("8 meses 10 días") == 0        # menor de 1 año

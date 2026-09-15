@@ -67,7 +67,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.10** (§9). **170 tests.**
+Versión **1.9.11** (§9). **172 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -140,7 +140,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.10**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.11**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -209,8 +209,8 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   hasta recibir la lista de externos).
 
 **Correcciones y mejoras**
-- **Demografía:** aplicar las reglas nuevas de Pueblo originario y Trans (§6) y
-  unificarlas con `trans_map` del SM en una sola función compartida.
+- **TRANS en el P6:** `_dem_trans_*` sale en False; usar `rem_utils.trans_de` sobre
+  SEXO/GENERO de `poblacion` (§6).
 - **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
   trae RUN: si lo trae, es un merge barato.
 - **Renombrar «saco vacío» → «saco roto»** (Trabajo Perdido). Esperar al merge de la

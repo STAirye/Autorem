@@ -63,7 +63,7 @@ NINEZ` capta `SPE ex Mejor Niñez- Ambulatorio`, separado de SENAME) · `Migrant
 `MIGRANTE`, no nacionalidad) · `Madre_menor5` (pregunta 1 = SI). `Gestante` eliminado:
 no existe en este export.
 
-**Reglas nuevas confirmadas por el autor (sep-2026), CÓDIGO PENDIENTE** — valores categóricos reales:
+**Reglas confirmadas por el autor (sep-2026), implementadas en 1.9.11** — valores categóricos reales:
 
 - **`Pueblos_Originarios`** (col. `PUEBLO ORIGINARIO`): **SI** salvo que venga vacío,
   `Ninguno`, `No Sabe` o `No Contesta`. `Otro` y `Otro pueblo originario declarado`
@@ -84,7 +84,10 @@ no existe en este export.
   - Valores de `GENERO`: Femenina · Masculino · los 4 trans · No binarie · No Revelado ·
     Otra · (vacías).
 
-Aplicarlas igual en el A05 y en `trans_map` del SM (una sola función compartida).
+Fuente única: Pueblo → `rem_utils.PUEBLO_VACIO`; Trans → `rem_utils.trans_de` (la
+usan el A05 y `trans_map` del SM). En el A05, la columna `Trans` muestra el sexo en
+los casos implícitos (`Femenina (sexo Hombre)`). **Pendiente:** el P6 tiene
+`_dem_trans_*` en False y podría usar `trans_de` sobre SEXO/GENERO de `poblacion`.
 
 ## §7 Decisiones de diseño SM (NO deshacer sin motivo)
 

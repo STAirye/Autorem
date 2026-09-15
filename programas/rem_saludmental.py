@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios, mes_de_celda,
-    PUEBLO_VACIO, verificar_hoja_unica, _mujer,
+    PUEBLO_VACIO, verificar_hoja_unica, _mujer, trans_de,
 )
 from programas import formatos
 
@@ -152,7 +152,7 @@ DEMOGRAFIA = {
 # GÉNERO: sexo femenino con género transmasculino SÍ cuenta (puede ser madre).
 DEMOGRAFIA_SOLO_FEMENINO = {"Madre_menor5"}
 
-COL_GENERO_TOKENS = ["GENERO"]   # Trans: valor de GÉNERO si contiene "TRANS" (solo IRIS)
+COL_GENERO_TOKENS = ["GENERO"]   # Trans: regla rem_utils.trans_de (explícita + implícita; solo IRIS)
 # (los "vacío de pueblo" se comparten con pandas: rem_utils.PUEBLO_VACIO, ver flag_demo)
 
 # -- Config técnica compartida --
@@ -436,8 +436,8 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
         trans = ""
         if genero_col:
             g = fila[genero_col - 1]
-            if "TRANS" in norm(g):
-                trans = str(g)
+            if trans_de(sexo, g):   # implícita: se deja el sexo a la vista para auditar
+                trans = str(g) if "TRANS" in norm(g) else f"{g} (sexo {sexo})"
 
         for k, toks in busq.items():
             for c0 in estado_idx:
