@@ -216,6 +216,18 @@ def test_mes_sin_atenciones_falla_duro():
     raise AssertionError("un export que no cubre el mes debió levantar ArchivoInvalido")
 
 
+def test_export_sin_filas_falla_claro():
+    """Export header-only: antes el log del span reventaba con 'NaTType does not
+    support strftime'. Ahora ArchivoInvalido('mes_vacio') que dice que no hay filas."""
+    from programas.rem_utils import ArchivoInvalido
+    try:
+        a23.procesar(_mk([]), mes=(2026, 7), log=_quiet)
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "ninguna fila" in str(e)
+        return
+    raise AssertionError("un export sin filas debió levantar ArchivoInvalido")
+
+
 def test_indicador_en_cero_con_el_mes_cubierto_no_falla():
     """La guarda es sobre la FUENTE: con el mes cubierto, un indicador en 0 (acá
     Bronquitis, que nadie tuvo) es legítimo y la corrida sigue."""

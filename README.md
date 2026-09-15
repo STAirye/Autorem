@@ -55,6 +55,26 @@ nombre, dirección, teléfono, fecha de nacimiento). **Nunca** se versionan en g
 - El único identificador en la salida es el **RUT / RUN** (necesario para el REM).
 - El procesamiento es local; nada se sube a ningún lado.
 
+### Si clonas este repo
+
+Los hooks de git **no se versionan**: viven en `.git/hooks/` de cada clon. Antes del
+primer commit, instálalos:
+
+```bash
+python tools/hooks_git.py --instalar
+```
+
+Instala **y verifica** tres checks de pre-commit:
+- **Anti-RUT:** bloquea cualquier RUT con dígito verificador válido, en los archivos y
+  en el mensaje del commit.
+- **cp1252:** que el código no reviente la consola de Windows.
+- **Coherencia de versión.**
+
+- **El autor no se hace responsable** de datos personales que aparezcan en un clon o
+  fork donde no se instalaron los hooks.
+- **No se acepta ningún PR externo sin los hooks instalados.** Un PR con commits
+  hechos con `--no-verify`, o que el anti-RUT bloquearía, se rechaza sin revisión.
+
 ---
 
 ## Requisitos
@@ -118,7 +138,7 @@ apretar **F5**. La ventana tiene **una pestaña por reporte**:
   (Evaluación ingreso/egreso × Bajo/Medio/Alto × rango etario × sexo) + hoja de detalle
   auditable. Se puede correr en su pestaña, o desde Actividades con el check **"¿Incluir
   cuestionarios?"**. Solo cuenta ingresados al PSM; los "sin riesgo" quedan en el detalle.
-- **REM SM · Trabajo perdido ("saco vacío")** — reporte de auditoría que se genera junto
+- **REM SM · Trabajo perdido ("saco roto")** — reporte de auditoría que se genera junto
   al de Actividades (mismo ADA). Detecta atenciones cuya actividad trae *mental*/*demencia*
   pero **no tributan** a ninguna casilla SM del REM, y **nombra al funcionario** que las
   registra, para reducir el trabajo perdido. Usa el **Maestro de Actividades** (catálogo
@@ -187,15 +207,19 @@ python tests/test_sm_actividades.py
 Para que un colega no técnico lo use con doble-clic, sin instalar Python:
 
 ```bash
-pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" autorem.py
+pyinstaller --clean autoREM.spec
+# -> dist/autoREM.exe
 ```
 
-Correr desde la raíz del repo (con `programas/` y `modulos/` al lado de
-`autorem.py`); PyInstaller sigue los `import` solo. El `--add-data` embebe el
-**Maestro de Actividades** (dato, no `import`): sin él, el Trabajo Perdido corre
-en heurística (avisa en el log). Gotchas (SmartScreen, antivirus institucional)
-en [CLAUDE.md](CLAUDE.md) §11.
+Correr desde la raíz del repo, en Windows. El `autoREM.spec` versionado es la forma
+oficial: ya lleva los datos que PyInstaller no sigue solo porque no son `import`.
+- El **Maestro de Actividades**: sin él, el Trabajo Perdido corre en heurística y lo
+  avisa en el log.
+- Los **catálogos DEIS** de `catalogos/`.
+
+Si cambia lo que shippea el exe, se edita el `.spec` y se commitea. Gotchas
+(`PermissionError` de `--clean`, SmartScreen, antivirus institucional) en
+[tools/CLAUDE.md](tools/CLAUDE.md) §11.
 
 ---
 

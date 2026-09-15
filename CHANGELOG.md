@@ -4,11 +4,102 @@ Todos los cambios relevantes de este proyecto se anotan acá.
 Formato inspirado en [Keep a Changelog](https://keepachangelog.com/es/).
 
 **Versionado `X.Y.Z`** (ver [CLAUDE.md](CLAUDE.md) §9):
-`X` = programa · `Y` = módulos de programa acumulados · `Z` = corrección del
-módulo que se está trabajando (reinicia al subir `Y`).
+`X` = arquitectura grande o plantillas REM de un año nuevo · `Y` = módulo o
+reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
+
+## [1.9.15] — 2026-09-15
+
+### Agregado
+- **`python tools/hooks_git.py --instalar` instala y verifica los 3 hooks** de un
+  viaje. Hasta ahora ese comando corría, no imprimía nada, salía 0 y no instalaba
+  ningún hook: un no-op silencioso que se confundía con éxito (estaba documentado como
+  trampa en CLAUDE.md §8.2).
+  - Llama al instalador de cada check, así los args de cada uno siguen viviendo en un
+    solo lugar.
+  - Verifica **por el resultado**: `pre-commit` debe listar los tres scripts y
+    `commit-msg` el anti-RUT. Si falta alguno, sale con exit 1.
+  - Sin argumentos muestra el uso y sale con exit 2.
+  - El `--instalar` individual de cada check sigue funcionando.
+- **README: sección «Si clonas este repo».** Instalar los hooks con el comando nuevo.
+  El autor no se hace responsable de PII en clones o forks sin hooks, y no se acepta
+  ningún PR externo sin ellos.
+
+### Documentación
+- Plan GUI 2.0 §7.1: fecha de los catálogos visible + actualización manual en «modo
+  usuario avanzado». Queda anotado que el drop-in necesita un directorio del usuario,
+  porque `_MEIPASS` es temporal.
+- `modulos/CLAUDE.md`: checklist de módulo nuevo, incluida la planilla de ejemplo
+  header-only. Reemplaza la idea de un check automático.
+
+## [1.9.14] — 2026-09-15
+
+### Cambiado
+- **«Saco vacío» → «saco roto»** en todo lo visible: el reporte de Trabajo Perdido,
+  la columna `N a saco roto` de `Por_Funcionario`, la fila del resumen, la etiqueta
+  y los mensajes de la GUI, el README y los comentarios. Las entradas viejas de este
+  CHANGELOG conservan el nombre de su época.
+  - La rama `gui-2.0` todavía lo tiene en `gui/paginas/sm.py`: renombrarlo ahí antes
+    del merge.
+
+### Agregado
+- **Rescate: verificar con el certificado de Fonasa antes de llamar.**
+  - `Posibles_Fallecidos` trae una columna nueva, `Antes de llamar`.
+  - La hoja LEEME del rescate advierte del caso inverso, que el flag no ve: gente
+    fallecida que sigue **Activa** en RAYEN meses después, sin Motivo Pasivación.
+    Caso real, sep-2026. Esas personas aparecen en `Rescate_6m`/`13m`, no en
+    `Posibles_Fallecidos`.
+
+## [1.9.13] — 2026-09-15
+
+### Agregado
+- **SP·P6: columnas AW/AX (TRANS Masculino / Femenino) calculadas.** Hasta ahora
+  salían siempre en 0, con la nota «pendiente». Usan la misma regla que el A05 y el
+  SM (`rem_utils.trans_de`) sobre `Sexo` y `Género` del Informe Inscritos, split por
+  género.
+  - **No se filtra por sexo registral.** El control de errores de la plantilla
+    espera AW ≤ Mujeres y AX ≤ Hombres. Pero el sexo registral es estático y el
+    género declarado cambia sin reingreso al programa, así que ese control salta
+    seguido, y el SSMC lo acepta.
+  - Esos casos cuentan igual y dejan un aviso en `Revisar_Administrativo` (+ log),
+    para que la celda roja de la plantilla tenga explicación. No bloquea.
+
+## [1.9.12] — 2026-09-15
+
+### Corregido
+- **A23 con un export de atenciones sin filas reventaba con un traceback críptico**
+  (`ValueError: NaTType does not support strftime`) en vez de un error claro. El
+  log del rango de fechas formateaba `min()`/`max()` de una columna vacía antes de
+  llegar a `filtrar_mes`, que sí tenía la guarda. Lo detectó la sesión de la GUI
+  2.0 al probar la página nueva con el export de ejemplo header-only de
+  `refs_tablas/`. Ahora el log tolera NaT y la guarda de `filtrar_mes` hace su
+  trabajo.
+- **`filtrar_mes` dice «no trae ninguna fila» cuando el archivo está vacío.** Antes
+  caía en el mensaje de «ninguna fecha legible», que manda a revisar una columna
+  reformateada cuando el problema es otro. Aplica a todos los módulos pandas.
+
+## [1.9.11] — 2026-09-15
+
+### Cambiado
+- **Regla TRANS única para el A05 y el SM** (`rem_utils.trans_de`), confirmada por
+  el autor. Antes los dos contaban solo la vía **explícita** (GÉNERO trae «Trans»).
+  Ahora suman la **implícita**: sexo registral binario con género binario opuesto
+  (Hombre + Femenina → TRANS Femenina, Mujer + Masculino → TRANS Masculino).
+  - La implícita es estrecha a propósito, solo esos dos cruces. La heurística vieja
+    `género != sexo` se había descartado por ruidosa porque cruzaba contra cualquier
+    valor.
+  - **No cuentan:** `No binarie`, `Otra`, `No Revelado`, vacío, ni los sexos
+    Intersexual / Desconocido / No Informado. RAYEN registra no binario, pero el REM
+    solo tiene binario + Trans y no hay casilla donde ponerlo.
+  - A05: la columna `Trans` muestra el sexo en los casos implícitos
+    (`Femenina (sexo Hombre)`), para poder auditarlos.
+  - SM: `trans_map` ahora exige la columna **SEXO** en el Informe Inscritos, igual
+    que GÉNERO. Sin ella, la vía implícita se perdería en silencio.
+- **Pueblo originario:** la regla acordada (no cuenta vacío / Ninguno / No Sabe /
+  No Contesta; `Otro` sí cuenta) ya estaba implementada en `PUEBLO_VACIO`. Solo se
+  actualizó la documentación.
 
 ## [1.9.10] — 2026-09-09
 

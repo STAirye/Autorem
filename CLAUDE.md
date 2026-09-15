@@ -1,15 +1,28 @@
 <!--
-This document was generated with the assistance of Claude Fable 5 (Anthropic).
+This document was generated with the assistance of Claude Fable 5 and Claude Opus 5 (Anthropic).
 The human author reviewed, modified, and integrated the content.
 Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-# CLAUDE.md — Proyecto autoREM (Salud Mental, SSMC)
+# CLAUDE.md — autoREM
 
-Contexto de proyecto para Claude Code. Este archivo se carga automáticamente al
-abrir el repo. Compila el estado a **septiembre 2026**, tras migrar el desarrollo de
-Cowork a Claude Code (para usar git y crear módulos nuevos).
+Herramienta local para tabular el **REM** (Registro Estadístico Mensual, MINSAL
+Chile) desde exports crudos de **RAYEN/IRIS**. Nació en Salud Mental del CESFAM
+Dr. Luis Ferrada Urzúa (SSMC) y apunta a ser **universal**: cualquier programa de
+salud, cualquier centro.
+
+**Este archivo es corto a propósito.** El detalle vive en un `CLAUDE.md` por carpeta,
+que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N` son
+**anclas estables** (el código y los `docs/` los citan como «CLAUDE.md §N»):
+
+| § | Tema | Dónde |
+|---|---|---|
+| 0 · 1 · 2 · 9 · 10 · 12 · 13 | preferencias, qué es, estado, versionado, git, roadmap, gotchas | aquí |
+| 2.1 · 3 · 6 · 7 | familia población, pipeline A05, demografía, decisiones SM | [modulos/CLAUDE.md](modulos/CLAUDE.md) |
+| 3.1 · 5 · 5.1 · 14 | filtro de mes, formatos IRIS/Admin, Monitoreo, catálogos DEIS | [programas/CLAUDE.md](programas/CLAUDE.md) |
+| 8 · 10.1 · 11 | privacidad en detalle + hooks, worktrees, build del `.exe` | [tools/CLAUDE.md](tools/CLAUDE.md) |
+| 4 | historia v1.2–1.6 | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
@@ -17,962 +30,210 @@ Cowork a Claude Code (para usar git y crear módulos nuevos).
 
 - **Autor:** Simón Tobar — médico APS, CESFAM Dr. Luis Ferrada Urzúa (SSMC).
 - **Idioma:** inglés y español indiferenciado. Usar **"tú"**, nunca "vos".
-- **Estilo:** técnico pero no aburrido; conciso, sin verborrea.    
-  Ir al grano, decir explícitamente cuando algo está equivocado.
-- **Privacidad (regla dura):** avisar si por error se cargan datos
-  identificatorios de pacientes (RUT, nombre, fecha nacimiento, dirección,
-  teléfono). Ver §8.
+- **Estilo:** técnico pero no aburrido; conciso, sin verborrea. Ir al grano, decir
+  explícitamente cuando algo está equivocado.
+
+## Reglas duras (leer antes de tocar nada)
+
+1. **Privacidad** (detalle en §8). Nunca datos de pacientes en el repo: RUT, nombre,
+   fecha de nacimiento, dirección, teléfono. **Avisar** si por error se cargan. Un RUT
+   de ejemplo es siempre `11111111-1` (hubo un RUT real 2 meses en el repo público).
+   Los exports reales viven solo en la carpeta de trabajo (OneDrive). Los 3 hooks de
+   pre-commit se instalan **en cada clon**.
+2. **Fallar ruidoso, nunca callado y errado.** Un número plausible pero mal es el peor
+   bug posible, porque se copia al REM. Mes sin datos → `ArchivoInvalido`, con la
+   guarda sobre la FUENTE y no sobre la casilla (§3.1).
+3. **Solo ASCII en los `.py`**: la consola cp1252 de Windows revienta con flechas,
+   cajas o emoji (`tools/check_cp1252.py`, skill `check-cp1252`).
+4. **Normalización:** buscar texto SIEMPRE con `contiene_todos` / `contiene_alguno` o
+   `serie_norm.str.contains(norm("literal"))`. Un `.str.contains("minúscula")` crudo
+   contra una serie normalizada nunca matchea. Y ojo: una subcadena **contigua** falla
+   callada ante un artículo intercalado (A32·F2 dio 0 estructural hasta 1.9.10).
+5. **Detectar por CONTENIDO, nunca por nombre de archivo**: RAYEN baja todo como
+   `Formulario_Rayen.xlsx`. Identificar por firmas (ancla, banner, columnas) y
+   **confirmar con el usuario**.
+6. **100% local, offline.** Sin nube (Ley 20.584 y 21.719).
 
 ---
 
-## 1. Qué es el proyecto
+## 1. Dependencias
 
-Herramientas en Python para automatizar la tabulación del **REM** (Registro
-Estadístico Mensual, MINSAL Chile) a partir de exports crudos de **RAYEN/IRIS**.
-
-- Corre **100% local, offline**. Sin nube. Consistente con Ley 20.584 y 21.719.
-- Dependencias externas: **openpyxl** y **pandas** (pandas desde v1.4.0, para los
-  módulos data-heavy tipo A23; ambas se empaquetan en el `.exe`). Se abandonó la
-  vieja regla "única dependencia = openpyxl": prima minimizar LÍNEAS de código.
+- **Runtime:** `openpyxl` + `pandas`. `tkinter` viene con el Python de Windows.
+  **GUI 2.0** (rama `gui-2.0`, en curso): `customtkinter`.
+- **Build:** `PyInstaller` (§11). Todo se empaqueta en el `.exe`, así que sumar deps
+  no cuesta: prima **minimizar líneas de código**.
 
 ---
 
 ## 2. Estado actual del repo
 
-Repo git ya inicializado (rama `main`, fuera de OneDrive). Versión **1.9.10**
-(esquema `X.Y.Z`, §9): capa compartida + módulos egresos/ingresos + screening
-A03 D.3 + **REM A23 Respiratorio (pandas)** + **REM SM Actividades (A04/A06/A19a/A26/A27/A32)**
-+ **SM Trabajo Perdido (saco vacío)** + **eje de formato IRIS/Admin compartido
-(`programas/formatos.py`)** + **SP·P6 Población PSM (en validación, ver §2.1)** +
-**SM Rescate de Inasistentes (en validación, ver §2.1)** +
-**hoja «LEEME» de cobertura (`programas/cobertura.py`, ver §12)** +
-**catálogos oficiales DEIS: CIE-10 / ENO / GES (`programas/catalogos.py`, ver §14)** +
-dispatcher con perfiles y GUI de pestañas. **170 tests.**
+Versión **1.9.15** (§9). **174 tests.**
 
-**Layout de carpetas** (raíz limpia: solo `autorem.py` de código):
+**Qué es compartido y qué es modular:**
+- **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
+  (`formatos`), lookups transversales (`estamentos`, `dotacion`), tabla por-RUN
+  (`poblacion`), hoja LEEME (`cobertura`), catálogos DEIS (`catalogos`) y la capa del
+  formulario de Salud Mental (`rem_saludmental`).
+- **Modular — `modulos/`:** un reporte por archivo. A05 N/O · A03 D.3 · A23 · SM
+  Actividades · SM Trabajo Perdido · SP·P6 y SM Rescate (estos dos **en validación**).
+- **Dispatcher — `autorem.py`:** GUI de pestañas + CLI.
+
+Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autorem`. Imports
+**absolutos** rooteados en la raíz (`from programas.rem_utils import …`).
+
 ```
-autorem.py            entry point / dispatcher (raíz)
-programas/            motor y base compartida (paquete)
-  rem_utils.py            primitivas + norm + grid + rut_valido/dv_rut
-  formatos.py             eje IRIS vs Administrativo
-  rem_saludmental.py      config clínica del formulario 'Control de Salud Mental'
-  estamentos.py           lookup Funcionario -> Estamento
-  dotacion.py             separar atenciones de funcionarios EXTERNOS (interno/externo/desconocido)
-  poblacion.py            tabla «Ferrada» por-RUN (port del DAX del PowerBI)
-  cobertura.py            hoja «LEEME»: catalogo de que NO cubre cada modulo
-modulos/              módulos de tarea (paquete)
-  rem_a05_o_egresos.py
-  rem_a05_n_ingresos.py
-  rem_a03_d3_instrumentos.py
-  rem_a23_respiratorio.py
-  rem_sm_actividades.py
-  rem_sm_trabajo_perdido.py
-  rem_sp_p6_poblacion.py  grilla SP·P6 A.1
-  rem_sm_rescate_inasistentes.py  rescate 6m/13m + fallecidos + traslados + brecha medico
-tools/                utilitarios (no-REM)
-  limpiar_refs.py         recorte header-only de refs_tablas/
-  slim_maestro.py         genera el Maestro slim comprimido
-  check_cp1252.py         verifica que los .py sean cp1252-safe — INSTALAR (§8.2)
-  check_version.py        coherencia de versionado/contadores (§9) — INSTALAR
-  catalogos_deis.py       --check/--fetch/--slim de los catalogos DEIS (§14)
-  scan_catalogo.py        escaner de PII previo a versionar un catalogo (§14)
-  hook_pre_commit_rut.py  pre-commit anti-RUT real (§8.2) — INSTALAR en cada clon
-  hooks_git.py            instalador COMUN de los 3 hooks (§10.1) — rutas por $REPO
-catalogos/            catalogos oficiales DEIS que SHIPPEA el exe (§14)
-  cie10.csv.gz            Lista Tabular CIE-10 (ago-2026), 12.548 codigos
-  eno.csv.gz              Notificacion Obligatoria (Decreto 7/2019), 448 pares
-  ges.csv.gz              GES 90 problemas <-> CIE-10, 5.936 pares
-  FUENTES.json            procedencia: url, edicion, filas, sha256, fecha
-.claude/skills/       skills del repo: limpiar-refs · check-cp1252 · versionar
-legacy/               versiones viejas (no se importan)
-tests/                pruebas automáticas (170)
-docs/                 planes y contexto por módulo
-refs_tablas/          planillas de EJEMPLO anonimizadas (SÍ versionadas) — SOLO header
-  specs/                  DAX + visuales del PowerBI, por página (skill pbip-spec)
+autorem.py        entry point / dispatcher (único código en la raíz)
+programas/        capas compartidas         -> programas/CLAUDE.md
+modulos/          un reporte REM por archivo -> modulos/CLAUDE.md
+tools/            utilitarios de desarrollo  -> tools/CLAUDE.md
+catalogos/        CIE-10 / ENO / GES que shippea el exe (§14)
+refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
+  specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
+.claude/skills/   limpiar-refs · check-cp1252 · versionar
+legacy/           monolitos viejos (no se importan; referencia de equivalencia)
+tests/            pruebas automáticas
+docs/             planes y contexto por módulo
 ```
 
-Imports **absolutos** rooteados en la raíz: `from programas.rem_utils import …`,
-`import programas.rem_saludmental as sm`, `from modulos import rem_a05_o_egresos`.
-Funcionan porque la raíz (donde vive `autorem.py`) está en `sys.path`.
-
-**Convención de nombre de módulo de tarea:** `rem_<pestaña>_<casilla>_<descriptor>`,
-donde `<casilla>` es la celda/columna del REM (A05: `n`=ingresos, `o`=egresos).
-El descriptor y el `id` del `TAREA` la incluyen (ej. `a05_o_egresos`).
-
-### 2.1 SP·P6 «Población en control PSM» + Rescate de inasistentes — estado (sep-2026)
-
-Familia de módulos **nueva, implementada y con tests, en VALIDACIÓN contra el REM
-manual / datos reales**. Por eso la versión sigue en 1.9.x: el bump a **1.10.0** (Y++)
-va cuando cierre la validación de TODA la familia (P6 + rescate), no solo el P6 — el
-1.9.0 se lo llevó la capa de catálogos DEIS (§14), no esta familia.
-
-- `programas/poblacion.py` — construye la tabla «Ferrada» (1 fila por RUN) desde 3
-  exports: Formulario SM histórico + ADA 13 meses + Informe Inscritos. Es
-  **infraestructura transversal**: la misma tabla base la usan las 8 páginas del
-  PowerBI (Cardiovascular, ECICEP, Dependencia, Respiratorio…), así que sirve para
-  los módulos que vengan. Desde 1.8.4 acepta `exigir_medico=False` (§8.6 del plan):
-  una segunda pasada SIN el filtro de estamento médico, exclusiva de Brecha_Medico
-  — el P6 la rechaza si se la pasan por error (guardarraíl en `construir_p6`).
-- `modulos/rem_sp_p6_poblacion.py` — grilla P6·A.1 + detalle + `Revisar_Administrativo`
-  / `Revisar_Clinico` + bloques pegables.
-- `modulos/rem_sm_rescate_inasistentes.py` (v1.9.1) — reporte OPERATIVO, no tributa
-  al REM: `Rescate_6m` / `Rescate_13m` (dejó de asistir; misma lista de 7 actividades
-  validada que `Activo 12m`), `Fallecidos_mes` (cohorte del mes, para el egreso del
-  A05 en la fase 4), `Posibles_Fallecidos` / `Posibles_Traslados` (**corregido
-  sep-2026:** NINGUNO de los dos se excluye de Rescate_6m/13m — ambos quedan
-  flageados aparte para confirmar antes de llamar, mismo tratamiento; antes
-  Fallecidos tenía un filtro duro que los sacaba en silencio, inconsistente con cómo
-  ya se trataban los Traslados) y `Brecha_Medico` (dx SM activo registrado SOLO por
-  un estamento no-médico). Reusa la MISMA `P` que ya arma el P6 (no la reconstruye)
-  — wireado junto al P6 en la pestaña BETA de la GUI, con try propio para que un
-  fallo ahí no tumbe el P6. Sin datos de contacto (§8.4): solo RUN.
-- Planes: **[docs/SP_P6_poblacion_plan.md](docs/SP_P6_poblacion_plan.md)** (decisiones
-  del P6 en §1-7, del rescate en §8) y
-  **[docs/SP_P6_config_por_dx.md](docs/SP_P6_config_por_dx.md)** (mapeo fila→pregunta).
-
-**Brecha abierta:** el filtro `Ingresado` da 2972 contra 2226 del PowerBI, mientras
-`Estado` (−18) y `Activo 12m` (−2) calzan casi exacto. Descartadas: D2 (solo 34
-entran por factor de riesgo), el hueco de `Pertenece` (37) y la ventana de histórico.
-El módulo emite una **cascada de filtros** y un **desglose de Ingresado por columna**
-en el log para diagnosticarlo. Siguiente paso: diffear las listas de RUN por
-diagnóstico contra el PowerBI, en vez de seguir con hipótesis.
-
-| Archivo | Rol |
-|---|---|
-| `autorem.py` | **ENTRY POINT (dispatcher GUI + CLI).** GUI con **una pestaña por módulo/reporte** (`ttk.Notebook`): A05 egresos/ingresos, A03 screening, A23 respiratorio y **SM actividades**. Aviso "cargar exports SIN modificar" en todas las pestañas (`_aviso_sin_modificar`; un archivo tocado rompía el A23 en silencio). Registro de módulos, orquestación cargar-una-vez/guardar-una-vez (`_correr_tareas` acepta `mes`→ filtra por FECHA FORMULARIO y nombra la salida `…_procesado_AAAA_MM.xlsx`). CLI = solo A05 (`--mes AAAA-MM`). Pestaña A05 con caja **Período** (Archivo completo / un mes) y `_tab_scroll`. *(Pendiente v2: migrar a customtkinter + agrupar pestañas por Programa de salud + About.)* |
-| `programas/rem_utils.py` | **BASE COMÚN genérica REM.** `norm`, `to_year`, `solo_entero`, `edad_anios`, `buscar_col`, `num_pregunta`, `encontrar_fila_encabezado` (parametrizado), `abrir_carpeta`, `ArchivoInvalido`, `VERSION`, guarda de `openpyxl`, + **lectura/clasificación de reportes** (compartida, la usan los módulos pandas): `leer_xlsx` (robusto a la 'dimension' rota), `resolver_columnas` (semántico exact/subs), `contiene_todos`/`contiene_alguno` (match por norm). **`filtrar_mes(d, ini, fin, fuente)` (v1.9.5)** = el filtro de mes de TODOS los módulos pandas, con el guardarraíl de §3: 0 filas del mes -> `ArchivoInvalido("mes_vacio")` (misma categoría que el A05, así `_manejar_error` ya la muestra), con el span real del archivo en el mensaje y un texto aparte si ninguna fecha es legible. **La guarda va sobre la FUENTE, nunca sobre la casilla** — ver §3.1. |
-| `programas/formatos.py` | **EJE de formato IRIS vs Administrativo (RAYEN), compartido.** La capa que reconoce y ubica el formato de un export RAYEN, transversal a CASI TODOS los módulos con entrada RAYEN. Antes duplicada verbatim entre `rem_saludmental` y `a03`. Expone `detectar_eje(ws, …firmas…)` (barrido único; firmas parametrizables por reporte), `resolver_identidad` (RUT/edad/sexo aceptando ambos formatos), `fila_encabezado_admin` + `HEADER_ADMIN` (params de encabezado admin transversales a A05/A03/Utilización de Cupos) y el vocabulario del eje (anclas/banner/markers/tokens). **Diseño: mecanismo compartido + firmas POR-REPORTE** (no un `detectar_formato` único). Cadena: `rem_utils` (primitivas) ← `formatos` (eje) ← módulos. Nombre elegido sobre "perfiles" para no chocar con los *perfiles de usuario* de RAYEN (permisos, sin relación). **Migrados (fase 1):** rem_saludmental, a03, estamentos. **Fase 2 (v1.9.2, HECHA) — y NO es detección de eje, pese al nombre del roadmap:** un *eje* es el mismo reporte en dos formatos, y en el A/D/A eso no existe — **el lado Administrativo no tiene equivalente del A/D/A**; lo que hay del otro lado es OTRO reporte, más pobre ('Monitoreo de Actividades'). Así que acá no se elige formato: se **verifica la identidad del reporte**. Además el grupo pandas no podría usar `detectar_eje` (barre una hoja buscando el banner del FORMULARIO clínico, que estos reportes no traen). Y su problema de fondo es otro: no falta una columna, la **misma columna trae menos** — en el Monitoreo `DIAGNOSTICO` existe y resuelve perfecto, pero viene en texto sin código ICD, así que Ira Alta/Bronquitis/EPOC salían 0 SIN avisar. Por eso se clasifica la **FUENTE**, no las columnas: `clasificar_fuente(col, solo_iris)` + `aviso_fuente(...)`, enganchados en `cargar_canonico` (cuello de botella único de todo el grupo pandas). Como no hay UN «otro lado» que reconocer, la firma es **negativa**: se prueba que es el A/D/A de IRIS por las claves que solo él trae (`SOLO_IRIS_ATENCIONES`, claves canónicas y no nombres de columna, para que el saber de headers viva solo en `MAPA_ATENCIONES`). **Tres estados, no dos:** `plena` / `parcial` (ninguna clave: no es el A/D/A) / **`cambiada`** (algunas: sigue siendo el A/D/A pero RAYEN le movió el piso) — sin ese tercero, un rename de RAYEN daría un falso «parcial» permanente, y un aviso que grita siempre deja de leerse. `cambiada` le habla al DEV, `parcial` al usuario. |
-| `programas/rem_saludmental.py` | **CAPA COMPARTIDA del formulario 'Control de Salud Mental'.** Config clínica (diagnósticos, subtipos, demografía), `es_estado`, `encontrar_diagnostico`, `limpiar_subtipo`, **PERFILES IRIS/Admin** (usan el eje de `formatos.py`: `detectar_formato` = wrapper de `detectar_eje`, `_preparar` usa `resolver_identidad`) y el motor `marcar_eventos()`. |
-| `programas/estamentos.py` | **Lookup Funcionario→Estamento (TRANSVERSAL a todo formato Administrativo).** El Admin no trae estamento (solo nombre); esto lo rellena desde el reporte 'Utilización de Cupos'. `cargar_estamentos()` (dedup + aviso conflictos), `buscar_estamento()` (match normalizado), y **failsafe**: `faltantes()` + `aplicar_resoluciones()` (resolver a mano o IGNORAR externos transitorios). GUI reutilizable en `autorem._bloque_estamentos` + diálogo `_resolver_estamentos`. La TABLA de nombres queda LOCAL (no al repo) y **PERSISTE entre corridas** en `~/.autorem/estamentos.json` (`cargar_cache`/`guardar_cache`/`tabla_efectiva`: caché + merge con reporte fresco, el fresco gana; robusto ante caché corrupto). La GUI (`_correr_a03`) pasa `tabla_efectiva(...)` como dict a `procesar_unificado`. |
-| `programas/dotacion.py` | **Separar atenciones de funcionarios EXTERNOS (TRANSVERSAL, v1.9.8).** Gemelo estructural de `estamentos.py` (misma persistencia/merge/failsafe). El ADA trae atenciones a nuestros usuarios hechas por funcionarios que NO son de la dotación (hoy la sala AIDIA); no hay fuente autoritativa que los distinga (`docs/dotacion_externos_plan.md` §0.1), así que la tabla se arma desde decisiones del usuario. **Eje = el FUNCIONARIO**, tri-estado `interno`/`externo`/`desconocido` (nunca whitelist/blacklist puras: ambas fallan calladas en direcciones opuestas). `en_rem = (clase != externo)`: un `desconocido` CUENTA al REM por defecto (nunca sangra producción propia en silencio) pero se reporta siempre. Persistencia en `~/.autorem/dotacion.json` con DOS claves: `funcionarios` (clasificación, GLOBAL — hecho de la persona) y `omitidos` (estamentos que un módulo dejó de preguntar, indexado POR módulo — un estamento omitido en SM sigue preguntándose en A23; un omitido NUNCA se marca `interno`, sigue `desconocido`). API: `cargar`/`guardar`, `clase`/`clasificar` (vectorizado), `en_rem`, `marcar` (decisiones del diálogo), `omitir`/`omitidos`, `evidencia` (agrega por funcionario desde el ADA YA restringido a filas que tributan — no sabe qué tributa, eso lo filtra el módulo llamante — con el agregado por estamento en `.attrs['por_estamento']`), `nuevos` (evidencia sin clasificar y sin omitir → si es vacía, no se abre el diálogo). GUI: `autorem._bloque_dotacion` (cuadro + botón "Revisar dotación…") + diálogos `_dialogo_dotacion` (ticks agrupados por estamento, "Omitir estamento" inmediato) y `_revisar_dotacion` (reabre TODO lo clasificado + omitidos, sin necesitar ADA cargado). Wireado en `rem_sm_actividades` (`clasificar_evento` reduce el caso mixto — visita con ≥2 profesionales, ' · ' — por prioridad interno > externo > desconocido); a futuro cualquier módulo con el mismo problema (A23) lo reusa igual. |
-| `modulos/rem_a05_o_egresos.py` | **Módulo de tarea (fino).** Egreso (casilla O): config Alta/Traslado/OtrasCausas + wrappers `agregar_hoja`/`procesar` (ambos aceptan `mes=(año,mes)`) + descriptor `TAREA` (`id: a05_o_egresos`). |
-| `modulos/rem_a05_n_ingresos.py` | **Módulo de tarea (fino).** Ingreso (casilla N): gemelo de egresos, token ESTADO = `INGRESO`, hoja `A05_Ingresos`, columna `Tipo_Ingreso` (`id: a05_n_ingresos`). |
-| `modulos/rem_a03_d3_instrumentos.py` | **Módulo A03 D.3 (PSC/PSC-Y/GHQ-12).** Reporte DISTINTO al de Salud Mental (perfiles + detección propios, self-contained). Por aplicación: resultado automático (col RESULTADO) + calculado DISAM + discrepancia (compara BANDAS canónicas) + momento + estamento (IRIS directo, o Admin vía `estamentos.py`). **`procesar_unificado`** junta los 3 instrumentos → **tabla A03·D.3** copy-paste al SA_26 (Evaluación ingreso/egreso × Bajo/Medio/Alto × banda etaria × sexo, con `rem_utils.grid`) + **DETALLE auditable al final**. Solo INGRESADOS al PSM; 'Sin riesgo' (bajo el corte) va al detalle pero NO al D.3. Tamizaje (PSC-17/PHQ-9…) = A03·H (fuera de alcance). GUI = 3 slots (instrumento fijo por slot, sin autodetección) en su pestaña + **checkbox 'Incluir cuestionarios?' en Actividades** (duplicado transitorio; en GUI 2.0 solo queda en Actividades). `procesar(salida=None)` devuelve filas sin escribir. |
-| `modulos/rem_a23_respiratorio.py` | **Módulo REM A23 (Respiratorio), pandas.** Portado del PowerBI 'poblacion ferrada 2.5'. 1 fila por paciente (RUN): 27 indicadores REMA23 del mes (atenciones) + SALA bajo control (asma/EPOC/SBOR/FQ/otras, del formulario 'Otros y Respi' + Estratificación) + **Sección G inasistentes a control de crónicos** (Fecha Próximo Control vencida por umbral de edad al corte = último día del mes). Inputs aceptan LISTAS (histórico multi-año para lo crónico). Cálculos hacia atrás desde el mes reportado, no `TODAY()`. **Sección G** alineada al DAX `REMA23 Inasistentes` (SBO exige recurrente); **Sección H** (inasistentes a citación agendada) desde el reporte **NSP** (`cargar_inasistentes` + `_seccion_h`): citas Control/Ingreso IRA/ERA no asistidas por estamento (Méd/Kine/Enf) × tramo (<20/≥20), mes por FECHA HORA CITA, sin KTR. Salida `escribir()` = detalle + Sección G + Sección H. Lee atenciones **IRIS (pleno)** o **Monitoreo Admin (PARCIAL)**: el monitoreo trae el dx en texto sin código ICD → Ira Alta/Bronquitis/EPOC-exac. salen 0, y sin demografía (ver `rem_utils.MAPA_ATENCIONES`); tiene estructura padre-hijo (ffill en `cargar_atenciones`). Formulario Otros Crónicos admin: pendiente. |
-| `modulos/rem_sm_actividades.py` | **Módulo REM SM Actividades (estadística, pandas).** Tabula las casillas de actividades de Salud Mental (**A04·A24, A06·A.1 controles+psicosocial grupal, A19a·A.3 consejerías fam. SM/demencia, A26 VDI SM, A27 educación prev., A32·F remotas**) → tablas copy-paste al template SA_26. Dos fuentes: **ADA** (`cargar_atenciones`, conteo por **ATEN ID** distinct) y **Grupal** (`cargar_grupal`, conteo por **ASISTENCIA**, `Asiste=SI`, SIN dedup). Filtro de mes por **FECHA ATENCIÓN** (parsea `DD/MM/YYYY`; el export puede venir del año completo). SENAME se excluye solo (string aparte). El guion en A19a importa (evita capturar las VDI de A26). `escribir()` = hoja SM_Detalle (auditable) + 1 hoja por sección. Filtros **validados casilla-por-casilla vs REM manual jul-2026**. **Demografía** (cols AN–AV del SA_26): flags por atención en `rem_utils.marcar_demografia()` (Pueblos/Migrante/SENAME/Mejor Niñez/Cuidador/Demencia/Campaña) + `gestante_runs()` (matrona+prenatal, ventana 3 meses → carga el ADA de 3 meses) + `trans_map()` (TRANS por selección explícita de GÉNERO en el 'Informe Inscritos' opcional, split M/F). **Inputs de la pestaña = 5:** ADA + Grupal (obligatorios) y 3 opcionales: Informe Inscritos (TRANS), **Monitoreo Multiprofesional** (`atenid_multiprofesional` → composición Un / Dos o más de las VDI en **A26**) y **Maestro de Actividades** (no lo usa el SM: alimenta el Trabajo perdido de la fila siguiente; sin selección → Maestro slim incluido). Espacios Amigables/Familias en Riesgo omitidos; el grupal no trae demografía (known issue). Pendiente: A27 sin datos para validar el string (0 ese mes). **A32·F2 estuvo ROTO hasta 1.9.10** y esta nota decía que su 0 era «sin datos»: el patrón era la subcadena contigua `"controles salud mental por"`, y los nombres reales de RAYEN llevan un «de» en medio (`Controles DE Salud Mental por llamadas telefónicas` / `...por videollamadas`) → **0 estructural**, leído como «ese mes no hubo». Se descubrió porque esas atenciones salían en el **Trabajo Perdido**. Ahora son dos subcadenas en AND (`_all(A, "controles", "salud mental por")`), verificadas contra el Maestro: capturan las 4 variantes F2 y nada más; `ADA_TRIBUTAN` sumó sus dos entradas (si no, seguían contándose como trabajo perdido). Moraleja para los demás filtros: un patrón de subcadena **contigua** falla en silencio ante un artículo intercalado. **A06·A.2 Consultorías = manual, pero NO porque no exista la actividad** (el Maestro tiene 6 mapeadas a A06·A.2/A.3, incl. las Teleconsultorías): es que el centro no las registra con ella. Si empiezan a usarla, el módulo puede tabularlas — hoy no se codea porque no hay dato con qué validar. Expone `ADA_TRIBUTAN`/`mask_tributa_ada` (fuente única de qué tributa) para reciclar en trabajo perdido. **Dotación (v1.9.8, `programas/dotacion.py`):** cada evento se clasifica interno/externo/desconocido (`clasificar_evento`, reduce el caso mixto de `funcionario` por prioridad interno > externo > desconocido); las tablas de sección se calculan sobre `E[en_rem]` (marcar, no borrar: `SM_Detalle` conserva TODAS las filas con las columnas `externo`/`tabula_en`) + hoja nueva `Externos_Delta` (Total/Externos/REM por casilla, fase 1 del plan — la fase 2, bloques apilados por sección, queda pendiente). `procesar()` acepta `dotacion_tabla` (si es `None`, lee el caché tal cual: el módulo NO abre diálogos, eso es de la GUI). |
-| `modulos/rem_sm_trabajo_perdido.py` | **Reporte SM · Trabajo perdido ("saco vacío"), pandas.** Auditoría (NO tributa al REM): atenciones del ADA cuya ACTIVIDAD trae `mental`/`demencia` (heurístico) pero **no tributan** a las casillas SM del exe (A04/A06/19A/A26/A27/A32), + **qué funcionario** las registra (`PROFESIONAL ATENCION`) → reduce trabajo a saco vacío. **Autoridad = Maestro de Actividades** (`rem_utils.cargar_maestro`/`maestro_rem_map`, actividad→NUM REM); actividad nueva no-en-Maestro → heurística `mask_tributa_ada`. Definición de "perdido" (referente): todo lo SM-ish fuera de esas casillas (incl. REM-Gestion/A03/A28…), con NUM REM visible para refinar. **`EXCLUIR_SMISH` (sep-2026):** lo que la red SM-ish capta pero NO es SM —la palabra gatillo es *descriptor de la persona*, no materia de la atención— sale del universo (ni perdido ni tributado) y **se loguea con conteo**. Hoy: las 24 VDI del **PADDS** (`a personas con padds`), que son A26·**A1** (dependencia severa) y no A26·**A** (VDI de SM); una variante dice literal «SIN diagnóstico de demencia» y el substring la captaba igual. La exclusión vive al nivel SM-ish, no en `TRIBUTA_SM_REM`, porque es el único punto que sirve **con y sin Maestro** (sin Maestro salían como perdidas; con Maestro se daban por tributadas). Pertenecen a un futuro `rem_a26_domiciliaria` — ver docstring del módulo. `escribir()` = `Por_Actividad` + `Por_Funcionario` + `TP_Resumen` + `TP_Detalle`. Recicla el ADA del módulo de actividades (reporte aparte, no fork); la GUI lo genera junto al SM. |
-| `programas/poblacion.py` | **Tabla «Ferrada» por-RUN (port del DAX del PowerBI), pandas.** Construye 1 fila por persona desde Formulario SM histórico + ADA 13m + Informe Inscritos: los 28 diagnósticos/factores de riesgo `(form)` vía un **motor único** `_estado_dx(dx, estado, instrumento)` (el DAX resulta uniforme, §4.2 del plan), `¿Ingresado?`, `¿Activo 12m?`, rescate 6m/13m, `¿Embarazada?`, demografía y `¿Pertenece?` en sus **dos** versiones (24 columnas del DAX vs 28 reales — el DAX tiene un hueco, ver plan §3.3). **Infraestructura transversal:** la misma tabla base alimenta las 8 páginas del PowerBI, así que la reusan los módulos que vengan (Cardiovascular, ECICEP, Dependencia). |
-| `modulos/rem_sp_p6_poblacion.py` | **Módulo REM SP·P6 A.1 «Población en control PSM», pandas.** Consume `PSM_Poblacion` y arma la grilla del SP (filas 13-58 × 17 bandas × sexo + demografía AN..AX). La **máscara de celdas protegidas** se extrajo directo del `SP_26_V1.1.xlsm` (`protection.locked`), no de la prosa: codifica recortes etarios que **se PLIEGAN, no se descartan** (§5.0.1 del plan). Salida: `P6_A1` + `P6_Detalle` + `Revisar_Administrativo` / `Revisar_Clinico` + bloques pegables. Emite **cascada de filtros** y **desglose de Ingresado** en el log para diagnosticar brechas contra el PowerBI. |
-| `modulos/rem_sm_rescate_inasistentes.py` | **Reporte SM · Rescate de inasistentes, pandas** (§8 del plan SP·P6; NO tributa al REM). Segundo consumidor de `PSM_Poblacion`, mismo patrón que `rem_sm_trabajo_perdido` respecto de `rem_sm_actividades`. `Rescate_6m`/`Rescate_13m` — dejó de asistir hace 6/13 meses (misma lista de 7 actividades validada que `Activo 12m`, no el `contains "salud mental"` laxo del DAX original). **Fallecidos y Traslados: FLAGEADOS, no excluidos** (corregido sep-2026 — el filtro duro original sacaba a los Fallecidos de Rescate_6m/13m en silencio, inconsistente con cómo ya se trataban los Traslados: `Motivo Pasivación` es un snapshot, no un dato verificado). Ninguno de los dos se excluye; ambos quedan en su propia hoja — `Posibles_Fallecidos` / `Posibles_Traslados` — para confirmar antes de llamar. `Fallecidos_mes` — cohorte DEL MES (para el egreso del A05 en la fase 4), no cambió. `Brecha_Medico` (§8.6) — corre `poblacion.construir_poblacion()` **dos veces** (con/sin el filtro `INSTRUMENTO` contiene `MEDIC`) y reporta a quién le falta control médico del diagnóstico (activo solo por otro estamento), con estamento/fecha del formulario que lo registró. **Guardarraíl obligatorio:** esa segunda pasada (`exigir_medico=False`) es EXCLUSIVA de esta hoja; `rem_sp_p6_poblacion.construir_p6()` la rechaza si se la pasan por error. Todas las hojas sectorizadas (`Sector`) y **sin datos de contacto** (§8.4: solo RUN). Reusa la `P` que ya arma el P6 — wireado junto a él en la pestaña BETA. |
-| `programas/cobertura.py` | **Hoja «LEEME»: qué NO cubre autoREM** (§12, `docs/hoja_cobertura_plan.md`). Catálogo declarativo `COBERTURA` (por módulo: REM, casillas que SÍ cubre, y `no_cubre` = tabla de `(casilla, categoría, motivo, qué_hacer)` — categorías `MANUAL`/`FUERA DE ALCANCE`/`OMITIDO`/`PENDIENTE`/`EN VALIDACION`/`SIN REGISTRO`) + `entradas()`/`escribir_hoja()` que crean la hoja `LEEME` como **PRIMERA** del workbook, sirviendo los DOS caminos de escritura del proyecto (pandas `ExcelWriter` vacío, y openpyxl con la hoja de datos ya en el índice 0 — A05/A03). Dos capas: lo ESTRUCTURAL (fijo) + los `avisos` de ESTA corrida (degradación por fuente opcional no cargada), que cada módulo pandas acumula en `.attrs['avisos']` (mismo patrón que `.attrs['tablas']`). `tests/test_cobertura.py` es el guardarraíl anti-olvido: descubre por introspección los módulos de `modulos/` con `escribir()`/`TAREA` y falla si falta su entrada en `COBERTURA`. |
-| `programas/catalogos.py` | **CAPA COMPARTIDA de catálogos oficiales DEIS/MINSAL** (§14). Backend, no módulo de tarea: no llena ninguna casilla del REM por sí solo, es el **diccionario** que le faltaba al resto (qué significa un código, si es notificable, si es GES). **Registro declarativo** `CATALOGOS` (mismo patrón que `COBERTURA`): un catálogo nuevo = una entrada + una función `_leer_*`, no un módulo por catálogo. Hoy: `cie10` (Lista Tabular ago-2026, 12.548 códigos en 3 hojas cruz-daga/asterisco/causa-externa), `eno` (Decreto 7/2019, 56 enfermedades → 448 pares) y `ges` (90 problemas, 5.936 pares). API: `norm_codigo`/`con_punto` (canónico SIN punto `J209`, como el DEIS; RAYEN usa `J20.9`), `en_rango` (lexicográfico, sirve para asma = J09–J22), `expandir` (el ENO mezcla listas `A000, A001` con rangos `J00-J99` en la misma columna; los rangos NO se expanden), `descripcion`/`existe`/`eno_de`/`ges_de` y **`anotar`** (batch: lista de códigos → `COD·DESC·EXISTE·ENO·ENO_TIPO·GES`). **`ENO_TIPO`** transcribe inmediata/diaria/centinela del **texto del decreto**, no del orden de las filas del Excel (hoy calza, pero una reordenación del DEIS lo rompería callado); las **transitorias** (Mpox, *S. pyogenes*) llevan `ART = alerta vigente` para que se sepa que caducan, y las 2 sin confirmar están declaradas en `ENO_SIN_CLASIFICAR` con aviso ruidoso. |
-| `tools/catalogos_deis.py` | **Mantenedor de los catálogos** (lado desarrollo; el `.exe` no lo corre). `--check` compara la edición publicada por el DEIS contra la vendorizada (scrapea la página por FIRMAS de contenido, porque el nombre del archivo trae la fecha y cambia), `--fetch` baja los `.xlsx` a `refs_tablas/` (gitignored), `--slim` escanea PII, genera `catalogos/*.csv.gz` y actualiza `FUENTES.json`. |
-| `tools/scan_catalogo.py` | **Escáner de PII previo a versionar** (§14). RUT con DV válido (reusa `hook_pre_commit_rut.sospechosos`: fuente única del módulo 11), emails, teléfonos + volcado de estructura para revisar a ojo. **Existe porque el pre-commit anti-RUT SALTA los binarios** (`.xlsx`, `.gz`, su lista `BIN`): un slim vendorizado no lo revisaba nadie. |
-| `tools/hook_pre_commit_rut.py` | **Pre-commit anti-RUT real** (§8.2). Bloquea cadenas con forma de RUT cuyo **DV cuadre** (módulo 11) en archivos staged y en el mensaje. Los hooks NO se versionan: `python tools/hook_pre_commit_rut.py --instalar` en cada clon (la lógica de instalación vive en `tools/hooks_git.py`, §10.1). |
-| `tools/hooks_git.py` | **Instalador COMÚN de los 3 hooks** (v1.9.6, §10.1). Los tres (`hook_pre_commit_rut`, `check_cp1252`, `check_version`) encadenan al MISMO `.git/hooks/pre-commit` y cada uno traía su propia copia del encadenado — copias ya divergidas. `encadenar(script, hook, args)` escribe la invocación contra **`$REPO = git rev-parse --show-toplevel`**, no contra la ruta absoluta del clon: los hooks viven en el `.git` compartido y corren también desde los worktrees. Idempotente, y **migra en el lugar** las invocaciones viejas con ruta absoluta. |
-| `legacy/rem_marcar_egresos_1.2.py` | Monolito v1.2 (pre-split). Referencia validada de equivalencia (la usa el test). |
-| `legacy/…` (1.1, v0.2, .py) | Históricas. |
-| `LICENSE` / `license_ES.txt` | GPL-3.0 (inglés = legal; ES = referencia). |
-| `.gitignore` | Excluye `*.xlsx/xls/csv`, salidas y artefactos PyInstaller (red anti-PII). |
-
-Los exports con PII (IRIS y Administrativo reales) viven **solo en la carpeta de
-trabajo (OneDrive), NUNCA en el repo** (§8). Las planillas de EJEMPLO van en
-`refs_tablas/` y **sí se versionan**, pero con **whitelist POR-ARCHIVO** en el
-`.gitignore` (no del folder entero): cada planilla se habilita a mano SOLO tras
-verificar que no tiene PII. Un `.xlsx` que caiga ahí queda **ignorado** hasta
-vetarlo (así ya se evitó colar un export IRIS real por error, jul-2026).
-Versionados hoy: exports de EJEMPLO (RAYEN/IRIS/PowerBI con datos falsos) para
-egresos/ingresos/screening/población, `CALCULADOR A05`, y las **plantillas
-target SA/SP `.xlsm`** — estas se versionan para detectar cuándo MINSAL cambia
-su estructura (git nota el cambio aunque no muestre diff legible del binario).
-El `.xls` de RAYEN NO se versiona: openpyxl no lee `.xls` → convertir a `.xlsx`.
+**Nombre de módulo:** `rem_<pestaña>_<casilla>_<descriptor>`; la `<casilla>` es la
+celda/columna del REM (A05: `n` = ingresos, `o` = egresos). El `id` del `TAREA` la
+incluye (`a05_o_egresos`).
 
 **Arquitectura (2 ejes ortogonales):**
-- **Perfil de formato** (`rem_saludmental.PERFILES`): `iris` | `administrativo`.
-  Define cómo ubicar encabezado/columnas y qué validar. Lo elige el usuario.
-- **Tarea** (`autorem.TAREAS`): egresos | ingresos. Agnóstica al formato; aporta
-  qué token de ESTADO flaggear y su hoja. Tareas del mismo archivo corren juntas
-  → un solo `…_procesado.xlsx` con una hoja por tarea.
+- **Formato** `iris` | `administrativo`: **se detecta automáticamente por contenido y
+  lo verifica el usuario**. En la GUI 1.x todavía es un selector que la detección
+  valida (y bloquea si no calza); la GUI 2.0 lo reemplaza por detección + confirmación.
+  Aplica a **todos** los reportes RAYEN con dos formatos, no solo al formulario SM (§5).
+- **Tarea** (`autorem.TAREAS`): agnóstica al formato. Las tareas del mismo archivo
+  corren juntas → un `…_procesado.xlsx` con una hoja por tarea.
+
+**Arranque:** sin args → GUI · arrastrar un `.xlsx` sobre el exe → GUI con la ruta
+precargada · `--cli entrada.xlsx [--formato] [--tarea] [--mes AAAA-MM]` → **el CLI es
+solo del A05**. El resto de los módulos es solo GUI, y no hay plan de CLI para todos.
+
+**Salidas y caché:**
+- La carpeta de salida por defecto es **la de los archivos de entrada**, no el cwd
+  desde donde se corre el `.py`: las salidas llevan RUT y deben quedar junto a los
+  exports, fuera del repo.
+- El caché de usuario vive en **`~/.autorem/`** (`C:\Users\<usuario>\.autorem\`), no en
+  `%APPDATA%` ni junto al exe: `estamentos.json` y `dotacion.json`.
+
+**`refs_tablas/`:** planillas de ejemplo **sí versionadas**, con whitelist POR ARCHIVO
+en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
+`limpiar-refs` = recortar a solo header). También se versionan las plantillas target
+`SA_26` / `SP_26` `.xlsm`, para que git note cuándo MINSAL cambia su estructura. El
+`.xls` de RAYEN no: openpyxl no lo lee, hay que convertirlo a `.xlsx`.
 
 ---
 
-## 3. Pipeline del módulo de egresos (`procesar()`)
+## 9. Versionado y convenciones
 
-1. **Recorta** filas de banner/filtros del export (detección en cascada:
-   ancla por header → primera fila con columna A vacía → hardcode 16).
-2. **No modifica la hoja original** — todo va a una hoja nueva `A05_Egresos`.
-   Opcional: `mes=(año,mes)` filtra los formularios por **FECHA FORMULARIO**
-   (IRIS `DD/MM/YYYY`, Admin `YYYY/MM/DD`; parser `rem_utils.mes_de_celda`,
-   por estructura no por `dayfirst`). Mes sin formularios → `ArchivoInvalido`
-   (fail loud, no un archivo con 0 filas callado); fecha ilegible → se avisa.
-3. Detecta cada **egreso** (Alta / Traslado / Otras Causas) por tokens en las
-   columnas `"N.- ESTADO"`.
-4. Identifica la **patología** (pregunta del diagnóstico) y su **subtipo**.
-5. Agrega **identificación + demografía** por evento.
-6. Escribe `A05_Egresos` en **formato largo: una fila por evento** (un paciente
-   con 2 egresos = 2 filas), con encabezado congelado y autofiltro.
+`X.Y.Z` versiona **el software** (un binario, un `rem_utils.VERSION`):
+- **X** = cambio grande de arquitectura / incompatible, **o plantillas REM de un año
+  nuevo** (SA y SP cambian cada año; actualizarlas es pega del dev). Planeado: **2.0.0**
+  = GUI 2.0 · **3.0.0** = plantillas REM 2027.
+- **Y** = módulo o reporte nuevo (de cualquier programa de salud).
+- **Z** = corrección. Reinicia a 0 al subir Y.
 
-**Columnas de salida** (14, tras quitar `Gestante` en v1.2):
-`RUT · Edad_Formulario · Sexo · Tipo_Egreso · Patologia · Subtipo ·
-Falta_Subtipo · Madre_menor5 · Pueblos_Originarios · SENAME · Proteccion_Ninez ·
-Migrante · Trans · Fila_Origen`
+**Año de reporte vigente: 2026** (`SA_26` / `SP_26`).
 
-Las columnas demográficas se generan **data-driven** desde `DEMOGRAFIA.keys()`:
-agregar/quitar una entrada en ese dict ajusta headers y anchos solos.
+**No se reservan números para hitos:** la versión mide avance, y no se congela
+esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-### 3.1 Mes vacío = fail loud, y la guarda va sobre la FUENTE (v1.9.5)
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.15**.
 
-La regla del punto 2 (mes sin datos -> `ArchivoInvalido`) valía solo para el A05
-hasta v1.9.5: los módulos pandas filtraban el mes a mano y seguían con el DataFrame
-vacío, escribiendo un `.xlsx` completo con todas las tablas en cero — con pinta de
-resultado legítimo y **copiable al SA_26**. Se dispara con escenarios normales: el
-export del año pasado, o el mes mal elegido en el spinbox.
+- **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
+  Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
+  y `__init__.py`. **Exento:** `legacy/`.
+- `tools/check_version.py` (en el pre-commit) verifica el manifiesto, la versión de
+  este archivo (las dos frases en negrita de arriba: **no las reformules**), el
+  CHANGELOG y el contador de tests. **Skill `versionar`.** Árbitro anti-colisión entre
+  sesiones paralelas = el CHANGELOG.
+- **Header en cada archivo:** «This code/document was generated with the assistance
+  of [modelo]. The human author reviewed, modified, and integrated the code.» + autor
+  + `SPDX-License-Identifier: GPL-3.0-or-later` + versión.
+- **Licencia GPL-3.0-or-later.** Distribuir `LICENSE` junto al `.exe`.
+- Comentarios y mensajes al usuario en español; nombres de función mixtos, OK.
 
-Ahora ese filtro es `rem_utils.filtrar_mes`, uno solo, y **la guarda va sobre la
-FUENTE, nunca sobre la casilla**. Esa distinción es lo que hace al guardarraíl seguro:
+> ⚠ «Programa» tiene dos sentidos: el número versiona el **software**. Los
+> **programas de salud** avanzan en paralelo y van en la matriz de abajo.
 
-- **el archivo no cubre el mes** (0 filas de la fuente) -> error del usuario, falla duro;
-- **el mes está cubierto y una casilla dio 0** -> LEGÍTIMO (A27 lo hace de verdad),
-  no falla. (Ojo: el 0 de A32·F2 que se citaba acá **no** era legítimo, era un patrón
-  roto — ver §2. Un 0 «legítimo» merece que alguien verifique el string una vez.) Por eso los filtros que vienen DESPUÉS del mes se aplican aparte,
-  sobre lo que devuelve `filtrar_mes`: `Asiste=SI` del grupal, Control/Ingreso IRA/ERA
-  de la Sección H.
+**Matriz de programas de salud.** Nace de las páginas del PowerBI «poblacion ferrada»
+(`refs_tablas/specs/`), pero los módulos se han ido apartando del DAX en el camino. La
+semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 
-Enganchado en las cinco fuentes que se filtran por mes: ADA de `sm_actividades`,
-grupal, atenciones del `a23`, NSP de la Sección H y el ADA de `sm_trabajo_perdido`.
-Las opcionales (grupal, NSP) **también fallan duro**: cargarlas fue decisión del
-usuario, y un archivo de otro período deja sus casillas en cero sin que nadie lo note.
-
-**Dos lugares donde a propósito NO se engancha:**
-- `om` (el 'Otros y Respi' del A23): es histórico multi-año, un mes sin formulario de
-  calidad de vida es normal.
-- **La familia población** (`poblacion` / P6 / rescate): ahí el mes es un **CORTE**
-  sobre el snapshot de inscritos, no un filtro de filas — no existe el "0 filas del
-  mes" que guardar. Elegir un mes que el export no cubre es una decisión legítima
-  (el mes reportado no tiene por qué ser el anterior), así que `_verificar_cobertura_
-  fechas` sigue avisando sin bloquear; lo que cambió es que **ahora devuelve sus
-  avisos** y quedan en `P.attrs['avisos']` -> hoja **LEEME** del P6 y del Rescate.
-  El desfase deja de vivir solo en el log de la corrida, que nadie relee.
-
----
-
-## 4. Novedades v1.2 (esta iteración)
-
-### 4.1 GUI Tkinter (sin dependencias nuevas)
-`lanzar_gui()`: título, caja de instrucciones, cuadro de archivo con
-`Examinar…` (o pegar ruta), botón `Procesar`, área de log (mismos mensajes
-`[corte]/[A05]/[demo]/[resumen]`) y messagebox de confirmación con conteo por
-tipo + opción de abrir la carpeta. `procesar(entrada, salida, log=...)` recibe
-un callback `log` (default `print`) para que GUI y CLI compartan el núcleo.
-
-**Arranque (`main()`):**
-- Sin args → GUI.
-- Arrastrar `.xlsx` sobre el `.exe/.py` → GUI con la ruta precargada.
-- `--cli entrada.xlsx [salida.xlsx]` → modo consola (experto/automatización).
-
-### 4.2 Detector de formato (`validar_formato()`) — §5.
-
-### 4.3 Error handler amigable
-Mensajes claros para: `openpyxl` faltante, `PermissionError` (abierto en
-Excel/OneDrive), archivo inexistente, extensión no-xlsx, formato administrativo
-y formato desconocido. En error inesperado vuelca el traceback al log.
-
-### 4.4 Modularización v1.3
-El monolito `rem_marcar_egresos_1.2.py` se partió en dos:
-- **`rem_utils.py`** — utilidades genéricas reutilizables por cualquier módulo
-  del REM (§2). `encontrar_fila_encabezado` quedó **parametrizado** (recibe
-  `ancla, usar_blanco_en_a, n_hardcode, max_filas`) en vez de leer globales.
-- **`rem_a05_egresos.py`** — solo la lógica A05; importa de `rem_utils`.
-
-Verificado: salida `A05_Egresos` **idéntica** a v1.2 sobre un export sintético
-(Alta con/sin subtipo, Trans, Migrante, fila sin egreso).
-
-### 4.5 Evolución v1.4 → v1.6
-- **v1.4** — GUI/CLI extraídas a `autorem.py` (dispatcher con registro de tareas).
-  `rem_a05_egresos.py` quedó headless.
-- **v1.5** — capa compartida `rem_saludmental.py` + módulo `rem_a05_ingresos.py`
-  (gemelo, token ESTADO `INGRESO`). Motor `marcar_eventos()` parametrizado. El
-  dispatcher carga el workbook una vez y cada tarea agrega su hoja → un solo
-  `…_procesado.xlsx` multi-hoja.
-- **v1.6** — **perfiles de formato IRIS/Administrativo** (§5). El usuario elige el
-  formato al inicio; disclaimer visible para admin. `edad_anios()` parsea la
-  edad del admin (`'99 años 12 meses 31 días'` → 99; menor de 1 año → 0).
-  Fix Windows: `stdout` a UTF-8 en el CLI (los símbolos `▶·→«»✔` reventaban en
-  cp1252, y `UnicodeEncodeError` ⊂ `ValueError` disfrazaba el error).
-
-Cada paso verificado contra la salida IRIS de v1.2 (equivalencia) + tests de
-ingresos, admin (sintético y archivo real anonimizado) y validación cruzada.
-
----
-
-## 5. Perfiles de formato: IRIS vs Administrativo (v1.6)
-
-El mismo formulario 'Control de Salud Mental' se descarga en **dos formatos**.
-Desde v1.6 **ambos se procesan** (antes el admin se rechazaba). El usuario elige
-el formato al inicio; cada uno es un **perfil** en `rem_saludmental.PERFILES`.
-
-**`detectar_formato(ws)`** devuelve `iris | administrativo | desconocido`:
-- **IRIS:** ancla `AÑO APLICACIÓN FORMULARIO` **y** columna `NÚMERO ... IDENTIFICACIÓN`.
-- **Administrativo:** banner `Servicio de Salud` en A1, y/o `ADMIN_MARKERS`
-  (`Numero de Fichas` / `Edad de registro formulario` / `Fecha Formulario`).
-
-`validar_iris()` / `validar_admin()` aceptan su formato y, si detectan el otro,
-levantan `ArchivoInvalido` con **mensaje cruzado** ("elegiste IRIS pero esto
-parece Administrativo — cambia el selector"). `categoria ∈ {iris, administrativo,
-desconocido}`. `abrir_validado(entrada, perfil)` valida antes de tocar nada.
-
-**Diferencias que maneja el perfil admin** (comparado con IRIS):
-| | IRIS | Administrativo |
+| Programa | Módulos | Estado |
 |---|---|---|
-| Encabezado | ancla IRIS | **fila 9** (ancla `EDAD/REGISTRO/FORMULARIO`; `usar_blanco_en_a=False` para no caer en fila 7) |
-| RUT | `NÚMERO TIPO IDENTIFICACIÓN` | columna `RUT` |
-| Edad | `AÑO APLICACIÓN FORMULARIO` (nº) | `Edad de registro formulario` = `'99 años 12 meses 31 días'` → `edad_anios()` saca los años |
-| Numeración preguntas / subtipos | idéntica | **idéntica** (el motor de diagnóstico sirve igual) |
-| `Pueblos_Originarios`, `SENAME`, `Proteccion_Ninez`, `Migrante`, `Trans` | columnas presentes | **NO existen** → salen VACÍAS (disclaimer lo advierte) |
-
-`_preparar()` acepta los nombres de RUT/edad de **ambos** formatos (robusto ante
-mala elección). La detección de columnas demográficas ausentes se loguea
-(`[demo] columnas AUSENTES...`). **Disclaimer admin** en `_DISCLAIMER_ADMIN`,
-visible en la GUI al elegir el formato y logueado al procesar.
-
-### 5.1 El 'Monitoreo de Actividades' NO es el eje admin del A/D/A
-
-Medido contra `refs_tablas/Monitoreo_de_Actividades_anonimizado.xlsx` (header-only,
-sep-2026). Es el reporte que el lado Administrativo ofrece **en lugar** del A/D/A,
-pero **no es su gemelo**: 26 columnas contra 45, y le faltan cosas estructurales,
-no cosméticas. Banner MINSAL + header en fila 9 (el `HEADER_ADMIN` de siempre).
-
-| Clave | En el Monitoreo | Consecuencia |
-|---|---|---|
-| `RUN` `FECHA` `ACT` `DIAG` `INSTR` `TIPO` `SEXO` `SECTOR` | **sí** | por eso cargaba **sin chistar**: pasa todas las `requeridas` de `cargar_atenciones` |
-| `DIAG` (contenido) | texto **sin código ICD** | Ira Alta (`j0`) · Bronquitis (`J20`) · EPOC exac. (`J44.1`) = **0** |
-| `ATENID` | **equivalente: `N°`** (v1.9.3) | correlativo 1..N que agrupa las filas de una atención. Medido: 2625 atenciones en 6590 filas, **0 con cabecera inconsistente**. Sirve para contar, pero **reinicia en 1 por export** -> `cargar_canonico` lo namespacea con el nombre del archivo |
-| `ANOS_AT` | **equivalente: `AÑOS`** (v1.9.3) | ⚠ **trampa semántica**: en IRIS `AÑOS` es edad a la **descarga** y la buena es `AÑOS ATENCIÓN`; en el Monitoreo **`AÑOS` ya es a la atención** (confirmado contra enero-2026). El mapa resuelve por orden, así que en IRIS gana siempre `AÑOS ATENCIÓN`; hay un test que lo fija |
-| `PROF` | **equivalente: `FUNCIONARIO`** (v1.9.3) | el mismo dato con otro nombre |
-| `ALERTAS` `PUEBLO` `NACION` `FNAC` `FORMCLIN` | **no, y no hay equivalente** | sin demografía: SENAME, Mejor Niñez, migrante, pueblo originario, gestante |
-
-**Veredicto por módulo (v1.9.3).** Ambos son usables, con distinto recorte:
-
-- **A23:** indicadores por actividad/instrumento/tipo + edad + sexo funcionan; solo
-  caen los 3 por código ICD. Su `_edad` calcula desde `FECHA NACIMIENTO` a la fecha
-  de corte y cae al fallback `AÑOS` cuando no la hay — que es el caso del Monitoreo.
-- **SM:** los **conteos son válidos** desde v1.9.3 (`N°` + `AÑOS`). Lo que sale en 0
-  es **toda la demografía** (columnas AN–AV del SA_26). O sea: copiar los totales,
-  no las columnas demográficas.
-
-Lo único sin equivalente son las **cinco claves demográficas**, y no es casualidad
-— es exactamente lo que este reporte no puede dar. Por eso son las que forman
-`formatos.SOLO_IRIS_ATENCIONES`. **Al darle equivalente admin a una clave hay que
-sacarla de esa firma**, o el Monitoreo pasa a clasificar `cambiada` (mensaje para el
-dev) en vez de `parcial` (mensaje para el usuario); pasó con `ATENID`.
-
-**PII:** el export CRUDO del Monitoreo trae `RUN` y `PACIENTE` (nombre) -> **nunca
-al repo**. La copia versionada es header-only y verificada (§8).
+| **Salud Mental** | A05 N/O · A03 D.3 · Actividades (A04·A06·A19a·A26·A27·A32) · Trabajo perdido | ✅ (REM de agosto 2026 hecho completo con la herramienta) |
+| **Salud Mental — población** | SP·P6 A.1 + Rescate de inasistentes, vía `programas/poblacion.py` | 🚧 en validación (§2.1) |
+| **Respiratorio** | A23 (indicadores · SALA · Secciones G y H · tablas por sección) | 🚧 IRIS ✅ · Monitoreo Admin parcial · falta formulario admin y afinar A/I-espiro/O |
+| **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1) | 📌 anotado, sin implementar (§12) |
+| Cardiovascular · SSyR · otros | — | pendiente |
 
 ---
 
-## 6. Demografía A05: validado vs pendiente
+## 10. Git
 
-Cada flag: `(tokens_header_fuente, regla)`. Reglas: lista de keywords (match por
-substring normalizado → "SI"), `"_no_vacio"`, `"_no_chileno"`. La celda
-`ALERTAS ADMINISTRATIVAS` trae **varios valores separados por ';'** → substring
-funciona bien.
-
-**Validado (jul-2026, contra valores DISTINTOS reales de `ALERTAS ADMINISTRATIVAS`):**
-- `SENAME` → keyword `SENAME` capta `SENAME Justicia Juvenil`.
-- `Proteccion_Ninez` → keyword `MEJOR NINEZ` capta `SPE ex Mejor Niñez- Ambulatorio`.
-  (SENAME y Proteccion_Ninez quedan **separados**, sin doble conteo.)
-- `Migrante` → keyword `MIGRANTE` (alerta explícita). **Cambio v1.2:** antes
-  derivaba de `NACIONALIDAD` con `_no_chileno`. Revertible si se prefiere la
-  definición por nacionalidad.
-- `Madre_menor5` → pregunta 1 del formulario (`¿Usted es Madre de Hijo menor de
-  5 años?`), valor "SI". (Ya validado en v1.1.)
-
-**Valores conocidos de `ALERTAS ADMINISTRATIVAS`** (para futuras reglas):
-Fonasa Libre Elección · PRAIS · Jubilación de Vejez · Atención Preferente
-(Mayor 60 / Cuidador / Discapacidad) · SPE ex Mejor Niñez- Ambulatorio ·
-Subsistema Seguridades y Oportunidades · SUF · MIGRANTE · SENAME Justicia Juvenil.
-
-**Eliminado:** `Gestante` — **no existe** en este export (ningún valor de
-ALERTAS lo indica). Si aparece la fuente, reañadir la fila en `DEMOGRAFIA`.
-
-**Pendiente de validar (fuente fuera de ALERTAS, keywords aún supuestos):**
-- `Pueblos_Originarios` → columna `PUEBLO ORIGINARIO`, regla `_no_vacio`.
-- `Trans` → columna `GÉNERO`, si contiene "TRANS" (copia el valor).
-- **Acción:** pegar los valores distintos de esas dos columnas (categóricos, sin
-  PII) y ajustar.
+- El repo vive **fuera** del OneDrive del trabajo; los exports con PII se quedan allá.
+- Rama `main`. Claude Code trabaja en worktrees: **el stash y los hooks son
+  compartidos** entre todos los árboles (§10.1). Usar commits WIP, no stash.
+- Tres hooks, instalados **en cada clon** (§8.2).
 
 ---
 
-## 7. Decisiones de diseño (NO deshacer sin motivo)
+## 12. Roadmap — pendiente
 
-- **Diagnóstico = pregunta a la izquierda del ESTADO**, caminando a la izquierda
-  y **saltando** columnas de subtipo/estado (`encontrar_diagnostico()`). Maneja
-  los dos layouts: `[¿X?][ESTADO][TIPO X]` (mayoría) y `[¿X?][TIPO/ETAPA][ESTADO]`
-  (Suicidio, Alzheimer).
-- **Subtipos hardcodeados** en `DIAGNOSTICOS_CON_SUBTIPO` (clave = N.- del
-  diagnóstico, valor = N.- de su columna de subtipo): Violencia(4→6),
-  Suicidio(11→12), Depresión(18→20), Ansiedad(41→43), Alzheimer(44→45=ETAPA).
-- **Subtipo se recorta** quitando el sustantivo del header vía `limpiar_subtipo()`:
-  `"Depresión Moderada"` con header `TIPO DE DEPRESIÓN` → `"Moderada"`. Casos que
-  no se resuelven así van en `OVERRIDE_SUBTIPO` (mapa por Nº de subtipo): hoy
-  Ansiedad (43) → Fobia social / **Pánico** (junta los dos) / Generalizada / TEPT
-  / Otros. Verificado contra export real (jun-2026); los demás salen limpios solos.
-- **Remap deprecated:** Abuso Sexual (pregunta 9) → patología `Violencia`,
-  subtipo `Sexual` (`REMAP_DIAGNOSTICO`).
-- **Nombre de patología canónico** (`LIMPIAR_NOMBRE_PATOLOGIA = True`, jul-2026):
-  `OVERRIDE_PATOLOGIA` mapea cada Nº de pregunta → nombre limpio (tomados de
-  SP·P6 y revisados con el autor). Abuso Sexual (9) lo maneja `REMAP_DIAGNOSTICO`.
-- **`EXCLUIR_PATOLOGIA = {75,77,79,81}`:** epilepsia (va al REM adulto) y los
-  programas de rehabilitación/acompañamiento NO son diagnósticos SM → se saltan
-  del output de egresos/ingresos.
-- **Quirk RAYEN clave:** `AÑO APLICACIÓN FORMULARIO` **NO trae el año, trae la
-  EDAD a la fecha de llenado** (lo que A05 necesita). `EDAD PACIENTE` es la edad
-  a la fecha de descarga → se ignora.
-- **RUT** viene de `NUMERO TIPO IDENTIFICACION`, ya con guión y DV (`11111111-1`).
-- **Otras Causas es manual por diseño:** requiere decisión clínica caso a caso
-  (abandono vs clínica). Solo se flaggea; no se clasifica automático.
-- **Detectar por CONTENIDO, nunca por nombre de archivo, + confirmar:** RAYEN baja
-  TODO como `Formulario_Rayen.xlsx` sin importar el contenido. El nombre no dice
-  nada. Regla del proyecto: identificar formato/instrumento por firmas de
-  contenido (ancla, banner, columnas, fingerprint de ítems) y **confirmar con el
-  usuario** ("Detecté X — ¿correcto? S/N") antes de procesar. Extiende
-  `detectar_formato()`; a futuro puede reemplazar el selector manual del A05 por
-  auto-detección + confirmación.
+(Lo hecho está en el [CHANGELOG](CHANGELOG.md).)
 
-### Zonas de configuración editables (arriba del archivo)
-`BUSQUEDAS` · `DIAGNOSTICOS_CON_SUBTIPO` · `REMAP_DIAGNOSTICO` · `DEMOGRAFIA` ·
-`AVISAR_ALTA_SIN_SUBTIPO` · (técnicas) `ANCLA_ENCABEZADO`, `ADMIN_MARKERS`, etc.
+**En curso**
+- **GUI 2.0** (rama `gui-2.0`, [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md)):
+  customtkinter, pestañas agrupadas por programa, About, la pestaña A03 standalone
+  desaparece (queda solo dentro de Actividades), y el selector IRIS/Admin se reemplaza
+  por detección + confirmación. El selector sobra porque ya no le puede ganar a la
+  detección, que bloquea si no calzan: solo aporta una forma de equivocarse. El
+  `--perfil` del CLI queda como override.
+- **Validar la familia población** (§2.1): la brecha `Ingresado` del P6 y el rescate
+  contra datos reales.
 
----
+**Módulos**
+- **`rem_a26_domiciliaria`** (A26·A1): las 24 VDI del PADDS por subtipo × visita +
+  planes de cuidado a usuario y cuidador. Su punto de entrada es `EXCLUIR_SMISH` del
+  Trabajo Perdido. Base: página «Dependencia» del PowerBI + `poblacion.py`.
+- **Delta P(m) − P(m−1) → A05 N/O** (fase 4 del plan P6): portar el
+  `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarlo. **P y A no calzan banda
+  por banda** porque tienen algunos diagnósticos distintos, casillas protegidas
+  distintas en los rangos etarios y demografía ordenada distinto.
+- **A03 D.3 v2:** conteos por rango etario extraídos del `SA_26`.
+- **Otras Causas:** popup con los RUT + dropdown abandono/clínica.
+- **Dotación fase 2:** bloques apilados REM/externos por sección (validación en pausa
+  hasta recibir la lista de externos).
 
-## 8. Privacidad (regla dura del proyecto)
+**Correcciones y mejoras**
+- **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
+  trae RUN: si lo trae, es un merge barato.
+- **GUI 2.0:** `gui/paginas/sm.py` todavía dice «saco vacío» (4 lugares). Pasarlo a
+  «saco roto» antes del merge (en `main` se renombró en 1.9.14).
+- **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
+  avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
+  lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.
+- **Generalizar a otros centros:** un config en vez de constantes locales
+  (`EXCLUIR_PATOLOGIA`, externos de dotación, sectores…).
 
-- **Repo y datos van separados.** El repo git vive **fuera** del OneDrive del
-  trabajo (proyecto personal). Los exports RAYEN/IRIS con PII se quedan en la
-  carpeta de trabajo. El repo **nunca** debería ver PII.
-- La herramienta lee el export **por ruta** (GUI/CLI apuntan a donde esté el
-  archivo); no necesita que el `.xlsx` viva dentro del repo.
-- Procesamiento **local, offline**. El único identificador en la salida es el
-  **RUT** (necesario para el A05 y para revisar Otras Causas caso a caso).
-- **Nunca commitear datos de pacientes.** Si para debug hace falta una planilla
-  dentro del repo, que sea **anonimizada** (sin RUT, nombre, fecha nacimiento,
-  dirección, teléfono). El `.gitignore` excluye `*.xlsx/*.xls/*.csv` como red de
-  seguridad, incluso estando el repo fuera de OneDrive.
-- Al trabajar con Claude, avisar si por error se cargan datos identificatorios.
-
-### 8.1 Incidente sep-2026: un RUT real en el repo público (LEER)
-
-**Qué pasó.** Un RUT de una **persona real** vivía como «ejemplo» en el CLAUDE.md
-(§7, la nota de `NUMERO TIPO IDENTIFICACION`) y en los tres archivos de `legacy/`,
-**desde el commit inicial** (6-jul-2026). El repo es público en GitHub, así que el
-dato estuvo expuesto ~2 meses. Se detectó recién cuando el autor lo reconoció al
-verlo citado.
-
-**Por qué no lo atajó nada.** El `.gitignore` bloquea `*.xlsx/*.xls/*.csv` — la PII
-que se esperaba era *una planilla*. Un RUT suelto en un comentario de código o en
-un `.md` no lo cubre ninguna de esas reglas. **La red de seguridad tenía la malla
-del tamaño equivocado.**
-
-**Remediación aplicada.**
-1. Purga del árbol de trabajo (reemplazo por `11111111-1`, sintético).
-2. Reescritura del historial completo con `git filter-repo`, en **contenido**
-   (`--replace-text`) **y en mensajes de commit** (`--replace-message` — el primero
-   NO toca los mensajes, es un paso aparte que se olvida fácil).
-3. Repositorio **borrado y recreado** en GitHub: un `push --force` no basta, GitHub
-   sigue sirviendo los commits viejos por URL directa de SHA hasta que corra su GC.
-4. **Pre-commit hook** `tools/hook_pre_commit_rut.py` (§8.2).
-5. **Borrar todo clon anterior a la reescritura** (ver abajo).
-
-**Vector que quedó abierto dos meses: los clones viejos.** Los pasos 1-3 limpian el
-remoto y el árbol desde donde se hizo la purga, pero **no tocan ningún otro clon**.
-`git filter-repo` cambia TODOS los SHA, así que un clon anterior no comparte ni un
-commit con el origin nuevo: su `git pull` no puede hacer fast-forward y, forzado con
-`--allow-unrelated-histories`, intenta mergear dos árboles sin ancestro común →
-conflicto "both added" en todos los archivos, con marcadores `<<<<<<<` dentro del
-propio CLAUDE.md. Ese es el síntoma ruidoso; el problema de fondo es callado: ese
-clon **seguía teniendo el RUT real en sus 49 commits**, en septiembre, con el
-incidente ya dado por cerrado.
-
-**Un `reset --hard` NO lo arregla:** mueve el puntero, pero los objetos viejos siguen
-en `.git/objects`, y cualquier tag o reflog que los ancle los deja ahí indefinidamente.
-
-**Regla:** tras un `filter-repo`, inventariar y **borrar la carpeta entera** de todo
-clon anterior a la reescritura, y volver a clonar de cero. Ojo con las copias que no
-están a la vista — en este caso había además un clon anidado DENTRO del propio repo.
-
-**Desenlace (sep-2026).** Consultado a jurídica del SSMC: el RUT filtrado **no estaba
-asociado a información clínica demostrable** — aparecía como ejemplo de formato en un
-comentario de código, sin ningún dato de salud adjunto — y los RUT son de facto
-información pública. **No constituye por sí mismo una infracción que requiera
-acciones formales.** Incidente cerrado, sin notificación de brecha.
-
-**Regla que queda.** Que no haya requerido acción formal no cambia la regla: un RUT
-**nunca** es un buen ejemplo, ni en un comentario, ni en un docstring, ni en un `.md`,
-ni en un mensaje de commit. Para ilustrar el formato se usa `11111111-1`. Si hace
-falta un lote para fixtures, cuerpo que empiece en `1000` con el DV calculado.
-La remediación valió igual: el costo de limpiarlo fue una tarde, y el hook (§8.2)
-evita que la próxima vez el dato tenga contexto clínico y sí importe.
-
-### 8.2 Pre-commit hook anti-RUT
-
-`tools/hook_pre_commit_rut.py` bloquea cualquier cadena con forma de RUT cuyo
-**dígito verificador cuadre** (módulo 11), en archivos staged y en el mensaje de
-commit. Validar el DV es lo que separa un RUT plausible de un número inventado: al
-azar casi nunca cuadra el módulo 11.
-
-```bash
-python tools/hook_pre_commit_rut.py --instalar
-python tools/check_cp1252.py --instalar
-python tools/check_version.py --instalar
-```
-
-**Son TRES, y cada uno se instala solo.** `tools/hooks_git.py` es la **librería** que
-comparten (expone `encadenar()`, §10.1), **NO un ejecutable**: `python tools/hooks_git.py
---instalar` corre, no imprime nada, sale 0 y no instala ni un hook — un no-op silencioso
-que se confunde fácil con éxito. Verificar siempre por el resultado: `.git/hooks/pre-commit`
-debe listar los tres scripts y `.git/hooks/commit-msg` el de RUT.
-
-**Los hooks NO se versionan** (viven en `.git/hooks/`): hay que instalarlo **en cada
-clon**, incluido cualquier equipo nuevo. Deja pasar los placeholders obvios
-(dígitos repetidos, cuerpo `1000…`, todo ceros). Escape puntual y consciente:
-`git commit --no-verify`.
+**Dev / repo**
+- **Pestaña de Consultas de catálogos** + enchufar `en_rango` en el A23.
+- **Deuda:** `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con dtype mixto);
+  pandas 4 lo vuelve error.
 
 ---
 
-## 9. Convenciones de código
+## 13. Gotchas generales
 
-### Versionado — `X.Y.Z` versiona la HERRAMIENTA (¡respetar!)
-Nada de versiones monótonas feas. **El número versiona el SOFTWARE autoREM** (un
-solo binario, un solo `rem_utils.VERSION`):
-- **X** = cambio grande de arquitectura / incompatible.
-- **Y** = cada **módulo/reporte nuevo** (de cualquier programa de salud).
-- **Z** = **corrección** del módulo en curso. Reinicia a 0 al sumar un módulo (Y++).
-
-Se escribe con puntos (`1.4.0`, `1.4.1`, …, `1.4.10`) para que Z pase de 9 sin
-romperse. Fuente de verdad en `rem_utils.VERSION`. La GUI la muestra en el título.
-Estado actual: **1.9.10**.
-
-**Cada `.py` lleva la versión de SU ÚLTIMO CAMBIO** (corregido sep-2026: este párrafo
-decía «todos se bumpean juntos», que nunca fue lo que pasó — había archivos en 1.8.2,
-1.8.3, 1.8.4, 1.9.0 y 1.9.1 conviviendo). Así el header informa *cuándo cambió ese
-archivo*; sincronizarlos todos ensuciaría el diff de cada versión y no diría nada que
-no diga ya `rem_utils.VERSION`.
-
-**Qué archivos llevan versión** (manifiesto derivado de la RUTA, no una lista a mano):
-`autorem.py`, `programas/`, `modulos/`, `tools/` **sí**; `tests/` y `__init__.py`
-**no**; `legacy/` **exento** — congelado a propósito en 1.1/1.2. Ojo: *exento* no es
-lo mismo que *prohibido*.
-
-**Todo esto lo verifica `tools/check_version.py`**, encadenado al pre-commit
-(§8.2). Revisa el manifiesto en las dos direcciones, que la versión esté declarada en
-§2 y §9, que exista la entrada del CHANGELOG, que los `.py` que commiteas declaren la
-versión actual, y que los contadores de tests calcen (estáticos, no corre pytest).
-`--arreglar` sincroniza lo automático y `--bump X.Y.Z` sube de versión de un viaje.
-Ver la skill **`versionar`**.
-
-**Guardarraíl anti-colisión:** dos sesiones en paralelo quisieron subir a 1.8.4 y a
-1.9.0 el mismo día (sep-2026) y hubo que detener ambas. El árbitro es el CHANGELOG:
-si ya tiene una versión mayor que `rem_utils.VERSION`, otra sesión avanzó y esta copia
-quedó atrás → el check bloquea y `--bump` rechaza cualquier número que no avance.
-
-> ⚠ «PROGRAMA» tiene DOS sentidos y causó confusión (ago-2026): acá el número
-> versiona el **software**. Los **programas de SALUD** (Salud Mental, Respiratorio,
-> Cardiovascular, SSR…) avanzan EN PARALELO y **NO caben en un número lineal** → se
-> trackean en la MATRIZ de abajo, NO en la versión. (Por eso A23 respiratorio es
-> `1.4.0` —4º módulo de la herramienta— y no `2.x`.)
-
-**Matriz de programas de salud (cobertura):**
-| Programa de salud | Módulos / reportes | Estado |
-|---|---|---|
-| **Salud Mental** | A05 egresos · A05 ingresos · **A03 D.3 (unificado → tabla)** · **Actividades (A04·A06·A19a·A26·A27·A32)** · **Trabajo perdido (saco vacío)** | ✅ |
-| **Salud Mental — población** | **SP·P6 A.1** (población en control PSM) + **Rescate de inasistentes** (6m/13m, fallecidos, traslados, brecha médico), ambos vía `programas/poblacion.py` | 🚧 implementados (suite: 170 tests) · **en validación**: brecha abierta en el filtro `Ingresado` del P6 (2972 vs 2226 PowerBI) y el rescate sin validar contra datos reales. Bump a **1.10.0** al cerrar TODA la familia (el 1.9.0 se lo llevó la capa de catálogos DEIS, §14). Ver §2.1 |
-| **Respiratorio** | A23 (indicadores mes · SALA · Sección G · Sección H · **tablas por sección copy-paste al SA_26**) | 🚧 atenciones IRIS ✅ / Admin monitoreo parcial · tablas edad×sexo ✅ (filtro «Pertenece a SALA»; validado ~1679 vs 1585 PowerBI con span 3 años) · pendiente afinar A/I-espiro/O + formulario admin |
-| **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1: VDI PADDS por subtipo × visita, planes de cuidado a usuario y cuidador) | 📌 **anotado, sin implementar.** Nace del descarte del Trabajo Perdido SM (§12): las 24 VDI del PADDS no son SM y hoy no las tabula nadie. Base ya disponible: página «Dependencia» del PowerBI + `programas/poblacion.py` |
-| Cardiovascular | — | pendiente |
-| Salud sexual/reproductiva, otros | — | pendiente |
-
-- **Header en cada archivo** (código y docs): bloque con
-  *"This code/document was generated with the assistance of [modelo]. The human
-  author reviewed, modified, and integrated the code."* + autor
-  (Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa) + `SPDX-License-Identifier:
-  GPL-3.0-or-later` + versión (`X.Y.Z`, sincronizada con `rem_utils.VERSION`).
-- **Licencia:** GPL-3.0-or-later. Al distribuir binarios, incluir `LICENSE`
-  con el texto completo (ya está en el repo; `license_ES.txt` es traducción de
-  referencia).
-- Comentarios y mensajes de usuario en español; nombres de función mixtos OK.
-
----
-
-## 10. Git — arranque y flujo
-
-**El repo vive fuera del OneDrive del trabajo** (proyecto personal, carpeta
-aparte). Los exports con PII se quedan en la carpeta de trabajo y NO se copian
-al repo. Arranque sugerido:
-
-```bash
-# En la carpeta personal del repo (fuera de OneDrive), con los .py + CLAUDE.md
-# + .gitignore + license.txt ya copiados (SIN ningún .xlsx):
-git init
-git add CLAUDE.md .gitignore "rem_marcar_egresos_1.2.py" license.txt CONTEXTO_COWORK_rem_egresos.md
-git commit -m "Import inicial: módulo egresos A05 v1.2 + contexto"
-```
-
-**Antes del primer commit, confirmar que NINGÚN .xlsx entra** (`git status` no
-debe listar planillas). El `.gitignore` ya excluye `*.xlsx/*.xls/*.csv` como red
-de seguridad.
-
-### Estado git (jul-2026)
-- Repo inicializado en rama `main`, identidad local `Simón Tobar`.
-- Commits: `Import inicial` (v1.2 monolito) → `Modularizar` (v1.3, split
-  utils/A05). Tag `v1.2` en el import.
-- Los módulos de tarea ya tienen nombre limpio y con convención
-  (`rem_a05_o_egresos.py` / `rem_a05_n_ingresos.py`, sin versión ni espacios).
-
-### 10.1 Worktrees: qué se comparte (sep-2026)
-
-Claude Code trabaja en **worktrees** bajo `.claude/worktrees/<nombre>/`. Un worktree
-NO es un clon: es otro árbol de trabajo **del mismo repositorio**. Su `.git` es un
-archivo de una línea que apunta a `.git/worktrees/<nombre>/`.
-
-| Compartido (uno solo) | Propio de cada worktree |
-|---|---|
-| commits/objetos, refs, `config`, **hooks**, **el stash** | archivos en disco, index, `HEAD`, rama |
-
-Consecuencias que ya mordieron:
-
-- **Un commit hecho en el worktree existe de inmediato para `main`** — mismo `.git`.
-  No hay push entre worktrees; lo único que no ve `main` es el archivo en disco.
-- **Los hooks son UNO SOLO** y corren desde cualquier árbol. Por eso `tools/hooks_git.py`
-  los escribe con rutas relativas a `$REPO` (`git rev-parse --show-toplevel`): con la
-  ruta absoluta del clon, un commit desde el worktree ejecutaba el `check_version.py`
-  de `main` y auditaba archivos que no se estaban commiteando. Bloqueó un commit
-  reportando headers de 1.9.4 con el worktree ya en 1.9.5 — un "callado y errado" al
-  revés: ruidoso y errado. `hooks_git.py` es **librería, sin CLI**: el `--instalar`
-  lo expone cada uno de los tres scripts, no ella (§8.2).
-- **El stash es compartido.** Dos sesiones en paralelo (§9) comparten la pila: un
-  `git stash pop` puede levantar lo de la otra. Usar commits WIP, no stash.
-- Una rama **no puede estar checkouteada en dos worktrees a la vez** (git lo rechaza).
-
-### Cerrar un worktree en Windows (sep-2026)
-
-Mergear a `main` (o cherry-pick) y después `git worktree remove <ruta>`. En Windows
-eso falla seguido, con DOS errores que parecen graves y no lo son:
-
-1. **«Deletion of directory … failed. Should I try again? (y/n)»** — no es corrupción:
-   algún proceso tiene la carpeta abierta. En Windows, el `cwd` de un proceso **pinea
-   el directorio** y no se puede borrar mientras esté ahí parado. El sospechoso
-   habitual es la propia sesión de Claude Code (su cwd ES el worktree; el harness la
-   devuelve ahí después de cada comando, así que ni siquiera sirve un `cd ..` desde
-   adentro). Responder **n** — reintentar no sirve —, cerrar la sesión, y recién ahí
-   borrar. Detalle útil: se puede borrar TODO el contenido igual; lo único que no cae
-   es la carpeta raíz.
-2. **`git worktree prune` -> `error: failed to delete '.git/worktrees/<n>': Permission
-   denied`** — tampoco es de permisos. `logs/` y `refs/` de esa carpeta quedan con el
-   atributo **ReadOnly**, y el `rmdir` de git no lo limpia antes de borrar. Es el MISMO
-   gotcha del `build/` de PyInstaller (§11), con el mismo remedio:
-   ```bash
-   attrib -R ".git\worktrees\<nombre>" /S /D
-   ```
-   y volver a correr `git worktree prune -v` (`-v` dice qué está sacando).
-
-**El orden importa:** primero la carpeta del worktree, después `prune` (que limpia
-`.git/worktrees/`), y al final `git branch -d <rama>` — con minúscula, que se niega si
-no está mergeada; si se niega, el problema es el merge, no la rama.
-
-Un worktree que ya NO aparece en `git worktree list` pero cuya carpeta sigue en disco
-es **puro cascarón**: git terminó su parte y los commits viven en el `.git` compartido.
-Nunca hay trabajo en riesgo ahí.
-
----
-
-## 11. Empaquetado a .exe
-
-Meta: colega no técnico hace doble-clic, sin instalar Python.
-
-**La forma oficial de construir es el `.spec` versionado** (sep-2026):
-
-```bash
-pyinstaller --clean autoREM.spec
-# -> dist/autoREM.exe
-```
-
-`autoREM.spec` **SÍ está en el repo** — es la única excepción al `*.spec` del
-`.gitignore`. Dejó de ser un artefacto generado: lleva a mano el contrato de
-`--add-data` y el `hiddenimports` de `programas.catalogos`. Mientras estuvo
-ignorado se pudrió sin que nadie lo viera (apuntaba a `'refs tablas/'` tras el
-rename a `refs_tablas/`, y le faltaban los catálogos). **Si cambias qué datos
-shippea el exe, se edita el `.spec` y se commitea.**
-
-La línea de comando equivalente, por si hay que regenerarlo desde cero:
-
-```bash
-# Correr DESDE la raíz del repo (donde está autorem.py + las carpetas
-# programas/ y modulos/):
-pyinstaller --onefile --windowed --name "autoREM" \
-  --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" \
-  --add-data "catalogos;catalogos" autorem.py
-```
-
-**Gotchas:**
-- **`--clean` puede fallar con `PermissionError: [WinError 5]` sobre
-  `build/autoREM/localpycs`.** NO es falta de privilegios y **correr como admin no
-  lo arregla**: la carpeta queda con el atributo **ReadOnly** y el `shutil.rmtree`
-  de PyInstaller no lo limpia antes del `rmdir`. Se arregla con
-  `attrib -R "build\*" /S /D` (o borrando `build/` a mano). A `dist/` le pasa igual.
-- Entry point = `autorem.py` (raíz). Los paquetes `programas/` y `modulos/` deben
-  estar junto a él; PyInstaller sigue los `import programas.x` / `from modulos
-  import x` solo y los empaqueta. Si por algún motivo no los encuentra, agregar
-  `--paths .` (la raíz al path de búsqueda).
-- **`--add-data` del Maestro slim (¡importante!):** el `maestro_slim.csv.gz` NO se
-  empaqueta solo (no es un `import`, es un dato) → hay que pasarlo con `--add-data`
-  (separador **`;`** en Windows, `:` en Linux/Mac). Sin esto, `_slim_por_defecto()`
-  devuelve None y el **Trabajo Perdido corre en heurística** (avisa ruidoso en el log).
-  Alternativa: dejar el `.gz` junto al `.exe`. Ruta destino dentro del bundle:
-  `refs_tablas/` (donde lo busca `_slim_por_defecto`, vía `sys._MEIPASS`).
-- **`--add-data` de `catalogos/` (§14):** misma historia que el Maestro slim — los
-  `.csv.gz` son DATOS, no imports, así que PyInstaller no los sigue solo. Sin esto,
-  `catalogos.cargar()` levanta `FileNotFoundError` diciendo cómo regenerarlos. Se
-  pasa la CARPETA entera: incluye `FUENTES.json`, que es lo que permite decir **de
-  qué edición** habla un resultado.
-- El `.exe` **debe construirse en Windows** (PyInstaller no cross-compila).
-- **`--onefile` vs `--onedir` (trade-off, oficial = `--onefile`):** `--onefile` da UN
-  solo `.exe` (cómodo de distribuir) pero cada arranque **descomprime ~37 MB a una
-  carpeta temporal** → lag de arranque en máquinas viejas/lentas (es disco, NO RAM;
-  el pico de RAM en una corrida es ~200-300 MB, no es la limitante). `--onedir` deja
-  una CARPETA (exe + libs sueltas) que **arranca más rápido** (no re-descomprime) y a
-  veces molesta menos al antivirus, a costa de distribuir una carpeta en vez de un
-  archivo. **Se compila oficialmente a `--onefile`**; quien quiera optimizar arranque
-  puede clonar el repo y compilar `--onedir` por su cuenta (recordando el `--add-data`).
-- **SmartScreen / antivirus institucional:** exe sin firmar dispara "editor
-  desconocido" y a veces falsos positivos; en máquinas SSMC bloqueadas puede
-  requerir whitelist de IT. Alternativa: `--onedir` (a veces molesta menos).
-  Argumento para IT: **procesa todo local, no sube nada** (Ley 20.584/21.719).
-- Junto al `.exe`, distribuir `LICENSE` (GPLv3, `gnu.org/licenses/gpl-3.0.txt`).
-- `openpyxl` se empaqueta solo; `tkinter` viene con el Python de Windows.
-
----
-
-## 12. Roadmap / arquitectura futura
-
-**Hecho:**
-- `rem_utils.py` compartido (v1.3).
-- GUI/CLI en dispatcher común `autorem.py` con registro de tareas (v1.4).
-- Capa compartida `rem_saludmental.py` + módulo **ingresos** (v1.5).
-- **Perfiles IRIS/Administrativo** con selector + disclaimer (v1.6).
-- **Eje de formato compartido** `programas/formatos.py` (fase 1: SM, A03, estamentos).
-- **A23 Respiratorio**, **SM Actividades**, **SM Trabajo Perdido**.
-- **`programas/poblacion.py`** — tabla «Ferrada» por-RUN, base transversal a las 8
-  páginas del PowerBI. Habilita los módulos de población que vengan.
-- **SP·P6 A.1** implementado (§2.1, en validación).
-- **SM Rescate de Inasistentes** (v1.9.1) — `modulos/rem_sm_rescate_inasistentes.py`:
-  `Rescate_6m`/`Rescate_13m`/`Fallecidos_mes`/`Posibles_Fallecidos`/`Posibles_Traslados`/
-  `Brecha_Medico` (§8 del plan). No tributa al REM; reusa la tabla `Ferrada` del P6 y
-  corre junto a él en la pestaña BETA. `Brecha_Medico` requirió agregar
-  `exigir_medico=False` a `poblacion.construir_poblacion()` (dos pasadas, con
-  guardarraíl en el P6 para que esa segunda pasada nunca lo alimente). **Fallecidos y
-  Traslados FLAGEADOS, no excluidos** (corregido v1.9.1: el filtro duro original sacaba
-  a los Fallecidos de Rescate_6m/13m en silencio, inconsistente con Traslados — ambos
-  motivos vienen de un snapshot del Inscritos, no de un dato verificado). Suite:
-  **170 tests** (§2.1, en validación).
-- **Sin espacios en ningún nombre del repo** — `refs tablas/` → **`refs_tablas/`** y
-  el resto de archivos con espacio, renombrados. El espacio obligaba a comillar cada
-  ruta y era un punto de falla recurrente. **Ojo:** las rutas viejas quedan muertas —
-  ahí se rompió el `autoREM.spec`, que por estar gitignoreado nadie vio (por eso
-  ahora **se versiona**, §11). La carpeta PADRE del repo (`Dr tobar/`) queda fuera
-  del rename: está fuera del repo.
-- **Higiene de privacidad:** todo el código cp1252-safe (los símbolos no-ASCII
-  reventaban la consola de Windows) + pre-commit anti-RUT (§8.2).
-- **Catálogos oficiales DEIS (v1.9.0)** — `programas/catalogos.py` (§14): CIE-10 +
-  ENO + GES como capa compartida, con `tools/catalogos_deis.py`
-  (`--check`/`--fetch`/`--slim`) y `tools/scan_catalogo.py` (PII previa a versionar).
-  Backend puro por ahora: **la pestaña de Consultas en la GUI está pendiente**.
-- **Hoja «LEEME» de cobertura (v1.8.3)** — cada `.xlsx` de salida abre con una hoja
-  que dice qué casillas del REM de ese módulo **NO** quedaron llenas y por qué (ej.
-  las Consultorías A06·A.2, que son manuales), en dos capas: lo estructural (fijo) +
-  lo que se degradó en **esa corrida** (sin grupal, sin Maestro, perfil admin…), que
-  cada módulo acumula en `.attrs['avisos']`. Fuente única en `programas/cobertura.py`
-  (catálogo `COBERTURA` + `escribir_hoja()`, sirve los dos caminos de escritura —
-  pandas `ExcelWriter` y openpyxl in-place), enganchada en `sm_actividades`,
-  `sm_trabajo_perdido`, `a23_respiratorio`, `sp_p6_poblacion`, `sm_rescate_inasistentes`,
-  `a03_d3_instrumentos` y el A05 (vía `autorem._correr_tareas`). Test anti-olvido en
-  `tests/test_cobertura.py` (descubre por introspección los módulos de `modulos/`
-  con `escribir()`/`TAREA`; uno sin entrada en el catálogo rompe el test). Plan en
-  **[docs/hoja_cobertura_plan.md](docs/hoja_cobertura_plan.md)**. Pendiente (fuera de
-  alcance de v1, ver el plan §8): checklist completo del REM extraído del
-  `SA_26.xlsm`/`SP_26.xlsm`.
-- **`formatos.py` fase 2 (v1.9.2)** — clasificación de fuente **plena/cambiada/
-  parcial** para el grupo pandas, enganchada en `cargar_canonico` (ver la fila de
-  `formatos.py` en §2). Cierra el último agujero de "número callado y errado" que
-  quedaba: el Monitoreo Admin ya no pasa desapercibido. Con esto el aviso del A23
-  que vivía como advertencia PERMANENTE en `cobertura.py` pasó a **aviso dinámico**
-  (solo sale en las corridas donde de verdad pasa). Descubrimiento colateral: en
-  **SM pega más fuerte que en el A23** — el conteo es `drop_duplicates(casilla, sub,
-  id)` con `id = ATEN ID`, así que sin esa columna todas las filas comparten id
-  `"None"` y **cada casilla colapsa a 1**; el aviso lo dice y pide NO copiar esas
-  tablas al SA_26.
-- **`programas/dotacion.py` (v1.9.8)** — separar atenciones de funcionarios EXTERNOS
-  (sala AIDIA) de la dotación propia; capa compartida, gemela de `estamentos.py`
-  (§2 tabla de archivos). Wireado en `rem_sm_actividades` (fase 1 del plan: hoja
-  `Externos_Delta` + columnas `externo`/`tabula_en` en `SM_Detalle`, secciones
-  calculadas sobre `E[en_rem]`) + diálogo en la GUI (`_bloque_dotacion`,
-  `_dialogo_dotacion`, `_revisar_dotacion`). Plan en
-  **[docs/dotacion_externos_plan.md](docs/dotacion_externos_plan.md)**. **Pendiente
-  (fase 2 del plan, §4.4):** bloques apilados REM/externos dentro de cada hoja de
-  sección (hoy alcanza con `Externos_Delta` para comparar contra el conteo manual).
-
-**Pendiente:**
-- **Cerrar la validación de la familia población** (§2.1): la brecha del filtro
-  `Ingresado` del P6 (2972 vs 2226 PowerBI) — siguiente paso concreto: diffear listas
-  de RUN por diagnóstico contra el PowerBI — y validar `Rescate_inasistentes` contra
-  datos reales (sobre todo `Posibles_Fallecidos`/`Posibles_Traslados`, heurístico sobre
-  `Motivo Pasivación` sin confirmar, y `Brecha_Medico`, sin caso real conocido
-  todavía). Al cerrar AMBOS → **bump a 1.10.0** (Y++; el 1.9.0 ya lo tomó §14).
-- **`rem_a26_domiciliaria` (Dependencia/Domiciliaria)** — módulo NUEVO anotado, sin
-  implementar. Cubriría **A26·A1**: las 24 VDI del PADDS por subtipo (con demencia /
-  etapa terminal / sin demencia) × (elaboración | 1ª/2ª/3ª+ evaluación), más
-  `Elaboración plan cuidado integral a persona con dependencia severa` y
-  `Evaluación y actualización plan de cuidados a cuidador`. **Origen:** el descarte
-  del Trabajo Perdido SM (`EXCLUIR_SMISH`) — ese trabajo existe, está bien registrado
-  y hoy no lo tabula ningún módulo; la exclusión es de RUTEO, no un borrado, y su
-  lista es el punto de entrada de este módulo. Base ya disponible: página
-  «Dependencia» del PowerBI + `programas/poblacion.py` (tabla Ferrada).
-- **Delta P(m) − P(m−1) → A05 N/O**: fase 4 del plan del P6; portar la lógica del
-  `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarla. Ojo §5.0.1: SA y SP
-  recortan filas etarias distintas, el delta no cuadra banda por banda.
-- **Validar el `.exe` a ojo** (§11): que abran las pestañas nuevas (rescate),
-  que la hoja **LEEME** aparezca en una salida, y que el Trabajo Perdido **no** diga
-  «heurística» en el log (si lo dice, el maestro slim no llegó al bundle).
-- **A03 D.3 v2:** conteos agregados por rango etario (extraer del `SA_26`) y CLI
-  (hoy solo GUI). Validar la GUI a ojo (doble-clic).
-- **Otras Causas (post-GUI):** popup con lista de RUTs + dropdown para clasificar
-  (abandono vs clínica) y sumarlo al reporte final.
-- **GUI 2.0:** migrar a customtkinter, agrupar pestañas por Programa de salud,
-  About, **sacar la pestaña A03 standalone** (queda solo dentro de Actividades), y
-  **eliminar el selector IRIS/Administrativo del A05** (sep-2026). Motivo: el
-  selector **no puede ganarle a la detección**. `validar_iris`/`validar_admin`
-  llaman a `detectar_formato`, y si tu elección no coincide te BLOQUEAN — la única
-  salida es cambiar el selector para que calce. O sea la detección ya es la
-  autoridad única y el selector solo aporta una forma de equivocarse. Reemplazo (ya
-  anticipado en §7): **auto-detección + confirmación** («Detecté X — ¿correcto?»),
-  que conserva el fail-loud sin la fricción. El objeto `perfil` se sigue
-  necesitando (lo consume `_preparar`); solo cambia quién lo elige. El disclaimer
-  admin pasa de mostrarse al elegir a mostrarse tras detectar — `_correr_tareas` ya
-  lo loguea post-carga, sobra la copia pre-run. El `--perfil` del CLI queda como
-  override opcional. Se difiere a GUI 2.0 para no tocar el Tkinter actual dos veces.
-- **Deuda técnica:** `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con
-  dtype mixto bool/str). No rompe hoy; pandas 4 lo convierte en error.
-
----
-
-## 13. Gotchas técnicos
-
-- **OneDrive + shell:** el repo git NO está en OneDrive, pero los **exports de
-  datos sí** (carpeta de trabajo). Al leer un `.xlsx` recién descargado/sincronizado
-  desde una shell, se puede ver una versión a medio sincronizar (ej. truncada).
-  Si un test falla raro tras tocar un archivo en OneDrive, forzar
-  re-lectura/sincronización antes de concluir que es un bug del código.
-- **Excel abierto:** si el `.xlsx` de salida está abierto, `wb.save()` lanza
-  `PermissionError` — ya manejado con mensaje amable.
-- **Formatos de RAYEN/IRIS (`.xls`, `.csv`, `.html`, `.xlsx`):** la herramienta lee
-  **solo `.xlsx`** (decisión de diseño: minimizar deps/líneas; convertir a mano). Si
-  el usuario carga otro, `_es_error_formato` (autorem) atrapa `InvalidFileException`
-  (extensión no soportada) y `BadZipFile` (el **HTML disfrazado de `.xlsx`** típico de
-  RAYEN) → diálogo «No es un .xlsx» que dice abrir en Excel y Guardar como `.xlsx`.
-  Cubre GUI (vía `_manejar_error` y la cadena del A05) y CLI.
-- **Normalización (regla dura, mordió 2 veces en 1.5.1):** las búsquedas de texto
-  van SIEMPRE por `contiene_todos`/`contiene_alguno` (que normalizan ambos lados) o
-  con `serie_norm.str.contains(norm("literal"))`. Un `.str.contains("minúscula")`
-  crudo contra una serie ya normalizada (MAYÚSCULA) **nunca matchea** (salía 0
-  silencioso). Además `norm()` ahora mapea **NaN → ''** (una celda vacía leída como
-  `NaN` daba `"NAN"` porque `nan or ''` es *truthy*, e inflaba flags como
-  `dem_originario`). `norm(None) == norm(NaN) == ""`.
-- **Validación pendiente end-to-end:** el core está validado contra un export
-  real anonimizado de enero 2026 (393 filas → 16 eventos: 11 Alta, 1 Traslado,
-  4 Otras Causas). Correr v1.2 sobre un export IRIS real y revisar los dos flags
-  demográficos pendientes (§6).
-
----
-
-## 14. Catálogos oficiales DEIS/MINSAL (v1.9.0)
-
-Capa **backend compartida** (`programas/catalogos.py`): el diccionario que le
-faltaba a la herramienta. No tributa a ninguna casilla del REM por sí sola.
-Nace de necesitar un mapa CIE-10 para el A23 (§ `docs/A23_P3_plan.md`) después de
-que la autora del repo de terceros nunca respondiera: se arma con las fuentes
-oficiales, que además son públicas y citables.
-
-**Fuente:** <https://deis.minsal.cl/centrofic/#documentacion> (Centro Nacional de
-Referencia FIC). Documentos públicos, sin restricción de licencia.
-
-| id | Catálogo | Edición | Contenido |
-|---|---|---|---|
-| `cie10` | Lista Tabular CIE-10 | **ago-2026** | 12.548 códigos: 8.910 cruz o daga · 331 asterisco · 3.307 causa externa |
-| `eno` | Notificación Obligatoria (Decreto 7/2019) | ago-2026 | 56 enfermedades → 448 pares enfermedad-código |
-| `ges` | GES 90 problemas ↔ CIE-10 | v1_4 | 5.936 pares problema-código |
-
-> ⚠ La nota del `A23_P3_plan` de que la lista DEIS era «de ~2018 y tiene casi 10
-> años» **quedó obsoleta**: la vigente es de agosto 2026. La copia local vieja
-> (`Lista-Tabular-CIE-10-1-1.xlsx`, 8.919 códigos en MAYÚSCULAS) es otra edición.
-
-### Decisiones (NO deshacer sin motivo)
-
-- **Registro declarativo, no un módulo por catálogo.** `CATALOGOS = {id: {...}}`
-  + una función `_leer_*`. Mismo patrón que `COBERTURA` en `cobertura.py`.
-- **Código canónico SIN punto** (`J209`, como el DEIS). RAYEN escribe `J20.9` →
-  todo cruce entre fuentes pasa por `norm_codigo`. `con_punto` es solo display.
-- **Los rangos no se expanden.** El ENO mete `J00-J99` en la misma columna que las
-  listas `A000, A001`; se guarda el patrón y lo resuelve `en_rango`, que compara
-  lexicográficamente. **Funciona porque los códigos llevan cero a la izquierda**
-  (`J09` < `J20` < `J99`); convertir a int lo rompe.
-- **El tipo de notificación del ENO viene del DECRETO, no del Excel.** El `.xlsx`
-  del DEIS no trae la columna. `ENO_TIPO` transcribe los literales a/b/c del art. 1
-  desde el texto oficial (`leychile.cl/Consulta/obtxml?opt=7&idNorma=1141549`).
-  Hoy el orden de las filas del Excel calza exacto con los tres literales, pero
-  inferirlo de ahí sería un acierto accidental que una reordenación rompería en
-  silencio.
-- **Transitorio ≠ decreto.** Mpox (inmediata) y *S. pyogenes* (centinela, diaria
-  solo en hospitales) rigen **mientras dure la alerta**
-  (<https://epi.minsal.cl/alertas-epidemiologicas-vigentes/>), no por el decreto →
-  su `ART` dice `alerta vigente`, para saber que esa clasificación caduca.
-- **Los huecos se declaran, no se rellenan.** Viruela y Tifus de los matorrales
-  siguen sin clasificar: están en `ENO_SIN_CLASIFICAR`, avisan ruidoso al generar
-  el slim y un test compara la lista (una enfermedad nueva sin clasificar **rompe
-  el test**). Un default silencioso ahí es un hueco que nadie vuelve a mirar.
-- **Cascada de carga:** `.xlsx` explícito > **drop-in** en `catalogos/` > slim
-  vendorizado. El drop-in hay que ponerlo **a propósito** (no se barre
-  `refs_tablas/`, donde puede quedar una edición vieja olvidada) y avisa ruidoso de
-  que pisa al catálogo embebido: cambiar la fuente cambia los resultados.
-
-### Privacidad: por qué hay un escáner aparte
-
-El pre-commit anti-RUT (§8.2) **salta los binarios** — `.xlsx`, `.gz`, su lista
-`BIN`. O sea que un `catalogos/*.csv.gz` vendorizado **no lo revisa nadie**. Por
-eso `tools/scan_catalogo.py` (RUT con DV válido reusando la misma función del hook,
-+ emails y teléfonos, + volcado de estructura para mirar a ojo), y por eso
-`--slim` lo corre solo y **se niega a vendorizar un catálogo con hallazgos**. Los
-tres actuales escanearon limpios.
-
-### Flujo cuando el DEIS actualiza
-
-```bash
-python tools/catalogos_deis.py --check    # avisa si hay edición nueva publicada
-python tools/catalogos_deis.py --fetch    # baja los .xlsx (gitignored)
-python tools/catalogos_deis.py --slim     # escanea PII + genera .csv.gz + FUENTES.json
-git add catalogos/
-```
-
-`catalogos/FUENTES.json` guarda url · edición · filas · **sha256 del origen** ·
-fecha: es lo que permite decir de qué edición habla un número reportado.
-
-### Utilidades (la pestaña de Consultas, pendiente)
-
-Hoy la capa es solo backend. Lo que expone y lo que justificaría UI:
-
-| Utilidad | API | GUI |
-|---|---|---|
-| Normalizar código `J20.9` ↔ `J209` | `norm_codigo` / `con_punto` | backend |
-| Código → glosa | `descripcion` | sí (buscador) |
-| ¿Existe en la edición vigente? | `existe` | sí |
-| Rango / capítulo (asma = J09–J22 sin J19) | `en_rango` | backend (lo consumirá A23) |
-| ¿Es ENO? → tipo + artículo | `eno_de` | sí |
-| ¿Es GES? → N° de problema | `ges_de` | sí |
-| **Anotador batch** de un export RAYEN | `anotar` | **sí — la que da sentido a la pestaña** |
-| Chequeo de actualizaciones | `tools/catalogos_deis.py --check` | no (el `.exe` es offline por diseño) |
-
-**Pendientes:** la pestaña misma; y enchufar `en_rango` en el A23 (hoy no lo consume
-nadie todavía — regla: no codear lo que no se usa).
-
-**Descartado:** la `Homologación CIE-9 ↔ CIE-10` que publica el DEIS. **RAYEN ya usa
-solo CIE-10**, así que no hay nada que homologar (y viene en `.xls`, que openpyxl no
-lee, §13). Se reevalúa solo si aparece un export con códigos CIE-9.
+- **OneDrive:** los exports sí están en OneDrive. Un `.xlsx` recién sincronizado puede
+  leerse a medio bajar (truncado). Fue la fuente de la mitad de los dolores de cabeza
+  del arranque: si un test falla raro tras tocar un archivo ahí, forzar la
+  sincronización antes de culpar al código.
+- **Excel abierto:** `wb.save()` → `PermissionError`, ya manejado con un mensaje amable.
+- **Formato distinto de `.xlsx`:** la herramienta lee solo `.xlsx`. El HTML disfrazado
+  de `.xlsx` típico de RAYEN (`BadZipFile`) y los `.xls` caen en el diálogo «No es un
+  .xlsx» (`_es_error_formato`).
+- **`norm()` mapea NaN → `''`**: `nan or ''` es truthy y daba `"NAN"`, inflando flags.

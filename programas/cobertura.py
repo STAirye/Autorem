@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -200,6 +200,11 @@ COBERTURA = {
              "sobre Motivo Pasivacion sin validar contra los valores reales del export. "
              "NINGUNO se excluye de Rescate_6m/13m (corregido sep-2026): quedan flageados",
              "Revisar que las listas capturen los Motivo Pasivacion de verdad"),
+            ("Rescate_6m / Rescate_13m / Posibles_Fallecidos", VALIDACION,
+             "Un fallecimiento puede no estar registrado en RAYEN: hay personas que siguen "
+             "Activas meses despues de fallecer (sin Motivo Pasivacion), asi que tampoco "
+             "salen en Posibles_Fallecidos",
+             "Antes de llamar, verificar el estado vital con el certificado de Fonasa"),
             ("Brecha_Medico", VALIDACION,
              "Compara dos pasadas de poblacion.construir_poblacion (con/sin filtro "
              "medico); todavia sin validar contra un caso real conocido",

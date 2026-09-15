@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -214,7 +214,7 @@ def _demcols(sub, spec):
 # Substrings de ACTIVIDADES (normalizados) que SÍ tributan a algún REM SM desde el
 # ADA. Fuente única: la usan _ada_eventos (indirecto) y el detector de trabajo
 # perdido (rem_sm_trabajo_perdido): lo que trae 'mental'/'demencia' y NO cae acá es
-# candidato a saco vacío. 'controles salud mental' cubre también los remotos A32F2
+# candidato a saco roto. 'controles salud mental' cubre también los remotos A32F2
 # ('… por llamada/videollamada'). SENAME se trata aparte (tributa a su propio REM).
 ADA_TRIBUTAN = [
     "consulta de salud mental",                                            # A04

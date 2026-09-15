@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -37,7 +37,7 @@ import re
 import pandas as pd
 
 from programas.rem_utils import (norm, BANDAS_A06 as BANDAS, LBL_A06 as LBL, _band_idx, grid,
-                                 _hombre, _mujer, ArchivoInvalido, rut_valido)
+                                 _hombre, _mujer, ArchivoInvalido, rut_valido, trans_de)
 from programas.rem_saludmental import OVERRIDE_SUBTIPO
 
 # ======================================================================
@@ -413,8 +413,23 @@ def _preparar_demografia(P, revisar, log=print):
     P["_dem_sename"] = P["PROTECCION NIÑEZ"] == "SENAME"
     P["_dem_mejorninez"] = P["PROTECCION NIÑEZ"] == "Mejor Niñez"
     P["_dem_pic"] = False   # AV se computa aparte (§5.4.2), no por persona
-    P["_dem_trans_masc"] = False
-    P["_dem_trans_fem"] = False   # Fase 2 no trae el 'Informe Inscritos' (TRANS) — pendiente, ver notas
+    # TRANS (AW/AX): regla unica rem_utils.trans_de, split por GENERO. El control
+    # de errores del SP espera AW <= Mujeres y AX <= Hombres, pero el sexo registral
+    # es estatico y el genero declarado cambia (sin reingreso al programa): el SSMC
+    # acepta que ese control salte. Asi que se CUENTA igual y solo se avisa en
+    # Revisar_Administrativo, para que el rojo de la plantilla tenga explicacion.
+    trans = pd.Series([trans_de(s, g) for s, g in zip(P["Sexo"], P["Género"])], index=P.index)
+    P["_dem_trans_masc"] = trans == "M"
+    P["_dem_trans_fem"] = trans == "F"
+    choca = (P["_dem_trans_masc"] & ~es_mujer) | (P["_dem_trans_fem"] & ~es_hombre)
+    for run, s, g in zip(P.loc[choca, "Número"], P.loc[choca, "Sexo"], P.loc[choca, "Género"]):
+        revisar.append({"RUN": run, "Motivo": "TRANS contado con sexo registral que no calza (aviso)",
+                        "Fila_P6": "AW/AX", "Detalle": "el control de errores del SP puede marcar; "
+                        "el SSMC lo acepta, no corregir", "Valor_crudo": f"{s} / {g}",
+                        "Categoria": "Administrativo"})
+    if choca.any():
+        log(f"[sp_p6] {int(choca.sum())} persona(s) TRANS contadas en AW/AX con sexo registral "
+            "que no calza: el control de errores del SP puede marcar (aviso, no bloquea).")
     return P
 
 

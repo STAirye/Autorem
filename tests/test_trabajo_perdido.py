@@ -162,7 +162,7 @@ def test_por_funcionario_rankea():
               _a("AG_Alta programa salud mental", "ANA")])
     pf = E.attrs["tablas"]["Por_Funcionario"]
     assert pf.iloc[0]["Funcionario"] == "JUAN"
-    assert int(pf.iloc[0]["N a saco vacío"]) == 2
+    assert int(pf.iloc[0]["N a saco roto"]) == 2
 
 
 def test_sin_maestro_usa_heuristica():
