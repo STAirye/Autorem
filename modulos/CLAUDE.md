@@ -85,9 +85,13 @@ no existe en este export.
     Otra · (vacías).
 
 Fuente única: Pueblo → `rem_utils.PUEBLO_VACIO`; Trans → `rem_utils.trans_de` (la
-usan el A05 y `trans_map` del SM). En el A05, la columna `Trans` muestra el sexo en
-los casos implícitos (`Femenina (sexo Hombre)`). **Pendiente:** el P6 tiene
-`_dem_trans_*` en False y podría usar `trans_de` sobre SEXO/GENERO de `poblacion`.
+usan el A05, `trans_map` del SM y AW/AX del P6). En el A05, la columna `Trans` muestra
+el sexo en los casos implícitos (`Femenina (sexo Hombre)`).
+
+**P6 AW/AX no filtra por sexo registral.** El control de errores del SP (AW ≤
+Mujeres, AX ≤ Hombres) salta cuando el género declarado cambió sin reingreso, y el
+SSMC lo acepta. Esos casos cuentan igual y dejan un aviso en `Revisar_Administrativo`.
+Regla general del proyecto: **un control de errores de la plantilla avisa, no manda.**
 
 ## §7 Decisiones de diseño SM (NO deshacer sin motivo)
 

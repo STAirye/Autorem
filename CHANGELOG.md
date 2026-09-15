@@ -10,6 +10,20 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.13] — 2026-09-15
+
+### Agregado
+- **SP·P6: columnas AW/AX (TRANS Masculino / Femenino) calculadas.** Hasta ahora
+  salían siempre en 0, con la nota «pendiente». Usan la misma regla que el A05 y el
+  SM (`rem_utils.trans_de`) sobre `Sexo` y `Género` del Informe Inscritos, split por
+  género.
+  - **No se filtra por sexo registral.** El control de errores de la plantilla
+    espera AW ≤ Mujeres y AX ≤ Hombres. Pero el sexo registral es estático y el
+    género declarado cambia sin reingreso al programa, así que ese control salta
+    seguido, y el SSMC lo acepta.
+  - Esos casos cuentan igual y dejan un aviso en `Revisar_Administrativo` (+ log),
+    para que la celda roja de la plantilla tenga explicación. No bloquea.
+
 ## [1.9.12] — 2026-09-15
 
 ### Corregido

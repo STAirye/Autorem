@@ -558,6 +558,28 @@ def test_sexo_no_binario_no_se_ubica_y_va_a_revisar():
     assert "Sexo/género no binario" not in list(r["revisar_clinico"]["Motivo"])
 
 
+def test_trans_aw_ax_por_regla_unica_y_sexo_registral():
+    """AW/AX usan rem_utils.trans_de, split por género. El control de errores del SP
+    espera AW <= Mujeres y AX <= Hombres, pero el SSMC acepta que salte (el género
+    declarado cambia, el sexo registral no): un Trans con sexo que no calza CUENTA
+    igual y solo deja un aviso en Revisar_Administrativo."""
+    tdah = {_Q[57]: "SI", _Q[58]: "INGRESO"}
+    ruts = ["11111111-1", "22222222-2", "33333333-3", "44444444-4"]
+    P = _poblacion(
+        [{"rut": r, "fecha": date(2026, 7, 1), **tdah} for r in ruts],
+        [{"rut": ruts[0], "sexo": "Mujer", "genero": "Masculino"},             # implícita -> AW
+         {"rut": ruts[1], "sexo": "Hombre", "genero": "Femenino Trans"},       # explícita -> AX
+         {"rut": ruts[2], "sexo": "Hombre", "genero": "Masculino Trans"},      # no calza -> AW + aviso
+         {"rut": ruts[3], "sexo": "Hombre", "genero": "No binarie"}],          # no cuenta
+        ada_filas=[_sm(r) for r in ruts])
+    r = _p6(P)
+    fila = _fila_p6(r["grid"], 35)
+    assert fila["AW"] == 2 and fila["AX"] == 1      # el que no calza cuenta igual
+    adm = r["revisar_administrativo"]
+    trans_rev = adm[adm["Motivo"].str.contains("TRANS", na=False)]
+    assert list(trans_rev["RUN"]) == ["33333333-3"]
+
+
 def test_revisar_clinico_siempre_trae_fila13_vs_distinct():
     """'Fila 13 vs distinct' (§5.2) es una MAGNITUD, no un caso por RUN -> siempre
     aparece en Revisar_Clinico (aunque sea con diferencia 0), nunca en la hoja

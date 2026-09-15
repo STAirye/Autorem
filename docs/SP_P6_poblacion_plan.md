@@ -513,12 +513,16 @@ por **sexo registral**, no por género. Las fórmulas de validación son
 | AT | SENAME | `PROTECCION NIÑEZ` = «SENAME» (alerta ⊃ SENAME) | `marcar_demografia()` |
 | AU | Mejor Niñez | `PROTECCION NIÑEZ` = «Mejor Niñez» (alerta ⊃ SPE) | idem |
 | AV | Plan de Cuidado Integral Elaborado | actividad ADA `Plan Cuidado Integral Elaborado` (REM-P6) — **existe pero sin registrar** → regla operativa (§5.4.2) | — |
-| AW/AX | TRANS Masculino / Femenino | `Trans` = 1, split por género | `rem_utils.trans_map()` |
+| AW/AX | TRANS Masculino / Femenino | `Sexo` + `Género` del Inscritos, regla única | `rem_utils.trans_de()` (implementado 1.9.13) |
 
 **Foot-gun de AW/AX:** el control de errores compara `AW ≤ E (Mujeres)` y
 `AX ≤ D (Hombres)`. O sea «TRANS Masculino» = **sexo registral mujer**, género
-masculino. Las etiquetas se invierten respecto del sexo registral; `trans_map()` ya
-hace ese split, hay que respetar la orientación al escribir.
+masculino. Las etiquetas se invierten respecto del sexo registral. **Implementado
+(1.9.13):** AW = `trans_de` M, AX = `trans_de` F, **sin filtrar por sexo**. El sexo
+registral es estático y el género declarado cambia sin reingreso al programa, así que
+ese control salta seguido y **el SSMC lo acepta** (confirmado por el autor, sep-2026).
+Se cuenta igual, y cada caso que no calza deja un aviso en `Revisar_Administrativo`
+para que el rojo de la plantilla tenga explicación. No bloquea.
 
 #### 5.4.1 «Madre de hijo menor de 5 años» (AO) — filtrar por SEXO, no por género
 
