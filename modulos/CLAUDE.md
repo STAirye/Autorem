@@ -63,7 +63,7 @@ NINEZ` capta `SPE ex Mejor Niñez- Ambulatorio`, separado de SENAME) · `Migrant
 `MIGRANTE`, no nacionalidad) · `Madre_menor5` (pregunta 1 = SI). `Gestante` eliminado:
 no existe en este export.
 
-**Reglas nuevas acordadas (sep-2026), CÓDIGO PENDIENTE** — valores categóricos reales:
+**Reglas nuevas confirmadas por el autor (sep-2026), CÓDIGO PENDIENTE** — valores categóricos reales:
 
 - **`Pueblos_Originarios`** (col. `PUEBLO ORIGINARIO`): **SI** salvo que venga vacío,
   `Ninguno`, `No Sabe` o `No Contesta`. `Otro` y `Otro pueblo originario declarado`
@@ -77,7 +77,9 @@ no existe en este export.
   - **Implícita** (sexo ≠ género): `SEXO=Hombre` + `GENERO=Femenina`, o
     `SEXO=Mujer` + `GENERO=Masculino`.
   - Por esta regla **no** cuentan: `No binarie` · `Otra` · `No Revelado` · vacío, ni
-    ningún `SEXO` en `Intersexual` / `Desconocido` / `No Informado`.
+    ningún `SEXO` en `Intersexual` / `Desconocido` / `No Informado`. No es un juicio
+    clínico: el REM solo tiene sexo binario + Trans, así que `No binarie` no tiene
+    casilla donde ir. Si MINSAL agrega una, se reabre la regla.
   - Valores de `SEXO`: Hombre · Mujer · Intersexual · Desconocido · No Informado.
   - Valores de `GENERO`: Femenina · Masculino · los 4 trans · No binarie · No Revelado ·
     Otra · (vacías).
