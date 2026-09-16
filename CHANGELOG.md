@@ -10,6 +10,23 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.16] — 2026-09-16
+
+### Agregado
+- **Saco roto: dos auditorías por ATEN ID** de atenciones que sí tributan, pero con
+  el registro incompleto. Salen rutificadas, con estamento y funcionario, cada una en
+  su hoja y con su línea en `TP_Resumen`.
+  - **`Ctrl_sin_Formulario`:** atenciones con actividad Control SM (el remoto A32·F2
+    cuenta; «Acciones remotas» no) que no traen el formulario «Control de Salud
+    Mental» en `FORMULARIOS CLINICOS`. La celda se parte por `;` y cada formulario se
+    compara **exacto**: una subcadena `mental` captaba el «Minimental». Sin esa
+    columna (Monitoreo admin) no se calcula y queda el aviso NO CALCULADO en la
+    LEEME, en vez de un 0 callado.
+  - **`Sin_Consejeria`:** atenciones con Control, Consulta o VDI de SM sin consejería
+    SM (A19a 97/99) **en la misma atención**.
+  - El ATEN ID de IRIS llega numérico (`683.016.530,00` en Excel) y se normaliza a
+    texto, para que el `int` y el `float` no separen una misma atención.
+
 ## [1.9.15] — 2026-09-15
 
 ### Agregado

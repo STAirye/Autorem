@@ -25,9 +25,9 @@ _TMP = Path(tempfile.mkdtemp(prefix="autorem_tp_"))
 
 _ADA_HDR = ["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
             "DIAGNOSTICOS", "INSTRUMENTO", "PROFESIONAL ATENCION", "TIPO ATENCION",
-            "SEXO", "AÑOS ATENCION"]
+            "SEXO", "AÑOS ATENCION", "FORMULARIOS CLINICOS"]
 _ADA_K = {"run": 0, "id": 1, "fecha": 2, "act": 3, "dg": 4, "instr": 5,
-          "prof": 6, "tipo": 7, "sexo": 8, "edad": 9}
+          "prof": 6, "tipo": 7, "sexo": 8, "edad": 9, "form": 10}
 
 _MAESTRO_HDR = ["ACTIVIDAD", "INSTRUMENTO ASOCIADO", "NUM REM", "NUM SECCION", "REM"]
 
@@ -39,7 +39,8 @@ def _mk_ada(rows, nombre="ada.xlsx"):
     for r in rows:
         line = [""] * len(_ADA_HDR)
         for k, v in r.items():
-            line[_ADA_K[k]] = v
+            if _ADA_K[k] < len(_ADA_HDR):     # header recortado = columna ausente
+                line[_ADA_K[k]] = v
         ws.append(line)
     wb.save(p)
     return p
@@ -57,8 +58,9 @@ def _mk_maestro(pares, nombre="maestro.xlsx"):
     return p
 
 
-def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026"):
-    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha, id=f"AT{run}{act[:3]}",
+def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026", id=None, form=""):
+    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha,
+                id=id or f"AT{run}{act[:3]}", form=form,
                 dg="x", tipo="Espontánea", sexo="Femenino", edad="30 años")
 
 
@@ -177,6 +179,57 @@ def test_solo_del_mes():
     E = _run([_a("AG_Alta programa salud mental", "JUAN", fecha="10/07/2026"),
               _a("AG_Alta programa salud mental", "JUAN", fecha="10/06/2026")])
     assert len(E) == 1, "solo la atención de julio cuenta"
+
+
+# -- Auditorías por ATEN ID: control sin formulario / SM sin consejería --
+_FORM_OK = "COLUMBIA-ESCALA DE SEVERIDAD SUICIDA (C-SSRS) 8  ;  Control de Salud Mental"
+_CONS = "Prioridad - con integrante con problema de salud mental"
+
+
+def test_control_sin_formulario():
+    E = _run([_a("Controles Salud Mental", "ANA", id="A1", form=_FORM_OK),         # ok
+              _a("Controles Salud Mental", "JUAN", run="2-7", id="A2",
+                 form="MINIMENTAL ABREVIADO ; Otro formulario"),                   # minimental NO
+              _a("Controles de Salud Mental por videollamadas", "LUCIA", id="A3"),  # remoto cuenta
+              _a("Acciones remotas de salud mental por llamada", "PEDRO", id="A4"),  # no cuenta
+              _a("Consulta De Salud Mental", "ANA", id="A5")])                     # no es control
+    t = E.attrs["tablas"]["Ctrl_sin_Formulario"]
+    assert sorted(t["aten_id"]) == ["A2", "A3"], list(t["aten_id"])
+    assert set(t.columns) >= {"run", "profesional", "estamento"}
+
+
+def test_sin_formulario_clinico_no_calcula_y_avisa():
+    # El test base sin la columna FORMULARIOS CLINICOS = Monitoreo admin: no un 0 callado.
+    global _ADA_HDR
+    viejo = _ADA_HDR
+    _ADA_HDR = viejo[:-1]
+    try:
+        E = _run([_a("Controles Salud Mental", "ANA")])
+    finally:
+        _ADA_HDR = viejo
+    assert "Ctrl_sin_Formulario" not in E.attrs["tablas"]
+    assert any(a[1] == "NO CALCULADO" for a in E.attrs["avisos"]), E.attrs["avisos"]
+
+
+def test_sm_sin_consejeria_por_atencion():
+    _vdi = "Visita domiciliaria integral familia con integrante con problema de salud mental"
+    E = _run([_a("Controles Salud Mental", "ANA", id="B1", form=_FORM_OK),
+              _a(_CONS, "ANA", id="B1", form=_FORM_OK),                   # misma atencion -> ok
+              _a("Consulta De Salud Mental", "JUAN", id="B2"),              # sin consejeria
+              _a(_vdi, "SOFIA", id="B3"),                                   # sin consejeria
+              _a(_CONS, "SOFIA", id="B4"),                                  # consejeria en OTRA atencion
+              _a("Curacion simple", "PEDRO", id="B5")])                     # no SM
+    t = E.attrs["tablas"]["Sin_Consejeria"]
+    assert sorted(t["aten_id"]) == ["B2", "B3"], list(t["aten_id"])
+
+
+def test_aten_id_numerico_como_iris():
+    # IRIS trae el ATEN ID como número (683.016.530,00 en Excel), float en una fila.
+    E = _run([_a("Controles Salud Mental", "ANA", id=683016530.0, form=_FORM_OK),
+              _a(_CONS, "ANA", id=683016530),                              # misma atencion
+              _a("Consulta De Salud Mental", "JUAN", id=689438471.0)])
+    t = E.attrs["tablas"]["Sin_Consejeria"]
+    assert list(t["aten_id"]) == ["689438471"], list(t["aten_id"])
 
 
 # -- Guardarraíl de mes vacío (CLAUDE.md §3: fail loud, como el A05) --
