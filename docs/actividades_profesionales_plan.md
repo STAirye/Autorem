@@ -140,11 +140,10 @@ los candidatos como checkboxes, y permite «validar», «editar» o «descartar 
 ### 3.1 `Informe Actividades Profesionales` (IRIS, obligatorio)
 
 Existe **solo en IRIS**. Header de ejemplo:
-`refs_tablas/Informe_Actividades_Profesionales heads.xlsx`.
+`refs_tablas/Informe_Actividades_Profesionales_heads.xlsx`.
 
-> ⚠ **Privacidad:** ese archivo hoy trae **una fila de datos del autor** y está
-> ignorado por el `.gitignore`. **Antes** de agregarlo a la whitelist, hay que
-> recortarlo a solo header (skill `limpiar-refs`). Nada de datos del autor en el repo.
+> **Privacidad:** ya se recortó a solo banner + header (`limpiar-refs`) y está en la
+> whitelist. El export CRUDO trae nombres y RUT de funcionarios, así que nunca va al repo.
 
 - Banner (título, disclaimer Ley 19.628/20.584, `Servicio de Salud`, `Comuna`,
   `Establecimientos`, `Instrumento`) + **encabezado en la fila 8**.
