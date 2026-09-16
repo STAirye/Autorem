@@ -203,6 +203,10 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarlo. **P y A no calzan banda
   por banda** porque tienen algunos diagnósticos distintos, casillas protegidas
   distintas en los rangos etarios y demografía ordenada distinto.
+- **Auditoría de actividades habilitadas** (utilidad no-REM, destino GUI 2.0 ·
+  Utilidades): qué actividades mínimas del `SA_26` le faltan activadas a cada
+  funcionario ACTIVO, para jefatura. Crosswalk SA → RAYEN validado en la GUI. Primer
+  corte: SM. [docs/actividades_profesionales_plan.md](docs/actividades_profesionales_plan.md).
 - **A03 D.3 v2:** conteos por rango etario extraídos del `SA_26`.
 - **Otras Causas:** popup con los RUT + dropdown abandono/clínica.
 - **Dotación fase 2:** bloques apilados REM/externos por sección (validación en pausa
