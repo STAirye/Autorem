@@ -44,6 +44,15 @@ COLOR_ATENUADO = "#888888"   # texto secundario ("(vacio = ...)", "Opcionales")
 # sin inventar un color nuevo (feedback visual del autor, sep-2026: las cajas
 # se perdian contra el fondo de la pagina).
 COLOR_CAJA = ("gray81", "gray20")
+# El tema de CTk (ThemeManager.theme["CTkButton"]["text_color"]) es
+# ['#DCE4EE', '#DCE4EE'] EN LOS DOS MODOS -- pensado para leerse sobre el
+# fg_color AZUL por defecto del boton, no sobre "transparent". Un boton
+# transparente (el sidebar) queda casi ilegible (texto casi blanco sobre
+# gris claro) si no se pisa a mano. Mismo texto_color que trae CTkLabel por
+# defecto (SI calza con "transparent"), para que un boton transparente lea
+# igual que una etiqueta (feedback visual del autor, sep-2026: sidebar
+# ilegible en modo claro).
+COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
 
 _AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
                         "sin abrirlos, editarlos ni re-guardarlos.\n"

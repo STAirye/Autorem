@@ -70,6 +70,12 @@ pantalla (construccion, `on_elegido`, `preparar`, `al_completar`): sirve para
 pasarse cosas entre esas fases sin variables de modulo. Ver A23/SM: un extra
 arma un `widgets.BannerFuente` y lo guarda en `pagina.datos["banner_fuente"]`;
 `al_completar` lo recupera y lo actualiza con el resultado de la corrida.
+
+PAGINAS ESPECIALES (paso 10 del plan, SS4): "Inicio" y "Acerca de" NO son
+PANTALLA -- no procesan nada, no tienen `correr`, y por eso no viven en
+`gui.registro` (que descubre paginas por ESE contrato) ni se agrupan por
+programa. Van aparte en el sidebar, debajo de un separador (maqueta de SS4),
+y su modulo expone `construir(frame, app)` en vez del dict `PANTALLA`.
 """
 
 from pathlib import Path
@@ -80,8 +86,16 @@ import customtkinter as ctk
 from programas.rem_utils import VERSION, mes_anterior
 from gui import widgets, runner
 from gui.registro import cargar_registro, programas_en_orden
+from gui.paginas import inicio, about
 
 ANCHO_SIDEBAR = 210
+
+# id -> (titulo del boton, construir(frame, app)) -- ver nota "PAGINAS
+# ESPECIALES" arriba. Orden = orden de aparicion en el sidebar.
+PAGINAS_ESPECIALES = (
+    ("inicio", "Inicio", inicio.construir),
+    ("acerca_de", "Acerca de", about.construir),
+)
 
 
 class Pagina:
@@ -214,8 +228,7 @@ class App(ctk.CTk):
         self.contenedor.grid_rowconfigure(0, weight=1)
         self.contenedor.grid_columnconfigure(0, weight=1)
 
-        if self.registro:
-            self.mostrar(self.registro[0]["id"])
+        self.mostrar("inicio")
 
     # -- Sidebar / router ------------------------------------------------
     def _construir_sidebar(self):
@@ -233,18 +246,54 @@ class App(ctk.CTk):
                 if pantalla.get("estado") == "beta":
                     texto += "  [BETA]"
                 btn = ctk.CTkButton(barra, text=texto, anchor="w", fg_color="transparent",
+                                    text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
                                     command=lambda pid=pantalla["id"]: self.mostrar(pid))
                 btn.pack(fill="x", padx=6, pady=1)
                 self._botones_sidebar[pantalla["id"]] = btn
 
+        # Inicio / Acerca de (SS4 del plan): aparte, debajo de un separador,
+        # sin agruparse por programa -- no son paginas de procesamiento.
+        ctk.CTkFrame(barra, height=1, fg_color=widgets.COLOR_ATENUADO
+                    ).pack(fill="x", padx=6, pady=(12, 4))
+        for pid, titulo, _construir in PAGINAS_ESPECIALES:
+            btn = ctk.CTkButton(barra, text=titulo, anchor="w", fg_color="transparent",
+                                text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
+                                command=lambda pid=pid: self.mostrar(pid))
+            btn.pack(fill="x", padx=6, pady=1)
+            self._botones_sidebar[pid] = btn
+
     def mostrar(self, pantalla_id):
         """Router: construye la pagina la PRIMERA vez (perezoso) y la trae al
         frente. Volver a una pagina ya visitada conserva sus rutas elegidas y
-        el log de la corrida anterior (no se destruye nada)."""
+        el log de la corrida anterior (no se destruye nada). Las PAGINAS
+        ESPECIALES (Inicio/Acerca de, ver modulo) no estan en `self.registro`
+        -- se resuelven aparte, contra `PAGINAS_ESPECIALES`.
+
+        `.lift()`, NO `.tkraise()` (bug encontrado a mano, sep-2026): una
+        pagina es un CTkScrollableFrame, y ESE widget sobreescribe
+        `grid()`/`pack()`/`place()`/`lift()` para operar sobre
+        `self._parent_frame` (el contenedor real del scroll+canvas) -- pero
+        NO sobreescribe `tkraise` (alias de `lift` fijado en la clase base
+        `tkinter.Misc`, asi que sigue apuntando al `lift` ORIGINAL). Llamar
+        `.tkraise()` reordena el frame de CONTENIDO interno de la pagina
+        (invisible, vive dentro de su propio canvas), no el `_parent_frame`
+        que de verdad esta gridado en `self.contenedor` -- asi que NO
+        cambia que pagina se ve. Efecto: la PRIMERA visita a cada pagina se
+        veia bien (recien gridada, Tk la deja arriba de la pila por
+        defecto), pero volver a una pagina YA construida quedaba pegada en
+        la ultima (verificado con `winfo_children()`, que SI refleja el
+        orden de la pila, antes/despues de cada llamada)."""
         if pantalla_id not in self._frames:
-            pantalla = next(p for p in self.registro if p["id"] == pantalla_id)
-            self._frames[pantalla_id] = self._construir_pagina(pantalla)
-        self._frames[pantalla_id].tkraise()
+            especial = next((c for pid, _t, c in PAGINAS_ESPECIALES if pid == pantalla_id), None)
+            if especial is not None:
+                frame = ctk.CTkScrollableFrame(self.contenedor)
+                frame.grid(row=0, column=0, sticky="nsew")
+                especial(frame, self)
+                self._frames[pantalla_id] = frame
+            else:
+                pantalla = next(p for p in self.registro if p["id"] == pantalla_id)
+                self._frames[pantalla_id] = self._construir_pagina(pantalla)
+        self._frames[pantalla_id].lift()
         for pid, btn in self._botones_sidebar.items():
             btn.configure(fg_color=("gray75", "gray25") if pid == pantalla_id else "transparent")
 
