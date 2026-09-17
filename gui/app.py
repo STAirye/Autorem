@@ -31,20 +31,29 @@ EL CONTRATO PANTALLA (lo que expone cada modulo de gui/paginas/*.py):
         "instrucciones": "...",        # opcional
         "inputs": [
             {"key": "ada", "etiqueta": "...", "multi": True, "obligatorio": True,
-             "titulo_dialogo": "..."},
+             "titulo_dialogo": "...", "on_elegido": fabrica},
             ...
         ],
         # `obligatorio` puede ser un bool, o callable(getters) -> bool cuando
         # depende de OTRO input (SM Actividades, docs/GUI_2.0_plan.md SS6: ADA
         # y Grupal dejan de serlo SOLO en una corrida solo-cuestionarios).
+        # `on_elegido` (opcional) es una FACTORY (frame, pagina) -> callback(valor)
+        # -- mismo molde que `extras[].construir` -- que corre apenas se elige
+        # el archivo, no recien al apretar Procesar (SS5.1 del plan: preview
+        # barato de formato/cruce; A05 lo usa para detectar IRIS/Administrativo,
+        # SM para el preview de cruce ADA<->Grupal).
         "mes": True,                   # muestra SelectorMes
         "carpeta_salida": True,        # muestra CarpetaSalida
         "extras": [                    # opcional, ver SS3.1 del plan
             {"despues_de": "ada", "construir": fn, "key": "tabla_dot"},
         ],
-        "preparar": None,              # opcional, hilo GUI, ver SS3.3
+        "preparar": None,              # opcional, hilo GUI, ANTES del worker, ver SS3.3
         "correr": correr,              # callable(ctx, log) -> resultado, EN EL WORKER
         "resumen": resumen,            # callable(resultado) -> str para el messagebox
+        "al_completar": None,          # opcional, hilo GUI, DESPUES del worker (SS5.1):
+                                       # callable(resultado, pagina) -- p.ej. actualizar
+                                       # un BannerFuente con formatos.clasificar_fuente,
+                                       # que solo se sabe una vez cargado el archivo.
     }
 
 INVARIANTE DURA (SS3.2): nada de Tk vars en el worker. `_resolver_ctx` resuelve
@@ -55,6 +64,12 @@ Los `inputs` obligatorios se pintan arriba, los opcionales bajo el separador
 (mismo orden visual que autorem.py). Un `extras[].despues_de` = key de un
 input posiciona el bloque justo debajo de ese input (p.ej. Dotacion debajo
 del ADA); `despues_de: None` lo pinta al final (antes del boton Procesar).
+
+`Pagina.datos` es un dict COMPARTIDO por todas las `Pagina` de una misma
+pantalla (construccion, `on_elegido`, `preparar`, `al_completar`): sirve para
+pasarse cosas entre esas fases sin variables de modulo. Ver A23/SM: un extra
+arma un `widgets.BannerFuente` y lo guarda en `pagina.datos["banner_fuente"]`;
+`al_completar` lo recupera y lo actualiza con el resultado de la corrida.
 """
 
 from pathlib import Path
@@ -70,15 +85,19 @@ ANCHO_SIDEBAR = 210
 
 
 class Pagina:
-    """Lo que un `extras[].construir(frame, pagina)` puede necesitar de su
-    propia pagina (SS3.1 del plan): leer OTRO input ya elegido, el mes, y
-    escribir al mismo log / abrir dialogos sobre la misma ventana."""
+    """Lo que un `extras[].construir(frame, pagina)` (o un `on_elegido` de
+    input, o `al_completar`) puede necesitar de su propia pagina (SS3.1 del
+    plan): leer OTRO input ya elegido, el mes, escribir al mismo log / abrir
+    dialogos sobre la misma ventana, y un scratch COMPARTIDO (`datos`) para
+    pasarse cosas entre construccion y post-corrida (p.ej. un BannerFuente
+    que arma un extra y actualiza `al_completar`, ver A23/SM)."""
 
-    def __init__(self, app, getters, get_mes_celda, log):
+    def __init__(self, app, getters, get_mes_celda, log, datos):
         self.root = app
         self._getters = getters
         self._get_mes_celda = get_mes_celda   # celda mutable: ver nota en _construir_pagina
         self.log = log
+        self.datos = datos   # dict COMPARTIDO por TODAS las Pagina de esta pantalla
 
     def get(self, key):
         """Valor CRUDO (string o list[str]) del getter de ese input -- el
@@ -247,9 +266,11 @@ class App(ctk.CTk):
         get_mes = [None]   # celda mutable: un extra "despues_de" un input puede
                            # necesitar pagina.mes() antes de que el SelectorMes
                            # exista (se pinta despues de los inputs, SS4 del plan)
+        datos = {}   # scratch COMPARTIDO por todas las Pagina de esta pantalla
+                     # (p.ej. un BannerFuente que arma un extra y usa `al_completar`)
 
         def pagina_ctx():
-            return Pagina(self, getters, get_mes, self._log_de(pantalla["id"]))
+            return Pagina(self, getters, get_mes, self._log_de(pantalla["id"]), datos)
 
         def pintar_extras(despues_de):
             for extra in pantalla.get("extras", []):
@@ -272,13 +293,21 @@ class App(ctk.CTk):
         opcionales = [i for i in inputs if not i.get("obligatorio", True)]
 
         def pintar_input(inp):
+            # `on_elegido` (opcional) es una FACTORY -- (frame, pagina) -> callback(valor)
+            # -- mismo molde que `extras[].construir`. La usa el preview de fuente/cruce
+            # (SS5.1 del plan): correr algo barato apenas se elige el archivo, no recien
+            # al apretar Procesar. La factory puede armar su propio BannerFuente ahi
+            # mismo: como arranca oculto (`.pack_forget()`), el orden visual lo decide
+            # CUANDO se llama `.mostrar()` (mas tarde), no cuando se construye.
+            on_elegido = inp["on_elegido"](frame, pagina_ctx()) if inp.get("on_elegido") else None
             if inp.get("multi"):
                 getters[inp["key"]] = widgets.fila_archivos(
-                    frame, inp["etiqueta"], inp.get("titulo_dialogo", inp["etiqueta"]))
+                    frame, inp["etiqueta"], inp.get("titulo_dialogo", inp["etiqueta"]),
+                    on_elegido=on_elegido)
             else:
                 var = ctk.StringVar()
                 widgets.fila_archivo(frame, var, inp.get("titulo_dialogo", inp["etiqueta"]),
-                                     etiqueta=inp["etiqueta"])
+                                     etiqueta=inp["etiqueta"], on_elegido=on_elegido)
                 getters[inp["key"]] = var.get
 
         for inp in obligatorios:
@@ -325,6 +354,12 @@ class App(ctk.CTk):
                 if err is not None:
                     runner.manejar_error(err, log, messagebox)
                     return
+                if pantalla.get("al_completar"):
+                    # Hilo GUI, simetrico de `preparar` pero DESPUES del worker
+                    # (SS5.1 del plan): p.ej. actualizar un BannerFuente con
+                    # formatos.clasificar_fuente, que solo se sabe una vez que
+                    # el worker termino de cargar y resolver el archivo.
+                    pantalla["al_completar"](res, pagina_ctx())
                 texto = pantalla["resumen"](res) if pantalla.get("resumen") else "Listo."
                 log(""); log("OK " + texto.replace("\n", " | "))
                 carpeta = ctx.get("carpeta")

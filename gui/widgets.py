@@ -115,9 +115,10 @@ def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:", on_elegido
     ctk.CTkButton(fila, text="Examinar…", width=100, command=examinar).pack(side="left")
 
 
-def fila_archivos(parent, etiqueta, titulo):
+def fila_archivos(parent, etiqueta, titulo, on_elegido=None):
     """Fila con seleccion de VARIOS archivos (historico multi-anio). Devuelve
-    get() -> list[str]."""
+    get() -> list[str]. `on_elegido(lista)` (opcional) corre justo despues de
+    elegir -- lo usa SM para el preview de cruce ADA<->Grupal (SS5.1 del plan)."""
     from tkinter import filedialog
     fila = ctk.CTkFrame(parent, fg_color="transparent")
     fila.pack(fill="x", pady=(3, 3))
@@ -131,6 +132,8 @@ def fila_archivos(parent, etiqueta, titulo):
             sel[:] = list(fs)
             nombres = ", ".join(Path(f).name for f in sel)
             lbl.configure(text=f"{len(sel)}: " + (nombres[:70] + "…" if len(nombres) > 70 else nombres))
+            if on_elegido:
+                on_elegido(list(sel))
 
     ctk.CTkButton(fila, text="Examinar…", width=100, command=examinar).pack(side="left")
     lbl.pack(side="left", padx=8)
@@ -254,6 +257,25 @@ class BannerFuente(ctk.CTkFrame):
 
     def ocultar(self):
         self.pack_forget()
+
+
+def estado_fuente_de_avisos(avisos):
+    """(estado_banner, mensaje) para BannerFuente.mostrar(), extraido de un
+    `.attrs['avisos']` de A23/SM (formatos.aviso_fuente, ver programas/CLAUDE.md
+    SS_formatos). None si la fuente es plena (nada que avisar) o si no hay
+    ningun aviso de fuente en la lista.
+
+    Los avisos de fuente son identificables por su 2do elemento -- literales
+    estables que devuelve `aviso_fuente()` ('FUENTE PARCIAL' | 'EXPORT
+    CAMBIADO') -- y se buscan entre CUALQUIER otro aviso que la corrida haya
+    acumulado (ej. exclusiones de trabajo perdido): no se puede asumir que el
+    de fuente sea el primero ni el unico."""
+    for aviso in avisos or []:
+        _casilla, estado_txt, motivo, _que_hacer = aviso
+        if estado_txt in ("FUENTE PARCIAL", "EXPORT CAMBIADO"):
+            estado_banner = "parcial" if estado_txt == "FUENTE PARCIAL" else "cambiada"
+            return estado_banner, f"{estado_txt}: {motivo}"
+    return None
 
 
 class Reloj:

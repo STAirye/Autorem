@@ -33,7 +33,17 @@ esta marcado Y no hay ADA ni Grupal, corre SOLO el A03 (con el bloque de
 Estamentos que igual se necesita para el perfil Administrativo del
 screening) y se salta el bloque de Actividades Y la fase `preparar` de
 Dotacion (que necesita el ADA cargado; una corrida solo-cuestionarios no lo
-tiene)."""
+tiene).
+
+BANNERS DE FUENTE (SS5.1 del plan, agregado tras migrar A05):
+  - Preview de CRUCE en ADA/Grupal: barato (`formatos.parece_reporte` solo
+    cuenta firmas en el encabezado), asi que corre al ELEGIR el archivo via
+    `on_elegido` -- antes de apretar Procesar, no despues.
+  - Banner de fuente (`formatos.clasificar_fuente`, plena/parcial/cambiada):
+    corre DENTRO de `cargar_atenciones`, en el worker -- solo se sabe DESPUES
+    de Procesar, via `al_completar`. Misma asimetria que A23."""
+
+import threading
 
 import customtkinter as ctk
 
@@ -56,6 +66,77 @@ instrucciones = (
     "¿Solo necesitas los cuestionarios A03·D.3? Marca la casilla de más abajo y NO cargues\n"
     "ni ADA ni Grupal: corre solo esa tabla (reemplaza a la vieja pestaña A03 standalone)."
 )
+
+
+def _header_rapido(ruta, max_scan=40):
+    """Header CRUDO (lista de celdas) de la primera fila con pinta de
+    encabezado, leyendo SOLO las primeras `max_scan` filas -- el preview de
+    cruce (SS5.1 del plan) no necesita el archivo completo, y un ADA de un
+    anio puede ser grande. Mismo heuristico que `rem_utils.leer_xlsx` sin
+    ancla (>3 celdas llenas), pero sin leer el resto del archivo."""
+    import openpyxl
+    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    try:
+        filas = [list(r) for r in wb.active.iter_rows(values_only=True, max_row=max_scan)]
+    finally:
+        wb.close()
+    return next((r for r in filas if sum(v not in (None, "") for v in r) > 3),
+               filas[0] if filas else [])
+
+
+def _chequeo_cruce(frame, pagina, espera):
+    """Factory `on_elegido` para el input `espera` ('ada'|'grupal'): preview
+    BARATO de cruce (SS5.1 del plan) -- lee solo el encabezado, EN UN HILO
+    (no bloquea la ventana), y pinta un BannerFuente rojo si el archivo
+    parece el OTRO reporte del par. Empate o sin evidencia -> no se acusa
+    (`formatos.parece_reporte`: nunca un falso positivo sin evidencia)."""
+    banner = widgets.BannerFuente(frame)
+    nombres = {"ada": "Atenciones/Diag/Activ (ADA)", "grupal": "Atenciones Grupales"}
+
+    def on_elegido(archivos):
+        if not archivos:
+            banner.ocultar()
+            return
+
+        def trabajo():
+            from programas import formatos
+            try:
+                otro = formatos.parece_reporte(_header_rapido(archivos[0]))
+            except Exception:   # noqa: BLE001  (archivo raro -> no se acusa nada, silencioso aca)
+                otro = None
+            frame.after(0, lambda: _aplicar(otro))
+
+        def _aplicar(otro):
+            if otro is None or otro == espera:
+                banner.ocultar()
+            else:
+                banner.mostrar("no_reconocido",
+                    f"Esto parece el reporte de {nombres[otro]}, no el que va en esta "
+                    f"casilla ({nombres[espera]}). Revisa que no hayas cruzado los archivos.")
+
+        threading.Thread(target=trabajo, daemon=True).start()
+    return on_elegido
+
+
+def bloque_banner_fuente(frame, pagina):
+    """Banner de fuente del ADA (formatos.clasificar_fuente): arranca oculto,
+    `al_completar` lo actualiza DESPUES de la corrida -- a diferencia del
+    preview de cruce de arriba, esta clasificacion recien se sabe al cargar y
+    resolver el archivo de verdad, adentro del worker (SS5.1 del plan)."""
+    banner = widgets.BannerFuente(frame)
+    pagina.datos["banner_fuente"] = banner
+    return None
+
+
+def al_completar(res, pagina):
+    banner = pagina.datos.get("banner_fuente")
+    if banner is None or res.get("E") is None:   # solo_a03: no hubo ADA que clasificar
+        return
+    estado_mensaje = widgets.estado_fuente_de_avisos(res["E"].attrs.get("avisos"))
+    if estado_mensaje is None:
+        banner.mostrar("plena", "Fuente: A/D/A de IRIS completo.")
+    else:
+        banner.mostrar(*estado_mensaje)
 
 
 def _ada_grupal_obligatorio(getters):
@@ -235,10 +316,12 @@ PANTALLA = {
     "inputs": [
         {"key": "ada", "etiqueta": "Atenciones/Diag/Activ (ADA):", "multi": True,
          "obligatorio": _ada_grupal_obligatorio,
-         "titulo_dialogo": "Atenciones / Diagnósticos / Actividades"},
+         "titulo_dialogo": "Atenciones / Diagnósticos / Actividades",
+         "on_elegido": lambda frame, pagina: _chequeo_cruce(frame, pagina, "ada")},
         {"key": "grupal", "etiqueta": "Atenciones Grupales:", "multi": True,
          "obligatorio": _ada_grupal_obligatorio,
-         "titulo_dialogo": "Reporte de Atenciones Grupales"},
+         "titulo_dialogo": "Reporte de Atenciones Grupales",
+         "on_elegido": lambda frame, pagina: _chequeo_cruce(frame, pagina, "grupal")},
         {"key": "inscritos", "etiqueta": "Inscritos (opcional, TRANS):", "multi": True,
          "obligatorio": False, "titulo_dialogo": "Informe Inscritos y Adscritos - para el flag TRANS"},
         {"key": "multiprofesional", "etiqueta": "Multiprofesional (opc, A26):", "multi": True,
@@ -250,10 +333,12 @@ PANTALLA = {
     "mes": True,
     "carpeta_salida": True,
     "extras": [
+        {"despues_de": "ada", "construir": bloque_banner_fuente},
         {"despues_de": "grupal", "construir": bloque_dotacion_sm},
         {"despues_de": None, "construir": bloque_cuestionarios, "key": "a03"},
     ],
     "preparar": preparar,
     "correr": correr,
     "resumen": resumen,
+    "al_completar": al_completar,
 }

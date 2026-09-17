@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -27,7 +27,17 @@ aca que con cinco paginas ya migradas.
 `correr` debe devolver todo lo que `resumen` necesita para el texto de
 cierre (mes y ruta de salida incluidos) porque `resumen(resultado)` NO recibe
 `ctx` (SS3 del plan: el worker/resumen no tocan Tk vars ni el `ctx` de la
-GUI directamente, solo lo que `correr` decide devolver)."""
+GUI directamente, solo lo que `correr` decide devolver).
+
+`bloque_banner_fuente` + `al_completar` (SS5.1 del plan, agregado tras migrar
+A05): `formatos.clasificar_fuente` para A23 corre DENTRO de `cargar_atenciones`,
+en el worker -- a diferencia de A05 (deteccion barata al elegir el archivo),
+aca no hay banner posible ANTES de apretar Procesar, solo despues. El extra
+arma el BannerFuente y lo deja en `pagina.datos`; `al_completar` (hilo GUI,
+justo despues del worker) lo actualiza con lo que `procesar()` ya calculo y
+dejo en `fer.attrs['avisos']` (misma fuente que alimenta la hoja LEEME)."""
+
+from gui import widgets
 
 instrucciones = (
     "Tabula el REM A23 (Respiratorio) por paciente. Todos los inputs tienen PII -> quedan LOCALES.\n"
@@ -69,6 +79,25 @@ def resumen(res):
             f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
 
 
+def bloque_banner_fuente(frame, pagina):
+    """Arranca oculto: no hay nada que mostrar hasta que `al_completar` corra
+    despues de la primera corrida exitosa."""
+    banner = widgets.BannerFuente(frame)
+    pagina.datos["banner_fuente"] = banner
+    return None
+
+
+def al_completar(res, pagina):
+    banner = pagina.datos.get("banner_fuente")
+    if banner is None:   # no deberia pasar (el extra siempre lo arma primero), pero no reventar
+        return
+    estado_mensaje = widgets.estado_fuente_de_avisos(res["fer"].attrs.get("avisos"))
+    if estado_mensaje is None:
+        banner.mostrar("plena", "Fuente: A/D/A de IRIS completo.")
+    else:
+        banner.mostrar(*estado_mensaje)
+
+
 PANTALLA = {
     "id": "a23_respiratorio",
     "programa": "Respiratorio",
@@ -90,6 +119,10 @@ PANTALLA = {
     ],
     "mes": True,
     "carpeta_salida": True,
+    "extras": [
+        {"despues_de": "atenciones", "construir": bloque_banner_fuente},
+    ],
     "correr": correr,
     "resumen": resumen,
+    "al_completar": al_completar,
 }
