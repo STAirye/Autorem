@@ -92,10 +92,12 @@ def separador_opcionales(parent, texto="Opcionales"):
                  ).pack(anchor="w", pady=(0, 2))
 
 
-def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:"):
+def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:", on_elegido=None):
     """Fila '<etiqueta> [___] [Examinar...]', UN solo archivo. `etiqueta` por
     defecto sirve para paginas con un solo input; en paginas con varios,
-    pasar una etiqueta especifica para no confundir cual es cual."""
+    pasar una etiqueta especifica para no confundir cual es cual.
+    `on_elegido(ruta)` (opcional) corre justo despues de elegir el archivo --
+    lo usa A05 para disparar la deteccion de formato (SS5 del plan)."""
     from tkinter import filedialog
     fila = ctk.CTkFrame(parent, fg_color="transparent")
     fila.pack(fill="x", pady=(6, 6))
@@ -107,6 +109,8 @@ def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:"):
             title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
         if f:
             var_ruta.set(f)
+            if on_elegido:
+                on_elegido(f)
 
     ctk.CTkButton(fila, text="Examinar…", width=100, command=examinar).pack(side="left")
 
@@ -207,6 +211,49 @@ def crear_log(parent, root, height=10):
         txt.configure(state="disabled")
 
     return log, limpiar
+
+
+# -- BannerFuente: el color como estado de la fuente (GUI_2.0_plan.md SS5.1) --
+# Paleta medida en contraste WCAG (SS5.2 del plan; no aclarar el texto ni
+# oscurecer el fondo de 'parcial' sin recalcular -- 4.70:1 en claro es el
+# unico par ajustado, los demas tienen holgura de sobra). 'cambiada' (estado
+# dev-facing de formatos.clasificar_fuente) reusa el par ambar de 'parcial':
+# no necesita color propio. 'no_reconocido' cubre tanto un A05 sin match como
+# un archivo cruzado en los modulos pandas -- mismo rojo, mismo mensaje "cuidado".
+_PALETA_FUENTE = {
+    "plena":         {"fondo": ("#E4F2EF", "#12312C"), "texto": ("#0F4F45", "#8FD8C9")},
+    "parcial":       {"fondo": ("#FCF0DA", "#33280F"), "texto": ("#A05A00", "#F0C070")},
+    "cambiada":      {"fondo": ("#FCF0DA", "#33280F"), "texto": ("#A05A00", "#F0C070")},
+    "no_reconocido": {"fondo": ("#FBE6E4", "#3A1A18"), "texto": ("#8C1D18", "#F2B8B4")},
+    # Transitorio (no es un estado de la fuente, es "todavia no se sabe"):
+    # gris neutro, sin significado propio -- se reemplaza en <1s por uno real.
+    "detectando":    {"fondo": ("gray86", "gray17"), "texto": (COLOR_ATENUADO, COLOR_ATENUADO)},
+}
+
+
+class BannerFuente(ctk.CTkFrame):
+    """Franja de estado de la fuente: color + mensaje, NUNCA el color solo
+    (regla 1 de SS5.1 del plan -- el texto siempre dice lo mismo que el
+    color, para daltonismo y porque un color sin leyenda no se aprende solo).
+    Arranca oculta (nada que mostrar hasta que se detecte algo); `mostrar()`
+    la puebla y la despliega, `ocultar()` la esconde de nuevo (p.ej. si el
+    usuario borra la ruta elegida)."""
+
+    def __init__(self, parent):
+        super().__init__(parent, corner_radius=6)
+        self._label = etiqueta_envolvente(self, "")
+        self._label.pack(fill="x", padx=10, pady=6)
+        self.pack_forget()
+
+    def mostrar(self, estado, mensaje):
+        colores = _PALETA_FUENTE[estado]
+        self.configure(fg_color=colores["fondo"])
+        self._label.configure(text=mensaje, text_color=colores["texto"])
+        if not self.winfo_ismapped():
+            self.pack(fill="x", pady=(0, 6))
+
+    def ocultar(self):
+        self.pack_forget()
 
 
 class Reloj:
