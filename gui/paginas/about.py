@@ -24,12 +24,20 @@ programa. Expone `construir(frame, app)`.
 
 Contenido SS7: version + autor + licencia (boton que MUESTRA el texto
 completo en un Toplevel -- no depende de que Windows tenga un programa
-asociado a un archivo sin extension) + la frase "100% local" (redactada para
-argumentar la whitelist de un .exe sin firmar ante TI, ya vive en CLAUDE.md
-SS11 y ahi no la ve nadie) + credito de asistencia de IA + contacto SOLO la
-URL del repo, sin correo (decidido con el autor, sep-2026 -- NO agregar un
-correo aunque parezca que falta) + ediciones de catalogos DEIS (SS7.1a,
-leidas de catalogos/FUENTES.json).
+asociado a un archivo sin extension) + la frase "100% local" + credito de
+asistencia de IA + contacto SOLO la URL del repo, sin correo (decidido con
+el autor, sep-2026 -- NO agregar un correo aunque parezca que falta) +
+ediciones de catalogos DEIS (SS7.1a, leidas de catalogos/FUENTES.json) +
+el Maestro de Actividades SLIM (mismo `catalogos/`, GUI_2.0_plan.md SS10 y
+SS12, pero sin FUENTES.json -- no viene de un `.xlsx` publico del DEIS con
+edicion propia, es un recorte de un archivo interno de RAYEN).
+
+Texto revisado a mano con el autor (sep-2026): se sacó el argumento de
+"whitelist ante TI" (si la política institucional bloquea el .exe sin
+firmar, la persona nunca llega a leer esta pantalla para usarlo como
+argumento -- circular) y se agregó "Software de código abierto" +
+"Código de fuente" (antes solo decía "reportar un problema", sin dejar
+claro que el código se puede leer).
 
 Modo avanzado (SS7.1b -- "version completa", decidido con el autor sep-2026,
 con un ajuste tambien decidido con el autor): cargar a mano un .xlsx que
@@ -59,11 +67,7 @@ from gui import widgets
 
 REPO_URL = "https://github.com/STAirye/Autorem"
 
-_LOCAL_TXT = (
-    "Procesa todo localmente. No envía ningún dato a internet.\n"
-    "Argumento para pedir la whitelist de un .exe sin firmar ante TI del servicio de "
-    "salud: no hay nube que auditar (Ley 20.584 y 21.719)."
-)
+_LOCAL_TXT = "Procesa todo localmente. No envía ni descarga ningún dato de internet."
 
 # nombre -> override de esta SESION (Path del .xlsx cargado a mano, o ausente
 # si usa el catalogo incluido). Vive a nivel de modulo -- sobrevive a que el
@@ -210,6 +214,30 @@ def _bloque_catalogos(frame, root):
                     variable=var_avanzado, command=on_avanzado
                    ).pack(anchor="w", padx=8, pady=(0, 6))
     refrescar()
+    _fila_maestro(caja)
+
+
+def _fila_maestro(caja):
+    """El Maestro de Actividades SLIM (catalogos/maestro_slim.csv.gz, movido
+    desde refs_tablas/ -- feedback del autor, sep-2026: es un catalogo
+    actividad<->estamento<->REM igual que cie10/eno/ges, no un ejemplo
+    anonimizado). Sin FUENTES.json propio (no viene de un .xlsx publico del
+    DEIS con edicion versionada, es un recorte del Maestro interno de
+    RAYEN) -- se muestra aparte, con lo unico que hay: si esta presente y
+    su tamano. NO tiene modo avanzado: cargarlo a mano es
+    tools/slim_maestro.py, un flujo de desarrollo, no de la GUI."""
+    from gui import runner
+    ruta = runner.slim_por_defecto()
+    if ruta is None:
+        texto = ("Maestro de Actividades (actividad<->estamento<->REM)\n"
+                 "no encontrado en este empaquetado -- el Trabajo Perdido (Salud Mental) "
+                 "usa solo la heurística, menos preciso.")
+    else:
+        kb = Path(ruta).stat().st_size / 1024
+        texto = (f"Maestro de Actividades (actividad<->estamento<->REM)\n"
+                f"incluido en autoREM ({kb:,.0f} KB) -- lo usa el Trabajo Perdido "
+                f"(Salud Mental) para no caer en la heurística.")
+    widgets.etiqueta_envolvente(caja, texto).pack(fill="x", padx=8, pady=(4, 8))
 
 
 def construir(frame, app):
@@ -219,7 +247,7 @@ def construir(frame, app):
     caja_lic = widgets.caja_titulada(frame, "Licencia y privacidad")
     caja_lic.pack(fill="x", pady=(0, 8))
     widgets.etiqueta_envolvente(
-        caja_lic, "Licencia: GPL-3.0-or-later.\n" + _LOCAL_TXT
+        caja_lic, "Software de código abierto.\nLicencia: GPL-3.0-or-later.\n" + _LOCAL_TXT
     ).pack(fill="x", padx=8, pady=(2, 4))
     ctk.CTkButton(caja_lic, text="Ver licencia completa", width=180,
                  command=lambda: _ver_licencia(app)).pack(anchor="w", padx=8, pady=(0, 8))
@@ -234,5 +262,6 @@ def construir(frame, app):
         "El código de esta herramienta se escribió con asistencia de modelos de IA "
         "(Claude, Anthropic); el autor revisó, modificó e integró cada archivo "
         "(detalle en el encabezado de cada uno).\n"
+        f"Código de fuente: {REPO_URL}\n"
         f"Contacto / reportar un problema: {REPO_URL}"
     ).pack(fill="x", padx=8, pady=(2, 8))

@@ -23,22 +23,30 @@ otro toolkit (docs/GUI_2.0_plan.md, paso 3). `SelectorMes` es la unica pieza
 NUEVA de esta migracion: consolida un bloque que estaba duplicado tal cual en
 A23/SM/BETA (autorem.py) en una sola funcion.
 
-PENDIENTE A PROPOSITO (no en este paso): paleta clara/oscura centralizada
-(plan SS4/SS5.2) -- el color de aviso sigue hardcodeado (`COLOR_AVISO`) como
-en el Tk actual. Se centraliza cuando se aborde el modo oscuro.
-
 `ttk.Spinbox` no tiene equivalente en customtkinter 6.0.0 (no existe
 CTkSpinbox): se embebe el widget ttk tal cual dentro del CTkFrame, practica
-soportada por CTk. Puede necesitar un repaso visual cuando se trabaje el modo
-oscuro (SS4 del plan).
+soportada por CTk.
+
+MODO OSCURO (plan SS4/SS5.2, agregado tras habilitar el toggle en gui/app.py):
+`COLOR_AVISO`/`COLOR_ATENUADO` eran un string UNICO (el color de aviso del Tk
+actual, pensado solo para fondo blanco) -- pasan a tupla (claro, oscuro),
+medida en contraste WCAG igual que `_PALETA_FUENTE` (SS5.2 del plan), y
+reusan sus mismos tonos oscuros para que el lenguaje visual de "aviso" sea
+uno solo. El reloj de arena (`Reloj`, mas abajo) es la excepcion: dibuja
+sobre un `tkinter.Canvas` CRUDO (no CTk), asi que sus colores no se resuelven
+solos con una tupla -- se resuelven a mano con `root._apply_appearance_mode()`
+en cada tick (ver la clase).
 """
 
 from pathlib import Path
 
 import customtkinter as ctk
 
-COLOR_AVISO = "#a05a00"      # mismo color de aviso del proyecto (Tk actual)
-COLOR_ATENUADO = "#888888"   # texto secundario ("(vacio = ...)", "Opcionales")
+# Mismo tono oscuro que "parcial"/"cambiada" de _PALETA_FUENTE (mas abajo):
+# un solo lenguaje visual de "aviso" en toda la GUI, no dos paletas de avisos
+# midiendo contraste por separado.
+COLOR_AVISO = ("#a05a00", "#F0C070")      # 3.83:1 / 8.41:1 contra el fondo de pagina
+COLOR_ATENUADO = ("#888888", "#aaaaaa")   # texto secundario ("(vacio = ...)", "Opcionales")
 # 'top_fg_color' del tema de CTk: un paso mas oscuro/claro que el fondo por
 # defecto de un CTkFrame/CTkScrollableFrame, asi una caja titulada se nota
 # sin inventar un color nuevo (feedback visual del autor, sep-2026: las cajas
@@ -239,7 +247,7 @@ _PALETA_FUENTE = {
     "no_reconocido": {"fondo": ("#FBE6E4", "#3A1A18"), "texto": ("#8C1D18", "#F2B8B4")},
     # Transitorio (no es un estado de la fuente, es "todavia no se sabe"):
     # gris neutro, sin significado propio -- se reemplaza en <1s por uno real.
-    "detectando":    {"fondo": ("gray86", "gray17"), "texto": (COLOR_ATENUADO, COLOR_ATENUADO)},
+    "detectando":    {"fondo": ("gray86", "gray17"), "texto": COLOR_ATENUADO},
 }
 
 
@@ -292,13 +300,24 @@ class Reloj:
     sin porcentajes que mienten). Portado tal cual de autorem.py._Reloj (el
     dibujo usa un tkinter.Canvas crudo, que se embebe sin problema dentro de
     un CTkFrame). Se anima en el hilo de la GUI (`root.after`), por eso sigue
-    girando mientras el worker hace el trabajo pesado en OTRO hilo."""
+    girando mientras el worker hace el trabajo pesado en OTRO hilo.
+
+    MODO OSCURO: un `tkinter.Canvas` crudo no resuelve tuplas (claro, oscuro)
+    solo (eso es un truco de CTk) -- el fondo y los colores del dibujo se
+    resuelven a mano en cada tick con `root._apply_appearance_mode()` (el
+    mismo metodo que usa CTk puertas adentro), asi el reloj sigue el mismo
+    modo aunque alguien toque el toggle MIENTRAS esta girando."""
+
+    _BG = ("gray86", "gray17")             # mismo fondo que el resto de la pagina
+    _FILL = ("#c8801a", "#c8801a")         # ambar: contraste OK en los dos modos
+    _OUTLINE = ("#5a3200", "#f0b060")      # marron oscuro se pierde en fondo oscuro
 
     def __init__(self, parent, root, size=26):
         import tkinter as tk
         self.root = root
         self.size = size
-        self.cv = tk.Canvas(parent, width=size, height=size, highlightthickness=0)
+        self.cv = tk.Canvas(parent, width=size, height=size, highlightthickness=0,
+                            bg=root._apply_appearance_mode(self._BG))
         self.ang = 0
         self._job = None
 
@@ -306,7 +325,10 @@ class Reloj:
         import math
         s, a = self.size, math.radians(self.ang)
         c, r = s / 2, s * 0.34
+        self.cv.configure(bg=self.root._apply_appearance_mode(self._BG))
         self.cv.delete("all")
+        fill = self.root._apply_appearance_mode(self._FILL)
+        outline = self.root._apply_appearance_mode(self._OUTLINE)
 
         def pt(dx, dy):
             return (c + dx * math.cos(a) - dy * math.sin(a),
@@ -314,7 +336,7 @@ class Reloj:
         # Dos triangulos que se tocan en el centro = reloj de arena; al rotar, "gira".
         for tri in ([pt(-r, -r), pt(r, -r), pt(0, 0)],
                     [pt(-r, r), pt(r, r), pt(0, 0)]):
-            self.cv.create_polygon([v for p in tri for v in p], fill="#c8801a", outline="#5a3200")
+            self.cv.create_polygon([v for p in tri for v in p], fill=fill, outline=outline)
 
     def _tick(self):
         self._dibujar()

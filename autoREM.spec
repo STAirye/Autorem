@@ -4,7 +4,7 @@
 # CLAUDE.md §11:
 #
 #   pyinstaller --onefile --windowed --name "autoREM" \
-#     --add-data "refs_tablas/maestro_slim.csv.gz;refs_tablas" \
+#     --add-data "catalogos/maestro_slim.csv.gz;refs_tablas" \
 #     --add-data "catalogos;catalogos" autorem.py
 #
 # OJO con `datas`: son DATOS, no imports -> PyInstaller no los descubre solo.
@@ -12,7 +12,17 @@
 # codigo dentro del bundle (sys._MEIPASS):
 #
 #   autorem._slim_por_defecto()   -> _MEIPASS / "refs_tablas" / "maestro_slim.csv.gz"
+#   gui.runner.slim_por_defecto() -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
 #   programas.catalogos._carpetas -> _MEIPASS / "catalogos"
+#
+# El archivo FUENTE vive en `catalogos/maestro_slim.csv.gz` (feedback del autor,
+# sep-2026: es un catalogo actividad<->estamento<->REM igual que cie10/eno/ges,
+# no un ejemplo anonimizado como el resto de refs_tablas/ -- ver
+# tools/slim_maestro.py). La entrada `refs_tablas` de mas abajo es SOLO
+# compatibilidad con la GUI vieja (`autorem._slim_por_defecto()`, congelada
+# hasta el paso 11 de docs/GUI_2.0_plan.md -- no se toca `autorem.py` antes de
+# eso): copia el MISMO archivo a los dos destinos del bundle para que ninguna
+# de las dos GUI pierda el Trabajo Perdido con Maestro mientras conviven.
 #
 # Si falta el maestro slim, el Trabajo Perdido cae a heuristica (avisa en el log).
 # Si faltan los catalogos, `catalogos.cargar()` levanta FileNotFoundError.
@@ -26,8 +36,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('refs_tablas/maestro_slim.csv.gz', 'refs_tablas'),
-        ('catalogos', 'catalogos'),
+        ('catalogos/maestro_slim.csv.gz', 'refs_tablas'),   # compat GUI vieja, ver nota arriba
+        ('catalogos', 'catalogos'),                          # incluye maestro_slim.csv.gz para la GUI 2.0
     ],
     # `programas.catalogos` (§14) es una capa compartida que TODAVIA NO tiene
     # consumidor: ningun modulo del exe la importa (solo tools/, que no se

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.15
 #
 # Distributed WITHOUT ANY WARRANTY. GPL-3.0-or-later:
 # <https://www.gnu.org/licenses/>.
@@ -18,12 +18,15 @@ slim_maestro.py — genera el Maestro de Actividades SLIM (versionado) desde el 
 El 'Maestro de Actividades' completo (.xlsx, ~7.7 MB, 218k filas × 11 col) es catálogo
 de por vida pero pesa demasiado para el repo. Este script lo recorta a lo que usa la
 herramienta —ACTIVIDAD · INSTRUMENTO ASOCIADO · NUM REM · NUM SECCION · REM (sin las 6
-flags booleanas)— y lo guarda comprimido en `refs_tablas/maestro_slim.csv.gz` (~1.2 MB,
-whitelisteado en .gitignore). NO contiene PII de paciente (solo actividades, estamentos
-y su clasificación REM).
+flags booleanas)— y lo guarda comprimido en `catalogos/maestro_slim.csv.gz` (~1.2 MB,
+versionado en bloque junto a cie10/eno/ges, GUI_2.0_plan.md §10 §12: es un catálogo
+actividad<->estamento<->REM igual que esos tres, no un ejemplo anonimizado como el
+resto de `refs_tablas/`). NO contiene PII de paciente (solo actividades, estamentos y su
+clasificación REM).
 
-Flujo: el Maestro completo vive LOCAL (gitignored). Cuando MINSAL/RAYEN lo actualice
-(~semestral), reemplázalo y re-corre este script para regenerar el slim versionado.
+Flujo: el Maestro completo vive LOCAL, en `refs_tablas/` (gitignored: no tiene entrada
+en la whitelist). Cuando MINSAL/RAYEN lo actualice (~semestral), reemplázalo y re-corre
+este script para regenerar el slim versionado.
 
 USO:
     python tools/slim_maestro.py                       # usa el .xlsx completo de refs/
@@ -38,9 +41,10 @@ sys.path.insert(0, str(REPO))
 
 from programas.rem_utils import cargar_maestro   # noqa: E402
 
-CARPETA = REPO / "refs_tablas"
-FULL_DEFAULT = CARPETA / "Maestro_de_Actividades.xlsx"
-SLIM = CARPETA / "maestro_slim.csv.gz"
+CARPETA_ENTRADA = REPO / "refs_tablas"    # el Maestro COMPLETO, local, gitignored
+FULL_DEFAULT = CARPETA_ENTRADA / "Maestro_de_Actividades.xlsx"
+CARPETA_SALIDA = REPO / "catalogos"       # el slim, versionado (ver docstring)
+SLIM = CARPETA_SALIDA / "maestro_slim.csv.gz"
 
 # Columnas canónicas -> nombre de salida (mismos headers que el completo, para que
 # cargar_maestro los resuelva igual).
@@ -65,7 +69,7 @@ def main(argv):
     slim.to_csv(SLIM, index=False, compression="gzip")
     mb = SLIM.stat().st_size / 1e6
     print(f"OK Slim escrito: {SLIM.relative_to(REPO)}  ({len(slim)} filas, {mb:.2f} MB)")
-    print("  Versionar:  git add -f \"refs_tablas/maestro_slim.csv.gz\"")
+    print("  Versionar:  git add \"catalogos/maestro_slim.csv.gz\"")
     return 0
 
 

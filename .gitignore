@@ -54,15 +54,15 @@ SENSITIVE_PII/
 # programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible
 # del proyecto (nombre, RUT, direccion, telefonos, email) -> el crudo NUNCA al repo.
 !refs_tablas/Informe_Inscritos__Adscritos_heads.xlsx
-# Maestro de Actividades SLIM (catálogo actividad↔estamento↔REM, sin PII de paciente;
-# generado por tools/slim_maestro.py desde el Maestro completo local). Ver §8.
-!refs_tablas/maestro_slim.csv.gz
 
 # --- Catálogos oficiales DEIS/MINSAL (catalogos/) — SÍ versionados, en bloque ---
 # Otra naturaleza que refs_tablas/: no son "ejemplos anonimizados" sino DATOS
-# PÚBLICOS que la herramienta SHIPPEA (CIE-10, ENO, GES). Por eso van en bloque y
-# no con whitelist por archivo: no hay decisión de PII que tomar archivo por
-# archivo, son documentos publicados por el Ministerio.
+# PÚBLICOS que la herramienta SHIPPEA (CIE-10, ENO, GES; y desde GUI_2.0_plan.md
+# §10/§12, también el Maestro de Actividades SLIM -- mismo tipo de catálogo
+# actividad<->estamento<->REM, sin PII, generado por tools/slim_maestro.py). Por eso
+# van en bloque y no con whitelist por archivo: no hay decisión de PII que tomar
+# archivo por archivo para los tres del DEIS (documentos publicados por el
+# Ministerio); el Maestro slim la tiene resuelta aparte, en su propio script.
 # Los .xlsx ORIGINALES del DEIS NO se versionan (se rebajan con --fetch cuando
 # haga falta); al repo va el slim + FUENTES.json, que registra QUÉ EDICIÓN es.
 # OJO: el pre-commit anti-RUT SALTA los binarios (.gz), así que un slim no lo

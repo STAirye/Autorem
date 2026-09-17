@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -61,13 +61,16 @@ def dir_salida_default():
 def slim_por_defecto():
     """Ruta del Maestro SLIM que shippea el repo/exe (`maestro_slim.csv.gz`), o
     None. Busca en el bundle de PyInstaller (si esta congelado) y junto al
-    codigo."""
+    codigo. Vive en `catalogos/` (feedback del autor, sep-2026: es un
+    catalogo actividad<->estamento<->REM igual que cie10/eno/ges, no un
+    ejemplo anonimizado como el resto de `refs_tablas/`) -- ver autoREM.spec
+    y tools/slim_maestro.py, que tienen que apuntar al mismo lugar."""
     cands = []
     if getattr(sys, "frozen", False):
         base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-        cands += [base / "refs_tablas" / "maestro_slim.csv.gz",
+        cands += [base / "catalogos" / "maestro_slim.csv.gz",
                   Path(sys.executable).parent / "maestro_slim.csv.gz"]
-    cands.append(Path(__file__).resolve().parent.parent / "refs_tablas" / "maestro_slim.csv.gz")
+    cands.append(Path(__file__).resolve().parent.parent / "catalogos" / "maestro_slim.csv.gz")
     return next((str(c) for c in cands if c.exists()), None)
 
 

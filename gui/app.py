@@ -98,6 +98,48 @@ PAGINAS_ESPECIALES = (
 )
 
 
+def _cabecera_sidebar(programa):
+    """Encabezado VISUAL del sidebar para `programa` -- feedback del autor
+    (sep-2026): "Salud Mental" y "Salud Mental -- Poblacion" son un solo
+    programa de salud en dos estados de VALIDACION (CLAUDE.md SS9, matriz de
+    programas), no dos secciones del sidebar. `registro.ORDEN_PROGRAMAS` los
+    sigue trackeando aparte (asi el roadmap distingue "SM estable" de
+    "SM-poblacion en validacion"); esto solo cambia como se AGRUPAN al
+    dibujar, nunca el dato de la PANTALLA."""
+    return "Salud Mental" if programa.startswith("Salud Mental") else programa
+
+
+def _grupo_colapsable(barra, titulo):
+    """Cabecera de programa CLICKEABLE que colapsa/expande su contenido
+    (feedback del autor, sep-2026). Devuelve el frame `contenido` donde el
+    caller sigue empacando los botones de pagina -- el estado
+    expandido/colapsado es una variable de Python (`estado["expandido"]`),
+    NO `winfo_ismapped()`: ese metodo puede devolver `False` para un widget
+    recien empacado hasta el primer ciclo de eventos (ya nos mordio una vez
+    con `BannerFuente` en un test, ver spike del paso 8), asi que confiar en
+    el ESTADO PROPIO evita ese mismo problema aca."""
+    grupo = ctk.CTkFrame(barra, fg_color="transparent")
+    grupo.pack(fill="x")
+    contenido = ctk.CTkFrame(grupo, fg_color="transparent")
+    contenido.pack(fill="x")
+    estado = {"expandido": True}
+
+    def alternar():
+        estado["expandido"] = not estado["expandido"]
+        if estado["expandido"]:
+            contenido.pack(fill="x")
+            header.configure(text=f"-  {titulo.upper()}")
+        else:
+            contenido.pack_forget()
+            header.configure(text=f"+  {titulo.upper()}")
+
+    header = ctk.CTkButton(grupo, text=f"-  {titulo.upper()}", anchor="w",
+                           fg_color="transparent", text_color=widgets.COLOR_ATENUADO,
+                           font=ctk.CTkFont(size=11, weight="bold"), command=alternar)
+    header.pack(fill="x", padx=6, pady=(10, 2))
+    return contenido
+
+
 class Pagina:
     """Lo que un `extras[].construir(frame, pagina)` (o un `on_elegido` de
     input, o `al_completar`) puede necesitar de su propia pagina (SS3.1 del
@@ -235,17 +277,27 @@ class App(ctk.CTk):
         barra = ctk.CTkScrollableFrame(self, width=ANCHO_SIDEBAR,
                                        label_text=f"autoREM {VERSION}")
         barra.grid(row=0, column=0, sticky="nsw")
+
+        # Cabecera VISUAL, no `pantalla["programa"]` (feedback del autor,
+        # sep-2026): "Salud Mental" y "Salud Mental -- Poblacion" son un
+        # solo programa de salud en dos estados de VALIDACION (CLAUDE.md
+        # SS9, matriz de programas) -- una sola seccion en el sidebar, sin
+        # tocar `registro.ORDEN_PROGRAMAS` (que los sigue trackeando
+        # aparte, y de donde sale el orden real de iteracion aca abajo).
+        cabecera_actual = None
+        contenido = None
         for programa in programas_en_orden(self.registro):
-            ctk.CTkLabel(barra, text=programa.upper(), text_color=widgets.COLOR_ATENUADO,
-                        anchor="w", font=ctk.CTkFont(size=11, weight="bold")
-                        ).pack(fill="x", padx=6, pady=(10, 2))
+            cabecera = _cabecera_sidebar(programa)
+            if cabecera != cabecera_actual:
+                cabecera_actual = cabecera
+                contenido = _grupo_colapsable(barra, cabecera)
             for pantalla in self.registro:
                 if pantalla["programa"] != programa:
                     continue
                 texto = pantalla["titulo"]
                 if pantalla.get("estado") == "beta":
                     texto += "  [BETA]"
-                btn = ctk.CTkButton(barra, text=texto, anchor="w", fg_color="transparent",
+                btn = ctk.CTkButton(contenido, text=texto, anchor="w", fg_color="transparent",
                                     text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
                                     command=lambda pid=pantalla["id"]: self.mostrar(pid))
                 btn.pack(fill="x", padx=6, pady=1)
@@ -261,6 +313,24 @@ class App(ctk.CTk):
                                 command=lambda pid=pid: self.mostrar(pid))
             btn.pack(fill="x", padx=6, pady=1)
             self._botones_sidebar[pid] = btn
+
+        # Toggle claro/oscuro (SS4 del plan): al final de todo, abajo
+        # (feedback del autor, sep-2026). El modo oscuro es "gratis" en CTk
+        # (`set_appearance_mode`), pero el plan pide auditar antes los
+        # colores hardcodeados que venian del Tk actual -- ver
+        # widgets.COLOR_AVISO / COLOR_ATENUADO / Reloj, ya con tupla
+        # (claro, oscuro) o resueltos a mano por modo.
+        ctk.CTkFrame(barra, height=1, fg_color=widgets.COLOR_ATENUADO
+                    ).pack(fill="x", padx=6, pady=(12, 4))
+        switch_oscuro = ctk.CTkSwitch(barra, text="Modo oscuro",
+                                      command=self._alternar_tema)
+        if ctk.get_appearance_mode() == "Dark":
+            switch_oscuro.select()
+        switch_oscuro.pack(anchor="w", padx=6, pady=(2, 10))
+
+    def _alternar_tema(self):
+        nuevo = "dark" if ctk.get_appearance_mode() == "Light" else "light"
+        ctk.set_appearance_mode(nuevo)
 
     def mostrar(self, pantalla_id):
         """Router: construye la pagina la PRIMERA vez (perezoso) y la trae al
