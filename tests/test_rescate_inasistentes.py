@@ -289,6 +289,21 @@ def test_aviso_de_desfase_llega_a_la_hoja_leeme():
     assert "2026-08" in texto and "2026-02" in texto, "el desfase debe quedar en el LEEME"
 
 
+# ======================================================================
+# Inscritos vacío (0 filas de datos): fail loud, no AttributeError críptico
+# ======================================================================
+def test_inscritos_vacio_falla_ruidoso_no_attributeerror():
+    """Un Inscritos con solo el encabezado (0 filas de datos, como los
+    refs_tablas/*.xlsx que son SOLO HEADER) debe levantar ArchivoInvalido
+    ACÁ, no reventar más abajo con un AttributeError críptico cuando una
+    columna vacía queda dtype float64 y .str.contains() la rechaza."""
+    try:
+        pob.cargar_inscritos(_mk_inscritos([]), log=_quiet)
+        assert False, "debió rechazar un Inscritos sin filas de datos"
+    except ArchivoInvalido as ai:
+        assert ai.categoria == "sin_datos"
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
               if k.startswith("test_") and callable(v)]
