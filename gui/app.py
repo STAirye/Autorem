@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -174,8 +174,10 @@ class App(ctk.CTk):
     def __init__(self, registro=None):
         super().__init__()
         self.title(f"autoREM {VERSION}")
-        self.geometry("1000x760")
-        self.minsize(840, 640)
+        # Ancho por defecto (feedback del autor, sep-2026: 1000 quedaba
+        # estrecho contra las instrucciones/etiquetas largas de las paginas).
+        self.geometry("1180x820")
+        self.minsize(980, 680)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -235,12 +237,10 @@ class App(ctk.CTk):
         ctk.CTkLabel(frame, text=pantalla["titulo"],
                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 6))
         if pantalla.get("instrucciones"):
-            caja = ctk.CTkFrame(frame)
+            caja = widgets.caja_titulada(frame, "Instrucciones")
             caja.pack(fill="x", pady=(0, 8))
-            ctk.CTkLabel(caja, text="Instrucciones", anchor="w",
-                        font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=8, pady=(6, 0))
-            ctk.CTkLabel(caja, text=pantalla["instrucciones"], justify="left"
-                        ).pack(anchor="w", padx=8, pady=(2, 8))
+            widgets.etiqueta_envolvente(caja, pantalla["instrucciones"]
+                                       ).pack(fill="x", padx=8, pady=(2, 8))
         widgets.aviso_sin_modificar(frame)
 
         getters = {}

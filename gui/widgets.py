@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -39,6 +39,11 @@ import customtkinter as ctk
 
 COLOR_AVISO = "#a05a00"      # mismo color de aviso del proyecto (Tk actual)
 COLOR_ATENUADO = "#888888"   # texto secundario ("(vacio = ...)", "Opcionales")
+# 'top_fg_color' del tema de CTk: un paso mas oscuro/claro que el fondo por
+# defecto de un CTkFrame/CTkScrollableFrame, asi una caja titulada se nota
+# sin inventar un color nuevo (feedback visual del autor, sep-2026: las cajas
+# se perdian contra el fondo de la pagina).
+COLOR_CAJA = ("gray81", "gray20")
 
 _AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
                         "sin abrirlos, editarlos ni re-guardarlos.\n"
@@ -46,10 +51,35 @@ _AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRI
                         "puede fallar en silencio o dar cifras erróneas.")
 
 
+def etiqueta_envolvente(parent, text, **kwargs):
+    """CTkLabel que AJUSTA su wraplength al ancho de `parent` en cada resize,
+    en vez de desbordar horizontalmente (feedback del autor, sep-2026: prefiere
+    esto a un scrollbar horizontal). `parent` debe ser un contenedor que se
+    estire con la ventana (pack fill='x' o similar) -- su ancho real es el
+    que manda."""
+    lbl = ctk.CTkLabel(parent, text=text, justify="left", anchor="w", **kwargs)
+    parent.bind("<Configure>", lambda e: lbl.configure(wraplength=max(e.width - 20, 50)), add="+")
+    return lbl
+
+
+def caja_titulada(parent, titulo):
+    """Caja con encabezado en negrita y fondo (COLOR_CAJA) sutilmente distinto
+    del resto de la pagina. Reemplaza el patron repetido de
+    ttk.LabelFrame(text=...) del Tk viejo (Instrucciones, Estamentos,
+    Dotacion, Cuestionarios). NO se empaca sola -- el llamador decide el
+    `pack`/`pack_forget` (algunas cajas arrancan ocultas, p.ej. el bloque de
+    cuestionarios de SM Actividades) y empaca su contenido adentro, debajo
+    del encabezado."""
+    caja = ctk.CTkFrame(parent, fg_color=COLOR_CAJA)
+    ctk.CTkLabel(caja, text=titulo, anchor="w", font=ctk.CTkFont(weight="bold")
+                ).pack(fill="x", padx=8, pady=(6, 0))
+    return caja
+
+
 def aviso_sin_modificar(parent):
     """Recordatorio (todas las paginas) de cargar los exports SIN modificar."""
-    ctk.CTkLabel(parent, text=_AVISO_SIN_MODIFICAR, justify="left",
-                 text_color=COLOR_AVISO, anchor="w").pack(fill="x", pady=(0, 6))
+    etiqueta_envolvente(parent, _AVISO_SIN_MODIFICAR, text_color=COLOR_AVISO
+                        ).pack(fill="x", pady=(0, 6))
 
 
 def separador_opcionales(parent, texto="Opcionales"):

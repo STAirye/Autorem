@@ -85,7 +85,7 @@ def bloque_cuestionarios(frame, pagina):
     ctk.CTkCheckBox(frame, text="¿Incluir cuestionarios?  (genera además la tabla A03·D.3)",
                     variable=var_incluir, command=lambda: _toggle()).pack(anchor="w", pady=(6, 0))
 
-    caja = ctk.CTkFrame(frame)
+    caja = widgets.caja_titulada(frame, "Cuestionarios A03·D.3 (PSC / PSC-Y / GHQ-12)")
 
     def _toggle():
         if var_incluir.get():
@@ -93,8 +93,6 @@ def bloque_cuestionarios(frame, pagina):
         else:
             caja.pack_forget()
 
-    ctk.CTkLabel(caja, text="Cuestionarios A03·D.3 (PSC / PSC-Y / GHQ-12)", anchor="w",
-                font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=8, pady=(6, 0))
     slots = {
         "PSC": widgets.fila_archivos(caja, "PSC (padres, 5-9):", "Cuestionario para Padres PSC"),
         "PSC-Y": widgets.fila_archivos(caja, "PSC-Y (10-14):", "Cuestionario para Adolescentes (PSC-Y)"),

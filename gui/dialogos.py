@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -49,22 +49,20 @@ def bloque_estamentos(parent):
     """Cuadro para cargar la tabla de estamentos ('Utilizacion de Cupos'), con
     el porque y las instrucciones. Devuelve get_ruta() -> str (ruta elegida,
     '' si nada)."""
-    from gui.widgets import fila_archivo, COLOR_AVISO
-    caja = ctk.CTkFrame(parent)
+    from gui.widgets import fila_archivo, caja_titulada, etiqueta_envolvente, COLOR_AVISO
+    caja = caja_titulada(parent, "Estamentos (para formato Administrativo)")
     caja.pack(fill="x", pady=(2, 6))
-    ctk.CTkLabel(caja, text="Estamentos (para formato Administrativo)", anchor="w",
-                font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=8, pady=(6, 0))
-    ctk.CTkLabel(caja, justify="left", text_color=COLOR_AVISO, anchor="w", text=(
+    etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
         "¿Por qué? El reporte Administrativo NO indica el estamento de quien atendió, "
         "solo el nombre.\nLa tabla del equipo QUEDA GUARDADA (caché en ~/.autorem): "
         "cárgala una vez y los meses siguientes se autocompleta sola.\nVuelve a cargar "
         "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).")
-        ).pack(anchor="w", padx=8, pady=(4, 0))
-    ctk.CTkLabel(caja, justify="left", anchor="w", text=(
+        ).pack(fill="x", padx=8, pady=(4, 0))
+    etiqueta_envolvente(caja, text=(
         "En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes "
         "Estadísticos -> Otros -> Utilización de Cupos,\ncon fecha de un día en que hubo "
         "atenciones de TODO tu equipo. Copia el reporte completo, pásalo a Excel y "
-        "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(anchor="w", padx=8, pady=(4, 4))
+        "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(fill="x", padx=8, pady=(4, 4))
     var = tk.StringVar()
     fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
     return lambda: (var.get() or "").strip().strip('"').strip("'")
@@ -182,18 +180,16 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
     elegido para tener algo que mostrar. `get_ada`/`get_mes` son los getters
     de la pagina; `mask` filtra a lo que tributa a ese REM."""
     import tkinter.messagebox as messagebox
-    from gui.widgets import COLOR_AVISO
-    caja = ctk.CTkFrame(parent)
+    from gui.widgets import caja_titulada, etiqueta_envolvente, COLOR_AVISO
+    caja = caja_titulada(parent, "Dotación (separar funcionarios externos)")
     caja.pack(fill="x", pady=(2, 6))
-    ctk.CTkLabel(caja, text="Dotación (separar funcionarios externos)", anchor="w",
-                font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=8, pady=(6, 0))
-    ctk.CTkLabel(caja, justify="left", text_color=COLOR_AVISO, anchor="w", text=(
+    etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
         "¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que "
         "NO son de tu dotación (p.ej. la sala AIDIA); no deben tributar a este REM (doble "
         "conteo).\nLa PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes "
         "aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo "
         "por los nombres nuevos.\nLa tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).")
-        ).pack(anchor="w", padx=8, pady=(4, 4))
+        ).pack(fill="x", padx=8, pady=(4, 4))
 
     def _precargar():
         ada = get_ada()
