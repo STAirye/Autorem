@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.5
+# Version: 1.9.16
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -238,6 +238,17 @@ def cargar_inscritos(entrada, log=print):
         d = d[~es_responsable]
 
     d = d.drop_duplicates(subset="RUN", keep="last").reset_index(drop=True)
+    if len(d) == 0:
+        # Fail loud sobre la FUENTE (CLAUDE.md regla 2), no sobre una casilla mas
+        # abajo: con 0 filas, las columnas de mas adelante (ALERTAS, etc.) quedan
+        # con dtype float64 en vez de object y revientan con un AttributeError
+        # criptico en .str.contains(), en vez de decir claramente que el archivo
+        # esta vacio.
+        raise ArchivoInvalido(
+            "sin_datos",
+            "El 'Informe Inscritos y Adscritos' no trae ninguna fila de datos.\n\n"
+            "Revisa que sea el export completo de RAYEN (no solo el encabezado) "
+            "y que este sin modificar.")
     log(f"[poblacion] Inscritos: {len(d)} personas (snapshot)")
     return d
 

@@ -10,6 +10,19 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [1.9.16] — 2026-09-17
+
+### Corregido
+- **`poblacion.cargar_inscritos` falla ruidoso con un Inscritos sin filas de datos**,
+  en vez de reventar más abajo (`construir_poblacion`, columna PROTECCION NIÑEZ) con
+  un `AttributeError: Can only use .str accessor with string values, not floating`.
+  Con 0 filas, `DataFrame({...: []})` infiere `float64` en vez de `object`, y
+  `.str.contains()` sobre esa columna rompe con un traceback críptico en vez de un
+  `ArchivoInvalido` claro. Se encontró al probar `gui/paginas/poblacion.py` (GUI 2.0)
+  contra los `refs_tablas/*.xlsx` reales del repo, que son solo header (§2 raíz) —
+  0 filas de datos, exactamente el caso que dispara esto. No es parte de la
+  migración de GUI: es un bug preexistente en la capa compartida `programas/`.
+
 ## [1.9.15] — 2026-09-15
 
 ### Agregado
