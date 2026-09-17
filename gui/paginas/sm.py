@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -178,7 +178,7 @@ def correr(ctx, log):
             Etp = tpmod.procesar(ctx["ada"], maestro=maestro, mes=(y, m), log=log, d=ctx["d"])
             tpmod.escribir(Etp, salida_tp)
             res["n_tp"] = len(Etp)
-            log(f"OK Trabajo perdido: {len(Etp)} atenciones a saco vacío -> {salida_tp.name}")
+            log(f"OK Trabajo perdido: {len(Etp)} atenciones a saco roto -> {salida_tp.name}")
         except Exception as e:   # noqa: BLE001
             log(f"[tp] no se generó el reporte de trabajo perdido: {e}")
 
@@ -201,7 +201,7 @@ def correr(ctx, log):
                 # un "Listo" con 'None aplicaciones' tapando el error real.
                 _correr_a03()
             else:
-                # Mismo criterio que el resto del "saco vacio"/Trabajo Perdido:
+                # Mismo criterio que el resto del "saco roto"/Trabajo Perdido:
                 # A03 es un AÑADIDO al run de Actividades, que ya se guardo arriba;
                 # un fallo aca no debe tumbar ese resultado ya bueno.
                 try:
@@ -222,7 +222,7 @@ def resumen(res):
     E = res["E"]
     resu = E.attrs["tablas"]["SM_Resumen"]
     rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
-    tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco vacío." if res["n_tp"] is not None else ""
+    tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco roto." if res["n_tp"] is not None else ""
     a03txt = f"\nA03·D.3: {res['n_a03']} aplicaciones." if res["n_a03"] is not None else ""
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
             f"{rtxt}\n\nGuardado en:\n{res['salida']}")
@@ -245,7 +245,7 @@ PANTALLA = {
          "obligatorio": False, "titulo_dialogo": "Informe Inscritos y Adscritos - para el flag TRANS"},
         {"key": "multiprofesional", "etiqueta": "Multiprofesional (opc, A26):", "multi": True,
          "obligatorio": False, "titulo_dialogo": "Monitoreo Multiprofesional - composición de VDI en A26"},
-        {"key": "maestro", "etiqueta": "Maestro (opc, saco vacío):", "multi": True,
+        {"key": "maestro", "etiqueta": "Maestro (opc, saco roto):", "multi": True,
          "obligatorio": False,
          "titulo_dialogo": "Maestro de Actividades - catálogo RAYEN para clasificar el trabajo perdido"},
     ],
