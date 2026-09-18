@@ -45,6 +45,21 @@ def _col(presentes):
     return {k: (f"col_{k}" if k in presentes else None) for k in TODAS}
 
 
+def _con_una_fila(origen, destino):
+    """Copia un export de `refs_tablas/` agregandole UNA fila sintetica de relleno.
+
+    Las planillas de ejemplo del repo son HEADER-ONLY a proposito (privacidad), pero
+    `cargar_canonico` ahora exige filas de datos (guarda sobre la FUENTE, CLAUDE.md
+    regla 2). Los tests que necesitan el ENCABEZADO REAL como guardarrail -y no los
+    datos- pasan por aca: el header sigue siendo el del export de verdad."""
+    import openpyxl
+    wb = openpyxl.load_workbook(origen)
+    ws = wb.active
+    ws.append(["x"] * ws.max_column)
+    wb.save(destino)
+    return destino
+
+
 # -- Los tres estados ---------------------------------------------------------
 
 def test_todas_las_claves_presentes_es_fuente_plena():
@@ -115,8 +130,8 @@ def test_el_ada_iris_real_clasifica_como_plena():
 
 
 @pytest.mark.skipif(not ADA_IRIS.exists(), reason="falta el export IRIS de ejemplo")
-def test_cargar_canonico_deja_el_veredicto_en_attrs():
-    d, _col = cargar_canonico(ADA_IRIS, None,
+def test_cargar_canonico_deja_el_veredicto_en_attrs(tmp_path):
+    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
                               lambda h: resolver_columnas(h, MAPA_ATENCIONES),
                               solo_iris=formatos.SOLO_IRIS_ATENCIONES,
                               log=lambda *a, **k: None)
@@ -225,20 +240,23 @@ def test_el_aten_id_de_iris_NO_se_namespacea(tmp_path):
     assert d["ATENID"].nunique() == 1, "el ATEN ID global no debe namespacearse"
 
 
-def test_sin_solo_iris_no_clasifica_nada():
+def test_sin_solo_iris_no_clasifica_nada(tmp_path):
     """Compatibilidad: los cargadores que no pasan `solo_iris` siguen igual."""
-    d, _col = cargar_canonico(ADA_IRIS, None,
+    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
                               lambda h: resolver_columnas(h, MAPA_ATENCIONES),
                               log=lambda *a, **k: None)
     assert "fuente" not in d.attrs
 
 
 @pytest.mark.skipif(not ADA_IRIS.exists(), reason="falta el export IRIS de ejemplo")
-def test_fuente_parcial_se_loguea_ruidosa():
+def test_fuente_parcial_se_loguea_ruidosa(tmp_path):
     """No basta con dejarlo en attrs: tiene que salir por el log (fail-loud)."""
     dicho = []
-    cargar_canonico(ADA_IRIS, None,
-                    lambda h: {k: None for k in TODAS} | {"RUN": "RUN"},
+    # `h[0]` y no "RUN" a secas: la unica clave que resuelve tiene que apuntar a una
+    # columna que EXISTA en el header (antes esto pasaba de casualidad, porque con el
+    # export header-only no habia ninguna fila que indexar).
+    cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
+                    lambda h: {k: None for k in TODAS} | {"RUN": h[0]},
                     solo_iris=TODAS, log=lambda m: dicho.append(str(m)))
     assert any("PARCIAL" in m for m in dicho)
 
@@ -266,3 +284,62 @@ def test_verificar_cruce_solo_dispara_al_reves():
         formatos.verificar_cruce(ada, "grupal", "x.xlsx")   # cruzado: levanta
     assert ex.value.categoria == "cruzados"
     assert "multitudes" in str(ex.value)
+
+
+# -- detectar_eje sobre FILAS vs sobre la hoja completa -----------------------
+A05_IRIS = RAIZ / "refs_tablas" / "Formularios_RAYEN_csm_IRis.xlsx"
+A05_ADMIN = RAIZ / "refs_tablas" / "Formulario_csm_reporte_Administrativo.xlsx"
+
+
+def _cheap(ruta):
+    """Lo que hace la GUI al elegir un archivo: leer SOLO el encabezado."""
+    from itertools import islice
+    import openpyxl
+    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    try:
+        return list(islice(wb.active.iter_rows(values_only=True),
+                           formatos.MAX_FILAS_HEADER))
+    finally:
+        wb.close()
+
+
+def _full(ruta):
+    import openpyxl
+    return openpyxl.load_workbook(ruta, data_only=True).active
+
+
+@pytest.mark.parametrize("ruta,espera", [(A05_IRIS, "iris"), (A05_ADMIN, "administrativo")])
+def test_detectar_eje_filas_coincide_con_la_hoja_completa(ruta, espera):
+    """Las dos puertas tienen que dar el MISMO veredicto sobre los exports reales.
+
+    La GUI 2.0 detectaba el formato con un `load_workbook` sin `read_only` -- o sea
+    parseando el export completo -- y despues el worker lo parseaba otra vez para
+    procesarlo: DOS lecturas completas por corrida. `detectar_eje_filas` deja hacerlo
+    con las primeras MAX_FILAS_HEADER filas en modo `read_only`; este test es el que
+    amarra que ese atajo no cambie la respuesta."""
+    assert formatos.detectar_eje_filas(_cheap(ruta)) == espera
+    assert formatos.detectar_eje(_full(ruta)) == espera
+
+
+def test_detectar_eje_filas_no_necesita_el_resto_del_archivo(tmp_path):
+    """Las firmas viven en el encabezado: un export con miles de filas se clasifica
+    igual viendo solo las primeras MAX_FILAS_HEADER. Si alguien mueve la deteccion a
+    una columna de DATOS, esto lo caza."""
+    import openpyxl
+    p = tmp_path / "admin_grande.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append([formatos.ADMIN_BANNER])                  # banner en A1
+    for _ in range(7):
+        ws.append([None])
+    ws.append(["RUT", "Edad de registro formulario", "Fecha formulario", "Sexo"])
+    for i in range(3000):
+        ws.append([f"1111111{i % 10}-1", "45 anios", "06/07/2026", "Mujer"])
+    wb.save(p)
+
+    completo = _cheap(p)
+    assert len(completo) == formatos.MAX_FILAS_HEADER, "el corte por islice no se aplico"
+    assert formatos.detectar_eje_filas(completo) == "administrativo"
+    # Y con MENOS filas todavia (solo el banner + el header) sigue acertando.
+    assert formatos.detectar_eje_filas(completo[:9]) == "administrativo"
+    assert formatos.detectar_eje(_full(p)) == "administrativo"

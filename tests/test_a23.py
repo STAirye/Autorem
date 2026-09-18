@@ -182,6 +182,33 @@ def _mk_nsp(rows):
     return p
 
 
+def _mk_estrat(hdr, rows):
+    p = _TMP / "estrat.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active; ws.append(hdr)
+    for r in rows:
+        ws.append(r)
+    wb.save(p)
+    return p
+
+
+def test_cargar_estrat_arma_run_y_falla_en_la_fuente():
+    """Estratificación: RUN = RUT-DV. Las dos guardas son sobre la FUENTE (CLAUDE.md
+    regla 2): sin columna RUT reventaba con TypeError en f[None], y con solo el
+    encabezado dejaba la gravedad de TODOS en "" vía _gate -> SALA en 0 callado."""
+    from programas.rem_utils import ArchivoInvalido
+    hdr = ["RUT", "DV", "DETALLE DIAGNOSTICOS"]
+    s = a23.cargar_estrat(_mk_estrat(hdr, [[11111111, "1", "Asma Moderada"]]))
+    assert s.loc["11111111-1"] == "ASMA MODERADA"
+
+    for etq, h, rows in (("sin columna RUT", ["FOO", "BAR", "BAZ", "QUX"], [[1, 2, 3, 4]]),
+                         ("solo encabezado", hdr, [])):
+        try:
+            a23.cargar_estrat(_mk_estrat(h, rows))
+            assert False, f"Estratificación {etq}: debió levantar ArchivoInvalido"
+        except ArchivoInvalido as e:
+            assert e.categoria in ("sin_columnas", "sin_datos"), (etq, e.categoria)
+
+
 def test_seccion_h():
     """Sección H: citas Control/Ingreso IRA/ERA no asistidas, por estamento × tramo
     (<20 / >=20), del mes por FECHA HORA CITA. Excluye KTR y otros meses/tipos."""
@@ -218,12 +245,13 @@ def test_mes_sin_atenciones_falla_duro():
 
 def test_export_sin_filas_falla_claro():
     """Export header-only: antes el log del span reventaba con 'NaTType does not
-    support strftime'. Ahora ArchivoInvalido('mes_vacio') que dice que no hay filas."""
+    support strftime'. Hoy lo corta `cargar_canonico` con ArchivoInvalido('sin_datos')
+    NOMBRANDO el archivo, antes incluso de llegar al filtro de mes."""
     from programas.rem_utils import ArchivoInvalido
     try:
         a23.procesar(_mk([]), mes=(2026, 7), log=_quiet)
     except ArchivoInvalido as e:
-        assert e.categoria == "mes_vacio" and "ninguna fila" in str(e)
+        assert e.categoria == "sin_datos" and "ninguna fila" in str(e)
         return
     raise AssertionError("un export sin filas debió levantar ArchivoInvalido")
 

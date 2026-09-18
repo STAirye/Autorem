@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -68,46 +68,6 @@ def bloque_estamentos(parent):
     return lambda: (var.get() or "").strip().strip('"').strip("'")
 
 
-def resolver_estamentos(root, faltantes, opciones):
-    """Failsafe modal: por cada funcionario SIN estamento en la tabla, elegir
-    uno o IGNORAR (externo que presta servicios transitorios). Devuelve
-    {nombre: estamento | None} (None = ignorar). {} si se cancela."""
-    IGN = "— Ignorar (externo / transitorio) —"
-    top = ctk.CTkToplevel(root)
-    top.title("Estamentos sin identificar")
-    top.transient(root); top.grab_set()
-    ctk.CTkLabel(top, justify="left", text=(
-        f"{len(faltantes)} profesional(es) no están en la tabla «Utilización de Cupos».\n"
-        "Asigna su estamento, o Ignóralos si son externos que prestan servicios "
-        "transitorios.")).pack(anchor="w", padx=12, pady=12)
-    cont = ctk.CTkFrame(top, fg_color="transparent")
-    cont.pack(fill="both", expand=True, padx=12)
-    ops = [IGN] + list(opciones)
-    vars_ = {}
-    for nombre in faltantes:
-        fila = ctk.CTkFrame(cont, fg_color="transparent")
-        fila.pack(fill="x", pady=2)
-        ctk.CTkLabel(fila, text=nombre, anchor="w", width=220).pack(side="left", padx=(0, 10))
-        v = tk.StringVar(value=ops[0])
-        ctk.CTkOptionMenu(fila, variable=v, values=ops).pack(side="left")
-        vars_[nombre] = v
-    res = {}
-
-    def aplicar():
-        for nombre, v in vars_.items():
-            val = v.get()
-            res[nombre] = None if val == IGN else val
-        top.destroy()
-
-    barra = ctk.CTkFrame(top, fg_color="transparent")
-    barra.pack(fill="x", padx=12, pady=12)
-    ctk.CTkButton(barra, text="Aplicar", command=aplicar).pack(side="right")
-    ctk.CTkButton(barra, text="Cancelar", command=top.destroy, fg_color="transparent"
-                 ).pack(side="right", padx=6)
-    top.wait_window()
-    return res
-
-
 # -- Dotacion: separar funcionarios EXTERNOS (docs/dotacion_externos_plan.md) --
 def valores_iniciales(nombres, tabla):
     """nombre -> tick inicial (True = externo) para el dialogo de dotacion.
@@ -140,7 +100,13 @@ def dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False
     log("[dotacion] cargando el ADA (la ventana queda quieta unos segundos)...")
     try:
         root.configure(cursor="watch")
-        root.update()
+        # update_idletasks y NO update(): `update()` despacha TODOS los eventos
+        # pendientes, incluido un segundo click en Procesar ya encolado -> se entraba
+        # de nuevo a on_procesar en medio de este, con dos dialogos de dotacion y dos
+        # workers escribiendo el MISMO archivo de salida. Aca solo hace falta
+        # REPINTAR (el log y el cursor), que es justo lo que hace update_idletasks.
+        # El boton igual queda deshabilitado durante `preparar` (ver gui/app.py).
+        root.update_idletasks()
     except Exception:            # noqa: BLE001  (sin GUI / root ya destruido)
         pass
     try:
@@ -198,9 +164,9 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
                 "Falta el ADA", "Primero carga el archivo de Atenciones / Diagnósticos / "
                 "Actividades y elige el mes; recién ahí puedo mostrarte los funcionarios.")
             return
-        mes = get_mes()
-        if mes is None:
-            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+        from gui.runner import valida_mes
+        mes = valida_mes(get_mes(), messagebox)   # rango incluido: `_rango_mes` de
+        if mes is None:                           # mas abajo revienta con un mes 13
             return
         dotacion_ada(parent.winfo_toplevel(), modulo, ada, mes, log, messagebox,
                      mask=mask, todos=True)

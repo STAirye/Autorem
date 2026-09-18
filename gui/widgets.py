@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -61,6 +61,12 @@ COLOR_CAJA = ("gray81", "gray20")
 # igual que una etiqueta (feedback visual del autor, sep-2026: sidebar
 # ilegible en modo claro).
 COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
+
+# Rango de años aceptado por el selector de mes. UNA fuente: los `from_`/`to` del
+# Spinbox Y la guarda de `runner.valida_mes` salen de aca -- el Spinbox acota solo
+# sus flechas, asi que la guarda es la que de verdad rechaza un año tecleado, y las
+# dos tienen que decir lo mismo o el mensaje de error miente.
+ANIO_MIN, ANIO_MAX = 2020, 2100
 
 _AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
                         "sin abrirlos, editarlos ni re-guardarlos.\n"
@@ -135,7 +141,16 @@ def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:", on_elegido
 def fila_archivos(parent, etiqueta, titulo, on_elegido=None):
     """Fila con seleccion de VARIOS archivos (historico multi-anio). Devuelve
     get() -> list[str]. `on_elegido(lista)` (opcional) corre justo despues de
-    elegir -- lo usa SM para el preview de cruce ADA<->Grupal (SS5.1 del plan)."""
+    elegir -- lo usa SM para el preview de cruce ADA<->Grupal (SS5.1 del plan).
+
+    El boton 'Quitar' NO es cosmetico: hasta 1.9.17 esta fila solo se podia
+    SOBREESCRIBIR (el dialogo cancelado deja la seleccion anterior), y un input
+    multiple no se podia dejar vacio de vuelta. Eso dejaba sin salida la corrida
+    solo-cuestionarios de SM Actividades, que exige 'ni ADA ni Grupal'
+    (`sm._es_solo_a03`): un click accidental en Examinar sobre el ADA la volvia
+    inalcanzable hasta reiniciar autoREM, porque las paginas no se destruyen al
+    cambiar de pantalla (ver App.mostrar). Avisa con `on_elegido([])` para que los
+    previews que dependen del archivo (banner de cruce) se apaguen solos."""
     from tkinter import filedialog
     fila = ctk.CTkFrame(parent, fg_color="transparent")
     fila.pack(fill="x", pady=(3, 3))
@@ -143,16 +158,32 @@ def fila_archivos(parent, etiqueta, titulo, on_elegido=None):
     lbl = ctk.CTkLabel(fila, text="(ninguno)", text_color=COLOR_ATENUADO)
     sel = []
 
+    def _pintar():
+        if not sel:
+            lbl.configure(text="(ninguno)")
+            return
+        nombres = ", ".join(Path(f).name for f in sel)
+        lbl.configure(text=f"{len(sel)}: " + (nombres[:70] + "…" if len(nombres) > 70 else nombres))
+
     def examinar():
         fs = filedialog.askopenfilenames(title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
         if fs:
             sel[:] = list(fs)
-            nombres = ", ".join(Path(f).name for f in sel)
-            lbl.configure(text=f"{len(sel)}: " + (nombres[:70] + "…" if len(nombres) > 70 else nombres))
+            _pintar()
             if on_elegido:
                 on_elegido(list(sel))
 
+    def quitar():
+        if not sel:
+            return
+        sel.clear()
+        _pintar()
+        if on_elegido:
+            on_elegido([])
+
     ctk.CTkButton(fila, text="Examinar…", width=100, command=examinar).pack(side="left")
+    ctk.CTkButton(fila, text="Quitar", width=70, fg_color="transparent", border_width=1,
+                  text_color=COLOR_TEXTO_TRANSPARENTE, command=quitar).pack(side="left", padx=(4, 0))
     lbl.pack(side="left", padx=8)
     return lambda: list(sel)
 
@@ -186,7 +217,9 @@ def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
     = (año, mes) inicial -- normalmente `rem_utils.mes_anterior()`, decidido
     por quien llama (no importado aca para no atar el widget a esa regla).
 
-    Devuelve get() -> (año, mes) o None si lo tecleado no son numeros.
+    Devuelve get() -> (año, mes) o None si lo tecleado no son numeros. El RANGO
+    no se valida aca sino en `runner.valida_mes`, que es quien tiene el
+    messagebox: el Spinbox acota solo sus FLECHAS, no lo que se teclea.
     NO es la caja de A05 (esa alterna 'archivo completo' vs 'un mes'; sigue
     siendo un `extra` propio de esa pagina, ver SS3.1 del plan)."""
     import tkinter as tk
@@ -197,7 +230,8 @@ def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
     ctk.CTkLabel(fila, text=etiqueta).pack(side="left")
     var_anio = tk.StringVar(value=str(y0))
     var_mes = tk.StringVar(value=str(m0))
-    ttk.Spinbox(fila, from_=2020, to=2100, width=6, textvariable=var_anio).pack(side="left", padx=(6, 2))
+    ttk.Spinbox(fila, from_=ANIO_MIN, to=ANIO_MAX, width=6, textvariable=var_anio
+               ).pack(side="left", padx=(6, 2))
     ttk.Spinbox(fila, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
 
     def get():
@@ -264,16 +298,53 @@ class BannerFuente(ctk.CTkFrame):
         self._label = etiqueta_envolvente(self, "")
         self._label.pack(fill="x", padx=10, pady=6)
         self.pack_forget()
+        # Ancla = el ultimo widget ya empacado al crearla. Un pack() tardio sin
+        # `after=` la manda al FINAL de la pagina (debajo de Procesar y del log).
+        slaves = parent.pack_slaves()
+        self._ancla = slaves[-1] if slaves else None
+        self._visible = False
 
     def mostrar(self, estado, mensaje):
         colores = _PALETA_FUENTE[estado]
         self.configure(fg_color=colores["fondo"])
         self._label.configure(text=mensaje, text_color=colores["texto"])
-        if not self.winfo_ismapped():
-            self.pack(fill="x", pady=(0, 6))
+        if not self._visible:
+            if self._ancla is not None and self._ancla.winfo_exists():
+                self.pack(fill="x", pady=(0, 6), after=self._ancla)
+            else:
+                self.pack(fill="x", pady=(0, 6))
+            self._visible = True
 
     def ocultar(self):
         self.pack_forget()
+        self._visible = False
+
+
+def bloque_banner_fuente(frame, pagina):
+    """Extra de A23/SM: BannerFuente oculto hasta `pintar_banner_fuente` (post-corrida)."""
+    pagina.datos["banner_fuente"] = BannerFuente(frame)
+    return None
+
+
+def pintar_banner_fuente(pagina, df):
+    """`al_completar` compartido: pinta el banner con los avisos de fuente de `df`.
+
+    Sin `df` (p.ej. la corrida solo-cuestionarios de SM, que no carga ADA) el banner
+    se APAGA en vez de dejarse como estaba: el color es una AFIRMACION sobre la fuente
+    (SS5.1 del plan, regla 1), asi que un banner verde heredado de la corrida anterior
+    estaria jurando 'A/D/A de IRIS completo' sobre un archivo que esta corrida ni
+    abrio."""
+    banner = pagina.datos.get("banner_fuente")
+    if banner is None:
+        return
+    if df is None:
+        banner.ocultar()
+        return
+    estado_mensaje = estado_fuente_de_avisos(df.attrs.get("avisos"))
+    if estado_mensaje is None:
+        banner.mostrar("plena", "Fuente: A/D/A de IRIS completo.")
+    else:
+        banner.mostrar(*estado_mensaje)
 
 
 def estado_fuente_de_avisos(avisos):

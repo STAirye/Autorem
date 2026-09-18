@@ -87,6 +87,17 @@ def test_rechaza_no_reporte():
         assert e.categoria == "no_estamentos"
 
 
+def test_rechaza_reporte_sin_filas():
+    """Bug recurrente (CLAUDE.md regla 2): con solo el encabezado la tabla salía
+    vacía sin fallar, dejando a TODOS los funcionarios sin estamento (y pisando el
+    caché con un dict vacío)."""
+    try:
+        est.cargar_estamentos(_reporte("cupos_vacio.xlsx", []), log=_quiet)
+        assert False, "debió rechazar un reporte sin filas"
+    except est.ArchivoInvalido as e:
+        assert e.categoria == "sin_datos", e.categoria
+
+
 def test_faltantes_conocidos_y_resoluciones():
     """Failsafe: detectar sin-match, opciones del selector, y resolver/ignorar."""
     from programas.rem_utils import norm

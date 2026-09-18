@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,6 +42,9 @@ EL CONTRATO PANTALLA (lo que expone cada modulo de gui/paginas/*.py):
         # el archivo, no recien al apretar Procesar (SS5.1 del plan: preview
         # barato de formato/cruce; A05 lo usa para detectar IRIS/Administrativo,
         # SM para el preview de cruce ADA<->Grupal).
+        # `ancla_salida` (opcional, un input por pantalla): ESE input fija la
+        # carpeta de salida por defecto. Sin el se usa el primer input cargado,
+        # que es el orden en que estan ESCRITOS aca -- ver `_resolver_ctx`.
         "mes": True,                   # muestra SelectorMes
         "carpeta_salida": True,        # muestra CarpetaSalida
         "extras": [                    # opcional, ver SS3.1 del plan
@@ -69,7 +72,9 @@ del ADA); `despues_de: None` lo pinta al final (antes del boton Procesar).
 pantalla (construccion, `on_elegido`, `preparar`, `al_completar`): sirve para
 pasarse cosas entre esas fases sin variables de modulo. Ver A23/SM: un extra
 arma un `widgets.BannerFuente` y lo guarda en `pagina.datos["banner_fuente"]`;
-`al_completar` lo recupera y lo actualiza con el resultado de la corrida.
+`al_completar` lo recupera y lo actualiza con el resultado de la corrida. El shell
+lo siembra con `datos["ruta_inicial"]`: la ruta que Windows pasa como argv[1] al
+arrastrar un .xlsx sobre el exe (hoy solo la lee A05).
 
 PAGINAS ESPECIALES (paso 10 del plan, SS4): "Inicio" y "Acerca de" NO son
 PANTALLA -- no procesan nada, no tienen `correr`, y por eso no viven en
@@ -90,11 +95,18 @@ from gui.paginas import inicio, about
 
 ANCHO_SIDEBAR = 210
 
-# id -> (titulo del boton, construir(frame, app)) -- ver nota "PAGINAS
-# ESPECIALES" arriba. Orden = orden de aparicion en el sidebar.
+# (id, titulo del boton, construir(frame, app), posicion) -- ver nota "PAGINAS
+# ESPECIALES" arriba.
+#
+# `posicion` ANCLA la pagina en el sidebar y es un DATO, no el orden de este tuple:
+# "arriba" = fija al tope, sobre todos los grupos de programa; "abajo" = fija al pie,
+# bajo todos (feedback del autor, sep-2026). Inicio es el punto de partida y Acerca de
+# es el cierre, asi que ninguna de las dos se mueve cuando se suma un programa nuevo a
+# `registro.ORDEN_PROGRAMAS` -- que es justo lo que pasaria si la posicion fuera
+# "despues de los grupos, en el orden en que estan escritas aca".
 PAGINAS_ESPECIALES = (
-    ("inicio", "Inicio", inicio.construir),
-    ("acerca_de", "Acerca de", about.construir),
+    ("inicio", "Inicio", inicio.construir, "arriba"),
+    ("acerca_de", "Acerca de", about.construir, "abajo"),
 )
 
 
@@ -117,11 +129,18 @@ def _grupo_colapsable(barra, titulo):
     NO `winfo_ismapped()`: ese metodo puede devolver `False` para un widget
     recien empacado hasta el primer ciclo de eventos (ya nos mordio una vez
     con `BannerFuente` en un test, ver spike del paso 8), asi que confiar en
-    el ESTADO PROPIO evita ese mismo problema aca."""
+    el ESTADO PROPIO evita ese mismo problema aca.
+
+    OJO CON EL ORDEN DE LOS `pack` (bug visual, sep-2026): `pack` apila en ORDEN DE
+    LLAMADA, no en orden de creacion. `contenido` se CREA antes que `header` (la
+    closure `alternar` lo necesita), pero se tiene que EMPACAR despues -- si no, los
+    botones de pagina se dibujan ARRIBA de su propia cabecera. El sintoma era
+    desconcertante porque se auto-corregia: colapsar y expandir llama
+    `contenido.pack()` de nuevo y ahi si queda al final de la pila, o sea debajo del
+    header. Solo el PRIMER dibujo estaba mal."""
     grupo = ctk.CTkFrame(barra, fg_color="transparent")
     grupo.pack(fill="x")
     contenido = ctk.CTkFrame(grupo, fg_color="transparent")
-    contenido.pack(fill="x")
     estado = {"expandido": True}
 
     def alternar():
@@ -137,6 +156,7 @@ def _grupo_colapsable(barra, titulo):
                            fg_color="transparent", text_color=widgets.COLOR_ATENUADO,
                            font=ctk.CTkFont(size=11, weight="bold"), command=alternar)
     header.pack(fill="x", padx=6, pady=(10, 2))
+    contenido.pack(fill="x")   # DESPUES del header, a proposito: ver el docstring
     return contenido
 
 
@@ -195,8 +215,13 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
             obligatorio = obligatorio(getters)
         if inp.get("multi"):
             if obligatorio and not valor:
+                # `motivo_obligatorio` (opcional): el POR QUE que el aviso a mano de
+                # autorem.py traia y el generico perdia (p.ej. "de ahi salen A06 grupal,
+                # A19a grupal y A27"). Sin el, solo la etiqueta.
                 messagebox.showwarning(
-                    "Falta un archivo", f"Carga al menos un archivo: {inp['etiqueta']}")
+                    "Falta un archivo",
+                    f"Carga al menos un archivo: {inp['etiqueta']}"
+                    + ("\n\n" + inp["motivo_obligatorio"] if inp.get("motivo_obligatorio") else ""))
                 return None
             ctx[inp["key"]] = [Path(v) for v in valor]
         else:
@@ -209,30 +234,46 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
                 ctx[inp["key"]] = Path(valor) if (valor or "").strip() else None
 
     if get_mes:
-        mes = get_mes()
+        # valida_mes y no solo `is None`: el Spinbox acota sus flechas, no lo tecleado
+        # (ver el porque completo en runner.valida_mes).
+        mes = runner.valida_mes(get_mes(), messagebox)
         if mes is None:
-            messagebox.showwarning("Mes invalido", "Ano y mes deben ser numeros.")
             return None
         ctx["mes"] = mes
-
-    if get_carpeta:
-        defecto = None
-        primer_obligatorio = next((i for i in inputs if i.get("obligatorio", True)), None)
-        if primer_obligatorio:
-            v = ctx.get(primer_obligatorio["key"])
-            if isinstance(v, list):
-                defecto = v[0].parent if v else None
-            elif v is not None:
-                defecto = v.parent
-        carpeta = runner.valida_carpeta(get_carpeta(), messagebox, defecto=defecto)
-        if carpeta is None:
-            return None
-        ctx["carpeta"] = carpeta
 
     for extra in pantalla.get("extras", []):
         key = extra.get("key")
         if key and key in getters:
             ctx[key] = getters[key]()
+
+    if get_carpeta:
+        # Defecto = carpeta del input que la pagina declare como ANCLA
+        # (`ancla_salida`) y, si no declara ninguno, la del primer input CARGADO
+        # (CLAUDE.md SS2: las salidas llevan RUT, van junto a los exports). Sin
+        # ninguno (p.ej. SM solo-cuestionarios), la pagina lo resuelve con
+        # `carpeta_defecto(ctx)`; nunca cae al cwd si hay archivos.
+        #
+        # POR QUE el ancla es un DATO y no "el primero de la lista" (sep-2026): el
+        # primero de la lista es orden de ESCRITURA, y ahi ya se perdio una vez.
+        # `_tab_beta` guardaba junto al INSCRITOS (`defecto=entrada.parent`), que es
+        # el snapshot del mes; al portarla, Poblacion declara sus inputs en el orden
+        # NUMERADO de las instrucciones (1. Formulario historico, 2. ADA, 3.
+        # Inscritos), asi que la salida se fue en silencio a la carpeta del historico
+        # multi-anio -- que es justo la que el usuario tiene archivada aparte.
+        anclas = [i for i in inputs if i.get("ancla_salida")]
+        defecto = None
+        for inp in anclas + [i for i in inputs if not i.get("ancla_salida")]:
+            v = ctx.get(inp["key"])
+            v = v[0] if isinstance(v, list) and v else v
+            if isinstance(v, Path):
+                defecto = v.parent
+                break
+        if defecto is None and pantalla.get("carpeta_defecto"):
+            defecto = pantalla["carpeta_defecto"](ctx)
+        carpeta = runner.valida_carpeta(get_carpeta(), messagebox, defecto=defecto)
+        if carpeta is None:
+            return None
+        ctx["carpeta"] = carpeta
 
     return ctx
 
@@ -246,7 +287,7 @@ class App(ctk.CTk):
     (comportamiento real). Pasar una lista propia sirve para probar el shell
     con una PANTALLA de mentira sin tener que dejarla en gui/paginas/."""
 
-    def __init__(self, registro=None):
+    def __init__(self, registro=None, ruta_inicial=""):
         super().__init__()
         self.title(f"autoREM {VERSION}")
         # Ancho por defecto (feedback del autor, sep-2026: 1000 quedaba
@@ -257,10 +298,14 @@ class App(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         self.registro = registro if registro is not None else cargar_registro()
+        # Ruta ARRASTRADA sobre el exe (Windows la pasa como argv[1]; ver
+        # autorem.main). Llega a la pagina por `Pagina.datos['ruta_inicial']`: es el
+        # unico canal que ya comparten todas, y solo A05 la usa hoy (era el
+        # `ruta_inicial` de _tab_a05 en la GUI 1.x -- sin esto el exe perderia el
+        # arrastrar-y-soltar al migrar).
+        self.ruta_inicial = (ruta_inicial or "").strip()
         self._frames = {}         # id -> CTkFrame ya construido (perezoso)
         self._logs = {}           # id -> log(msg) (existe recien tras construir la pagina)
-        self._on_procesar = {}    # id -> callable, expuesto para poder testear sin click real
-        self._getters = {}        # id -> {key: getter}, idem (inyectar valores sin clickear dialogos)
         self._botones_sidebar = {}
 
         self._construir_sidebar()
@@ -277,6 +322,25 @@ class App(ctk.CTk):
         barra = ctk.CTkScrollableFrame(self, width=ANCHO_SIDEBAR,
                                        label_text=f"autoREM {VERSION}")
         barra.grid(row=0, column=0, sticky="nsw")
+
+        def separador(pady=(12, 4)):
+            ctk.CTkFrame(barra, height=1, fg_color=widgets.COLOR_ATENUADO
+                        ).pack(fill="x", padx=6, pady=pady)
+
+        def boton_especial(pid, titulo):
+            btn = ctk.CTkButton(barra, text=titulo, anchor="w", fg_color="transparent",
+                                text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
+                                command=lambda pid=pid: self.mostrar(pid))
+            btn.pack(fill="x", padx=6, pady=1)
+            self._botones_sidebar[pid] = btn
+
+        # Las especiales ANCLADAS arriba (Inicio), antes de cualquier grupo de
+        # programa. Ver la nota de PAGINAS_ESPECIALES: la posicion es un dato, no el
+        # orden en que este bucle las encuentra.
+        for pid, titulo, _construir, posicion in PAGINAS_ESPECIALES:
+            if posicion == "arriba":
+                boton_especial(pid, titulo)
+        separador(pady=(6, 0))
 
         # Cabecera VISUAL, no `pantalla["programa"]` (feedback del autor,
         # sep-2026): "Salud Mental" y "Salud Mental -- Poblacion" son un
@@ -303,25 +367,21 @@ class App(ctk.CTk):
                 btn.pack(fill="x", padx=6, pady=1)
                 self._botones_sidebar[pantalla["id"]] = btn
 
-        # Inicio / Acerca de (SS4 del plan): aparte, debajo de un separador,
-        # sin agruparse por programa -- no son paginas de procesamiento.
-        ctk.CTkFrame(barra, height=1, fg_color=widgets.COLOR_ATENUADO
-                    ).pack(fill="x", padx=6, pady=(12, 4))
-        for pid, titulo, _construir in PAGINAS_ESPECIALES:
-            btn = ctk.CTkButton(barra, text=titulo, anchor="w", fg_color="transparent",
-                                text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
-                                command=lambda pid=pid: self.mostrar(pid))
-            btn.pack(fill="x", padx=6, pady=1)
-            self._botones_sidebar[pid] = btn
+        # Las especiales ANCLADAS abajo (Acerca de), debajo de todos los grupos.
+        separador()
+        for pid, titulo, _construir, posicion in PAGINAS_ESPECIALES:
+            if posicion == "abajo":
+                boton_especial(pid, titulo)
 
         # Toggle claro/oscuro (SS4 del plan): al final de todo, abajo
-        # (feedback del autor, sep-2026). El modo oscuro es "gratis" en CTk
+        # (feedback del autor, sep-2026). Queda DEBAJO de "Acerca de" porque no es una
+        # pagina sino un control de la ventana; "Acerca de" sigue siendo la ultima
+        # pagina del sidebar. El modo oscuro es "gratis" en CTk
         # (`set_appearance_mode`), pero el plan pide auditar antes los
         # colores hardcodeados que venian del Tk actual -- ver
         # widgets.COLOR_AVISO / COLOR_ATENUADO / Reloj, ya con tupla
         # (claro, oscuro) o resueltos a mano por modo.
-        ctk.CTkFrame(barra, height=1, fg_color=widgets.COLOR_ATENUADO
-                    ).pack(fill="x", padx=6, pady=(12, 4))
+        separador()
         switch_oscuro = ctk.CTkSwitch(barra, text="Modo oscuro",
                                       command=self._alternar_tema)
         if ctk.get_appearance_mode() == "Dark":
@@ -354,7 +414,8 @@ class App(ctk.CTk):
         la ultima (verificado con `winfo_children()`, que SI refleja el
         orden de la pila, antes/despues de cada llamada)."""
         if pantalla_id not in self._frames:
-            especial = next((c for pid, _t, c in PAGINAS_ESPECIALES if pid == pantalla_id), None)
+            especial = next((c for pid, _t, c, _pos in PAGINAS_ESPECIALES
+                             if pid == pantalla_id), None)
             if especial is not None:
                 frame = ctk.CTkScrollableFrame(self.contenedor)
                 frame.grid(row=0, column=0, sticky="nsew")
@@ -385,7 +446,7 @@ class App(ctk.CTk):
         get_mes = [None]   # celda mutable: un extra "despues_de" un input puede
                            # necesitar pagina.mes() antes de que el SelectorMes
                            # exista (se pinta despues de los inputs, SS4 del plan)
-        datos = {}   # scratch COMPARTIDO por todas las Pagina de esta pantalla
+        datos = {"ruta_inicial": self.ruta_inicial}   # scratch COMPARTIDO por las Pagina
                      # (p.ej. un BannerFuente que arma un extra y usa `al_completar`)
 
         def pagina_ctx():
@@ -415,19 +476,36 @@ class App(ctk.CTk):
             # `on_elegido` (opcional) es una FACTORY -- (frame, pagina) -> callback(valor)
             # -- mismo molde que `extras[].construir`. La usa el preview de fuente/cruce
             # (SS5.1 del plan): correr algo barato apenas se elige el archivo, no recien
-            # al apretar Procesar. La factory puede armar su propio BannerFuente ahi
-            # mismo: como arranca oculto (`.pack_forget()`), el orden visual lo decide
-            # CUANDO se llama `.mostrar()` (mas tarde), no cuando se construye.
-            on_elegido = inp["on_elegido"](frame, pagina_ctx()) if inp.get("on_elegido") else None
+            # al apretar Procesar. La fila se pinta ANTES de llamar la factory: un
+            # BannerFuente que arme se ancla a la fila y aparece justo debajo de ella.
+            cb = {}
+
+            def al_elegir(valor, inp=inp):
+                # El shell se engancha SIEMPRE, aunque la pagina no declare
+                # `on_elegido`: cambiar CUALQUIER input invalida el banner de FUENTE,
+                # que lo pinta `al_completar` con el resultado de la corrida ANTERIOR.
+                # Sin esto, elegir otro archivo dejaba el banner verde ("A/D/A de IRIS
+                # completo") al lado de un export parcial recien cargado -- un color
+                # que afirma algo falso (SS5.1 del plan, regla 1). El input al que
+                # pertenece el banner (A23 'atenciones') no tiene `on_elegido` propio,
+                # asi que el hook no puede vivir en la pagina.
+                banner = datos.get("banner_fuente")
+                if banner is not None:
+                    banner.ocultar()
+                if "f" in cb:
+                    cb["f"](valor)
+
             if inp.get("multi"):
                 getters[inp["key"]] = widgets.fila_archivos(
                     frame, inp["etiqueta"], inp.get("titulo_dialogo", inp["etiqueta"]),
-                    on_elegido=on_elegido)
+                    on_elegido=al_elegir)
             else:
                 var = ctk.StringVar()
                 widgets.fila_archivo(frame, var, inp.get("titulo_dialogo", inp["etiqueta"]),
-                                     etiqueta=inp["etiqueta"], on_elegido=on_elegido)
+                                     etiqueta=inp["etiqueta"], on_elegido=al_elegir)
                 getters[inp["key"]] = var.get
+            if inp.get("on_elegido"):
+                cb["f"] = inp["on_elegido"](frame, pagina_ctx())
 
         for inp in obligatorios:
             pintar_input(inp)
@@ -458,12 +536,33 @@ class App(ctk.CTk):
 
         def on_procesar():
             limpiar()
+            # El banner de fuente se apaga junto con el log y por el mismo motivo:
+            # los dos describen la corrida ANTERIOR. Si esta falla, `al_completar` no
+            # corre y el banner quedaba afirmando el veredicto de fuente de la corrida
+            # pasada como si fuera el de esta. Invariante: el banner solo dice algo
+            # cuando hay una corrida terminada que lo respalde.
+            banner_previo = datos.get("banner_fuente")
+            if banner_previo is not None:
+                banner_previo.ocultar()
             ctx = _resolver_ctx(pantalla, getters, get_mes[0], get_carpeta)
             if ctx is None:
                 return
             if pantalla.get("preparar"):
-                ctx = pantalla["preparar"](ctx, pagina_ctx())
-                if ctx is None:   # preparar aborto (p.ej. ADA ilegible, mes vacio)
+                # El boton se deshabilita YA, antes de `preparar`, y no recien en
+                # `correr_con_reloj`: `preparar` corre en el hilo GUI y puede bombear
+                # eventos (el dialogo de Dotacion del SM abre un Toplevel modal), asi
+                # que un segundo click en Procesar ya encolado se despachaba AHI y
+                # reentraba en esta funcion -> dos corridas escribiendo el mismo
+                # archivo de salida. `correr_con_reloj` lo deshabilita de nuevo (es
+                # idempotente) y lo rehabilita al terminar el worker.
+                btn.configure(state="disabled")
+                try:
+                    ctx = pantalla["preparar"](ctx, pagina_ctx())
+                except Exception as e:   # noqa: BLE001  (hilo GUI: sin esto Tk se lo traga)
+                    ctx = None
+                    runner.manejar_error(e, log, messagebox)
+                if ctx is None:   # abortado (ADA ilegible, mes vacio) o reventado
+                    btn.configure(state="normal")   # el usuario tiene que poder reintentar
                     return
 
             def trabajo(log_hilo):
@@ -473,13 +572,17 @@ class App(ctk.CTk):
                 if err is not None:
                     runner.manejar_error(err, log, messagebox)
                     return
-                if pantalla.get("al_completar"):
-                    # Hilo GUI, simetrico de `preparar` pero DESPUES del worker
-                    # (SS5.1 del plan): p.ej. actualizar un BannerFuente con
-                    # formatos.clasificar_fuente, que solo se sabe una vez que
-                    # el worker termino de cargar y resolver el archivo.
-                    pantalla["al_completar"](res, pagina_ctx())
-                texto = pantalla["resumen"](res) if pantalla.get("resumen") else "Listo."
+                try:
+                    if pantalla.get("al_completar"):
+                        # Hilo GUI, simetrico de `preparar` pero DESPUES del worker
+                        # (SS5.1 del plan): p.ej. actualizar un BannerFuente con
+                        # formatos.clasificar_fuente, que solo se sabe una vez que
+                        # el worker termino de cargar y resolver el archivo.
+                        pantalla["al_completar"](res, pagina_ctx())
+                    texto = pantalla["resumen"](res) if pantalla.get("resumen") else "Listo."
+                except Exception as e:   # noqa: BLE001  (hilo GUI: sin esto Tk se lo traga)
+                    runner.manejar_error(e, log, messagebox)
+                    return
                 log(""); log("OK " + texto.replace("\n", " | "))
                 carpeta = ctx.get("carpeta")
                 if carpeta and messagebox.askyesno(
@@ -489,8 +592,6 @@ class App(ctk.CTk):
             runner.correr_con_reloj(self, barra_botones, btn, log, trabajo, al_terminar)
 
         btn.configure(command=on_procesar)
-        self._on_procesar[pantalla["id"]] = on_procesar   # testeable sin click real
-        self._getters[pantalla["id"]] = getters           # idem: inyectar valores sin dialogo
         return frame
 
     def _log_de(self, pantalla_id):
@@ -502,9 +603,9 @@ class App(ctk.CTk):
         return lambda msg="": self._logs[pantalla_id](msg)
 
 
-def lanzar():
+def lanzar(ruta_inicial=""):
     ctk.set_appearance_mode("light")
-    App().mainloop()
+    App(ruta_inicial=ruta_inicial).mainloop()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -35,7 +35,7 @@ from pathlib import Path
 import customtkinter as ctk
 
 import programas.rem_saludmental as sm
-from gui.widgets import Reloj
+from gui.widgets import Reloj, ANIO_MAX, ANIO_MIN
 
 _MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
                 "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
@@ -49,6 +49,25 @@ _MSG_NO_XLSX = (
     "(Si un .xlsx te da este error, suele ser un .html/.xls disfrazado: mismo arreglo.)")
 
 _FIN = object()   # centinela de fin de trabajo en la cola del runner
+
+# Titulo del messagebox por `ArchivoInvalido.categoria`. En autorem.py este mapa vivia
+# DENTRO de _tab_a05 (y solo cubria 4 categorias); al centralizar el despacho en
+# `manejar_error` se comparte con todas las paginas. Lo que no esta aca cae al generico.
+_TITULO_INVALIDO = {
+    "administrativo":         "Parece Administrativo, no IRIS",
+    "iris":                   "Parece IRIS, no Administrativo",
+    "no_iris":                "Necesito el export IRIS",
+    "mes_vacio":              "Sin datos en ese mes",
+    "sin_fecha":              "No encuentro la fecha",
+    "sin_datos":              "El archivo no trae datos",
+    "sin_columnas":           "No reconozco las columnas",
+    "modificado":             "El export fue modificado",
+    "no_legible":             "No pude leer el archivo",
+    "cruzados":               "Archivos cruzados",
+    "no_estamentos":          "No es «Utilización de Cupos»",
+    "no_instrumento":         "No es un export de instrumento",
+    "instrumento_desconocido": "No reconozco el instrumento",
+}
 
 
 def dir_salida_default():
@@ -92,6 +111,38 @@ def valida_ruta(ruta, messagebox):
     return p
 
 
+def valida_mes(mes, messagebox):
+    """Valida el (año, mes) de un selector de mes. `mes` None = lo tecleado no son
+    numeros. Devuelve la tupla o None (avisa con messagebox).
+
+    POR QUE existe: `ttk.Spinbox` acota SOLO sus flechas -- lo que el usuario TECLEA
+    pasa igual. Sin esta guarda un mes 13 llegaba al worker y reventaba recien en
+    `rem_utils._rango_mes` con un `ValueError: month must be in 1..12` crudo, que
+    `manejar_error` no reconoce y despacha como "Error inesperado ... pasaselo a
+    Simon": un error de TIPEO presentado como un bug del programa, y despues de
+    cargar los archivos (en la pagina de poblacion son minutos de espera). Un año de
+    2 digitos (26 por 2026) es peor todavia: no revienta, se va a `filtrar_mes` y
+    sale "no hay filas de 07/0026", culpando al export.
+
+    `_tab_a05` y `_tab_beta` validaban el rango en la GUI (autorem.py); el port a
+    `widgets.selector_mes` lo perdio para todas las paginas menos A05, que lo tenia
+    inline. Aca se comparte: pagina, dialogo de dotacion y A05 llaman a lo mismo."""
+    if mes is None:
+        messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
+        return None
+    anio, m = mes
+    if not (1 <= m <= 12):
+        messagebox.showwarning("Mes inválido", "El mes debe estar entre 1 y 12.")
+        return None
+    if not (ANIO_MIN <= anio <= ANIO_MAX):
+        messagebox.showwarning(
+            "Año inválido",
+            f"El año debe estar entre {ANIO_MIN} y {ANIO_MAX}.\n\n"
+            f"Escribe el año completo (2026, no 26).")
+        return None
+    return mes
+
+
 def valida_carpeta(ruta, messagebox, defecto=None):
     """Valida la carpeta de salida. Si `ruta` esta vacia, cae a `defecto` (la
     carpeta del archivo de entrada) y, si tampoco hay, a `dir_salida_default()`.
@@ -116,12 +167,29 @@ def es_error_formato(e):
     return isinstance(e, (zipfile.BadZipFile,) + ((InvalidFileException,) if InvalidFileException else ()))
 
 
+def motivo_fuente(e):
+    """Una linea CORTA para el BannerFuente cuando no se pudo abrir el archivo al
+    elegirlo. Sale del mismo arbol de `isinstance` que `manejar_error`, a proposito:
+    el banner resume y el dialogo (al apretar Procesar) da el arreglo completo, pero
+    los dos tienen que estar diciendo lo MISMO del mismo archivo. Si una rama se
+    agrega aca y no alla (o al reves), el color y el texto empiezan a contradecirse,
+    que es justo lo que SS5.1 del plan prohibe."""
+    if isinstance(e, ImportError):
+        return "Falta una librería para leer Excel (el detalle, al procesar)."
+    if isinstance(e, PermissionError):
+        return "No pude abrirlo: está abierto en Excel o bloqueado por OneDrive."
+    if es_error_formato(e):
+        return "No es un .xlsx real (suele ser un .xls o un .html disfrazado)."
+    if isinstance(e, sm.ArchivoInvalido):
+        return str(e).split("\n")[0]
+    return f"No pude abrir el archivo ({type(e).__name__}); el detalle, al procesar."
+
+
 def error_inesperado(e, log, messagebox):
     import traceback
-    log(f"[ERROR INESPERADO] {type(e).__name__}: {e}")   # legible aunque no haya traceback vivo
-    tb = traceback.format_exc()
-    if tb and not tb.startswith("NoneType"):   # en hilo worker format_exc() da 'NoneType: None'
-        log(tb)
+    log(f"[ERROR INESPERADO] {type(e).__name__}: {e}")
+    if e.__traceback__ is not None:   # format_exc() no sirve: la excepcion vino del worker
+        log("".join(traceback.format_exception(type(e), e, e.__traceback__)))
     messagebox.showerror(
         "Error inesperado",
         f"Ocurrió un error no previsto:\n\n{type(e).__name__}: {e}\n\n"
@@ -133,19 +201,62 @@ def manejar_error(e, log, messagebox):
     GUI). Incluye ArchivoInvalido (p.ej. la guarda multi-hoja, o 'cruzados'
     desde 1.9.10) sin volcar traceback feo."""
     if isinstance(e, ImportError):
-        messagebox.showerror("Falta una librería", f"Este módulo necesita pandas:\n{e}")
+        # El nombre del modulo que falta sale de la excepcion: los modulos pandas y
+        # los openpyxl-only levantan ImportError igual, y hardcodear "pandas" mandaba
+        # a instalar la libreria equivocada.
+        # Los modulos que la levantan a mano (`raise ImportError("Falta 'openpyxl'...")`)
+        # ya traen la instruccion de pip en el texto y no tienen `.name`: ahi se muestra
+        # tal cual, sin inventar un nombre de paquete.
+        falta = getattr(e, "name", None)
+        messagebox.showerror(
+            "Falta una librería",
+            f"Este módulo necesita «{falta}»:\n\n{e}\n\nInstálala con:  pip install {falta}"
+            if falta else f"Falta una librería que este módulo necesita:\n\n{e}")
     elif isinstance(e, PermissionError):
         log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
         messagebox.showerror("Permiso denegado", _MSG_PERMISO)
     elif isinstance(e, sm.ArchivoInvalido):
-        cruce = getattr(e, "categoria", "") == "cruzados"
-        log(f"[{'archivos cruzados' if cruce else 'archivo inválido'}] {e}")
-        messagebox.showerror("Archivos cruzados" if cruce else "Archivo inválido", str(e))
+        cat = getattr(e, "categoria", "")
+        log(f"[{'archivos cruzados' if cat == 'cruzados' else 'archivo inválido'}: {cat}] {e}")
+        messagebox.showerror(_TITULO_INVALIDO.get(cat, "Archivo inválido"), str(e))
     elif es_error_formato(e):
         log(f"[formato no soportado] {e}")
         messagebox.showerror("No es un .xlsx", _MSG_NO_XLSX)
     else:
         error_inesperado(e, log, messagebox)
+
+
+def en_hilo(widget, trabajo, al_terminar):
+    """Corre `trabajo()` en un hilo y entrega su resultado a `al_terminar(res, err)`
+    EN EL HILO DE LA GUI. Version liviana de `correr_con_reloj` para los previews
+    baratos de `on_elegido` (deteccion de formato del A05, chequeo de cruce del SM):
+    sin reloj, sin boton que deshabilitar, sin log.
+
+    Por que existe y no un `widget.after(0, ...)` desde el hilo: `Tk.after` NO es
+    thread-safe -- registra un comando en el interprete Tcl, y llamarlo desde otro
+    hilo tira 'RuntimeError: main thread is not in main loop' o, peor, corrompe el
+    estado de Tk de forma intermitente. Por eso `correr_con_reloj` usa cola + poll
+    a proposito; esto es el mismo patron, y el `after` sale SIEMPRE del hilo GUI.
+
+    Si `trabajo` revienta, la excepcion llega como `err` (nunca se pierde callada)."""
+    q = queue.Queue()
+
+    def worker():
+        try:
+            q.put((trabajo(), None))
+        except Exception as e:   # noqa: BLE001  (se re-despacha en el hilo GUI)
+            q.put((None, e))
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    def poll():
+        try:
+            res, err = q.get_nowait()
+        except queue.Empty:
+            widget.after(60, poll)
+            return
+        al_terminar(res, err)
+    widget.after(60, poll)
 
 
 def correr_con_reloj(root, barra, btn, log, trabajo, al_terminar):

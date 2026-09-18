@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.16
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "1.9.16"
+VERSION = "1.9.17"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -154,12 +154,41 @@ def leer_xlsx(entrada, ancla=None, max_scan=40):
     ws = openpyxl.load_workbook(entrada, data_only=True, read_only=True).active
     filas = list(ws.iter_rows(values_only=True))
     ws.parent.close()
+    if not filas:   # hoja SIN ninguna fila (ni encabezado): filas[hi] seria IndexError
+        raise ArchivoInvalido(
+            "sin_datos",
+            "La hoja del archivo esta completamente vacia (ni siquiera trae el "
+            "encabezado).\n\nVuelve a descargar el export desde RAYEN/IRIS.")
     if ancla:
         want = {norm(a) for a in ancla}
         hi = next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), 0)
     else:
         hi = next((i for i, r in enumerate(filas[:max_scan]) if sum(v not in (None, "") for v in r) > 3), 0)
     return list(filas[hi]), filas[hi + 1:]
+
+
+def exigir_filas(filas, fuente):
+    """Fail loud sobre la FUENTE (CLAUDE.md regla 2): un export con solo el
+    encabezado (0 filas de datos) levanta ArchivoInvalido('sin_datos') aca, en vez de
+    dar un 0 plausible o reventar mas abajo con un error criptico."""
+    if not any(any(v not in (None, "") for v in f) for f in filas):
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"{fuente[:1].upper()}{fuente[1:]} no trae ninguna fila de datos.\n\n"
+            "Revisa que sea el export completo (no solo el encabezado) y que este sin modificar.")
+
+
+def exigir_filas_ws(ws, header_idx, fuente):
+    """Gemelo de `exigir_filas` para el mundo openpyxl-worksheet (A05, A03,
+    estamentos): 0 filas de datos bajo el encabezado -> ArchivoInvalido('sin_datos').
+    `header_idx` es 1-based (la fila del encabezado)."""
+    if not any(any(v not in (None, "") for v in fila)
+               for fila in ws.iter_rows(min_row=header_idx + 1, values_only=True)):
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"{fuente[:1].upper()}{fuente[1:]} no trae ninguna fila de datos bajo el "
+            "encabezado.\n\nRevisa que sea el export completo (no solo el encabezado) "
+            "y que este sin modificar.")
 
 
 def verificar_hoja_unica(entrada):
@@ -295,6 +324,11 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
                 "no_legible",
                 f"No pude leer el archivo:\n«{nombre}»\n\n{ex}\n\n"
                 "¿Es un .xlsx válido (no .xls/.csv/.html) y sin modificar?") from ex
+        # Fail loud sobre la FUENTE (CLAUDE.md regla 2) y POR ARCHIVO: con 0 filas
+        # las columnas quedan float64 y .str.contains() revienta abajo con un error
+        # criptico (o el conteo sale 0 en silencio). Unico cuello de botella del grupo
+        # pandas -> cubre ADA, grupal, Inscritos, NSP y 'Otros y Respi'.
+        exigir_filas(filas, f"el archivo «{nombre}»")
         col = resolver(hdr)
         if requeridas:
             faltan = [k for k in requeridas if not col.get(k)]
@@ -424,6 +458,9 @@ def cargar_maestro(entrada):
         d = pd.DataFrame({k: [f[idx[c]] if c is not None and idx[c] < len(f) else None
                               for f in filas] for k, c in col.items()})
     d = d[d["ACT"].map(lambda x: x not in (None, ""))].copy()
+    if len(d) == 0:
+        raise ArchivoInvalido("sin_datos", "El Maestro de Actividades no trae ninguna fila "
+                              "de datos. Revisa que sea el archivo completo, sin modificar.")
     d["ACT_n"] = d["ACT"].map(norm)
     d["NUMREM_n"] = d["NUMREM"].map(norm)
     return d
@@ -701,6 +738,7 @@ def trans_map(entrada):
     if faltan:   # archivo modificado o reporte equivocado
         raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {' y '.join(faltan)}. "
                          "¿Está modificado o es otro reporte? Descárgalo de nuevo SIN tocar.")
+    exigir_filas(filas, "el 'Informe Inscritos y Adscritos'")
     out = {}
     for f in filas:
         t = trans_de(f[i_sex] if i_sex < len(f) else "", f[i_gen] if i_gen < len(f) else "")
@@ -720,6 +758,7 @@ def atenid_multiprofesional(entrada):
     if i_aten is None or i_m1 is None:
         raise ValueError("el 'Monitoreo Multiprofesional' no trae ATEN ID / "
                          "Multiprofesional-1. ¿Modificado o reporte equivocado?")
+    exigir_filas(filas, "el 'Monitoreo Multiprofesional'")
     return {str(f[i_aten]).strip() for f in filas if i_m1 < len(f) and norm(f[i_m1])}
 
 

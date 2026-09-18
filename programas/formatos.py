@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.10
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -73,33 +73,58 @@ EDAD_TOKENS_ADMIN = ["EDAD", "REGISTRO", "FORMULARIO"]
 SEXO_HEADER = "SEXO"                                    # igual en ambos
 
 
-def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
-                 admin_banner=ADMIN_BANNER, admin_markers=ADMIN_MARKERS):
-    """'iris' | 'administrativo' | 'desconocido' según las firmas del reporte.
-    Barrido ÚNICO hasta MAX_FILAS_HEADER. IRIS se confirma por su ancla (y por el
-    RUT si se pasan tokens en `iris_rut`; pásalo `None`/`()` para no exigirlo).
-    Admin por banner en A1 o por markers. Cada reporte puede pasar sus propias
-    firmas; las default sirven al formulario RAYEN estándar (A05, instrumentos)."""
-    tope = min(ws.max_row, MAX_FILAS_HEADER)
+def detectar_eje_filas(filas, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
+                       admin_banner=ADMIN_BANNER, admin_markers=ADMIN_MARKERS):
+    """Igual que `detectar_eje`, pero sobre FILAS YA LEÍDAS (secuencias de VALORES,
+    como las entrega `ws.iter_rows(values_only=True)`), no sobre una hoja openpyxl.
+
+    POR QUÉ existe: las firmas viven en las primeras MAX_FILAS_HEADER filas, así que
+    quien solo quiere el formato no necesita el archivo completo. `detectar_eje`
+    (abajo) pide una hoja, y para que `ws.max_row` sea confiable esa hoja tiene que
+    venir de un `load_workbook` SIN `read_only` — o sea, parsear el export entero.
+    Eso es lo que la GUI 2.0 hacía para detectar el formato de un click, y después el
+    worker volvía a parsearlo completo para procesarlo: dos lecturas completas por
+    corrida. Con las filas por delante, el llamador puede leerlas en modo `read_only`
+    e ir cortando (`islice`), que es la MISMA disciplina de `rem_utils.leer_xlsx` y
+    `verificar_hoja_unica`: nunca `max_row` (sale de la <dimension> del .xlsx, que
+    RAYEN a veces trae rota o ausente), siempre iterar y parar por cuenta propia."""
+    filas = list(filas)[:MAX_FILAS_HEADER]
     ancla = [norm(t) for t in iris_ancla]
     rut = [norm(t) for t in (iris_rut or [])]
     ok_ancla = False
     ok_rut = not rut                      # sin tokens de RUT -> no se exige
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
+    normalizadas = [[norm(v) for v in fila] for fila in filas]
+    for vals in normalizadas:
         if all(any(tok in v for v in vals) for tok in ancla):
             ok_ancla = True
         if rut and any(all(t in v for t in rut) for v in vals):
             ok_rut = True
     if ok_ancla and ok_rut:
         return "iris"
-    if norm(ws.cell(row=1, column=1).value) == norm(admin_banner):
+    a1 = normalizadas[0][0] if (normalizadas and normalizadas[0]) else norm(None)
+    if a1 == norm(admin_banner):
         return "administrativo"
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
+    for vals in normalizadas:
         if any(any(norm(m) in v for v in vals) for m in admin_markers):
             return "administrativo"
     return "desconocido"
+
+
+def detectar_eje(ws, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS,
+                 admin_banner=ADMIN_BANNER, admin_markers=ADMIN_MARKERS):
+    """'iris' | 'administrativo' | 'desconocido' según las firmas del reporte.
+    Barrido ÚNICO hasta MAX_FILAS_HEADER. IRIS se confirma por su ancla (y por el
+    RUT si se pasan tokens en `iris_rut`; pásalo `None`/`()` para no exigirlo).
+    Admin por banner en A1 o por markers. Cada reporte puede pasar sus propias
+    firmas; las default sirven al formulario RAYEN estándar (A05, instrumentos).
+
+    Toma una hoja ya abierta (SIN `read_only`, para que `ws.max_row` valga) y
+    delega en `detectar_eje_filas`. Si lo único que tienes es la ruta y no
+    necesitas el resto del archivo, usa esa otra: ahorra parsear el export entero."""
+    tope = min(ws.max_row, MAX_FILAS_HEADER)
+    filas = [[c.value for c in ws[r]] for r in range(1, tope + 1)]
+    return detectar_eje_filas(filas, iris_ancla=iris_ancla, iris_rut=iris_rut,
+                              admin_banner=admin_banner, admin_markers=admin_markers)
 
 
 # -- Fuente PLENA vs PARCIAL en el grupo pandas (fase 2, sep-2026) ------------

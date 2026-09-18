@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.3
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -54,7 +54,7 @@ from programas.rem_utils import (
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
     grid as _grid, BANDAS_A06, LBL_A06,
-    verificar_hoja_unica,
+    verificar_hoja_unica, exigir_filas_ws,
 )
 from programas import formatos
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
@@ -201,6 +201,9 @@ def abrir_validado(entrada):
             "Goldberg): no encontré columnas PUNTAJE y RESULTADO.\n"
             "¿Quizás cargaste el formulario de 'Control de Salud Mental'? "
             "Ese va en el módulo de egresos/ingresos.")
+    # Fail loud sobre la FUENTE (CLAUDE.md regla 2): sin esto, un export con solo
+    # el encabezado deja la tabla D.3 entera en 0, con cara de resultado legitimo.
+    exigir_filas_ws(ws, header_idx, "el export del instrumento")
     return wb, ws, formato, header_idx
 
 

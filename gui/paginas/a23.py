@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -79,23 +79,8 @@ def resumen(res):
             f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
 
 
-def bloque_banner_fuente(frame, pagina):
-    """Arranca oculto: no hay nada que mostrar hasta que `al_completar` corra
-    despues de la primera corrida exitosa."""
-    banner = widgets.BannerFuente(frame)
-    pagina.datos["banner_fuente"] = banner
-    return None
-
-
 def al_completar(res, pagina):
-    banner = pagina.datos.get("banner_fuente")
-    if banner is None:   # no deberia pasar (el extra siempre lo arma primero), pero no reventar
-        return
-    estado_mensaje = widgets.estado_fuente_de_avisos(res["fer"].attrs.get("avisos"))
-    if estado_mensaje is None:
-        banner.mostrar("plena", "Fuente: A/D/A de IRIS completo.")
-    else:
-        banner.mostrar(*estado_mensaje)
+    widgets.pintar_banner_fuente(pagina, res["fer"])
 
 
 PANTALLA = {
@@ -110,6 +95,8 @@ PANTALLA = {
          "titulo_dialogo": "Atenciones / Diagnósticos / Actividades (se filtra al mes elegido por FECHA ATENCIÓN)"},
         {"key": "otros_cronicos", "etiqueta": "Otros Crónicos (2+ años):", "multi": True,
          "obligatorio": True,
+         "motivo_obligatorio": "De ahí salen SALA bajo control y la Sección G "
+                               "(inasistentes crónicos). Ideal varios años.",
          "titulo_dialogo": "Formulario Otros Crónicos — selecciona VARIOS años (año del reporte + anterior, ideal 5)"},
         {"key": "estratificacion", "etiqueta": "Estratificación (opcional):", "multi": True,
          "obligatorio": False, "titulo_dialogo": "Estratificación de Riesgo — opcional"},
@@ -120,7 +107,7 @@ PANTALLA = {
     "mes": True,
     "carpeta_salida": True,
     "extras": [
-        {"despues_de": "atenciones", "construir": bloque_banner_fuente},
+        {"despues_de": "atenciones", "construir": widgets.bloque_banner_fuente},
     ],
     "correr": correr,
     "resumen": resumen,

@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -26,9 +26,14 @@ la relajacion de obligatorios para una corrida solo-cuestionarios (SS6), y el
 Trabajo Perdido corriendo en el mismo worker con su propio try.
 
 LA REGRESION QUE HAY QUE RESOLVER (SS6 del plan): la vieja pestana A03
-standalone (`_tab_a03`, YA BORRADA de autorem.py -- ver CLAUDE.md
-'gui-2-eliminar-a03-standalone') permitia tabular SOLO los cuestionarios, sin
-ADA ni Grupal. Esta pagina reproduce esa capacidad: si 'Incluir cuestionarios'
+standalone permitia tabular SOLO los cuestionarios, sin ADA ni Grupal, y
+DESAPARECE en la 2.0 (CLAUDE.md SS12). Ojo con el tiempo verbal: `_tab_a03`
+TODAVIA existe en autorem.py (esta definida y montada en `lanzar_gui`, que es
+la GUI que sigue corriendo el exe) -- se borra en el paso 11 del plan, cuando
+autorem.py deje de armar el notebook 1.x. Hasta entonces las dos conviven, asi
+que un cambio aca no la reemplaza todavia.
+
+Esta pagina reproduce esa capacidad: si 'Incluir cuestionarios'
 esta marcado Y no hay ADA ni Grupal, corre SOLO el A03 (con el bloque de
 Estamentos que igual se necesita para el perfil Administrativo del
 screening) y se salta el bloque de Actividades Y la fase `preparar` de
@@ -43,11 +48,11 @@ BANNERS DE FUENTE (SS5.1 del plan, agregado tras migrar A05):
     corre DENTRO de `cargar_atenciones`, en el worker -- solo se sabe DESPUES
     de Procesar, via `al_completar`. Misma asimetria que A23."""
 
-import threading
+from pathlib import Path
 
 import customtkinter as ctk
 
-from gui import widgets, dialogos
+from gui import widgets, dialogos, runner
 
 instrucciones = (
     "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) -> tablas\n"
@@ -100,11 +105,7 @@ def _chequeo_cruce(frame, pagina, espera):
 
         def trabajo():
             from programas import formatos
-            try:
-                otro = formatos.parece_reporte(_header_rapido(archivos[0]))
-            except Exception:   # noqa: BLE001  (archivo raro -> no se acusa nada, silencioso aca)
-                otro = None
-            frame.after(0, lambda: _aplicar(otro))
+            return formatos.parece_reporte(_header_rapido(archivos[0]))
 
         def _aplicar(otro):
             if otro is None or otro == espera:
@@ -114,29 +115,22 @@ def _chequeo_cruce(frame, pagina, espera):
                     f"Esto parece el reporte de {nombres[otro]}, no el que va en esta "
                     f"casilla ({nombres[espera]}). Revisa que no hayas cruzado los archivos.")
 
-        threading.Thread(target=trabajo, daemon=True).start()
+        # runner.en_hilo y NO frame.after(0,...) desde el hilo: Tk.after no es
+        # thread-safe (ver la nota en runner.en_hilo). Un archivo raro revienta en
+        # `trabajo` -> llega como `err` y NO se acusa nada (nunca un falso positivo).
+        runner.en_hilo(frame, trabajo,
+                       lambda otro, err: _aplicar(otro if err is None else None))
     return on_elegido
 
 
-def bloque_banner_fuente(frame, pagina):
-    """Banner de fuente del ADA (formatos.clasificar_fuente): arranca oculto,
-    `al_completar` lo actualiza DESPUES de la corrida -- a diferencia del
-    preview de cruce de arriba, esta clasificacion recien se sabe al cargar y
-    resolver el archivo de verdad, adentro del worker (SS5.1 del plan)."""
-    banner = widgets.BannerFuente(frame)
-    pagina.datos["banner_fuente"] = banner
-    return None
-
-
 def al_completar(res, pagina):
-    banner = pagina.datos.get("banner_fuente")
-    if banner is None or res.get("E") is None:   # solo_a03: no hubo ADA que clasificar
-        return
-    estado_mensaje = widgets.estado_fuente_de_avisos(res["E"].attrs.get("avisos"))
-    if estado_mensaje is None:
-        banner.mostrar("plena", "Fuente: A/D/A de IRIS completo.")
-    else:
-        banner.mostrar(*estado_mensaje)
+    widgets.pintar_banner_fuente(pagina, res.get("E"))   # E None en solo_a03: no hubo ADA
+
+
+def _es_solo_a03(a03, ada, grupal):
+    """Corrida solo-cuestionarios: checkbox marcado, con archivos, y ni ADA ni Grupal
+    (SS6 del plan). Fuente UNICA para la validacion y para preparar."""
+    return bool(a03["incluir"] and a03["instrumentos"] and not ada and not grupal)
 
 
 def _ada_grupal_obligatorio(getters):
@@ -145,9 +139,7 @@ def _ada_grupal_obligatorio(getters):
     de los dos elegido (SS6 del plan). Si el checkbox esta marcado pero el
     usuario tambien cargo ADA/Grupal, se hace la corrida COMPLETA de
     siempre -- la casilla no reemplaza el input, solo lo completa."""
-    a03 = getters["a03"]()
-    return not (a03["incluir"] and a03["instrumentos"]
-                and not getters["ada"]() and not getters["grupal"]())
+    return not _es_solo_a03(getters["a03"](), getters["ada"](), getters["grupal"]())
 
 
 def bloque_dotacion_sm(frame, pagina):
@@ -163,14 +155,15 @@ def bloque_cuestionarios(frame, pagina):
     Estamentos (lo necesita el perfil Administrativo del screening -- SS6 del
     plan: 'el bloque de estamentos tambien se mueve con el A03')."""
     var_incluir = ctk.BooleanVar(value=False)
-    ctk.CTkCheckBox(frame, text="¿Incluir cuestionarios?  (genera además la tabla A03·D.3)",
-                    variable=var_incluir, command=lambda: _toggle()).pack(anchor="w", pady=(6, 0))
+    chk = ctk.CTkCheckBox(frame, text="¿Incluir cuestionarios?  (genera además la tabla A03·D.3)",
+                          variable=var_incluir, command=lambda: _toggle())
+    chk.pack(anchor="w", pady=(6, 0))
 
     caja = widgets.caja_titulada(frame, "Cuestionarios A03·D.3 (PSC / PSC-Y / GHQ-12)")
 
     def _toggle():
         if var_incluir.get():
-            caja.pack(fill="x", pady=(2, 4))
+            caja.pack(fill="x", pady=(2, 4), after=chk)   # sin after= cae bajo Procesar
         else:
             caja.pack_forget()
 
@@ -199,8 +192,7 @@ def preparar(ctx, pagina):
     import tkinter.messagebox as messagebox
     import modulos.rem_sm_actividades as smact
     a03 = ctx["a03"]
-    ctx["solo_a03"] = bool(a03["incluir"] and a03["instrumentos"]
-                           and not ctx["ada"] and not ctx["grupal"])
+    ctx["solo_a03"] = _es_solo_a03(a03, ctx["ada"], ctx["grupal"])
     if ctx["solo_a03"]:
         ctx["d"] = None
         ctx["tabla_dot"] = None
@@ -229,7 +221,8 @@ def correr(ctx, log):
     carpeta = ctx["carpeta"]
     a03 = ctx["a03"]
     res = {"mes": (y, m), "solo_a03": ctx["solo_a03"], "salida": None,
-           "salida_a03": None, "n_tp": None, "n_a03": None, "E": None}
+           "salida_a03": None, "n_tp": None, "n_a03": None, "por_inst_a03": None,
+           "E": None}
 
     if not ctx["solo_a03"]:
         salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
@@ -266,11 +259,20 @@ def correr(ctx, log):
             salida_a03 = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
 
             def _correr_a03():
+                # El nombre del archivo lleva el mes (para no pisar corridas distintas),
+                # pero el A03 NO filtra por mes: no hay una sola fecha en su export y el
+                # modulo no la mira. Se dice en voz alta, porque un nombre de archivo que
+                # promete un periodo que el contenido no respeta es justo el numero
+                # plausible-pero-mal que el REM no perdona (CLAUDE.md regla 2).
+                log(f"[a03] OJO: la tabla A03·D.3 cubre TODO lo que traigan los exports de "
+                    f"cuestionarios, NO solo {m:02d}/{y}. El mes en el nombre del archivo es "
+                    f"solo para distinguir corridas: filtra el periodo al descargarlos de RAYEN.")
                 tabla_est = estam.tabla_efectiva(a03["est_ruta"] or None, log=log)
                 r03 = screening.procesar_unificado(a03["instrumentos"], salida_a03,
                                                    estamentos=(tabla_est or None),
                                                    resolver_estamento=None, log=log)
                 res["n_a03"] = r03["total"]
+                res["por_inst_a03"] = r03["por_instrumento"]
                 res["salida_a03"] = salida_a03
                 log(f"OK A03·D.3: {r03['total']} aplicaciones -> {salida_a03.name}")
 
@@ -293,16 +295,34 @@ def correr(ctx, log):
     return res
 
 
+def _por_instrumento(res):
+    """ ' (PSC: 20 · PSC-Y: 18 · GHQ-12: 22)' para el resumen, o '' si no hay dato.
+
+    NO es decoracion: los 3 slots A03·D.3 fijan el instrumento A MANO, sin
+    autodeteccion (`bloque_cuestionarios`, igual que la vieja pestana), asi que cargar
+    el export del PSC-Y en el slot del PSC no lo cacha nadie. El desglose es lo unico
+    que lo delata ANTES de copiar la tabla D.3 al SA_26: un total pelado ("60
+    aplicaciones") tapa igual un 20/20/20 que un 60/0/0. `_correr_a03` de autorem.py
+    lo mostraba, el port lo perdio, y `procesar_unificado` igual lo venia devolviendo
+    en `por_instrumento`."""
+    por_inst = res.get("por_inst_a03")
+    if not por_inst:
+        return ""
+    return " (" + " · ".join(f"{k}: {v}" for k, v in por_inst.items()) + ")"
+
+
 def resumen(res):
     y, m = res["mes"]
     if res["solo_a03"]:
-        return (f"Listo. A03·D.3 {y}-{m:02d}: {res['n_a03']} aplicaciones.\n\n"
+        return (f"Listo. A03·D.3 {y}-{m:02d}: {res['n_a03']} aplicaciones"
+                f"{_por_instrumento(res)}.\n\n"
                 f"Guardado en:\n{res['salida_a03']}")
     E = res["E"]
     resu = E.attrs["tablas"]["SM_Resumen"]
     rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
     tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco roto." if res["n_tp"] is not None else ""
-    a03txt = f"\nA03·D.3: {res['n_a03']} aplicaciones." if res["n_a03"] is not None else ""
+    a03txt = (f"\nA03·D.3: {res['n_a03']} aplicaciones{_por_instrumento(res)}."
+              if res["n_a03"] is not None else "")
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
             f"{rtxt}\n\nGuardado en:\n{res['salida']}")
 
@@ -320,6 +340,7 @@ PANTALLA = {
          "on_elegido": lambda frame, pagina: _chequeo_cruce(frame, pagina, "ada")},
         {"key": "grupal", "etiqueta": "Atenciones Grupales:", "multi": True,
          "obligatorio": _ada_grupal_obligatorio,
+         "motivo_obligatorio": "De ahí salen A06 psicosocial grupal, A19a grupal y A27.",
          "titulo_dialogo": "Reporte de Atenciones Grupales",
          "on_elegido": lambda frame, pagina: _chequeo_cruce(frame, pagina, "grupal")},
         {"key": "inscritos", "etiqueta": "Inscritos (opcional, TRANS):", "multi": True,
@@ -333,7 +354,7 @@ PANTALLA = {
     "mes": True,
     "carpeta_salida": True,
     "extras": [
-        {"despues_de": "ada", "construir": bloque_banner_fuente},
+        {"despues_de": "ada", "construir": widgets.bloque_banner_fuente},
         {"despues_de": "grupal", "construir": bloque_dotacion_sm},
         {"despues_de": None, "construir": bloque_cuestionarios, "key": "a03"},
     ],
@@ -341,4 +362,8 @@ PANTALLA = {
     "correr": correr,
     "resumen": resumen,
     "al_completar": al_completar,
+    # Salida por defecto sin ADA (solo-cuestionarios): junto a los cuestionarios,
+    # nunca el cwd (CLAUDE.md SS2: las salidas llevan RUT).
+    "carpeta_defecto": lambda ctx: next(
+        (Path(r).parent for r in ctx["a03"]["instrumentos"].values()), None),
 }

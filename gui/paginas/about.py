@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -108,7 +108,19 @@ def _cargar_manual(nombre, root, refrescar):
     if not ruta:
         return
 
-    from tools.scan_catalogo import escanear
+    # Import PEREZOSO y con red: `tools/` es el unico modulo de desarrollo que viaja
+    # en el exe (hiddenimport en autoREM.spec). Si algun dia el .spec se desincroniza
+    # -- ya paso con refs_tablas/ --, el boton avisa en vez de tirar un traceback; y
+    # NUNCA se carga un catalogo sin escanear, porque eso saltaria la regla 1.
+    try:
+        from tools.scan_catalogo import escanear
+    except ImportError as e:
+        messagebox.showerror(
+            "No puedo escanear el archivo",
+            f"Falta el escaner de privacidad ({e}).\n\nNo cargo un catálogo sin "
+            "escanearlo antes, así que esto queda bloqueado. Avísale a Simón: "
+            "«tools.scan_catalogo no está en el .exe».")
+        return
     try:
         hallazgos, _estructura, _filas = escanear(ruta)
     except Exception as e:   # noqa: BLE001  (archivo no legible como Excel, etc.)
@@ -144,8 +156,22 @@ def _cargar_manual(nombre, root, refrescar):
 
 
 def _volver_a_embebido(nombre, refrescar):
+    from tkinter import messagebox
     import programas.catalogos as cat
-    cat.cargar(nombre, entrada=None, recargar=True)
+    # try/except igual que `_cargar_manual`: `catalogos.cargar` levanta
+    # FileNotFoundError si el catalogo embebido no esta (empaquetado sin la carpeta
+    # catalogos/, caso que `refrescar` ya contempla mas abajo). En un boton Tk de un
+    # exe --windowed esa excepcion no se ve en NINGUNA parte: el boton parecia no
+    # hacer nada y, peor, `_OVERRIDES` seguia diciendo "cargado a mano" sobre un
+    # catalogo que ya no estaba en el cache.
+    try:
+        cat.cargar(nombre, entrada=None, recargar=True)
+    except Exception as e:   # noqa: BLE001  (hilo GUI: sin esto Tk se lo traga)
+        messagebox.showerror(
+            "No pude volver al catálogo incluido",
+            f"«{nombre}» no se pudo recargar desde el catálogo que trae autoREM:"
+            f"\n\n{e}\n\nEl archivo cargado a mano sigue puesto.")
+        return
     _OVERRIDES.pop(nombre, None)
     refrescar()
 

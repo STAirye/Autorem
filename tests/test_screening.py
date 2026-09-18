@@ -228,6 +228,19 @@ def test_rechaza_no_instrumento():
         assert e.categoria == "no_instrumento"
 
 
+def test_rechaza_export_sin_filas():
+    """Bug recurrente (CLAUDE.md regla 2): un export con SOLO el encabezado pasaba
+    la validación y dejaba la tabla D.3 entera en 0, con cara de mes sin tamizajes.
+    La guarda va en `abrir_validado`, sobre la FUENTE."""
+    for etq, p in (("iris", _iris("vacio_iris.xlsx", "Goldberg", [])),
+                   ("admin", _admin("vacio_admin.xlsx", "Goldberg", []))):
+        try:
+            scr.abrir_validado(p)
+            assert False, f"{etq}: debió rechazar un export sin filas"
+        except scr.ArchivoInvalido as e:
+            assert e.categoria == "sin_datos", (etq, e.categoria)
+
+
 def test_tabla_d3_excluye_sin_riesgo():
     """La tabla A03·D.3 = 6 filas (ingreso/egreso × Bajo/Medio/Alto). 'Sin riesgo'
     (bajo el corte) NO cuenta en la tabla, aunque sí esté en el detalle."""

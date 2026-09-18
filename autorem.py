@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -344,9 +344,8 @@ def _valida_carpeta(ruta, messagebox, defecto=None):
 def _error_inesperado(e, log, messagebox):
     import traceback
     log(f"[ERROR INESPERADO] {type(e).__name__}: {e}")   # legible aunque no haya traceback vivo
-    tb = traceback.format_exc()
-    if tb and not tb.startswith("NoneType"):   # en hilo worker format_exc() da 'NoneType: None'
-        log(tb)
+    if e.__traceback__ is not None:   # format_exc() no sirve: la excepcion vino del worker
+        log("".join(traceback.format_exception(type(e), e, e.__traceback__)))
     messagebox.showerror(
         "Error inesperado",
         f"Ocurrió un error no previsto:\n\n{type(e).__name__}: {e}\n\n"
@@ -378,9 +377,9 @@ def _slim_por_defecto():
     cands = []
     if getattr(sys, "frozen", False):
         base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-        cands += [base / "refs_tablas" / "maestro_slim.csv.gz",
+        cands += [base / "catalogos" / "maestro_slim.csv.gz",
                   Path(sys.executable).parent / "maestro_slim.csv.gz"]
-    cands.append(Path(__file__).resolve().parent / "refs_tablas" / "maestro_slim.csv.gz")
+    cands.append(Path(__file__).resolve().parent / "catalogos" / "maestro_slim.csv.gz")
     return next((str(c) for c in cands if c.exists()), None)
 
 

@@ -4,25 +4,18 @@
 # CLAUDE.md §11:
 #
 #   pyinstaller --onefile --windowed --name "autoREM" \
-#     --add-data "catalogos/maestro_slim.csv.gz;refs_tablas" \
 #     --add-data "catalogos;catalogos" autorem.py
 #
 # OJO con `datas`: son DATOS, no imports -> PyInstaller no los descubre solo.
 # Los destinos NO son arbitrarios, tienen que calzar con donde los busca el
 # codigo dentro del bundle (sys._MEIPASS):
 #
-#   autorem._slim_por_defecto()   -> _MEIPASS / "refs_tablas" / "maestro_slim.csv.gz"
+#   autorem._slim_por_defecto()   -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
 #   gui.runner.slim_por_defecto() -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
 #   programas.catalogos._carpetas -> _MEIPASS / "catalogos"
 #
-# El archivo FUENTE vive en `catalogos/maestro_slim.csv.gz` (feedback del autor,
-# sep-2026: es un catalogo actividad<->estamento<->REM igual que cie10/eno/ges,
-# no un ejemplo anonimizado como el resto de refs_tablas/ -- ver
-# tools/slim_maestro.py). La entrada `refs_tablas` de mas abajo es SOLO
-# compatibilidad con la GUI vieja (`autorem._slim_por_defecto()`, congelada
-# hasta el paso 11 de docs/GUI_2.0_plan.md -- no se toca `autorem.py` antes de
-# eso): copia el MISMO archivo a los dos destinos del bundle para que ninguna
-# de las dos GUI pierda el Trabajo Perdido con Maestro mientras conviven.
+# El Maestro slim vive en `catalogos/` (catalogo actividad<->estamento<->REM,
+# como cie10/eno/ges) y las DOS GUI lo buscan ahi: una sola copia en el bundle.
 #
 # Si falta el maestro slim, el Trabajo Perdido cae a heuristica (avisa en el log).
 # Si faltan los catalogos, `catalogos.cargar()` levanta FileNotFoundError.
@@ -31,20 +24,38 @@
 # lo va a cachar si se desincroniza. Ya paso una vez: quedo apuntando a
 # 'refs tablas/' despues del rename a 'refs_tablas/'.
 
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+# customtkinter shippea sus temas y fuentes como DATA (assets/themes/*.json,
+# assets/fonts/): sin esto el exe revienta al importar ctk. El hook oficial no
+# siempre esta, asi que se recolecta explicito.
+_CTK_DATAS = collect_data_files('customtkinter')
+
+# gui/paginas/*.py se descubren en RUNTIME con pkgutil.iter_modules (gui/registro.py):
+# NADIE las importa por nombre, asi que el analisis estatico de PyInstaller no las ve
+# y el exe quedaba con el sidebar VACIO. collect_submodules las mete al bundle, con lo
+# que FrozenImporter.iter_modules() tambien las encuentra. Una pagina nueva en
+# gui/paginas/ entra sola: no hay que tocar este archivo.
+_PAGINAS = collect_submodules('gui.paginas')
+
 a = Analysis(
     ['autorem.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('catalogos/maestro_slim.csv.gz', 'refs_tablas'),   # compat GUI vieja, ver nota arriba
         ('catalogos', 'catalogos'),                          # incluye maestro_slim.csv.gz para la GUI 2.0
-    ],
+    ] + _CTK_DATAS,
     # `programas.catalogos` (§14) es una capa compartida que TODAVIA NO tiene
-    # consumidor: ningun modulo del exe la importa (solo tools/, que no se
-    # empaqueta). Sin esta linea PyInstaller no la incluye y los catalogos/*.csv.gz
+    # consumidor REM: ningun modulo del exe la importa (la GUI 2.0 si, desde el
+    # About). Sin esta linea PyInstaller no la incluye y los catalogos/*.csv.gz
     # de `datas` viajarian huerfanos -> data sin el codigo que la lee.
-    # Cuando algun modulo la importe de verdad, esta entrada deja de hacer falta.
-    hiddenimports=['programas.catalogos'],
+    #
+    # `tools.scan_catalogo`: lo importa gui/paginas/about.py para escanear un
+    # catalogo DEIS antes de aceptarlo (CLAUDE.md regla 1). Es el UNICO archivo de
+    # tools/ que viaja en el exe -- el resto son utilitarios de desarrollo. Va como
+    # hiddenimport porque el import es PEREZOSO (dentro de la funcion), asi que el
+    # analisis estatico de PyInstaller no lo ve. tools/__init__.py existe por esto.
+    hiddenimports=['programas.catalogos', 'tools.scan_catalogo'] + _PAGINAS,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

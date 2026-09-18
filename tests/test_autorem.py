@@ -331,6 +331,28 @@ def test_filtro_mes():
         assert e.categoria == "mes_vacio"
 
 
+def test_export_sin_filas_falla_en_la_fuente():
+    """Bug recurrente (CLAUDE.md regla 2): un export con SOLO el encabezado daba 0
+    eventos con cara de resultado legítimo. La guarda del mes vacío no lo cubre
+    cuando se procesa el 'Archivo completo' (mes=None), así que va en `_preparar`.
+    Un mes sin ingresos SÍ es legítimo; un archivo sin filas no."""
+    p = _TMP / "solo_header.xlsx"
+    if not p.exists():
+        wb = openpyxl.Workbook(); ws = wb.active
+        ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
+        ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+                   "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO",
+                   "20.- TIPO DE DEPRESIÓN"])
+        wb.save(p)
+    for mod in (egresos, ingresos):
+        for mes in (None, (2026, 7)):
+            try:
+                mod.procesar(p, _TMP / "no_se_escribe.xlsx", log=_quiet, mes=mes)
+                assert False, f"{mod.__name__} mes={mes} debió levantar ArchivoInvalido"
+            except sm.ArchivoInvalido as e:
+                assert e.categoria == "sin_datos", e.categoria
+
+
 def test_dispatcher_multisheet():
     """Correr egresos+ingresos juntos -> un archivo con ambas hojas."""
     perfil = sm.perfil_por_id("iris")

@@ -1,0 +1,539 @@
+# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-17)
+
+Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`, ~3200 líneas).
+Sin PII. Borrar este archivo cuando la revisión esté cerrada y mergeada.
+
+---
+
+## ⚠ LEER PRIMERO — protocolo de esta revisión
+
+La revisión se está haciendo con **agentes de `/code-review` corridos DE A UNO**, con
+un `compact` entre cada uno. O sea: **el que revisa no recuerda las rondas anteriores.**
+Este archivo es la única memoria. Por eso:
+
+1. **Antes de reportar un hallazgo, buscarlo en §1 (corregido) y §2 (descartado).**
+   Están ordenados para poder `grep`ear por símbolo (`cargar_estrat`, `after(0`,
+   `root.update`, …). Si el hallazgo ya está ahí, **no volver a reportarlo**.
+2. **Después de cada ronda, anotar acá lo nuevo** — en §1 si se corrigió, en §2 si se
+   revisó y NO era bug. Un hallazgo revisado y no anotado se vuelve a pagar completo
+   en la ronda siguiente.
+3. Formato de cada línea: `símbolo o archivo:función` — qué pasaba → qué se hizo.
+   El **símbolo** es lo que hace greppable el registro; sin él la entrada no sirve.
+4. **Por qué de a uno:** el primer intento fue 12 agentes en paralelo y los 12 murieron
+   al arrancar (límite de gasto de la API, HTTP 429), sin entregar nada. No reintentar
+   el fan-out.
+5. Estado del árbol: **todo sin commit**, en el working tree de `gui-2.0`, versión
+   **1.9.17**, **206 tests verdes**.
+
+**Foco original pedido** (sigue vigente para lo que falte): el **bug recurrente de
+c38a8cc** — un export con 0 filas de datos que pasa el loader y revienta abajo con un
+error críptico, o peor, da un **0 callado**, en vez de `ArchivoInvalido` sobre la
+FUENTE. Ya visto en 1.9.12 (A23, NaT) y en c38a8cc (Inscritos). §1.A lo cierra para
+todos los loaders conocidos; si aparece uno nuevo, va ahí.
+
+---
+
+## §1 — YA CORREGIDO. No volver a reportar
+
+41 hallazgos en 4 rondas con resultado (la 0 entregó cero). Todo verificado con
+tests; ver §3.
+
+### §1.A · Bug recurrente «0 filas» — cerrado en TODOS los loaders conocidos
+
+Dos primitivas, una por mundo. **Regla para módulos nuevos:** si el loader es pandas,
+pasa por `cargar_canonico` y ya está cubierto; si abre el worksheet a mano, tiene que
+llamar `exigir_filas_ws`.
+
+- `rem_utils.exigir_filas(filas, fuente)` — mundo `leer_xlsx` (listas de filas).
+- `rem_utils.exigir_filas_ws(ws, header_idx, fuente)` — mundo openpyxl-worksheet. **NUEVO
+  en esta revisión.**
+
+| Símbolo | Qué daba antes | Guarda |
+|---|---|---|
+| `rem_utils.cargar_canonico` | 0 filas → columnas `float64` → `AttributeError` en `.str.contains()`. **Cuello de botella del grupo pandas:** cubre de una el ADA, el grupal, Inscritos, NSP y «Otros y Respi» | `exigir_filas` POR ARCHIVO, nombrándolo |
+| `rem_utils.leer_xlsx` | hoja sin NINGUNA fila (ni encabezado) → `IndexError` en `filas[hi]` | `sin_datos` |
+| `rem_utils.cargar_maestro` | `KeyError 'ACT'` | `sin_datos` |
+| `rem_utils.trans_map` (Inscritos) | **TRANS = 0 callado** | `exigir_filas` |
+| `rem_utils.atenid_multiprofesional` | composición de VDI mal, callada | `exigir_filas` |
+| `rem_saludmental._preparar` (A05 N/O) | 0 eventos con cara de resultado legítimo. La guarda de `mes_vacio` **no** cubría «Archivo completo» (`mes=None`) | `exigir_filas_ws` |
+| `rem_a03_d3_instrumentos.abrir_validado` | tabla D.3 entera en 0 | `exigir_filas_ws` |
+| `estamentos.cargar_estamentos` («Utilización de Cupos») | todos sin estamento **y pisaba el caché con un dict vacío** | `exigir_filas_ws` |
+| `rem_a23_respiratorio.cargar_estrat` | sin col. RUT → `TypeError` en `f[None]`; solo header → gravedad de TODOS en `""` vía `_gate` → **SALA en 0 callado**. No tenía NINGUNA guarda | `sin_columnas` + `exigir_filas` |
+| `poblacion.cargar_inscritos` | `AttributeError` en col. PROTECCION NIÑEZ (el bug de c38a8cc) | `sin_datos` |
+| `poblacion.cargar_formulario_sm` | `AttributeError` | `sin_datos` |
+| `poblacion.construir_poblacion` (ADA) | `AttributeError`. La familia población no pasa por `filtrar_mes` | `sin_datos` |
+
+### §1.B · Trampas de hilos y de Tk (GUI 2.0)
+
+- **`frame.after(0, ...)` DESDE el worker** en `a05.bloque_archivo_formato._detectar` y
+  `sm._chequeo_cruce` → `Tk.after` no es thread-safe (registra un comando Tcl):
+  `RuntimeError: main thread is not in main loop`, o corrupción intermitente de Tk.
+  **Arreglo:** `runner.en_hilo(widget, trabajo, al_terminar)` — cola + poll, el mismo
+  patrón que `correr_con_reloj` ya usaba a propósito. **Si ves otro `after(` llamado
+  desde un hilo, ESO sí es nuevo: reportarlo.**
+- **Carrera de dos elecciones de archivo** en el A05: dos hilos en vuelo y el resultado
+  del archivo VIEJO se pintaba sobre el nuevo → podía colar un **Administrativo como
+  IRIS**. Arreglo: la categoría se guarda junto a la RUTA para la que se calculó
+  (`estado = {"ruta":…, "categoria":…}`) y la que no corresponde se descarta.
+- **`root.update()` en `dialogos.dotacion_ada`** → despacha TODOS los eventos
+  pendientes, así que un segundo click en Procesar ya encolado **reentraba en
+  `on_procesar`**: dos diálogos de dotación y dos workers escribiendo el MISMO archivo
+  de salida. Arreglo: `update_idletasks()` (solo repinta) + el botón se deshabilita en
+  `app.on_procesar` **antes** de `preparar`, y se rehabilita si `preparar` aborta.
+
+### §1.C · Empaquetado del .exe (`autoREM.spec`)
+
+- **Sidebar VACÍO:** `gui/registro.py` descubre las páginas con `pkgutil.iter_modules` y
+  nadie importa `gui.paginas.*` por nombre → PyInstaller no las empaquetaba.
+  Arreglo: `collect_submodules('gui.paginas')` + `cargar_registro()` ahora **falla
+  ruidoso** si no encuentra ninguna (antes: ventana vacía con cara de funcionar).
+- **Temas de `customtkinter`:** `collect_data_files('customtkinter')` (sin eso el exe
+  revienta al importar ctk).
+- **`tools.scan_catalogo`:** lo importa `about.py` para escanear un catálogo DEIS antes
+  de aceptarlo, y `tools/` no se empaquetaba → `ModuleNotFoundError`. Arreglo:
+  `tools/__init__.py` (nuevo) + hiddenimport; y si igual faltara, el botón **avisa y no
+  carga el catálogo sin escanear** (regla 1).
+- `autorem._slim_por_defecto` buscaba el Maestro slim en `refs_tablas/` después de
+  moverlo a `catalogos/`; el `.spec` además lo copiaba dos veces.
+
+### §1.C-bis · Layout del sidebar — la posición era orden de EJECUCIÓN, no un dato
+
+Los dos hallazgos de esta sección tienen la misma causa raíz, y es la excepción a lo
+declarativo del resto de la arquitectura (`PANTALLA` descubierto por introspección,
+`ORDEN_PROGRAMAS`, `TAREA`, `COBERTURA`): **la posición de un widget en el sidebar era
+una propiedad emergente del orden de las sentencias**, sin nada que la declarara.
+
+- **`app._grupo_colapsable`: la cabecera del programa se dibujaba DEBAJO de sus páginas**
+  («SALUD MENTAL» bajo sus propios botones) en el PRIMER dibujo. `pack` apila en orden de
+  LLAMADA, no de creación: `contenido` se tiene que CREAR antes que `header` (la closure
+  `alternar` lo necesita) y se empacaba en la misma línea. El síntoma se auto-corregía al
+  colapsar/expandir, porque `alternar` llama `contenido.pack()` de nuevo y ahí sí cae al
+  final de la pila — de ahí lo desconcertante del bug. Arreglo: `contenido.pack()` va
+  **después** de `header.pack()`, con el porqué en el docstring.
+- **`PAGINAS_ESPECIALES`: Inicio y Acerca de no estaban ancladas.** Su posición era «donde
+  caiga el bucle dentro de `_construir_sidebar`» (después de los grupos) más el orden
+  interno del tuple. Nada decía «Inicio va al tope», así que sumar un programa a
+  `ORDEN_PROGRAMAS` o reordenar el tuple las movía **en silencio**. Arreglo: la posición
+  pasa a ser un DATO (`posicion`: `"arriba"` | `"abajo"`), Inicio fija al tope y Acerca de
+  al pie; el toggle de tema queda bajo Acerca de (es un control, no una página).
+
+Los dos tests nuevos miran el orden REAL en pantalla (`pack_slaves()` para el apilado,
+`winfo_rooty()` para el anclaje) y se comparan contra los botones de PANTALLA, no contra
+índices fijos: siguen valiendo cuando se sume una página. Se verificó que **cada uno falla
+al reintroducir su bug** y que ningún otro test se cae con ellos.
+
+### §1.C-ter · Lo mismo, un nivel más abajo: el orden de las páginas dentro del grupo
+
+Tercera aparición de la clase de §1.C-bis, encontrada por la ronda 4 (auditoría de
+comportamiento removido): **el orden de las páginas DENTRO de su grupo salía del nombre
+del archivo `.py`**. `registro.cargar_registro` ordenaba por `(programa, orden en que
+pkgutil encontró el archivo)`, y `pkgutil.iter_modules` va alfabético. `autorem.lanzar_gui`
+sí lo declaraba, como secuencia de sentencias: `_tab_a05` → `_tab_a03` → `_tab_a23` →
+`_tab_sm` → `_tab_beta`.
+
+Hoy A05 va antes de Actividades **por casualidad**: `"a05" < "sm"`. Renombrar `sm.py` a
+`actividades.py` —que es el rename natural, porque el título de la página *es*
+«Actividades»— las daba vuelta en silencio, y una página nueva de Salud Mental entraba
+donde le tocara alfabéticamente.
+
+Arreglo: `registro.ORDEN_PAGINAS`, hermano de `ORDEN_PROGRAMAS`, con el mismo fail soft
+(una página no declarada cae al final de su grupo, y ahí desempata el orden de archivo
+para que el resultado sea determinista) y el mismo fail loud en los tests.
+
+**Ojo con el test:** el primero que escribí solo comprobaba que cada `id` **estuviera**
+declarado en `ORDEN_PAGINAS`, y sobrevivió a quitarle la clave de orden al `sorted` —
+porque con los nombres de archivo actuales el orden alfabético y el declarado **coinciden**,
+así que el registro real no puede distinguir una implementación de la otra. El test bueno
+parchea `_paginas_encontradas` para que devuelva las páginas **al revés** y exige que el
+orden declarado gane igual.
+
+### §1.D · Mensajes y validación de la GUI
+
+- **`runner.valida_mes` (NUEVO)** — el mes se validaba solo con «¿son números?»
+  (`app._resolver_ctx`: `if mes is None`), **no por rango**. El `ttk.Spinbox` acota
+  únicamente sus FLECHAS: un mes `13` **tecleado** llegaba al worker y reventaba recién
+  en `rem_utils._rango_mes` con `ValueError: month must be in 1..12`, que
+  `manejar_error` no reconoce → «Error inesperado … pásaselo a Simón» (un typo
+  presentado como bug), y después de cargar los archivos. Un año de 2 dígitos (`26`)
+  era peor: no revienta, se va a `filtrar_mes` y sale «no hay filas de 07/0026»,
+  culpando al export. `_tab_a05` y `_tab_beta` validaban el rango en `autorem.py`; el
+  port a `widgets.selector_mes` lo perdió para todas las páginas menos A05. Ahora una
+  sola función, usada por `_resolver_ctx`, `dialogos.bloque_dotacion._precargar` y
+  `a05.preparar`. `widgets.ANIO_MIN`/`ANIO_MAX` son la ÚNICA fuente del rango (Spinbox
+  + guarda), con un test que impide que divergan.
+- **`widgets.fila_archivos` no se podía VACIAR** (solo sobreescribir: el diálogo
+  cancelado deja la selección anterior). Eso dejaba **sin salida la corrida
+  solo-cuestionarios** de SM, que exige «ni ADA ni Grupal» (`sm._es_solo_a03`): un
+  click accidental en «Examinar…» sobre el ADA la volvía inalcanzable **hasta
+  reiniciar autoREM**, porque las páginas no se destruyen al cambiar de pantalla
+  (`App.mostrar`). Arreglo: botón **«Quitar»**, que avisa con `on_elegido([])`.
+- **`BannerFuente` sobrevivía a la corrida que lo pintó.** Lo pinta `al_completar`, así
+  que: (a) al elegir otro archivo el banner VERDE seguía afirmando «A/D/A de IRIS
+  completo» al lado de un export parcial recién cargado; (b) si la corrida siguiente
+  fallaba, `al_completar` no corre y quedaba el veredicto de la anterior. El color es
+  una AFIRMACIÓN sobre la fuente (plan §5.1 regla 1), no decoración. Arreglo:
+  `app.pintar_input` apaga el banner ante cualquier cambio de input (el hook va en el
+  SHELL porque el input dueño del banner —A23 `atenciones`— no tiene `on_elegido`
+  propio), `on_procesar` lo apaga al arrancar (junto con el log, mismo motivo), y
+  `pintar_banner_fuente(df=None)` oculta en vez de dejar lo de antes.
+- **`about._volver_a_embebido` llamaba `catalogos.cargar` SIN `try`**, al revés que su
+  hermano `_cargar_manual`. `cargar` levanta `FileNotFoundError` si falta el catálogo
+  embebido (caso que `refrescar` ya contempla); en un botón Tk de un exe `--windowed`
+  esa excepción **no se ve en ninguna parte**: el botón parecía no hacer nada y
+  `_OVERRIDES` seguía diciendo «cargado a mano» sobre algo que ya no estaba en el
+  caché.
+- **`sm.py` afirmaba que `_tab_a03` estaba «YA BORRADA de autorem.py»** — y no lo está:
+  sigue definida (`autorem.py:999`) y montada en `lanzar_gui` (`autorem.py:208`), que
+  es la GUI que corre el exe. Se borra en el paso 11. Importa el tiempo verbal: §2 de
+  este mismo documento cierra la pregunta del resolver de estamentos comparando contra
+  `_tab_a03`, y quien ejecute el paso 11 necesita saber que hoy conviven.
+
+- `runner.manejar_error`: volvió el **mapa de títulos por `ArchivoInvalido.categoria`**
+  (`_TITULO_INVALIDO`), que vivía dentro de `_tab_a05` y se perdió al centralizar el
+  despacho. Ahora lo comparten todas las páginas e incluye las categorías nuevas.
+- `runner.manejar_error`: el `ImportError` mandaba a instalar **pandas** siempre, aun
+  cuando lo que faltaba era otra librería. Ahora usa `e.name`, y si la excepción se
+  levantó a mano (sin `.name`) muestra su texto tal cual.
+- **Ruta tecleada/pegada en el A05:** no pasa por «Examinar» → `on_elegido` nunca corría
+  y salía «Formato no reconocido» **sobre un archivo perfecto**. Arreglo:
+  `detectar_ahora()`, que `preparar` llama antes de procesar.
+- **Arrastrar el .xlsx sobre el exe** volvió a precargar la ruta: el `ruta_inicial` de
+  `_tab_a05` no tenía canal en el shell nuevo. Arreglo: `gui.app.lanzar(ruta_inicial)`
+  → `App(ruta_inicial=)` → `Pagina.datos["ruta_inicial"]`.
+- **`motivo_obligatorio`** (nueva clave opcional de `inputs`): el aviso genérico «Carga
+  al menos un archivo: X» había perdido el POR QUÉ que el aviso a mano sí daba. Puesto
+  en Otros Crónicos (A23), Grupal (SM) y Formulario SM (población).
+- **A03·D.3:** el nombre del archivo lleva el mes pero el módulo **no filtra por mes**
+  (no tiene ninguna lógica de mes). Se avisa en el log en vez de dejar un archivo que
+  promete un período que su contenido no respeta.
+- `error_inesperado` perdía el traceback del worker (`format_exc()` no sirve ahí).
+- Excepciones en `preparar` / `al_completar` / `resumen` eran invisibles (Tk se las
+  traga) → ahora pasan por `manejar_error`.
+- Detección de formato del A05 con `read_only=True`: la `<dimension>` ausente o rota de
+  RAYEN hacía **rechazar un archivo válido**. Ahora sin `read_only`, igual que
+  `sm.abrir_validado`, que es quien procesa después.
+- Banner / acuse / caja de cuestionarios se empacaban tarde y quedaban **bajo el botón
+  Procesar** → `pack(after=…)`.
+- SM solo-cuestionarios: la salida (que lleva RUT) iba al cwd, o sea **al repo** →
+  `carpeta_defecto`.
+
+### §1.D-bis · Comportamiento REMOVIDO por el port (ronda 4)
+
+Ángulo: qué hacía `autorem.py` que la GUI 2.0 dejó de hacer. Tres hallazgos, más el
+doble parseo de §1.E-bis.
+
+- **`a05._leer_categoria` aplastaba tres errores distintos en uno.** Tenía un
+  `except Exception -> "error_lectura"`, y `preparar` despachaba eso como **«Formato no
+  reconocido»** con `sm._MSG_DESCONOCIDO` (que habla de las firmas del export). O sea:
+  - un `.xls`/`.html` disfrazado de `.xlsx` (el clásico de RAYEN, CLAUDE.md §13 lo
+    declara «ya manejado con el diálogo No es un .xlsx») → se le decía «no encontré las
+    firmas, vuelve a descargarlo sin modificarlo», sobre un archivo que puede estar
+    impecable y cuyo arreglo real es «Guardar como → .xlsx». Verificado: openpyxl levanta
+    `zipfile.BadZipFile`, y `runner.es_error_formato` **sí** lo clasifica bien.
+  - abierto en Excel / bloqueado por OneDrive (`PermissionError`) → mismo mensaje
+    equivocado, en vez de «Permiso denegado».
+  - falta `openpyxl` (`ImportError`) → mismo mensaje equivocado; `_tab_a05` lo avisaba en
+    el log con el `pip install` (`if not sm.OPENPYXL_OK`), y eso no tenía contraparte en
+    ninguna parte de `gui/`.
+
+  Las tres ramas **siguen implementadas** en `runner.manejar_error` y quedaban muertas
+  para esta página, porque `preparar` abortaba antes de que corriera el worker. Arreglo:
+  la excepción VIAJA (`estado["error"]`, `detectar_ahora()` devuelve `(categoria, error)`)
+  y la clasifica quien sabe. El banner usa `runner.motivo_fuente`, que sale del **mismo
+  árbol de `isinstance`** que `manejar_error`: si alguien agrega una rama en uno y no en
+  el otro, el color y el diálogo empiezan a contradecirse, que es lo que §5.1 del plan
+  prohíbe.
+- **La salida por defecto de Población se había mudado de carpeta.** `_tab_beta` guardaba
+  junto al **Inscritos** (`defecto=entrada.parent`), que es el snapshot del mes reportado.
+  El defecto genérico de `_resolver_ctx` es «el primer input CARGADO», o sea el orden en
+  que están *escritos*, y Población los declara en el orden numerado de sus instrucciones
+  (1. Formulario histórico, 2. ADA, 3. Inscritos) → el P6 y el Rescate del mes se iban en
+  silencio a la carpeta del histórico multi-año, que es justo la que se tiene archivada
+  aparte. No viola la regla 1 (sigue fuera del repo, junto a un input), pero el usuario
+  tiene que ir a buscarlos. Arreglo: `ancla_salida` en el contrato de `inputs` — la
+  carpeta ancla es un DATO, no una posición en la lista (misma cura que §1.C-bis/ter).
+  A23 y SM no estaban afectadas: su primer input declarado es el mismo archivo que usaban
+  las pestañas viejas.
+- **El desglose por instrumento del A03·D.3 se perdió.** `_correr_a03` imprimía
+  «60 aplicaciones (PSC: 20 · PSC-Y: 18 · GHQ-12: 22)»; la corrida solo-cuestionarios
+  dejó solo el total, aunque `procesar_unificado` seguía devolviendo `por_instrumento` (se
+  descartaba). No es decoración: los 3 slots fijan el instrumento **a mano**, sin
+  autodetección, así que cargar el export del PSC-Y en el slot del PSC no lo caza nadie —
+  el desglose es lo único que lo delata antes de copiar la D.3 al SA_26, y un total pelado
+  tapa igual un 20/20/20 que un 60/0/0.
+
+  **Ojo con el test:** el primero probaba `_por_instrumento` con un dict a mano y
+  sobrevivió a quitar la línea que lo puebla. El bueno corre `sm.correr` de verdad en modo
+  solo-cuestionarios, con `procesar_unificado` y `estamentos.tabla_efectiva` stubbeados.
+
+### §1.E-bis · El A05 leía el export COMPLETO dos veces por corrida
+
+Un click en «Examinar…» hacía `load_workbook(ruta, data_only=True)` **sin `read_only`** —
+parseo completo del export— solo para mirar el encabezado, y después el worker lo parseaba
+otra vez en `sm.abrir_validado`. La GUI 1.x hacía una sola lectura (no detectaba nada).
+
+El comentario que justificaba el parseo completo era correcto pero sacaba la conclusión
+equivocada: «SIN read_only: en ese modo `max_row` sale de la `<dimension>` del xlsx, que
+RAYEN a veces trae ausente o rota». El problema es **`max_row`**, no `read_only`:
+`rem_utils.leer_xlsx` y `verificar_hoja_unica` —los lectores canónicos del proyecto,
+documentados como «ROBUSTO a la dimension rota»— usan `read_only=True` y **nunca**
+`max_row`: iteran y cortan por cuenta propia. `formatos.detectar_eje` sí dependía de
+`ws.max_row` (`tope = min(ws.max_row, MAX_FILAS_HEADER)`), y de ahí venía la obligación.
+
+Arreglo: `formatos.detectar_eje_filas` (mismo veredicto, sobre filas ya leídas) +
+`sm.detectar_formato_filas`; `detectar_eje(ws)` delega, así sus otros 3 callers no cambian.
+La detección lee con `read_only=True` + `islice(..., MAX_FILAS_HEADER)`. Tests que amarran
+que el atajo **no cambie la respuesta** sobre los dos exports A05 reales del repo.
+
+### §1.E · Estructura y versionado
+
+- **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
+  **1.9.17**. El árbitro anti-colisión es el CHANGELOG (CLAUDE.md §9).
+- La familia población cargaba Inscritos / Formulario / ADA **dos veces** (P6 + Rescate)
+  → se pasan los DataFrames ya cargados, con `fuentes=` para la hoja LEEME.
+- Código muerto y duplicados: `resolver_estamentos`, `_on_procesar`/`_getters`, el
+  predicado solo-A03, el banner A23/SM.
+- `requirements.txt` no listaba `customtkinter` (y ahora menciona `pytest` como dep de
+  desarrollo, que solo pide `tests/test_formatos_fuente.py`).
+
+---
+
+## §2 — DESCARTADO: revisado y NO es bug. No volver a perseguir
+
+Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con motivo.**
+
+- **`widgets.estado_fuente_de_avisos` desempaca tuplas de 4** — correcto, no frágil.
+  `programas/cobertura.py:285` (el escritor de la hoja LEEME, por el que pasan TODOS los
+  módulos) **también** desempaca 4, así que la forma ya está fijada aguas arriba. Un
+  aviso mal formado reventaría antes, en `cobertura`, que es donde corresponde
+  arreglarlo. Poner un guard defensivo en el banner solo taparía ese bug.
+- **`catalogos.cargar(entrada=, recargar=)` y el override del About** — la firma calza, y
+  el propio mensaje de confirmación le dice al usuario que hoy **ningún** módulo REM
+  consulta los catálogos DEIS (CLAUDE.md §12: «enchufar `en_rango` en el A23» sigue
+  pendiente). No hay consumidor que pueda ignorar el override.
+- **El resolver manual de estamentos del A03 standalone borrado** — no se perdió nada.
+  `_tab_a03` también pasaba `resolver_estamento=None`: el diálogo Tk no puede abrirse
+  desde el worker, y el estamento solo alimenta el DETALLE, no la tabla D.3.
+- **`gui/paginas/sm.py` decía «saco vacío» en 4 lugares** (estaba en el roadmap de
+  CLAUDE.md §12) — ya estaba renombrado a «saco roto». Sacado del roadmap.
+- **`refs_tablas/*.xlsx` son header-only y `cargar_canonico` ahora los rechaza** — es
+  correcto: son planillas de EJEMPLO (privacidad), no exports. Los 3 tests de
+  `test_formatos_fuente.py` que se las pasaban usan ahora `_con_una_fila()`, que agrega
+  una fila sintética **conservando el encabezado REAL** como guardarraíl de la firma.
+
+---
+
+## §3 — Verificación (estado actual)
+
+- **206 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3).
+  `check_version` OK (1.9.17, 206 tests), `check_cp1252` OK (59 archivos).
+- Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
+  **dos** test files que antes no se podían correr ahora corren.
+  `test_formatos_fuente` 25/25 · `test_gui_registro` 15/15.
+- **Tests nuevos (23):** `test_gui_construccion.py` (8: construcción de las 6 páginas,
+  ruta precargada del A05, `detectar_ahora`, vaciar un input múltiple, solo-cuestionarios
+  alcanzable tras un ADA elegido por error, banner de fuente que no sobrevive al cambio
+  de archivo, cabecera del grupo sobre sus páginas, Inicio al tope y Acerca de al pie)
+  · `test_gui_registro.py` (2: rango de `valida_mes`, Spinbox amarrado a
+  `ANIO_MIN`/`ANIO_MAX`) · A05 sin filas (`test_autorem`) · A03 sin filas
+  (`test_screening`) · Cupos sin filas (`test_estamentos`) · `cargar_estrat`
+  (`test_a23`).
+- **Tests de la ronda 4 (9):** `test_gui_construccion.py` (2: el `.xls` disfrazado no se
+  confunde con «formato no reconocido»; salida de Población junto al Inscritos) ·
+  `test_gui_registro.py` (4: `motivo_fuente` sigue las ramas de `manejar_error`; el
+  desglose A03 llega al resumen; el orden de páginas no depende del nombre del archivo;
+  toda página declarada en `ORDEN_PAGINAS`; una sola `ancla_salida` por pantalla) ·
+  `test_formatos_fuente.py` (3: `detectar_eje_filas` == `detectar_eje` sobre los dos
+  exports A05 reales, y le alcanza el encabezado).
+  **De la primera pasada, 2 sobrevivieron a la mutación** (probaban la pieza suelta, no
+  el cableado) y se rehicieron — ver §1.C-ter y §1.D-bis.
+- **Un test cambió de expectativa a propósito:**
+  `test_a23::test_export_sin_filas_falla_claro` esperaba `mes_vacio` y ahora corta antes
+  con `sin_datos`, nombrando el archivo. Es la guarda más temprana y más precisa, no un
+  enmascaramiento.
+- **Repro empírico de 0 filas:** SM grupal / Inscritos / Multiprofesional, Trabajo
+  Perdido / Maestro, Población Formulario / ADA / Inscritos, A05 (IRIS y Admin, con mes
+  y sin mes), A03 (4 instrumentos), Cupos, Estratificación → **todos** dan
+  `ArchivoInvalido`.
+- **La GUI se construye de verdad** (`test_gui_construccion.py`): las 6 páginas (4 del
+  registro + Inicio + Acerca de) se arman y sobreviven ciclos de eventos. Eso es lo que
+  cazó el `after()`-desde-hilo.
+
+---
+
+## §4 — QUÉ FALTA
+
+### Lo que no se puede automatizar (no es para un agente)
+
+1. **Mirar la ventana con ojos humanos** — `python -m gui.app`. Que el banner y el acuse
+   del A05 queden DONDE se espera, que la caja de cuestionarios del SM se vea bien, que
+   el tema claro/oscuro no rompa nada. El test de construcción prueba que no revienta,
+   no que se vea bien.
+2. **Compilar el .exe y abrirlo** — `pyinstaller autoREM.spec`. Los arreglos de §1.C
+   están razonados pero **no probados contra un build real**. Confirmar: el sidebar trae
+   las 4 páginas, y el botón de catálogos del About no dice que falta el escáner.
+
+### Ángulos de revisión que NO se han corrido todavía
+
+Los agentes en paralelo murieron antes de entregar; lo hecho a mano fue más acotado que
+el `max` planeado. Sin cubrir de forma sistemática:
+
+- **Reuso / simplificación / altitud** sobre las ~3200 líneas del diff (solo se sacó el
+  código muerto obvio, §1.E).
+- **Eficiencia**: nadie miró si la GUI 2.0 relee archivos o rehace trabajo (el caso de
+  la familia población, §1.E, se encontró de casualidad).
+- **Convenciones**: headers de versión de cada `.py` de `gui/` vs su último cambio real
+  (se sincronizaron a 1.9.17 los tocados, no se auditó el resto).
+- **Paridad del port**: se comparó a mano `_tab_sm`, `_tab_a05`, `_tab_a23`, `_tab_a03`
+  y `_manejar_error`. **Falta `_tab_beta`** (vs `gui/paginas/poblacion.py`) y los
+  **diálogos de dotación** (`gui/dialogos.py` vs `_dialogo_dotacion`).
+
+### Deuda conocida, para el paso 11 / el merge
+
+- **Hallazgo #14, sin resolver:** `gui/runner.py` duplica helpers de `autorem.py` y **ya
+  divergieron**. Se resuelve con el merge limpio del paso 11.
+- **`autorem.py` todavía corre la GUI 1.x:** `main()` llama `lanzar_gui`; la GUI 2.0 se
+  arranca con `python -m gui.app`. Al enchufarla, pasar el `ruta_inicial` de `main()` a
+  `gui.app.lanzar(ruta_inicial)` — el canal ya existe (§1.D).
+- **`autoREM.spec`: `gui.app` y `gui.registro` NO entran al bundle** (hallazgo de la
+  ronda 3, **postergado a propósito al merge** — decisión del autor). Verificado:
+
+  ```
+  $ python -c "from PyInstaller.utils.hooks import collect_submodules; print(collect_submodules('gui.paginas'))"
+  ['gui.paginas', 'gui.paginas.a05', 'gui.paginas.a23', 'gui.paginas.about',
+   'gui.paginas.inicio', 'gui.paginas.poblacion', 'gui.paginas.sm']
+  ```
+
+  No aparecen `gui.app` ni `gui.registro`, y **nadie más los importa**: `autorem.py`
+  (el único entry point del `.spec`) no tiene ni un import de `gui`. Dos consecuencias:
+  1. **El punto 2 de «lo que no se puede automatizar» (más arriba) hoy no se puede
+     cumplir:** compilar el exe y «confirmar que el sidebar trae las 4 páginas» es
+     imposible, porque la GUI 2.0 no está en el exe. Los arreglos de §1.C quedan
+     razonados pero sin build que los pruebe — y eso es *esperado* hasta el paso 11, no
+     un bug nuevo.
+  2. **Trampa para el paso 11:** todos los imports de `autorem.py` son locales a la
+     función (`lanzar_gui` hace `import tkinter as tk` adentro). Si se enchufa con un
+     `from gui.app import lanzar` **dentro** de `main()`/`lanzar_gui`, PyInstaller no lo
+     ve y el exe congelado muere con `ModuleNotFoundError: gui.app` al abrirlo — con el
+     `.spec` ya «arreglado». Al hacer el paso 11: import a NIVEL DE MÓDULO, o sumar
+     `'gui.app'` a `hiddenimports`.
+- **Hallazgo #4 — `main` necesita los fixes de §1.A igual:** `cargar_canonico`,
+  `exigir_filas_ws`, `leer_xlsx`, `cargar_maestro`, `trans_map`, `cargar_estrat` y los
+  de `poblacion.py` viven en `programas/` y `modulos/`, **no en la GUI**. Hoy el arreglo
+  existe solo en `gui-2.0` y `main` sigue roto.
+- **CHANGELOG al merge:** 1.9.16 de `main` + 1.9.17 de la rama. Renumerar si `main`
+  avanzó.
+- **`maestro_slim.csv.gz` entró a `catalogos/` sin los controles de ese vecindario**
+  (hallazgo de la ronda 4, **fuera de alcance por ahora — decisión del autor**: el plan es
+  una sección de *utils* + una **skill de Claude** que genere el slim desde un Maestro
+  completo de IRIS y que sí chequee los guardarraíles del proyecto; cuando eso exista,
+  este ítem se cierra ahí).
+
+  El diff mueve el archivo de `refs_tablas/` (ignorado en bloque + **whitelist POR
+  ARCHIVO**, o sea un veto humano por archivo: la línea `!refs_tablas/maestro_slim.csv.gz`
+  se borra en este mismo diff) a `catalogos/`, que está whitelisteado **en bloque**
+  (`!catalogos/*.csv.gz`). Hereda el versionado automático y **ninguno de los dos
+  controles** que el propio comentario del `.gitignore` da como justificación de ese bloque:
+
+  1. **El escaneo de PII.** El `.gitignore` dice: «el pre-commit anti-RUT SALTA los
+     binarios (.gz), así que un slim no lo revisa nadie → `tools/catalogos_deis.py --slim`
+     corre `scan_catalogo.py` antes de escribirlo y se niega a vendorizar un catálogo con
+     hallazgos». Pero el slim del Maestro **no lo escribe ese script**, lo escribe
+     `tools/slim_maestro.py`, que no importa `escanear` (verificado: `grep -n
+     "scan_catalogo\|escanear" tools/slim_maestro.py tools/catalogos_deis.py` → 0 hits en
+     el primero). El texto que el diff agrega afirma que «el Maestro slim la tiene resuelta
+     aparte, en su propio script», y su script no la resuelve.
+  2. **La procedencia.** «Al repo va el slim + FUENTES.json, que registra QUÉ EDICIÓN es» —
+     pero `catalogos/FUENTES.json` tiene solo `cie10`, `eno`, `ges`. El Maestro se
+     actualiza ~semestral, y su clasificación decide qué actividad cuenta como saco roto:
+     sin registro de edición, un número de Trabajo Perdido ya tabulado no se puede
+     rastrear a la versión del catálogo que lo produjo. `tests/test_catalogos.py` tampoco
+     lo cubre: itera `cat.CATALOGOS`, no el directorio.
+
+  No hay fuga demostrada (el slim recorta a 5 columnas de catálogo, sin PII de paciente).
+  Lo que se perdió es **el portón**, no un dato.
+- **⚠ REVISAR A MANO TODO EL TEXTO QUE VE EL USUARIO — pega del AUTOR, no de un agente.**
+  Es un code-review que solo puede hacer quien conoce RAYEN/IRIS y el REM: un agente
+  puede verificar que el string exista y esté bien escrito, no que la instrucción sea
+  **cierta**. Y una instrucción equivocada es el mismo bug que la regla 2 persigue: si
+  el texto manda a descargar el reporte equivocado, el usuario tabula un número
+  plausible-pero-mal sin que nada falle. La GUI 2.0 reescribió o movió casi todos estos
+  textos, así que ninguno viene «ya revisado» de la 1.x. Las superficies, para que la
+  pasada sea mecánica:
+
+  | Qué | Dónde |
+  |---|---|
+  | Instrucciones de cada página (los pasos «1. Descarga…») | `instrucciones = (` en `gui/paginas/*.py` |
+  | Títulos y cuerpos de los avisos modales | `messagebox.show*` en `gui/` |
+  | Títulos por categoría de `ArchivoInvalido` | `runner._TITULO_INVALIDO` |
+  | Mensajes de error compartidos | `runner._MSG_PERMISO`, `_MSG_NO_XLSX`, `sm._MSG_DESCONOCIDO`, `sm._DISCLAIMER_ADMIN` |
+  | El «por qué» de los obligatorios | `motivo_obligatorio` en las `PANTALLA` |
+  | Textos de los bloques Estamentos / Dotación / Cuestionarios | `gui/dialogos.py`, `sm.bloque_cuestionarios` |
+  | Etiquetas de input y de carpeta/mes | `etiqueta` / `titulo_dialogo` en las `PANTALLA`, `gui/widgets.py` |
+  | Líneas de log que el usuario lee de verdad | `log(` en `gui/` y en `modulos/` |
+  | Mensajes de `ArchivoInvalido` (los que más se leen) | `programas/`, `modulos/` |
+  | Hoja LEEME + `no_cubre` | `programas/cobertura.py` |
+
+  Para enumerarlas:
+
+  ```bash
+  grep -rn "messagebox.show\|^instrucciones\|motivo_obligatorio" gui/
+  grep -rn "ArchivoInvalido(" programas/ modulos/ | wc -l
+  ```
+
+  Ojo con dos cosas al pasar: que el texto **no prometa** lo que el módulo no hace (ya
+  mordió dos veces — el mes en el nombre del A03·D.3 y los catálogos DEIS que ningún
+  módulo consulta todavía, §1.D), y las tildes (son cp1252-safe, `check_cp1252` solo
+  bloquea flechas/cajas/emoji, así que el checker **no** va a cazar una tilde faltante).
+
+---
+
+## §5 — Bitácora de rondas
+
+Una línea por ronda. **Anotar el ÁNGULO** que se cubrió, no solo la fecha: es lo que
+evita que la ronda siguiente repita el mismo barrido. Los ángulos sin marcar están
+listados en §4.
+
+| # | Ángulo cubierto | Hallazgos | Anotados en |
+|---|---|---|---|
+| 0 | 12 agentes en paralelo (A–E + reuso/simplificación/eficiencia/altitud/convenciones + 2 del bug recurrente) | **0 — murieron al arrancar** (HTTP 429) | — |
+| 1 | A mano, alcance acotado: bug recurrente en la familia población + GUI (empaquetado del log, salidas con RUT, código muerto) | 15 | §1 (13 ✅) · §4 (2 ⏸ al merge) |
+| 2 | A mano: auditoría estática de los loaders que faltaban + paridad del port (B/C/D/E) + trampas de Tk/hilos | 12 ✅ + 4 descartados | §1.A–E · §2 |
+| 3 | **Ángulo A — barrido LÍNEA POR LÍNEA del diff** (todo `gui/`, `tools/check_version.py`, `tools/slim_maestro.py`, `autoREM.spec`, hunk de `programas/poblacion.py`), con las firmas de cada callee verificadas contra `programas/`+`modulos/` | 6: **5 ✅** + 1 ⏸ al merge | §1.D (5) · §4 deuda (el `.spec`) |
+| 3b | **A OJO, el autor corriendo `python -m gui.app`** — lo que ningún test ve. Dio los 2 hallazgos de layout del sidebar, con la misma causa raíz (posición = orden de ejecución) | 2 ✅ | §1.C-bis |
+| 4 | **Ángulo B — auditor de comportamiento REMOVIDO**: (a) cada línea que el diff borra o reemplaza (`.gitignore`, el rename del maestro slim, `autoREM.spec`, `tools/slim_maestro.py`) → ¿qué invariante sostenía y dónde se re-establece?; (b) cada página portada contra su `_tab_*` original en `autorem.py` (`_tab_a05`, `_tab_a23`, `_tab_sm`, `_tab_a03`, `_tab_beta`, `_correr_con_reloj`, `_manejar_error`, `_valida_ruta`/`_valida_carpeta`, los helpers de dotación/estamentos, y el selector de perfil que se eliminó) → ¿qué guarda, validación, aviso, `try`, línea de log, default o argumento se cayó? | 7: **4 ✅** + 1 ⏸ (utils/skill) + 1 ⏸ (CLI congelado) + 1 ✅ del ángulo A pendiente | §1.C-ter · §1.D-bis · §1.E-bis · §4 deuda (2) |
+| 5 | _(siguiente: quedan reuso/simplificación/altitud, convenciones —headers de versión del resto de `gui/`—, y otra pasada a ojo del autor)_ | | |
+
+**Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
+la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es
+fiel línea por línea (incluido el `orden` por `attrs['por_estamento']`); el reuso de
+DataFrames de la familia población (§1.E) es seguro porque `construir_poblacion` y el
+rescate **solo leen** `insc`/`form`/`d_ada` (ningún `df[col] = …` ni `inplace`);
+`scan_catalogo.escanear` devuelve 3-tupla con hallazgos de 5 campos, como los desempaca
+el About; `formatos.parece_reporte` solo devuelve claves de `FIRMAS_CRUCE`, así que el
+`nombres[otro]` de `sm._chequeo_cruce` no puede dar `KeyError`; `check_version` sí cubre
+`gui/paginas/*.py` (usa `git ls-files`, recursivo, y `parts[0] in DIRS_VERSIONADOS`).
+
+**Lo que la ronda 4 revisó y NO era bug:** correr desde FUENTE no perdió el Maestro slim
+(`autorem._slim_por_defecto` y `runner.slim_por_defecto` apuntan los dos a `catalogos/`;
+verificado: `autorem._slim_por_defecto()` → `E:\git\Autorem\catalogos\maestro_slim.csv.gz`),
+y el `.spec` ya quedó coherente en los cambios sin commitear (la entrada de compatibilidad
+a `_MEIPASS/refs_tablas` se borró y el comentario apunta a `catalogos/`, así que **no** hay
+copia muerta de 1.2 MB en el bundle ni comentario mintiendo); ningún test leía
+`refs_tablas/maestro_slim.csv.gz` (los de Trabajo Perdido arman su propio maestro
+sintético con `_mk_maestro`), así que no hay tests saltándose en silencio;
+`autorem._resolver_estamentos` ya era código muerto en la 1.x (definido y nunca llamado,
+`resolver_estamento=None` en todos los call sites), así que no portarlo no pierde nada;
+la detección del A05 no necesita `verificar_hoja_unica` porque el worker la corre igual y
+`ArchivoInvalido("modificado")` ya tiene su título; `HOJA` es `None`, así que el `wb.active`
+de la detección y el `wb[HOJA] if HOJA else wb.active` de `abrir_validado` son la misma
+hoja; el defecto de carpeta de A23 y SM sí coincide con el de las pestañas viejas (su
+primer input declarado es el mismo archivo); `_aviso_sin_modificar` y
+`_separador_opcionales` sí se portaron (`widgets.aviso_sin_modificar`,
+`widgets.separador_opcionales`); y `correr_con_reloj`/`crear_log` son ports fieles.
+La nueva página de A03 standalone **no** perdió el aviso de «Sin archivos»: lo cubre
+`_ada_grupal_obligatorio` + el aviso genérico de `_resolver_ctx`.
+
+**Al cerrar una ronda, además de anotar acá:** correr la suite completa
+(`for t in tests/test_*.py; do python "$t"; done` + `pytest tests/test_formatos_fuente.py`),
+`tools/check_version.py` y `tools/check_cp1252.py`, y actualizar el contador de §3.

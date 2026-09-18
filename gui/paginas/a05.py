@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -40,8 +40,6 @@ autorem.py (SS2 del plan: no son GUI, y tests/test_autorem.py los usa) --
 esta pagina los importa en vez de duplicarlos.
 """
 
-import threading
-
 import customtkinter as ctk
 
 import programas.rem_saludmental as sm
@@ -65,49 +63,106 @@ def bloque_archivo_formato(frame, pagina):
     pinta un BannerFuente con el resultado -- la ventana no se congela, el
     banner dice 'Detectando...' mientras tanto."""
     var_ruta = ctk.StringVar()
-    banner = widgets.BannerFuente(frame)
     var_acuse = ctk.BooleanVar(value=False)
     chk_acuse = ctk.CTkCheckBox(
         frame, variable=var_acuse,
         text="Entiendo que las columnas demográficas saldrán vacías")
-    estado = {"categoria": None}
+    # La categoria se guarda JUNTO A LA RUTA para la que se calculo. Dos motivos:
+    #   1. CARRERA: elegir dos archivos rapido lanza dos hilos, y si el primero
+    #      termina DESPUES del segundo, pintaba la categoria del archivo viejo sobre
+    #      el nuevo -> podia colar un Administrativo como IRIS (o bloquear un valido).
+    #   2. RUTA TECLEADA/PEGADA (o precargada al arrastrar el archivo al exe): no pasa
+    #      por "Examinar", asi que `on_elegido` nunca corre. Antes eso daba "Formato no
+    #      reconocido", culpando a un archivo que puede estar perfecto.
+    # Con la ruta como clave, `get()` sabe cuando lo que tiene NO corresponde y
+    # `detectar_ahora()` (lo llama `preparar`) resuelve en el hilo GUI.
+    estado = {"ruta": None, "categoria": None, "error": None}
 
-    def _aplicar(categoria):
+    def _aplicar(categoria, ruta, error=None):
+        if ruta != var_ruta.get().strip():
+            return          # resultado de una eleccion ya reemplazada: se descarta
+        estado["ruta"] = ruta
         estado["categoria"] = categoria
+        estado["error"] = error
         chk_acuse.pack_forget()
-        if categoria == "iris":
+        if error is not None:
+            # El motivo sale del MISMO arbol que `runner.manejar_error`, que es quien
+            # da el dialogo con el arreglo concreto al apretar Procesar. El banner
+            # resume; los dos no se pueden contradecir porque comparten la funcion.
+            banner.mostrar("no_reconocido", runner.motivo_fuente(error))
+        elif categoria == "iris":
             banner.mostrar("plena", "Formato detectado: IRIS")
             var_acuse.set(False)
         elif categoria == "administrativo":
             banner.mostrar("parcial", "Formato detectado: Administrativo.\n" + sm._DISCLAIMER_ADMIN)
-            chk_acuse.pack(anchor="w", pady=(2, 6))
-        elif categoria == "error_lectura":
-            banner.mostrar("no_reconocido", "No pude abrir el archivo para detectar el formato "
-                           "(¿esta abierto en Excel, o no es un .xlsx real?).")
+            chk_acuse.pack(anchor="w", pady=(2, 6), after=banner)
         else:
             banner.mostrar("no_reconocido", sm._MSG_DESCONOCIDO)
 
+    def _leer_categoria(ruta):
+        """Formato del export leyendo SOLO el encabezado. Levanta lo que levante
+        openpyxl: quien llama se lo pasa a `runner.manejar_error`, que distingue
+        'no es un .xlsx' de 'esta abierto en Excel' de 'falta openpyxl' -- tres
+        arreglos DISTINTOS que un `except Exception` generico aplastaba en uno solo
+        ("Formato no reconocido"), culpando al contenido del export.
+
+        `read_only=True` + `islice` y NUNCA `max_row`: esa es la disciplina de
+        `rem_utils.leer_xlsx` y `verificar_hoja_unica` para sobrevivir a la
+        <dimension> rota o ausente que RAYEN trae a veces. Asi el click cuesta ~60
+        filas en vez de parsear el export completo (lo que hacia que la corrida
+        leyera el archivo entero DOS veces: aca y despues en `sm.abrir_validado`)."""
+        from itertools import islice
+        import openpyxl
+        from programas.formatos import MAX_FILAS_HEADER
+        wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+        try:
+            filas = list(islice(wb.active.iter_rows(values_only=True), MAX_FILAS_HEADER))
+        finally:
+            wb.close()
+        return sm.detectar_formato_filas(filas)
+
     def _detectar(ruta):
+        ruta = (ruta or "").strip()
         banner.mostrar("detectando", "Detectando formato...")
 
-        def trabajo():
-            try:
-                import openpyxl
-                wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
-                categoria = sm.detectar_formato(wb.active)
-                wb.close()
-            except Exception:   # noqa: BLE001  (cualquier falla al abrir -> banner rojo, no traceback)
-                categoria = "error_lectura"
-            frame.after(0, lambda: _aplicar(categoria))
+        # runner.en_hilo y NO frame.after(0,...) desde el hilo: Tk.after no es
+        # thread-safe (ver la nota en runner.en_hilo).
+        runner.en_hilo(frame, lambda: _leer_categoria(ruta),
+                       lambda cat, err: _aplicar(cat, ruta, err))
 
-        threading.Thread(target=trabajo, daemon=True).start()
+    def detectar_ahora():
+        """Detecta AQUI MISMO (hilo GUI, bloqueando) la ruta que este en la caja, si
+        todavia no hay categoria para ELLA. La llama `preparar` justo antes de
+        procesar: cubre la ruta tecleada/pegada/precargada, que no dispara
+        `on_elegido`. Devuelve (categoria, error) -- ver `get()`."""
+        ruta = var_ruta.get().strip()
+        if ruta and estado["ruta"] != ruta:
+            try:
+                _aplicar(_leer_categoria(ruta), ruta)
+            except Exception as e:   # noqa: BLE001  (se despacha en `preparar`)
+                _aplicar(None, ruta, e)
+        return estado["categoria"], estado["error"]
 
     widgets.fila_archivo(frame, var_ruta, "Elige el export de Control de Salud Mental",
                          on_elegido=_detectar)
+    banner = widgets.BannerFuente(frame)   # despues de la fila: se pinta debajo de ella
+
+    # Ruta PRECARGADA (arrastrar el .xlsx sobre el exe, `pagina.datos['ruta_inicial']`):
+    # se pinta y se detecta como si la hubiera elegido el usuario.
+    inicial = (pagina.datos.get("ruta_inicial") or "").strip()
+    if inicial:
+        var_ruta.set(inicial)
+        _detectar(inicial)
 
     def get():
-        return {"ruta": var_ruta.get(), "categoria": estado["categoria"],
-               "acuse": var_acuse.get()}
+        # `categoria`/`error` solo valen si son los de la ruta que HOY esta en la caja.
+        ruta = var_ruta.get().strip()
+        vigente = estado["ruta"] == ruta
+        return {"ruta": ruta,
+                "categoria": estado["categoria"] if vigente else None,
+                "error": estado["error"] if vigente else None,
+                "acuse": var_acuse.get(),
+                "detectar_ahora": detectar_ahora}
     return get
 
 
@@ -127,7 +182,8 @@ def bloque_periodo(frame, pagina):
                        variable=var_periodo).pack(side="left")
     var_anio = ctk.StringVar(value=str(y0))
     var_mes = ctk.StringVar(value=str(m0))
-    spin_anio = ttk.Spinbox(fila_mes, from_=2020, to=2100, width=6, textvariable=var_anio)
+    spin_anio = ttk.Spinbox(fila_mes, from_=widgets.ANIO_MIN, to=widgets.ANIO_MAX,
+                            width=6, textvariable=var_anio)
     spin_anio.pack(side="left", padx=(6, 2))
     spin_mes = ttk.Spinbox(fila_mes, from_=1, to=12, width=4, textvariable=var_mes)
     spin_mes.pack(side="left")
@@ -174,7 +230,20 @@ def preparar(ctx, pagina):
     if entrada is None:
         return None
 
-    categoria = archivo["categoria"]
+    # Ruta tecleada/pegada/precargada: no paso por "Examinar", asi que no hay
+    # categoria todavia. Se detecta aca (hilo GUI) en vez de decirle al usuario
+    # "formato no reconocido" sobre un archivo que puede estar perfecto.
+    categoria, error = archivo["categoria"], archivo["error"]
+    if categoria is None and error is None:
+        categoria, error = archivo["detectar_ahora"]()
+    if error is not None:
+        # NO "Formato no reconocido": el archivo puede estar impecable y ser un .xls
+        # disfrazado de .xlsx (el clasico de RAYEN, CLAUDE.md SS13), o estar abierto en
+        # Excel, o faltar openpyxl. `manejar_error` los distingue y da el arreglo de
+        # CADA uno -- decirle "no reconozco las firmas del export" a las tres manda a
+        # re-descargar un archivo que no tiene nada de malo.
+        runner.manejar_error(error, pagina.log, messagebox)
+        return None
     if categoria not in ("iris", "administrativo"):
         messagebox.showerror("Formato no reconocido", sm._MSG_DESCONOCIDO)
         return None
@@ -188,12 +257,11 @@ def preparar(ctx, pagina):
     mes = None
     if periodo["modo"] == "mes":
         try:
-            mes = (int(periodo["anio"]), int(periodo["mes_str"]))
+            crudo = (int(periodo["anio"]), int(periodo["mes_str"]))
         except ValueError:
-            messagebox.showwarning("Mes inválido", "Año y mes deben ser números.")
-            return None
-        if not (1 <= mes[1] <= 12):
-            messagebox.showwarning("Mes inválido", "El mes debe estar entre 1 y 12.")
+            crudo = None            # no son numeros: valida_mes lo dice
+        mes = runner.valida_mes(crudo, messagebox)
+        if mes is None:
             return None
 
     tareas_ids = ctx["tareas"]

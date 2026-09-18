@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.11
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,7 +48,7 @@ from programas.rem_utils import (
     ArchivoInvalido,
     norm, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios, mes_de_celda,
-    PUEBLO_VACIO, verificar_hoja_unica, _mujer, trans_de,
+    PUEBLO_VACIO, verificar_hoja_unica, _mujer, trans_de, exigir_filas_ws,
 )
 from programas import formatos
 
@@ -238,6 +238,13 @@ def detectar_formato(ws):
     return formatos.detectar_eje(ws)
 
 
+def detectar_formato_filas(filas):
+    """Igual que `detectar_formato` pero sobre las primeras filas YA LEÍDAS (ver
+    `formatos.detectar_eje_filas`): para quien solo quiere saber el formato y no
+    necesita el archivo entero, como la detección al elegir el archivo en la GUI."""
+    return formatos.detectar_eje_filas(filas)
+
+
 _MSG_DESCONOCIDO = (
     "No reconozco este archivo como un export de 'Control de Salud Mental'.\n\n"
     "No encontré las firmas ni del formato IRIS ni del Administrativo.\n\n"
@@ -343,6 +350,11 @@ def _preparar(ws, perfil, log):
         MAX_FILAS_BUSQUEDA_HEADER)
     log(f"[corte] perfil={perfil['id']} modo={modo} | encabezado en fila {header_idx} "
         f"(la hoja original NO se modifica)")
+    # Fail loud sobre la FUENTE (CLAUDE.md regla 2): un export con solo el encabezado
+    # daria 0 eventos con cara de resultado legitimo (un mes sin ingresos SI existe,
+    # un archivo sin filas no). La guarda del mes vacio de mas abajo no cubre este
+    # caso cuando se procesa el 'Archivo completo' (mes=None).
+    exigir_filas_ws(ws, header_idx, "el formulario 'Control de Salud Mental'")
 
     ncols = ws.max_column
     headers = [ws.cell(row=header_idx, column=c).value for c in range(1, ncols + 1)]

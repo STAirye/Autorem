@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.16
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -327,6 +327,14 @@ def cargar_formulario_sm(entrada, log=print):
                 f"No pude leer «{Path(str(e)).name}»:\n\n{ex}\n\n"
                 "¿Es un .xlsx válido del export IRIS, sin modificar?") from ex
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
+    if len(d) == 0:
+        # Fail loud sobre la FUENTE (CLAUDE.md regla 2), igual que cargar_inscritos:
+        # con 0 filas las columnas quedan float64 y .str.contains() revienta abajo.
+        raise ArchivoInvalido(
+            "sin_datos",
+            "El formulario 'Control de Salud Mental' no trae ninguna fila de datos.\n\n"
+            "Revisa que sea el export completo de IRIS (no solo el encabezado) "
+            "y que este sin modificar.")
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA FORMULARIO (histórico SM)")
     d["INSTR_n"] = d["INSTR"].map(norm)
     for n in QUESTIONS:
@@ -558,6 +566,14 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
     insc = inscritos if isinstance(inscritos, pd.DataFrame) else cargar_inscritos(inscritos, log=log)
     form = formulario_sm if isinstance(formulario_sm, pd.DataFrame) else cargar_formulario_sm(formulario_sm, log=log)
     d_ada = ada if isinstance(ada, pd.DataFrame) else cargar_atenciones(ada, log=log)
+    if len(d_ada) == 0:
+        # Fail loud sobre la FUENTE (CLAUDE.md regla 2): la familia poblacion no pasa
+        # por filtrar_mes, y un ADA vacio revienta abajo en .str.contains().
+        raise ArchivoInvalido(
+            "sin_datos",
+            "El ADA (Atenciones / Diagnosticos / Actividades) no trae ninguna fila de "
+            "datos.\n\nRevisa que sea el export completo de IRIS (no solo el encabezado) "
+            "y que este sin modificar.")
     avisos_cobertura = _verificar_cobertura_fechas(form, d_ada, corte, log)
 
     P = insc.rename(columns={"RUN": "Número", "TIPOID": "Tipo de identificación",

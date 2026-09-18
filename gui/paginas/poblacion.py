@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -61,9 +61,15 @@ def correr(ctx, log):
     import modulos.rem_sp_p6_poblacion as p6
     import modulos.rem_sm_rescate_inasistentes as resc
 
+    from programas.rem_utils import cargar_atenciones
     y, m = ctx["mes"]
-    P = pob.construir_poblacion(ctx["inscritos"], ctx["formularios"], ctx["ada"],
-                                mes=(y, m), log=log)
+    # Se carga UNA vez (Inscritos es enorme) y se pasa el DataFrame al P6 y al rescate;
+    # los nombres de archivo viajan aparte para la hoja LEEME del rescate.
+    fuentes = [p.name for p in [ctx["inscritos"], *ctx["formularios"], *ctx["ada"]]]
+    insc = pob.cargar_inscritos(ctx["inscritos"], log=log)
+    form = pob.cargar_formulario_sm(ctx["formularios"], log=log)
+    ada = cargar_atenciones(ctx["ada"], log=log)
+    P = pob.construir_poblacion(insc, form, ada, mes=(y, m), log=log)
     resultado = p6.construir_p6(P, log=log)
     salida = ctx["carpeta"] / f"REM_SP_P6_{y}_{m:02d}_BETA.xlsx"
     p6.escribir(P, resultado, salida)
@@ -74,8 +80,7 @@ def correr(ctx, log):
     # el P6, no lo reconstruye. Try propio para que un fallo aca (p.ej. Brecha_Medico,
     # todavia en validacion) no tumbe el P6, que es lo que si se copia al SP.
     try:
-        Er = resc.procesar(ctx["inscritos"], ctx["formularios"], ctx["ada"],
-                           mes=(y, m), log=log, P=P)
+        Er = resc.procesar(insc, form, ada, mes=(y, m), log=log, P=P, fuentes=fuentes)
         resc.escribir(Er, salida_rescate)
         n_rescate = {h: len(t) for h, t in Er.attrs["tablas"].items()}
         log(f"OK Rescate de inasistentes -> {salida_rescate.name}")
@@ -109,12 +114,19 @@ PANTALLA = {
     "inputs": [
         {"key": "formularios", "etiqueta": "1. Formulario SM (histórico):", "multi": True,
          "obligatorio": True,
+         "motivo_obligatorio": "Es la base de la tabla por RUN: sin el histórico "
+                               "completo, «Ingresado» subcuenta.",
          "titulo_dialogo": "Formulario 'Control de Salud Mental' (IRIS) — carga TODO el histórico disponible"},
         {"key": "ada", "etiqueta": "2. Atenciones/Diag/Activ (ADA):", "multi": True,
          "obligatorio": True,
          "titulo_dialogo": "Atenciones / Diagnósticos / Actividades — 13 meses"},
         {"key": "inscritos", "etiqueta": "3. Inscritos y Adscritos:", "multi": False,
          "obligatorio": True,
+         # La salida va junto al INSCRITOS, como en `_tab_beta` (`defecto=entrada.parent`):
+         # es el snapshot DEL MES que se esta reportando. Los otros dos son historico
+         # multi-anio, que suele vivir archivado aparte -- sin esta marca el P6 y el
+         # Rescate del mes se guardaban alla (ver `_resolver_ctx` en gui/app.py).
+         "ancla_salida": True,
          "titulo_dialogo": "Elige el 'Informe Inscritos y Adscritos'"},
     ],
     "mes": True,

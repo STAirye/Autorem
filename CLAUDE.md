@@ -24,6 +24,12 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 | 8 · 10.1 · 11 | privacidad en detalle + hooks, worktrees, build del `.exe` | [tools/CLAUDE.md](tools/CLAUDE.md) |
 | 4 | historia v1.2–1.6 | [CHANGELOG.md](CHANGELOG.md) |
 
+> 🔎 **¿Vas a REVISAR la rama `gui-2.0` (code-review)?** Lee primero
+> [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md): la revisión va
+> por rondas con `compact` entre medio, y ahí está el registro de lo **ya corregido**
+> (§1, greppable por símbolo) y lo **descartado con motivo** (§2). Reportar algo que ya
+> está ahí es pagar dos veces el mismo hallazgo. Al terminar tu ronda, **anota lo tuyo**.
+
 ---
 
 ## 0. Autor y preferencias de trabajo
@@ -67,7 +73,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.16** (§9). **183 tests.**
+Versión **1.9.17** (§9). **206 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -110,6 +116,7 @@ incluye (`a05_o_egresos`).
 **Arranque:** sin args → GUI · arrastrar un `.xlsx` sobre el exe → GUI con la ruta
 precargada · `--cli entrada.xlsx [--formato] [--tarea] [--mes AAAA-MM]` → **el CLI es
 solo del A05**. El resto de los módulos es solo GUI, y no hay plan de CLI para todos.
+El CLI queda **CONGELADO** al pasar a la GUI 2.0 (§12): no se le portan los cambios.
 
 **Salidas y caché:**
 - La carpeta de salida por defecto es **la de los archivos de entrada**, no el cwd
@@ -140,7 +147,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.16**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.17**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -190,8 +197,14 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   customtkinter, pestañas agrupadas por programa, About, la pestaña A03 standalone
   desaparece (queda solo dentro de Actividades), y el selector IRIS/Admin se reemplaza
   por detección + confirmación. El selector sobra porque ya no le puede ganar a la
-  detección, que bloquea si no calzan: solo aporta una forma de equivocarse. El
-  `--perfil` del CLI queda como override.
+  detección, que bloquea si no calzan: solo aporta una forma de equivocarse.
+  **El CLI se CONGELA en la 2.0** (decisión del autor, sep-2026): queda como está,
+  sin seguir el rediseño de la GUI. Quizás vuelva a funcionar más adelante,
+  probablemente no. Consecuencia conocida y aceptada: los mensajes cruzados de
+  `validar_iris`/`validar_admin` dicen «Cambia el selector de formato», y ese selector
+  ya no existe en la 2.0 — solo se alcanzan por el `--perfil` del CLI y por el
+  notebook 1.x, las dos superficies congeladas. No se reescriben por ahora; si el CLI
+  revive, el texto se revisa junto con él.
 - **Validar la familia población** (§2.1): la brecha `Ingresado` del P6 y el rescate
   contra datos reales.
 
@@ -211,8 +224,9 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 **Correcciones y mejoras**
 - **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
   trae RUN: si lo trae, es un merge barato.
-- **GUI 2.0:** `gui/paginas/sm.py` todavía dice «saco vacío» (4 lugares). Pasarlo a
-  «saco roto» antes del merge (en `main` se renombró en 1.9.14).
+- **GUI 2.0 — cerrar la revisión de la rama:** mirar la ventana con ojos humanos y
+  compilar el `.exe` para probar los arreglos de empaquetado. Ver
+  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §6.
 - **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
   avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
   lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.

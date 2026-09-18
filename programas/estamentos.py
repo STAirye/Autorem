@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -50,7 +50,7 @@ from pathlib import Path
 
 from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
-    ArchivoInvalido, norm, buscar_col,
+    ArchivoInvalido, norm, buscar_col, exigir_filas_ws,
 )
 from programas import formatos
 
@@ -105,6 +105,9 @@ def cargar_estamentos(entrada, log=print):
         raise ArchivoInvalido(
             "no_estamentos",
             "Ubiqué el encabezado pero no las columnas Profesional / Instrumento.")
+    # Fail loud sobre la FUENTE (CLAUDE.md regla 2): una tabla vacia no falla, deja a
+    # TODOS los funcionarios sin estamento (y pisaria el cache con un dict vacio).
+    exigir_filas_ws(ws, hidx, "el reporte de 'Utilización de Cupos'")
 
     tabla = {}
     conflictos = {}

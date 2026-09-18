@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -249,7 +249,7 @@ def _nombres(x):
     return [Path(str(p)).name for p in (x if isinstance(x, (list, tuple)) else [x])]
 
 
-def procesar(inscritos, formulario_sm, ada, mes=None, log=print, P=None):
+def procesar(inscritos, formulario_sm, ada, mes=None, log=print, P=None, fuentes=None):
     """Standalone: carga los 3 inputs del SP·P6 (o los reusa si ya vienen
     cargados/construidos — la GUI ya arma `P` para el P6 y se lo pasa acá para
     no reconstruirlo) y arma las 5 hojas de rescate (§8). `P` debe venir de una
@@ -274,7 +274,10 @@ def procesar(inscritos, formulario_sm, ada, mes=None, log=print, P=None):
     E.attrs["tablas"] = tablas
     E.attrs["mes"] = P.attrs.get("mes")
     E.attrs["avisos"] = list(P.attrs.get("avisos", ()))   # descalces de fecha (poblacion)
-    E.attrs["fuentes"] = _nombres(inscritos) + _nombres(formulario_sm) + _nombres(ada)
+    # `fuentes`: nombres de archivo para la LEEME cuando los inputs llegan YA cargados
+    # (DataFrames, que no traen su nombre) -- la GUI carga una sola vez y los pasa aca.
+    E.attrs["fuentes"] = (list(fuentes) if fuentes is not None else
+                          _nombres(inscritos) + _nombres(formulario_sm) + _nombres(ada))
     return E
 
 

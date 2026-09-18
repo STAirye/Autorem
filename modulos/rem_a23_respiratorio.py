@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -40,7 +40,8 @@ from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_cano
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, filtrar_mes,
                                  _mujer, _hombre,
-                                 grid as _grid, fecha_col, PUEBLO_VACIO, indice_col)
+                                 grid as _grid, fecha_col, PUEBLO_VACIO, indice_col,
+                                 exigir_filas, ArchivoInvalido)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
@@ -317,6 +318,15 @@ def cargar_estrat(entrada):
     hn = [norm(h) for h in hdr]
     i_rut, i_dv = indice_col(hn, "RUT"), indice_col(hn, "DV")
     i_dg = indice_col(hn, "DETALLE", "DIAGNOSTICOS") or indice_col(hn, "CONDICIONES CRONICAS")
+    # Fail loud sobre la FUENTE (CLAUDE.md regla 2). Sin estas dos guardas, un reporte
+    # equivocado revienta con TypeError en f[None], y uno con solo el encabezado deja
+    # la gravedad/tipo de TODOS en "" via _gate: un 0 callado en la SALA.
+    if i_rut is None:
+        raise ArchivoInvalido(
+            "sin_columnas",
+            "No reconozco el reporte de Estratificacion: no encuentro la columna "
+            "RUT.\n\nCargalo tal como sale de RAYEN, sin editar.")
+    exigir_filas(filas, "el reporte de Estratificacion")
     run = [f"{f[i_rut]}-{f[i_dv]}" if i_dv is not None and f[i_rut] not in (None, "") else str(f[i_rut])
            for f in filas]
     dg = [norm(f[i_dg]) if i_dg is not None else "" for f in filas]
