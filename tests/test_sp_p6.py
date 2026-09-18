@@ -257,6 +257,8 @@ def test_gestante_ventana_3_meses_matrona():
     P = _poblacion([], [{"rut": "11111111-1"}, {"rut": "22222222-2"}], ada_filas=[
         {"rut": "11111111-1", "fecha": date(2026, 7, 15), "act": "Control Prenatal", "instr": "Matrona"},
         {"rut": "22222222-2", "fecha": date(2026, 4, 1), "act": "Control Prenatal", "instr": "Matrona"},  # fuera de ventana
+        # un ADA real siempre trae actividad SM; sin ninguna es ArchivoInvalido (ronda 9)
+        _sm("33333333-3", date(2026, 7, 20)),
     ])
     assert P.loc[P["Número"] == "11111111-1", "¿Embarazada?"].iloc[0] == "SI"
     assert P.loc[P["Número"] == "22222222-2", "¿Embarazada?"].iloc[0] == "NO"
@@ -627,6 +629,87 @@ def test_desfase_de_fechas_queda_en_el_leeme_del_p6():
     ws = openpyxl.load_workbook(salida)["LEEME"]
     texto = "\n".join(str(c.value) for fila in ws.iter_rows() for c in fila if c.value)
     assert "2026-08" in texto and "2026-02" in texto, "el desfase debe quedar en el LEEME"
+
+
+def test_fuente_vacia_tras_el_corte_falla_en_la_fuente():
+    """Ronda 9 (bug recurrente de c38a8cc, variante "tiene filas pero ninguna sirve"):
+    un formulario o un ADA con TODAS las filas posteriores al corte, o sin UNA fecha
+    legible, daban el P6 entero en 0 (Ingresado/Activo 12m = NO para todos) con
+    avisos=[] y "Listo". Ahora es ArchivoInvalido sobre la FUENTE."""
+    ing = {"rut": "11111111-1", "fecha": date(2026, 3, 1), _Q[18]: "SI", _Q[19]: "19.- INGRESO"}
+    ada_ok = [_sm("11111111-1"), _sm("11111111-1", date(2025, 7, 5))]
+    ins = [{"rut": "11111111-1"}]
+    # control: con fechas buenas no falla
+    assert (_poblacion([ing], ins, ada_ok)["¿Ingresado?"] == "SI").sum() == 1
+
+    class _Ilegible:          # _mk_ada formatea con strftime: esto deja texto basura
+        def strftime(self, _):
+            return "xx/yy/zzzz"
+
+    casos = [
+        ("formulario posterior al corte", [dict(ing, fecha=date(2026, 9, 10))], ada_ok, "mes_vacio"),
+        ("formulario sin fechas legibles", [dict(ing, fecha="no es fecha")], ada_ok, "sin_fecha"),
+        ("ADA posterior al corte", [ing], [_sm("11111111-1", date(2026, 9, 5))], "mes_vacio"),
+        ("ADA sin fechas legibles", [ing], [dict(_sm("11111111-1"), fecha=_Ilegible())], "sin_fecha"),
+    ]
+    for etq, form, ada, cat in casos:
+        try:
+            _poblacion(form, ins, ada)
+            assert False, f"{etq}: debió levantar ArchivoInvalido"
+        except ArchivoInvalido as e:
+            assert e.categoria == cat, (etq, e.categoria, str(e))
+
+
+def test_resumen_de_poblacion_muestra_los_avisos_de_cobertura():
+    """Los avisos de cobertura NO bloquean a proposito, asi que el resumen de la GUI
+    TIENE que mostrarlos: antes quedaban solo en el log y en la LEEME, y el "Listo"
+    era igual al de una corrida completa con Activo 12m subcontado para todos."""
+    from gui.paginas.poblacion import resumen
+    P = _poblacion([], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
+    assert any(a[1] == "INCOMPLETO" for a in P.attrs["avisos"])
+    res = {"P": P, "resultado": _p6(P), "n_rescate": None, "salida": _TMP / "x.xlsx",
+           "mes": (2026, 8), "fallo_rescate": None}
+    txt = resumen(res)
+    assert "INCOMPLETO" in txt and "SUBCONTADAS" in txt, txt
+    # y sin avisos no inventa nada
+    P.attrs["avisos"] = []
+    assert "SUBCONTADAS" not in resumen(res)
+
+
+def test_preguntas_ausentes_y_ada_sin_actividad_sm_no_dan_0_callado():
+    """Ronda 9, 2a pasada: (a) las preguntas se ubican por su NUMERO; sin NINGUNA
+    (encabezados renombrados) el P6 daba 0 ingresados con avisos=[] -> sin_columnas;
+    con ALGUNAS ausentes, aviso SUBCONTADO. (b) un ADA con filas en la ventana de 13
+    meses pero ninguna actividad SM daba Activo 12m = NO para todos -> sin_datos."""
+    from programas.rem_utils import num_pregunta
+    ing = {"rut": "11111111-1", "fecha": date(2026, 8, 1), _Q[18]: "SI", _Q[19]: "19.- INGRESO"}
+    ins = [{"rut": "11111111-1"}]
+
+    def _renombrar(p, cuales):
+        wb = openpyxl.load_workbook(p); ws = wb.active
+        for c in ws[17]:
+            if isinstance(c.value, str) and num_pregunta(c.value) in cuales:
+                c.value = "PREGUNTA RENOMBRADA"
+        wb.save(p)
+        return p
+
+    try:
+        pob.construir_poblacion(str(_mk_inscritos(ins)),
+                                str(_renombrar(_mk_formulario([ing]), set(pob.QUESTIONS))),
+                                str(_mk_ada([_sm("11111111-1")])), mes=(2026, 8), log=_quiet)
+        assert False, "debio levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_columnas", e.categoria
+    P = pob.construir_poblacion(str(_mk_inscritos(ins)),
+                                str(_renombrar(_mk_formulario([ing]), {83, 84})),
+                                str(_mk_ada([_sm("11111111-1")])), mes=(2026, 8), log=_quiet)
+    assert any(a[1] == "SUBCONTADO" and "83" in a[2] for a in P.attrs["avisos"]), P.attrs["avisos"]
+
+    try:
+        _poblacion([ing], ins, [{"rut": "11111111-1", "fecha": date(2026, 8, 5), "act": "Curacion"}])
+        assert False, "debio levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_datos", e.categoria
 
 
 def _main():

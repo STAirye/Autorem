@@ -33,7 +33,8 @@ REGISTRO DECLARATIVO
   ges    GES 90 problemas <-> CIE-10          ID | PROBLEMA | COD | OBS
 
 CASCADA DE CARGA (y por que en ese orden)
-  1. `entrada` explicita          -> el usuario eligio un .xlsx a mano.
+  1. `entrada` explicita, o la fijada para la sesion (`usar_en_sesion`, el modo
+     avanzado de "Acerca de")     -> el usuario eligio un .xlsx a mano.
   2. .xlsx en la carpeta catalogos/ -> DROP-IN: si el DEIS publica una edicion
      nueva, se deja el .xlsx ahi y manda, sin esperar un .exe nuevo. Hay que
      PONERLO a proposito (no se barre refs_tablas/, donde puede haber uno viejo
@@ -347,7 +348,7 @@ CATALOGOS = {
 # -- Ubicacion de los datos -------------------------------------------------
 def _carpetas():
     """Donde buscar catalogos/, en orden: bundle de PyInstaller, junto al .exe,
-    y el repo. Mismo criterio que autorem._slim_por_defecto."""
+    y el repo. El Maestro slim busca en las MISMAS (`maestro_slim`)."""
     out = []
     if getattr(sys, "frozen", False):
         out.append(Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)) / CARPETA)
@@ -365,6 +366,22 @@ def carpeta_datos(crear=False):
     if crear:
         destino.mkdir(parents=True, exist_ok=True)
     return destino
+
+
+def maestro_slim():
+    """Ruta (str) del Maestro de Actividades SLIM (`maestro_slim.csv.gz`), o None.
+
+    Vive en catalogos/ (es un catalogo actividad<->estamento<->REM igual que
+    cie10/eno/ges), asi que se busca en las MISMAS carpetas que ellos (`_carpetas`)
+    y, en el exe, ademas suelto junto al .exe (lo que dice el log del Trabajo
+    Perdido). Hasta 1.9.17 la GUI 1.x y la 2.0 tenian cada una su lista a mano, y
+    ninguna miraba `<exe>/catalogos/`: un maestro dejado ahi -- donde van los
+    drop-in de los otros catalogos -- se ignoraba callado y el TP caia a la
+    heuristica."""
+    cands = [c / "maestro_slim.csv.gz" for c in _carpetas()]
+    if getattr(sys, "frozen", False):
+        cands.append(Path(sys.executable).parent / "maestro_slim.csv.gz")
+    return next((str(c) for c in cands if c.exists()), None)
 
 
 def fuentes():
@@ -392,16 +409,50 @@ def _dropin(nombre):
 # -- Carga ------------------------------------------------------------------
 _CACHE = {}
 
+# nombre -> .xlsx elegido a mano para ESTA sesion ("Acerca de", modo avanzado). Solo
+# en memoria: se pierde al cerrar (persistirlo es la cascada de ~/.autorem/catalogos/,
+# trabajo de main). Lo consulta `cargar` cuando no le pasan `entrada`, que es como lo
+# llama TODO consumidor: sin esto el .xlsx quedaba en el cache bajo su propia clave
+# (nombre, ruta) y cada consulta seguia leyendo la clave (nombre, None) = el embebido,
+# con la GUI diciendo "cargado a mano".
+_SESION = {}
+
+
+def usar_en_sesion(nombre, entrada=None, log=None):
+    """Fija (`entrada` = ruta del .xlsx) o quita (`entrada=None`) el catalogo elegido
+    a mano para el resto de la sesion, y devuelve el DataFrame que queda vigente. Si
+    la carga falla, levanta y deja puesto el que habia (nunca queda a medias)."""
+    previo = _SESION.pop(nombre, None)
+    try:
+        d = cargar(nombre, entrada=entrada, log=log, recargar=True)
+    except Exception:
+        if previo is not None:
+            _SESION[nombre] = previo
+        raise
+    if entrada:
+        _SESION[nombre] = str(entrada)
+    return d
+
+
+def en_sesion():
+    """{nombre: ruta} de los catalogos elegidos a mano en esta sesion."""
+    return dict(_SESION)
+
 
 def cargar(nombre, entrada=None, log=None, recargar=False):
     """DataFrame del catalogo `nombre` (ver CATALOGOS). Cascada: `entrada`
-    explicita > .xlsx drop-in en catalogos/ > slim vendorizado. Cachea por
-    proceso (los catalogos no cambian en caliente). `.attrs['fuente']` y
-    `.attrs['edicion']` dicen de donde salio."""
+    explicita > el elegido a mano en esta sesion (`usar_en_sesion`) > .xlsx drop-in
+    en catalogos/ > slim vendorizado. Cachea por proceso (los catalogos no cambian
+    en caliente). `.attrs['fuente']` y `.attrs['edicion']` dicen de donde salio."""
     import pandas as pd
     log = log or (lambda *_: None)
     if nombre not in CATALOGOS:
         raise KeyError(f"catalogo desconocido: {nombre!r} (hay: {', '.join(CATALOGOS)})")
+    entrada = entrada or _SESION.get(nombre)
+    if entrada and not Path(entrada).exists():
+        # Fail loud: un .xlsx pedido a proposito (o el de la sesion, borrado o movido
+        # despues) que no esta caia CALLADO al embebido, con otra edicion.
+        raise FileNotFoundError(f"no encuentro el catalogo {nombre!r} elegido a mano: {entrada}")
     clave = (nombre, str(entrada))
     if not recargar and clave in _CACHE:
         return _CACHE[clave]

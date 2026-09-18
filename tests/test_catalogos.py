@@ -193,6 +193,30 @@ def test_anotar_marca_los_codigos_que_no_existen():
     assert fila.loc["ZZZ.99", "DESC"] == ""
 
 
+def test_el_catalogo_elegido_a_mano_lo_ven_todas_las_consultas():
+    """«Acerca de» (modo avanzado) carga un .xlsx para la sesion. Antes quedaba en el
+    cache bajo su propia clave (nombre, ruta), y toda consulta -- que llama
+    `cargar(nombre)` sin ruta -- seguia leyendo el embebido con la pagina diciendo
+    «cargado a mano». «Volver al embebido» tampoco volvia nada."""
+    ruta = _xlsx("cie_sesion.xlsx", {
+        "Códigos, más (cruz o daga)": [("Código", "Descripción"), ("U999", "Solo en la nueva")]})
+    assert not cat.existe("U999", log=_quiet), "premisa: el embebido no trae U999"
+    try:
+        cat.usar_en_sesion("cie10", ruta, log=_quiet)
+        assert cat.existe("U999", log=_quiet), "la consulta no ve el catálogo elegido a mano"
+        assert cat.en_sesion() == {"cie10": str(ruta)}
+        try:   # una carga que falla deja puesto el que habia, no queda a medias
+            cat.usar_en_sesion("cie10", _TMP / "no_existe.xlsx", log=_quiet)
+        except Exception:   # noqa: BLE001
+            pass
+        assert cat.existe("U999", log=_quiet), "una carga fallida bajo el elegido a mano"
+        cat.usar_en_sesion("cie10", None, log=_quiet)
+        assert not cat.existe("U999", log=_quiet), "«Volver al embebido» no volvio"
+        assert cat.en_sesion() == {}
+    finally:
+        cat._SESION.clear()
+
+
 def test_cargar_catalogo_inexistente_falla_claro():
     try:
         cat.cargar("colesterol", log=_quiet)
@@ -200,6 +224,34 @@ def test_cargar_catalogo_inexistente_falla_claro():
         assert "colesterol" in str(e)
     else:
         raise AssertionError("un catálogo inexistente tiene que levantar KeyError")
+
+
+def test_maestro_slim_se_busca_donde_los_otros_catalogos():
+    """El Maestro slim vive en catalogos/: en el exe tiene que encontrarse en
+    `<exe>/catalogos/` (donde van los drop-in de cie10/eno/ges). Las dos GUI tenian
+    cada una su lista a mano que no miraba ahi -> el Trabajo Perdido caia callado a
+    la heuristica. Y las dos GUI tienen que preguntarle a la MISMA funcion."""
+    import autorem
+    from gui import runner
+    exe_dir = _TMP / "exe_slim"
+    (exe_dir / "catalogos").mkdir(parents=True, exist_ok=True)
+    slim = exe_dir / "catalogos" / "maestro_slim.csv.gz"
+    slim.write_bytes(b"x")
+    bundle = _TMP / "bundle_vacio"
+    bundle.mkdir(exist_ok=True)
+    previos = {k: getattr(sys, k, None) for k in ("frozen", "_MEIPASS", "executable")}
+    sys.frozen, sys._MEIPASS, sys.executable = True, str(bundle), str(exe_dir / "autoREM.exe")
+    try:
+        assert cat.maestro_slim() == str(slim), cat.maestro_slim()
+        assert runner.slim_por_defecto() == autorem._slim_por_defecto() == str(slim)
+    finally:
+        for k, v in previos.items():
+            if v is None:
+                delattr(sys, k)
+            else:
+                setattr(sys, k, v)
+    # Fuera del exe: el del repo.
+    assert cat.maestro_slim() == str(REPO / "catalogos" / "maestro_slim.csv.gz")
 
 
 def test_todo_el_modulo_es_cp1252_safe():

@@ -219,6 +219,17 @@ def test_guarda_una_hoja_pasa():
     verificar_hoja_unica(p)   # no debe levantar
 
 
+def test_maestro_que_no_reconoce_nada_del_mes_se_avisa():
+    """Ronda 9, 2a pasada: un Maestro cargado que no reconoce NINGUNA actividad del mes
+    dejaba todo en la heuristica sin aviso (el aviso HEURISTICA solo salia sin Maestro)."""
+    ada = _mk_ada([_a("Taller de salud mental comunitaria", "ANA")])
+    E = tp.procesar(ada, maestro=_mk_maestro([("OTRA COSA DISTINTA", "")]), mes=(2026, 7), log=_quiet)
+    assert any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
+    E = tp.procesar(ada, maestro=_mk_maestro([("Taller de salud mental comunitaria", "")]),
+                    mes=(2026, 7), log=_quiet)
+    assert not any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

@@ -38,6 +38,7 @@ una decision explicita, ver docs/dotacion_externos_plan.md):
 """
 
 import tkinter as tk
+from contextlib import contextmanager
 
 import customtkinter as ctk
 
@@ -71,7 +72,11 @@ def bloque_estamentos(parent):
         "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(fill="x", padx=8, pady=(4, 4))
     var = tk.StringVar()
     fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
-    return lambda: (var.get() or "").strip().strip('"').strip("'")
+
+    def get_ruta():
+        from gui.runner import limpiar_ruta
+        return limpiar_ruta(var.get())
+    return get_ruta
 
 
 # -- Dotacion: separar funcionarios EXTERNOS (docs/dotacion_externos_plan.md) --
@@ -85,6 +90,32 @@ def valores_iniciales(nombres, tabla):
 
     Funcion PURA (sin widgets): testeable sin ventana (SS11 del plan)."""
     return {nombre: (dotacion.clase(nombre, tabla) == dotacion.EXTERNO) for nombre in nombres}
+
+
+def decisiones_cambiadas(ticks, tabla):
+    """De los ticks de un dialogo ({nombre: externo?}), SOLO los que cambian algo
+    respecto de `tabla` (la que el dialogo cargo al abrir). Es lo que se le pasa a
+    `dotacion.marcar` al 'Aplicar'.
+
+    POR QUE no todos: «Precargar» y «Revisar» muestran a gente YA clasificada, con
+    el tick en su clase de cuando se abrio la ventana. Mandarlos todos reescribia
+    esa foto vieja sobre el disco, y `dotacion._persistir` (re-leer y fusionar) no
+    servia de nada: si otra ventana de autoREM habia marcado externo a alguien
+    mientras tanto, este 'Aplicar' lo devolvia a interno sin tocarlo, y sus
+    atenciones volvian a contar en el REM.
+
+    Un nombre NUEVO (`desconocido`) SI cuenta como cambio aunque quede sin tick:
+    sin tick = interno es una decision, y es la que hace que no se vuelva a
+    preguntar el mes siguiente."""
+    return {n: ext for n, ext in ticks.items()
+            if dotacion.clase(n, tabla) != (dotacion.EXTERNO if ext else dotacion.INTERNO)}
+
+
+def _aplicar_ticks(tabla, checks):
+    """'Aplicar' de los dos dialogos: persiste solo lo que el usuario cambio."""
+    cambios = decisiones_cambiadas({n: v.get() for n, v in checks.items()}, tabla)
+    if cambios:
+        dotacion.marcar(tabla, cambios)
 
 
 # UNA sola ventana de dotacion a la vez (Precargar, Revisar o la de `preparar`).
@@ -104,20 +135,56 @@ def valores_iniciales(nombres, tabla):
 _DOTACION_ABIERTA = [False]
 
 
+@contextmanager
+def _una_ventana_dotacion(log, messagebox):
+    """El candado de `_DOTACION_ABIERTA`, UNO para las dos entradas (Precargar /
+    Procesar y Revisar). Da True si la ventana puede abrirse; False si ya hay otra
+    (el click encolado se aborta, y se DICE en el log: antes Revisar lo callaba).
+    Al soltarlo muestra los avisos de caché (dañado / no guardado)."""
+    if _DOTACION_ABIERTA[0]:
+        if log:
+            log("[dotacion] ya hay una ventana de dotación abierta: termínala y vuelve a intentarlo.")
+        yield False
+        return
+    _DOTACION_ABIERTA[0] = True
+    try:
+        yield True
+    finally:
+        _DOTACION_ABIERTA[0] = False
+        from gui.runner import avisar_cache
+        avisar_cache(messagebox)
+
+
+def _modal(root, titulo, geometria):
+    """Ventana modal de los dialogos de dotacion (transient + grab)."""
+    top = ctk.CTkToplevel(root)
+    top.title(titulo)
+    top.transient(root); top.grab_set()
+    top.geometry(geometria)
+    return top
+
+
+def _barra_aplicar(top, tabla, checks, texto_cerrar, pady):
+    """'Aplicar' (persiste solo lo cambiado, `_aplicar_ticks`) + cerrar sin guardar."""
+    def aplicar():
+        _aplicar_ticks(tabla, checks)
+        top.destroy()
+
+    barra = ctk.CTkFrame(top, fg_color="transparent")
+    barra.pack(fill="x", padx=12, pady=pady)
+    ctk.CTkButton(barra, text="Aplicar", command=aplicar).pack(side="right")
+    ctk.CTkButton(barra, text=texto_cerrar, command=top.destroy, fg_color="transparent"
+                 ).pack(side="right", padx=6)
+
+
 def dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
     """Ver `_dotacion_ada`. Si ya hay una ventana de dotacion en curso (un click que
     quedo encolado y se despacho dentro de ella, ver `_DOTACION_ABIERTA`) no hace
     nada y devuelve (None, None): quien llama lo trata como abortado."""
-    if _DOTACION_ABIERTA[0]:
-        log("[dotacion] ya hay una ventana de dotación abierta: termínala y vuelve a intentarlo.")
-        return None, None
-    _DOTACION_ABIERTA[0] = True
-    try:
+    with _una_ventana_dotacion(log, messagebox) as libre:
+        if not libre:
+            return None, None
         return _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=mask, todos=todos)
-    finally:
-        _DOTACION_ABIERTA[0] = False
-        from gui.runner import avisar_cache
-        avisar_cache(messagebox)   # caché dañado / no guardado: se dice al cerrar
 
 
 def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
@@ -172,6 +239,18 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
         messagebox.showinfo(
             "Dotación", "El ADA no trae funcionarios con atenciones que tributen a "
             "este REM en el mes elegido. Revisa el archivo y el mes.")
+    elif len(trib) == 0:
+        # NO es "todos ya clasificados": es que nada del mes tributa a este REM. Decirlo
+        # asi, que "sin funcionarios nuevos" se lee como que todo esta en orden.
+        log("[dotacion] NINGUNA atención del ADA de este mes tributa a este REM: no hay "
+            "a quién clasificar. Revisa el archivo y el mes elegido.")
+    elif len(ev) == 0:
+        # Hay atenciones que tributan, pero ninguna trae FUNCIONARIO: no es "todo en
+        # orden", es que la separacion interno/externo no puede hacerse con este archivo
+        # (todas cuentan al REM como 'desconocido').
+        log(f"[dotacion] las {len(trib)} atención(es) que tributan NO traen FUNCIONARIO: "
+            "no se puede separar interno/externo con este ADA (todas cuentan al REM). "
+            "¿Es el export IRIS completo, sin modificar?")
     else:
         log("[dotacion] sin funcionarios nuevos que clasificar.")
     return d, tabla
@@ -215,7 +294,7 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
     barra.pack(anchor="w", padx=8, pady=(0, 6))
     ctk.CTkButton(barra, text="Precargar dotación…", command=_precargar).pack(side="left")
     ctk.CTkButton(barra, text="Revisar dotación…", fg_color="transparent",
-                 command=lambda: revisar_dotacion(parent.winfo_toplevel(), modulo)
+                 command=lambda: revisar_dotacion(parent.winfo_toplevel(), modulo, log=log)
                  ).pack(side="left", padx=6)
 
 
@@ -275,15 +354,12 @@ def dialogo_dotacion(root, tabla, modulo, filas, con_evidencia=True,
     """Dialogo modal: ticks agrupados por estamento. Tick = externo, sin tick
     = interno (default). 'Omitir estamento' es INMEDIATO (se persiste al
     click, no espera 'Aplicar') y deja a esos funcionarios `desconocido` --
-    nunca `interno`. 'Aplicar' clasifica los ticks restantes via
-    `dotacion.marcar()` (persiste). 'Cancelar' no clasifica a nadie: los
+    nunca `interno`. 'Aplicar' persiste via `dotacion.marcar()` los ticks que
+    cambian algo (`decisiones_cambiadas`). 'Cancelar' no clasifica a nadie: los
     nombres quedan `desconocido` y la corrida sigue igual."""
     if filas is None or filas.empty:
         return
-    top = ctk.CTkToplevel(root)
-    top.title(titulo)
-    top.transient(root); top.grab_set()
-    top.geometry("720x560")
+    top = _modal(root, titulo, "720x560")
     ctk.CTkLabel(top, justify="left", text=(
         f"{len(filas)} funcionario(s). Marca el tick de quienes NO son de tu dotación "
         "(externos). Sin tick = interno.")).pack(anchor="w", padx=12, pady=12)
@@ -303,31 +379,17 @@ def dialogo_dotacion(root, tabla, modulo, filas, con_evidencia=True,
             continue
         _grupo_dotacion(inner, est, sub, checks, tabla, modulo, con_evidencia)
 
-    def aplicar():
-        dotacion.marcar(tabla, {n: v.get() for n, v in checks.items()})
-        top.destroy()
-
-    barra = ctk.CTkFrame(top, fg_color="transparent")
-    barra.pack(fill="x", padx=12, pady=12)
-    ctk.CTkButton(barra, text="Aplicar", command=aplicar).pack(side="right")
-    ctk.CTkButton(barra, text="Cancelar", command=top.destroy, fg_color="transparent"
-                 ).pack(side="right", padx=6)
+    _barra_aplicar(top, tabla, checks, "Cancelar", pady=12)
     top.wait_window()
 
 
-def revisar_dotacion(root, modulo="sm"):
+def revisar_dotacion(root, modulo="sm", log=None):
     """Ver `_revisar_dotacion`. Mismo candado que `dotacion_ada`
-    (`_DOTACION_ABIERTA`): un click encolado no abre una segunda ventana anidada."""
-    if _DOTACION_ABIERTA[0]:
-        return
-    _DOTACION_ABIERTA[0] = True
-    try:
-        _revisar_dotacion(root, modulo)
-    finally:
-        _DOTACION_ABIERTA[0] = False
-        import tkinter.messagebox as messagebox
-        from gui.runner import avisar_cache
-        avisar_cache(messagebox)
+    (`_una_ventana_dotacion`): un click encolado no abre una segunda ventana anidada."""
+    import tkinter.messagebox as messagebox
+    with _una_ventana_dotacion(log, messagebox) as libre:
+        if libre:
+            _revisar_dotacion(root, modulo)
 
 
 def _revisar_dotacion(root, modulo="sm"):
@@ -345,10 +407,7 @@ def _revisar_dotacion(root, modulo="sm"):
             "elige el mes y aprieta «Precargar dotación…» (o procesa y se preguntará "
             "por los nombres nuevos).")
         return
-    top = ctk.CTkToplevel(root)
-    top.title("Revisar dotación")
-    top.transient(root); top.grab_set()
-    top.geometry("560x560")
+    top = _modal(root, "Revisar dotación", "560x560")
 
     tabview = ctk.CTkTabview(top)
     tabview.pack(fill="both", expand=True, padx=12, pady=12)
@@ -395,13 +454,6 @@ def _revisar_dotacion(root, modulo="sm"):
 
     _pintar_omitidos()
 
-    def aplicar():
-        dotacion.marcar(tabla, {n: v.get() for n, v in checks.items()})
-        top.destroy()
-
-    barra = ctk.CTkFrame(top, fg_color="transparent")
-    barra.pack(fill="x", padx=12, pady=(0, 12))
-    ctk.CTkButton(barra, text="Aplicar", command=aplicar).pack(side="right")
-    ctk.CTkButton(barra, text="Cerrar", command=top.destroy, fg_color="transparent"
-                 ).pack(side="right", padx=6)
+    # "Cerrar" y no "Cancelar": 'Quitar omisión' ya se guardo al click.
+    _barra_aplicar(top, tabla, checks, "Cerrar", pady=(0, 12))
     top.wait_window()

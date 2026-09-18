@@ -215,7 +215,11 @@ def fila_carpeta_salida(parent):
     ctk.CTkButton(fila, text="Examinar…", width=100, command=elegir).pack(side="left")
     ctk.CTkLabel(parent, text="     (vacío = junto al archivo cargado)",
                  text_color=COLOR_ATENUADO).pack(anchor="w")
-    return lambda: (var.get() or "").strip().strip('"').strip("'")
+
+    def get():
+        from gui.runner import limpiar_ruta   # perezoso: runner importa este modulo
+        return limpiar_ruta(var.get())
+    return get
 
 
 def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
@@ -227,25 +231,30 @@ def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
     Devuelve get() -> (año, mes) o None si lo tecleado no son numeros. El RANGO
     no se valida aca sino en `runner.valida_mes`, que es quien tiene el
     messagebox: el Spinbox acota solo sus FLECHAS, no lo que se teclea.
-    NO es la caja de A05 (esa alterna 'archivo completo' vs 'un mes'; sigue
-    siendo un `extra` propio de esa pagina, ver SS3.1 del plan)."""
+    La caja de A05 (que alterna 'archivo completo' vs 'un mes') usa ESTE mismo
+    selector sin etiqueta (`etiqueta=None`) dentro de su propia fila, y activa o
+    apaga sus Spinbox via `get.spinboxes`: hasta 1.9.17 tenia una copia a mano de
+    los dos Spinbox y del parseo, fuera del test que amarra los años."""
     import tkinter as tk
     from tkinter import ttk
     y0, m0 = mes_defecto
     fila = ctk.CTkFrame(parent, fg_color="transparent")
-    fila.pack(fill="x", pady=(4, 4))
-    ctk.CTkLabel(fila, text=etiqueta).pack(side="left")
+    fila.pack(fill="x", pady=(4, 4) if etiqueta else 0)
+    if etiqueta:
+        ctk.CTkLabel(fila, text=etiqueta).pack(side="left")
     var_anio = tk.StringVar(value=str(y0))
     var_mes = tk.StringVar(value=str(m0))
-    ttk.Spinbox(fila, from_=ANIO_MIN, to=ANIO_MAX, width=6, textvariable=var_anio
-               ).pack(side="left", padx=(6, 2))
-    ttk.Spinbox(fila, from_=1, to=12, width=4, textvariable=var_mes).pack(side="left")
+    spin_anio = ttk.Spinbox(fila, from_=ANIO_MIN, to=ANIO_MAX, width=6, textvariable=var_anio)
+    spin_anio.pack(side="left", padx=(6, 2))
+    spin_mes = ttk.Spinbox(fila, from_=1, to=12, width=4, textvariable=var_mes)
+    spin_mes.pack(side="left")
 
     def get():
         try:
             return int(var_anio.get()), int(var_mes.get())
         except ValueError:
             return None
+    get.spinboxes = (spin_anio, spin_mes)
     return get
 
 

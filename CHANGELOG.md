@@ -76,6 +76,79 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
     corría (orden alfabético) antes del único test que lo redirigía: en un PC de trabajo
     eso borraba la clasificación de externos del CESFAM. Ahora todo `tests/test_*.py`
     importa primero `tests/_aislar_cache.py`, y un test exige que ninguno lo olvide.
+- **GUI 2.0, envoltorios e indirecciones** (`docs/review_gui-2.0_pendiente.md` §1.H,
+  ronda 7):
+  - **«Aplicar» de «Precargar» y «Revisar dotación» reescribía la foto vieja.** Los dos
+    diálogos muestran gente YA clasificada y le mandaban a `dotacion.marcar` TODOS los
+    ticks, así que el re-leer-y-fusionar de `_persistir` (arriba) no servía: si otra
+    ventana de autoREM había marcado externo a alguien mientras tanto, este «Aplicar» lo
+    devolvía a interno sin que nadie lo tocara, y sus atenciones volvían a contar en el
+    REM. Ahora se manda solo lo que cambió (`dialogos.decisiones_cambiadas`); un nombre
+    nuevo sin tick sí se guarda, como interno.
+  - **El catálogo DEIS cargado a mano en «Acerca de» no lo veía ninguna consulta.**
+    Quedaba en el caché bajo su propia clave `(nombre, ruta)`, y toda consulta llama
+    `catalogos.cargar(nombre)` sin ruta → seguía leyendo el embebido, con la página
+    diciendo «cargado a mano» (y prometiendo que se usaría al conectar los catálogos,
+    CLAUDE.md §12). «Volver al embebido» tampoco volvía nada. Ahora el elegido para la
+    sesión es un paso de la cascada (`catalogos.usar_en_sesion`), solo en memoria. De
+    paso: un `entrada=` que no existe ya no cae CALLADO al embebido (otra edición), falla.
+- **GUI 2.0, reuso** (`docs/review_gui-2.0_pendiente.md` §1.I, ronda 8): código nuevo
+  que copiaba a mano algo que ya existía, y en 3 de 5 casos la copia ya se había apartado.
+  - **El Maestro slim en `<exe>/catalogos/` se ignoraba.** La GUI 1.x y la 2.0 tenían
+    cada una su lista de dónde buscarlo, y ninguna miraba donde van los drop-in de los
+    otros catálogos: el Trabajo Perdido caía callado a la heurística y «Acerca de» decía
+    «no encontrado». Ahora las dos le preguntan a `catalogos.maestro_slim`, que busca en
+    las mismas carpetas que cie10/eno/ges.
+  - **La ruta de «Utilización de Cupos» no se validaba.** Mal tecleada, reventaba al
+    final de la corrida de SM, con SM y TP ya escritos y la D.3 perdida. Ahora `preparar`
+    la valida antes del worker, y esa caja y la de carpeta de salida limpian comillas con
+    `runner.limpiar_ruta` en vez de una copia a mano.
+  - **«Revisar dotación…» callaba el aborto** cuando ya había otra ventana de dotación
+    abierta (Precargar sí lo decía): un solo candado `_una_ventana_dotacion` para las
+    dos, y la ventana y la barra Aplicar de los dos diálogos salen de un solo lugar.
+  - Sin efecto visible hoy, pero ya no pueden apartarse: la caja Período del A05 usa
+    `widgets.selector_mes` (tenía su propia copia de los Spinbox y del parseo, fuera del
+    test que amarra los años), y el preview de cruce ADA↔Grupal elige el encabezado con
+    `rem_utils.indice_encabezado`, el mismo criterio de `leer_xlsx` (`primeras_filas`
+    reemplaza tres copias de abrir-leer-cerrar).
+- **GUI 2.0, bug recurrente «vacío TRAS un filtro»** (`docs/review_gui-2.0_pendiente.md`
+  §1.J, ronda 9): la variante de c38a8cc que §1.A no cubría. El export trae filas, pero
+  ninguna sobrevive al corte, al filtro de programa o al parseo de fecha, y el
+  resultado sale en 0 con «Listo».
+  - **Sección G del A23 en 0 sin fecha de nacimiento.** Un paciente sin FECHA DE
+    NACIMIENTO legible en «Otros Crónicos» se descartaba callado, y sin la columna la G
+    entera daba «ninguno». Ahora la edad sale del ADA si falta, y si tampoco está se usa
+    el umbral de ≥2 años con un aviso REVISAR.
+  - **Población con un formulario o ADA que no sirve para el corte.** Todas las filas
+    posteriores al mes reportado, o ninguna fecha legible → antes ¿Ingresado? o ¿Activo
+    12m? = NO para todos, sin aviso; ahora `ArchivoInvalido` (`mes_vacio` / `sin_fecha`).
+    Y el resumen de la página muestra los avisos de cobertura, que antes quedaban solo en
+    el log y la LEEME.
+  - **SM Actividades con el mes cubierto pero NADA de SM** (ADA filtrado por otro
+    programa) → todo el REM SM en 0; ahora `sin_datos`. Y una ASISTE del grupal en
+    blanco o con otro valor ya no se lee como «nadie asistió»: toda la columna así es
+    `sin_datos`, algunas filas dan un aviso SUBCONTADO.
+  - **«Otros Crónicos» con fechas ilegibles** ya no queda NaT callado (`fecha_col`, que
+    las cuenta en el log); sin ninguna legible, `sin_fecha`.
+  - El diálogo de dotación ya no dice «sin funcionarios nuevos que clasificar» cuando
+    en realidad nada del mes tributa al REM, ni cuando lo que tributa no trae FUNCIONARIO.
+  - **Segunda pasada, sin tope:**
+    - **A03·D.3 en 0 con «N aplicaciones»:** si ninguna aplicación trae momento
+      Ingreso/Egreso, ahora es `ArchivoInvalido`; si solo algunas, aviso SUBCONTADO.
+    - **A03 sin puntaje:** la aplicación va al D.3 con el resultado de RAYEN, con aviso
+      REVISAR, en vez de quedar fuera callada.
+    - **Población con encabezados de preguntas renombrados:** si faltan todas, antes
+      daba 0 ingresados y ahora es `sin_columnas`; si faltan algunas, aviso por archivo.
+    - **Población con un ADA sin ninguna actividad SM en 13 meses:** ahora `sin_datos`.
+    - **A23 con un mes sin nada respiratorio:** los 27 indicadores ya no salen en NO con
+      «Listo»; ahora `sin_datos`.
+    - **«Otros Crónicos» sin INSTRUMENTO:** columna requerida. Si ningún formulario lo
+      aplicó un médico, aviso EN 0 (SALA y la Sección G cuentan solo esos).
+    - **Filas sin sexo Hombre/Mujer o sin edad** cuentan en Ambos pero en ninguna
+      columna por sexo o edad: ahora hay aviso REVISAR, en SM y en el D.3
+      (`rem_utils.aviso_fuera_de_grid`).
+    - **Un Maestro que no reconoce ninguna actividad del mes** ahora avisa HEURISTICA
+      igual que la falta de Maestro.
 - **GUI 2.0, trazado entre archivos** (`docs/review_gui-2.0_pendiente.md` §1.F, ronda 5):
   - **`rem_utils.leer_xlsx` truncaba EN SILENCIO un export con la `<dimension>` rota**
     (el peor de la ronda). En modo `read_only`, openpyxl acota `iter_rows` a la
@@ -303,7 +376,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   reintento de un bloqueo pasajero y aviso si no se suelta; dos ventanas no se pisan
   (incluido «Quitar omisión»); los avisos se muestran al cerrar los diálogos de dotación
   y al terminar una corrida; «Acerca de» explica y las dos cajas apuntan ahí; y todo
-  test aísla el caché real. Los 4 de la segunda
+  test aísla el caché real. Más 4 de la ronda 7 (241 en total), con 6 mutantes cazados:
+  «Revisar» y «Precargar dotación» no revierten lo que guardó otra ventana (y el segundo
+  guarda los nombres nuevos), `decisiones_cambiadas` por sí sola, y el catálogo elegido
+  a mano lo ven las consultas, una carga fallida no lo baja y «Volver» vuelve. Más 4 de la
+  ronda 8 (245 en total), con 5 mutantes cazados: el Maestro slim en `<exe>/catalogos/` y
+  las dos GUI preguntándole a la misma función, la ruta de Cupos validada en `preparar`,
+  el preview de cruce siguiendo el criterio del loader, y el Período del A05 hecho con
+  `selector_mes`; el test del candado exige además que «Revisar» diga su aborto. Más 7 de
+  la ronda 9 (252 en total), con 11 mutantes cazados: la Sección G con y sin fecha de
+  nacimiento, «Otros Crónicos» sin fechas legibles, el formulario/ADA de Población
+  posterior al corte o sin fechas, el resumen de Población con sus avisos, el SM sin nada
+  que tribute, la ASISTE sin SI/NO y el log de dotación; y 5 más de la segunda pasada
+  (257 en total, 13 mutantes más): D.3 sin momento / sin puntaje / sin sexo, preguntas
+  del formulario y ADA sin actividad SM, A23 sin nada respiratorio y «Otros Crónicos»
+  sin médico, el aviso de sexo/edad del SM, y el Maestro que no reconoce nada. Un fixture de `test_cobertura`
+  era justo el caso cazado (un SM entero en 0) y se corrigió. Los 4 de la segunda
   tanda: `escribir_atomico` (el nombre final no existe mientras se escribe; una
   escritura fallida no deja basura), el A05 escribe vía temporal, la X de la ventana
   pregunta con una corrida viva (por el comando REGISTRADO, no un método llamado a

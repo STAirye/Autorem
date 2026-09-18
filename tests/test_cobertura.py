@@ -102,8 +102,11 @@ def _leer_textos(ws):
 
 def test_avisos_sin_grupal_aparecen_en_la_hoja():
     import modulos.rem_sm_actividades as smact
+    # instr="Medico" (A04 exige el estamento EXACTO): con "Medico(a)" la fila no
+    # tributaba a nada y el SM salia entero en 0 -- desde la ronda 9 eso es
+    # ArchivoInvalido, no un resultado con avisos.
     ada = _mk_ada([dict(run="1-9", id="A1", fecha="10/07/2026", act="Consulta De Salud Mental",
-                        dg="x", instr="Medico(a)", tipo="Espontanea", sexo="Femenino", edad="30 años")])
+                        dg="x", instr="Medico", tipo="Espontanea", sexo="Femenino", edad="30 años")])
     E = smact.procesar(ada, grupal=None, mes=(2026, 7), log=_quiet)
     assert any("A06 psicosocial" in a[0] for a in E.attrs["avisos"]), E.attrs["avisos"]
 

@@ -391,7 +391,7 @@ def test_un_click_encolado_no_abre_una_segunda_ventana_de_dotacion():
         anidadas["en_curso"] = True
         anidadas["precargar"] = dialogos.dotacion_ada(
             None, "sm", ["ada.xlsx"], (2026, 8), logs.append, None, todos=True)
-        dialogos.revisar_dotacion(None)
+        dialogos.revisar_dotacion(None, log=logs.append)
 
     parches = [
         (ru, "cargar_atenciones", lambda *_a, **_k: (lecturas.append("ada"), ada)[1]),
@@ -416,7 +416,9 @@ def test_un_click_encolado_no_abre_una_segunda_ventana_de_dotacion():
     assert lecturas == ["ada"], (
         f"un click encolado entro a otra ventana de dotacion anidada: {lecturas}")
     assert anidadas["precargar"] == (None, None), "el Precargar anidado no aborto"
-    assert any("ya hay una ventana" in m for m in logs), "el aborto no se dijo en el log"
+    # Los DOS abortos (Precargar y Revisar) se dicen: Revisar lo callaba.
+    assert sum("ya hay una ventana" in m for m in logs) == 2, (
+        f"un aborto no se dijo en el log: {logs}")
     assert d is ada and tabla is not None, "la ventana de afuera no termino normal"
     assert dialogos._DOTACION_ABIERTA[0] is False, "el candado quedo tomado"
 
@@ -458,6 +460,120 @@ def test_los_avisos_de_cache_se_muestran_al_cerrar_los_dialogos_de_dotacion():
     assert len(mb.vistos) == 1 and "No pude guardar" in mb.vistos[0][1], mb.vistos
     assert len(revisar.vistos) == 1, "Revisar dotación no mostro el aviso de caché"
     assert ru.tomar_avisos_cache() == [], "quedaron avisos sin mostrar"
+
+
+def test_sm_valida_la_ruta_de_cupos_antes_del_worker():
+    """'Utilización de Cupos' es opcional, pero una ruta mal tecleada tiene que
+    pararse en `preparar` (hilo GUI, con dialogo). Antes recien reventaba al final
+    de la corrida, con SM y TP ya escritos y la D.3 perdida en `fallo_a03`."""
+    import tkinter.messagebox as tkmb
+    from gui.paginas import sm
+
+    vistos = []
+    previo = tkmb.showerror
+    tkmb.showerror = lambda t, m: vistos.append((t, m))
+    try:
+        ctx = {"ada": [], "grupal": [], "mes": (2026, 8),
+               "a03": {"incluir": True, "instrumentos": {"PSC": "psc.xlsx"},
+                       "est_ruta": "C:/no/existe/cupos.xlsx"}}
+        assert sm.preparar(ctx, pagina=None) is None, "siguio con una ruta de Cupos inexistente"
+        assert vistos and "cupos.xlsx" in vistos[0][1], vistos
+        # Sin ruta (opcional) sigue normal.
+        ctx["a03"]["est_ruta"] = ""
+        assert sm.preparar(ctx, pagina=None) is ctx
+    finally:
+        tkmb.showerror = previo
+
+
+def test_el_preview_de_cruce_lee_el_encabezado_con_el_criterio_del_loader():
+    """`sm._header_rapido` (preview ADA<->Grupal) tiene que elegir la MISMA fila que
+    `leer_xlsx`. Era una copia a mano del criterio: si el loader cambiaba, el preview
+    leia otro encabezado. Se prueba el cableado: con el criterio compartido
+    parchado, el preview lo sigue."""
+    import tempfile
+    import openpyxl
+    import programas.rem_utils as ru
+    from gui.paginas import sm
+
+    ruta = Path(tempfile.mkdtemp(prefix="autorem_hdr_")) / "ada.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Servicio de Salud"])
+    ws.append(["A", "B", "C", "D", "E"])
+    ws.append([1, 2, 3, 4, 5])
+    wb.save(ruta)
+
+    assert sm._header_rapido(ruta) == ru.leer_xlsx(ruta)[0] == ["A", "B", "C", "D", "E"]
+    previo = ru.indice_encabezado
+    ru.indice_encabezado = lambda filas, *a, **k: 2
+    try:
+        assert sm._header_rapido(ruta) == [1, 2, 3, 4, 5], (
+            "el preview no usa rem_utils.indice_encabezado (criterio copiado a mano)")
+    finally:
+        ru.indice_encabezado = previo
+
+
+def test_el_periodo_del_a05_es_el_selector_mes_compartido():
+    """La caja Periodo del A05 tenia su propia copia de los dos Spinbox y del
+    parseo, fuera del test que amarra los años a `valida_mes`. Ahora usa
+    `widgets.selector_mes`."""
+    import inspect
+    from gui.paginas import a05
+    fuente = inspect.getsource(a05.bloque_periodo)
+    assert "widgets.selector_mes(" in fuente, "el A05 no usa selector_mes"
+    assert "ttk.Spinbox(" not in fuente, "el A05 volvio a armar sus Spinbox a mano"
+    assert "int(" not in inspect.getsource(a05.preparar), "el A05 volvio a parsear el mes a mano"
+
+
+def test_aplicar_dotacion_solo_manda_lo_que_cambio():
+    """«Precargar» y «Revisar» muestran gente YA clasificada. Si 'Aplicar' mandaba
+    todos los ticks, reescribia la foto de cuando se abrio la ventana sobre lo que
+    otra ventana hubiera guardado entremedio. Un nombre NUEVO sin tick si se manda:
+    quedar interno es una decision."""
+    from programas import dotacion
+    from gui import dialogos
+    tabla = {"funcionarios": {"ANA SOTO": dotacion.INTERNO, "BETO RUIZ": dotacion.EXTERNO},
+             "omitidos": {}}
+    ticks = {"ANA SOTO": False, "BETO RUIZ": False, "CARLA PAZ": False}
+    assert dialogos.decisiones_cambiadas(ticks, tabla) == {"BETO RUIZ": False, "CARLA PAZ": False}
+
+
+def test_dotacion_dice_que_nada_tributa_en_vez_de_todo_en_orden():
+    """Ronda 9: con un ADA del mes en el que NADA tributa al REM, el camino de
+    Procesar (todos=False) logueaba «sin funcionarios nuevos que clasificar», que se
+    lee como "ya estan todos clasificados". Tiene que decir que nada tributa."""
+    import openpyxl
+    import tempfile
+    import modulos.rem_sm_actividades as smact
+    from gui import dialogos
+    p = Path(tempfile.mkdtemp(prefix="autorem_dot_")) / "ada.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
+               "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "FUNCIONARIO"])
+    ws.append(["Z", "Z1", "15/07/2026", "Curacion simple", "", "Enfermero(a)", "Consulta",
+               "ANA SOTO"])
+    wb.save(p)
+
+    class _MB:
+        def __getattr__(self, _):
+            return lambda *a, **k: None
+    logs = []
+    d, _tabla = dialogos._dotacion_ada(None, "sm", [p], (2026, 7), logs.append, _MB(),
+                                       mask=smact.mask_tributa_ada)
+    assert d is not None
+    assert any("NINGUNA atención" in m for m in logs), logs
+    assert not any("sin funcionarios nuevos" in m for m in logs), logs
+
+    # 2a pasada: SI tributa, pero sin FUNCIONARIO -> tampoco es "todo en orden"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
+               "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "FUNCIONARIO"])
+    ws.append(["A", "A1", "15/07/2026", "Consulta De Salud Mental", "", "Médico", "Consulta", ""])
+    wb.save(p)
+    logs.clear()
+    dialogos._dotacion_ada(None, "sm", [p], (2026, 7), logs.append, _MB(), mask=smact.mask_tributa_ada)
+    assert any("NO traen FUNCIONARIO" in m for m in logs), logs
+    assert not any("sin funcionarios nuevos" in m for m in logs), logs
 
 
 def test_construye_todas_las_paginas_sin_excepcion():

@@ -79,19 +79,11 @@ def dir_salida_default():
 
 
 def slim_por_defecto():
-    """Ruta del Maestro SLIM que shippea el repo/exe (`maestro_slim.csv.gz`), o
-    None. Busca en el bundle de PyInstaller (si esta congelado) y junto al
-    codigo. Vive en `catalogos/` (feedback del autor, sep-2026: es un
-    catalogo actividad<->estamento<->REM igual que cie10/eno/ges, no un
-    ejemplo anonimizado como el resto de `refs_tablas/`) -- ver autoREM.spec
-    y tools/slim_maestro.py, que tienen que apuntar al mismo lugar."""
-    cands = []
-    if getattr(sys, "frozen", False):
-        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-        cands += [base / "catalogos" / "maestro_slim.csv.gz",
-                  Path(sys.executable).parent / "maestro_slim.csv.gz"]
-    cands.append(Path(__file__).resolve().parent.parent / "catalogos" / "maestro_slim.csv.gz")
-    return next((str(c) for c in cands if c.exists()), None)
+    """Ruta del Maestro SLIM (`maestro_slim.csv.gz`), o None. Ver
+    `catalogos.maestro_slim`: busca en las mismas carpetas que los otros
+    catalogos (autoREM.spec y tools/slim_maestro.py apuntan ahi)."""
+    from programas.catalogos import maestro_slim
+    return maestro_slim()
 
 
 def abrir_carpeta(carpeta):

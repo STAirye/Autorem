@@ -118,13 +118,8 @@ def bloque_archivo_formato(frame, pagina):
         la <dimension> del .xlsx, y con la etiqueta rota el encabezado llegaba con
         UNA columna -> un IRIS valido salia 'Formato no reconocido'."""
         from programas.formatos import MAX_FILAS_HEADER
-        from programas.rem_utils import abrir_xlsx_ro, filas_hoja
-        wb = abrir_xlsx_ro(ruta)
-        try:
-            filas = filas_hoja(wb.active, MAX_FILAS_HEADER)
-        finally:
-            wb.close()
-        return sm.detectar_formato_filas(filas)
+        from programas.rem_utils import primeras_filas
+        return sm.detectar_formato_filas(primeras_filas(ruta, MAX_FILAS_HEADER))
 
     def _detectar(ruta):
         ruta = runner.limpiar_ruta(ruta)
@@ -173,9 +168,9 @@ def bloque_archivo_formato(frame, pagina):
 
 def bloque_periodo(frame, pagina):
     """Caja 'Periodo' propia de A05: archivo completo vs. un mes puntual (por
-    FECHA FORMULARIO). NO es el SelectorMes generico (SS3.1 del plan)."""
-    from tkinter import ttk
-    y0, m0 = mes_anterior()
+    FECHA FORMULARIO). NO es el SelectorMes generico de la pagina (SS3.1 del
+    plan), pero el año/mes SI es `widgets.selector_mes`: mismos Spinbox, mismo
+    parseo, bajo el mismo test que amarra los años a `valida_mes`."""
     caja = widgets.caja_titulada(frame, "Período")
     caja.pack(fill="x", pady=(2, 6))
     var_periodo = ctk.StringVar(value="todo")
@@ -185,25 +180,19 @@ def bloque_periodo(frame, pagina):
     fila_mes.pack(anchor="w", fill="x", padx=8, pady=(0, 6))
     ctk.CTkRadioButton(fila_mes, text="Un mes (año / mes):", value="mes",
                        variable=var_periodo).pack(side="left")
-    var_anio = ctk.StringVar(value=str(y0))
-    var_mes = ctk.StringVar(value=str(m0))
-    spin_anio = ttk.Spinbox(fila_mes, from_=widgets.ANIO_MIN, to=widgets.ANIO_MAX,
-                            width=6, textvariable=var_anio)
-    spin_anio.pack(side="left", padx=(6, 2))
-    spin_mes = ttk.Spinbox(fila_mes, from_=1, to=12, width=4, textvariable=var_mes)
-    spin_mes.pack(side="left")
+    get_mes = widgets.selector_mes(fila_mes, mes_anterior(), etiqueta=None)
 
     def _on_periodo(*_):
         activo = "normal" if var_periodo.get() == "mes" else "disabled"
-        spin_anio.configure(state=activo)
-        spin_mes.configure(state=activo)
+        for spin in get_mes.spinboxes:
+            spin.configure(state=activo)
     var_periodo.trace_add("write", _on_periodo)
     _on_periodo()
 
     def get():
         if var_periodo.get() != "mes":
             return {"modo": "todo"}
-        return {"modo": "mes", "anio": var_anio.get(), "mes_str": var_mes.get()}
+        return {"modo": "mes", "mes": get_mes()}   # (año, mes) o None si no son numeros
     return get
 
 
@@ -261,11 +250,7 @@ def preparar(ctx, pagina):
     periodo = ctx["periodo"]
     mes = None
     if periodo["modo"] == "mes":
-        try:
-            crudo = (int(periodo["anio"]), int(periodo["mes_str"]))
-        except ValueError:
-            crudo = None            # no son numeros: valida_mes lo dice
-        mes = runner.valida_mes(crudo, messagebox)
+        mes = runner.valida_mes(periodo["mes"], messagebox)   # None (no son numeros) incluido
         if mes is None:
             return None
 

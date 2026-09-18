@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -172,6 +172,18 @@ def analizar(d, ini, fin, rem_map=None, log=print):
     }
     E.attrs["mes"] = (ini.year, ini.month)
     E.attrs["avisos"] = []
+    if rem_map and len(dm) and not en_maestro.any():
+        # Un Maestro cargado que no reconoce NI UNA actividad del mes es otro catalogo
+        # (o uno muy viejo): todo cae a la heuristica igual que sin Maestro, pero el
+        # log decia "Maestro: N actividades" y no quedaba ningun aviso.
+        log(f"[tp] el Maestro NO reconoce ninguna de las {len(dm)} atenciones del mes: "
+            "¿es el 'Maestro de Actividades' de RAYEN, y está al día? Todo se clasificó "
+            "por heurística.")
+        E.attrs["avisos"].append((
+            "Clasificacion de trabajo perdido", "HEURISTICA",
+            "el 'Maestro de Actividades' cargado no reconoce ninguna actividad del mes "
+            "-> todo por heuristica (menos precisa)",
+            "Cargar el Maestro de Actividades vigente de RAYEN"))
     if fuera.any():   # fail loud: sale del reporte, pero nunca en silencio
         log(f"[tp] {int(fuera.sum())} atencion(es) FUERA del universo SM (otro "
             f"programa, no son trabajo perdido de SM):")

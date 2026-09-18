@@ -292,6 +292,22 @@ def _leer_formulario_1(entrada, log):
             f"Archivo «{nombre}»:\n\nNo encuentro RUT y/o FECHA FORMULARIO. "
             "¿Es el export IRIS de 'Control de Salud Mental', sin modificar?")
     num2col = {num_pregunta(h): i for i, h in enumerate(headers) if num_pregunta(h) is not None}
+    # Las preguntas se ubican por su NUMERO ("18.- ..."). Una que falta quedaba como
+    # columna en None, callada: sin NINGUNA (RAYEN renombro los encabezados) el P6
+    # salia con 0 ingresados y avisos=[]. Todas -> fail loud; algunas -> se devuelven
+    # para el aviso (un historico de años viejos puede no tener las preguntas nuevas).
+    faltan = [n for n in QUESTIONS if n not in num2col]
+    if len(faltan) == len(QUESTIONS):
+        raise ArchivoInvalido(
+            "sin_columnas",
+            f"Archivo «{nombre}»:\n\nNo encuentro NINGUNA de las preguntas del "
+            "formulario (encabezados «18.- ¿TIENE DEPRESIÓN?», «19.- ESTADO», ...), así "
+            "que no se puede saber ningún diagnóstico.\n\n"
+            "¿Es el export IRIS de 'Control de Salud Mental', sin modificar?")
+    if faltan:
+        log(f"[poblacion] «{nombre}» no trae {len(faltan)} pregunta(s) que usa la tabla "
+            f"({', '.join(map(str, faltan[:12]))}{'...' if len(faltan) > 12 else ''}): "
+            "esos diagnósticos salen de los OTROS archivos, o en 0.")
 
     out = {"RUN": [], "FECHA": [], "INSTR": []}
     for n in QUESTIONS:
@@ -306,7 +322,9 @@ def _leer_formulario_1(entrada, log):
         for n in QUESTIONS:
             c = num2col.get(n)
             out[f"q{n}"].append(row[c] if c is not None and c < len(row) else None)
-    return pd.DataFrame(out)
+    d = pd.DataFrame(out)
+    d.attrs["preguntas_faltantes"] = {nombre: faltan} if faltan else {}
+    return d
 
 
 def cargar_formulario_sm(entrada, log=print):
@@ -326,7 +344,9 @@ def cargar_formulario_sm(entrada, log=print):
                 "no_legible",
                 f"No pude leer «{Path(str(e)).name}»:\n\n{ex}\n\n"
                 "¿Es un .xlsx válido del export IRIS, sin modificar?") from ex
+    faltantes = {k: v for p in partes for k, v in p.attrs.get("preguntas_faltantes", {}).items()}
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
+    d.attrs["preguntas_faltantes"] = faltantes   # concat no conserva attrs
     if len(d) == 0:
         # Fail loud sobre la FUENTE (CLAUDE.md regla 2), igual que cargar_inscritos:
         # con 0 filas las columnas quedan float64 y .str.contains() revienta abajo.
@@ -464,8 +484,15 @@ def _flags_actividad(d_ada, corte):
 def _verificar_cobertura_fechas(form, d_ada, corte, log):
     """Fail loud (§CLAUDE.md) sobre DESCALCES de fecha entre inputs — hoy el único
     chequeo que existía era el de la ventana de gestante (3 meses); esto generaliza
-    a TODO lo que corte/ADA/formulario necesitan cubrir. Nunca bloquea (algunos
-    workflows arrancan sin histórico completo a propósito), pero nunca en silencio.
+    a TODO lo que corte/ADA/formulario necesitan cubrir. Un histórico INCOMPLETO no
+    bloquea (algunos workflows arrancan sin histórico completo a propósito), pero
+    nunca en silencio.
+
+    Lo que SÍ bloquea (ArchivoInvalido) es una fuente que queda VACÍA tras el corte:
+    ninguna fecha legible, o todas posteriores al mes reportado. Ahí no hay nada que
+    avisar a medias: el P6 saldría entero en 0 (¿Ingresado?=NO o ¿Activo 12m?=NO
+    para todos) con cara de resultado legítimo -- el mismo caso que `filtrar_mes`
+    corta en los módulos de actividades.
 
     Acá el mes es un CORTE sobre el snapshot de inscritos, no un filtro de filas:
     no existe el "0 filas del mes" que sí guarda `rem_utils.filtrar_mes` en los
@@ -488,6 +515,29 @@ def _verificar_cobertura_fechas(form, d_ada, corte, log):
 
     log(f"[poblacion] cobertura de fechas -> corte: {corte:%Y-%m} | formulario SM: "
         f"{_mes(form_min)}..{_mes(form_max)} | ADA: {_mes(ada_min)}..{_mes(ada_max)}")
+
+    # Fuente vacia TRAS el corte -> fail loud (CLAUDE.md regla 2), no un aviso: todo
+    # lo que se calcula de ella sale en 0 para TODOS, sin nada que lo distinga de un
+    # mes real. `len == 0` ya lo cortan los loaders; esto es el "tiene filas, pero
+    # ninguna sirve para este corte".
+    for nombre, fmin, que in (
+            ("el formulario 'Control de Salud Mental'", form_min, "¿Ingresado? y los diagnósticos"),
+            ("el ADA (Atenciones / Diagnosticos / Actividades)", ada_min,
+             "¿Activo 12m?, el rescate y gestante")):
+        if fmin is None:
+            raise ArchivoInvalido(
+                "sin_fecha",
+                f"En {nombre} ninguna fila tiene una fecha legible, así que no se puede "
+                f"calcular {que} al corte {corte:%m/%Y}.\n\n"
+                "Revisa que sea el export correcto y que esté SIN modificar "
+                "(una columna de fecha reformateada a mano rompe la lectura).")
+        if _ym(fmin) > _ym(corte):
+            raise ArchivoInvalido(
+                "mes_vacio",
+                f"Todas las filas de {nombre} son POSTERIORES al mes reportado "
+                f"({corte:%m/%Y}): la primera es de {fmin:%m/%Y}. Con ese corte, "
+                f"{que} saldrían en 0 para todos.\n\n"
+                "Revisa el mes/año elegido, o carga el histórico que cubra ese período.")
 
     # El ADA debe llegar HASTA el mes reportado -> si no, Activo12m/rescate/gestante
     # de ESTE mes quedan incompletos (falta la atención más reciente). Comparación por
@@ -575,6 +625,27 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
             "datos.\n\nRevisa que sea el export completo de IRIS (no solo el encabezado) "
             "y que este sin modificar.")
     avisos_cobertura = _verificar_cobertura_fechas(form, d_ada, corte, log)
+    for nombre, faltan in (form.attrs.get("preguntas_faltantes") or {}).items():
+        avisos_cobertura.append((
+            "Diagnosticos del formulario SM", "SUBCONTADO",
+            f"«{nombre}» no trae {len(faltan)} pregunta(s) que usa la tabla "
+            f"({', '.join(map(str, faltan[:12]))}{'...' if len(faltan) > 12 else ''}): "
+            "esos diagnosticos no se leen de ese archivo",
+            "Revisar que el export sea el formulario IRIS completo, sin modificar"))
+
+    # El ADA trae filas en la ventana de 13 meses pero NINGUNA de las 7 actividades SM
+    # -> ¿Activo 12m? y el rescate = NO para TODOS, con cara de legitimo (el gemelo del
+    # SM sin nada que tribute). Un ADA fuera de la ventana ya lo avisa la cobertura.
+    ini13, _ = _mes_offset(corte, 13)
+    en_ventana = d_ada[(d_ada["FECHA"] >= ini13) & (d_ada["FECHA"] <= corte)]
+    if len(en_ventana) and not _runs_actividad_sm(d_ada, ini13, corte):
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"El ADA trae {len(en_ventana)} atención(es) entre {ini13:%m/%Y} y "
+            f"{corte:%m/%Y}, pero NINGUNA es una actividad de Salud Mental (control, "
+            "consulta, ingreso...).\n\n¿Activo 12m? y el rescate saldrían en NO para "
+            "todos. Revisa que el ADA sea el export COMPLETO del centro (no filtrado por "
+            "otro programa) y que esté SIN modificar.")
 
     P = insc.rename(columns={"RUN": "Número", "TIPOID": "Tipo de identificación",
                              "SITUACION": "Situación", "ESTADO": "Estado",

@@ -174,6 +174,29 @@ def filas_hoja(ws, max_filas=None):
     return [tuple(f) + (None,) * (ancho - len(f)) for f in filas]
 
 
+def primeras_filas(entrada, n):
+    """Las primeras `n` filas (ver `filas_hoja`) de la hoja activa: abrir con
+    `abrir_xlsx_ro`, leer y cerrar. Para las detecciones BARATAS (formato del A05,
+    cruce ADA<->Grupal), que no necesitan el archivo entero."""
+    wb = abrir_xlsx_ro(entrada)
+    try:
+        return filas_hoja(wb.active, n)
+    finally:
+        wb.close()
+
+
+def indice_encabezado(filas, ancla=None, max_scan=40):
+    """Indice de la fila de encabezado dentro de `filas` (0 si ninguna calza).
+    `ancla` = nombres de columna que deben estar TODOS en esa fila; sin ancla, la 1ª
+    fila con >3 celdas llenas. Fuente UNICA del criterio: la usan `leer_xlsx` y el
+    preview de cruce del SM, que antes lo copiaba a mano."""
+    if ancla:
+        want = {norm(a) for a in ancla}
+        return next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), 0)
+    return next((i for i, r in enumerate(filas[:max_scan])
+                 if sum(v not in (None, "") for v in r) > 3), 0)
+
+
 def leer_xlsx(entrada, ancla=None, max_scan=40):
     """Lee un .xlsx con openpyxl y devuelve (headers, filas_de_datos). ROBUSTO a
     la 'dimension' rota o ausente de los exports copy-paste / de BD: lee con
@@ -191,11 +214,7 @@ def leer_xlsx(entrada, ancla=None, max_scan=40):
             "sin_datos",
             "La hoja del archivo esta completamente vacia (ni siquiera trae el "
             "encabezado).\n\nVuelve a descargar el export desde RAYEN/IRIS.")
-    if ancla:
-        want = {norm(a) for a in ancla}
-        hi = next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), 0)
-    else:
-        hi = next((i for i, r in enumerate(filas[:max_scan]) if sum(v not in (None, "") for v in r) > 3), 0)
+    hi = indice_encabezado(filas, ancla, max_scan)
     return list(filas[hi]), filas[hi + 1:]
 
 
@@ -618,6 +637,31 @@ def _band_idx(edad, bandas):
 def _isum(s):
     """Suma robusta a Series vacías (evita el '' de una object-Series vacía)."""
     return int(s.sum()) if len(s) else 0
+
+
+def aviso_fuera_de_grid(sub, bandas, casilla, log=print):
+    """Aviso (casilla, estado, motivo, que_hacer) para la LEEME, o None: filas de `sub`
+    que `grid` cuenta en Ambos/Total pero en NINGUNA columna por sexo o banda etaria
+    (sexo que no es Hombre/Mujer -- Intersexual, Desconocido, vacio -- o edad ilegible).
+
+    `grid` las deja en Ambos a proposito (la atencion existio), pero entonces las
+    columnas H/M y las bandas que se pegan al REM suman MENOS que el total, y eso
+    pasaba callado. Se dice, con el conteo."""
+    import pandas as pd
+    if not len(sub):
+        return None
+    sin_sexo = sum(1 for s in sub["sexo"] if not (_hombre(s) or _mujer(s)))
+    edades = pd.to_numeric(sub["edad"], errors="coerce")
+    sin_banda = sum(1 for e in edades if _band_idx(e, bandas) is None)
+    if not (sin_sexo or sin_banda):
+        return None
+    partes = ([f"{sin_sexo} sin sexo Hombre/Mujer"] if sin_sexo else []) + \
+             ([f"{sin_banda} sin edad legible"] if sin_banda else [])
+    motivo = (f"{' y '.join(partes)}: cuentan en Ambos pero en ninguna columna por "
+              "sexo / tramo de edad, que suman MENOS que el total")
+    log(f"[aviso] {casilla}: {motivo}.")
+    return (casilla, "REVISAR", motivo,
+            "Ubicar esas filas en el detalle y registrarlas a mano en el REM")
 
 
 def grid(sub, bandas, lbls, con_sexo=True):

@@ -423,6 +423,58 @@ def test_grupal_del_mes_sin_asistencias_no_falla():
     assert _cell_row(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal")["Ambos"] == 0
 
 
+def test_ada_del_mes_sin_nada_que_tribute_falla_en_la_fuente():
+    """Ronda 9: el ADA cubre el mes (filtrar_mes pasa) pero NINGUNA fila tributa a SM
+    -> antes salía el REM SM ENTERO en 0 con "Listo" y sin aviso. Una casilla en 0 es
+    legítima; TODAS en 0 (E vacío) es el gemelo por programa del mes_vacio."""
+    try:
+        _run(_RELLENO_ADA)
+        assert False, "debió levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_datos", e.categoria
+    # el grupal solo (con asistencias) SÍ basta: no es un REM vacío
+    E, _ = _run(_RELLENO_ADA, grupal_rows=[{"run": "P", "fecha": date(2026, 7, 5), "asiste": "SI",
+                                           "act": "Intervencion psicosocial grupal.", "edad": 30}])
+    assert _n(E, "A06PG") == 1
+
+
+def test_asiste_sin_si_ni_no_no_es_nadie_asistio():
+    """Ronda 9: una ASISTE en blanco (o 'S') se filtraba como si fuera NO, y A27 / A06
+    grupal / A19a grupal salían en 0 callados. Toda la columna sin SI/NO ->
+    ArchivoInvalido; algunas filas -> aviso SUBCONTADO (las SI siguen contando)."""
+    ada = [{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+            "instr": "Médico", "edad": 30}]
+    taller = {"run": "P", "fecha": date(2026, 7, 5), "act": "Intervencion psicosocial grupal.", "edad": 30}
+    for raro in ("", "S"):
+        try:
+            _run(ada, grupal_rows=[dict(taller, asiste=raro)])
+            assert False, f"ASISTE={raro!r} en todas: debió levantar ArchivoInvalido"
+        except ArchivoInvalido as e:
+            assert e.categoria == "sin_datos", e.categoria
+    E, _ = _run(ada, grupal_rows=[dict(taller, asiste="SI"), dict(taller, asiste="")])
+    assert _n(E, "A06PG") == 1
+    assert any(a[1] == "SUBCONTADO" and "ASISTE" in a[2] for a in E.attrs["avisos"]), E.attrs["avisos"]
+    # un NO explícito sigue siendo legítimo: 0 sin aviso
+    E, _ = _run(ada, grupal_rows=[dict(taller, asiste="NO")])
+    assert _n(E, "A06PG") == 0
+    assert not any("ASISTE" in a[2] for a in E.attrs["avisos"])
+
+
+def test_sexo_o_edad_fuera_del_grid_se_avisa():
+    """Ronda 9, 2a pasada: `grid` cuenta en Ambos una fila sin sexo Hombre/Mujer o sin
+    edad, pero en ninguna columna H/M ni tramo -> las columnas que se pegan suman menos
+    que el total, callado. Ahora aviso REVISAR con el conteo."""
+    E, _ = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
+                  "instr": "Médico", "sexo": "Intersexual", "edad": 30},
+                 {"run": "B", "id": "2", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
+                  "instr": "Médico", "sexo": "Mujer", "edad": ""}])
+    av = [a for a in E.attrs["avisos"] if a[1] == "REVISAR" and "Ambos" in a[2]]
+    assert av and "1 sin sexo" in av[0][2] and "1 sin edad" in av[0][2], E.attrs["avisos"]
+    E, _ = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
+                  "instr": "Médico", "sexo": "Mujer", "edad": 30}])
+    assert not any("Ambos" in a[2] for a in E.attrs["avisos"])
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

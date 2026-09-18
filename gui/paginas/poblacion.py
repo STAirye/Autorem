@@ -105,10 +105,19 @@ def resumen(res):
            if n_rescate is not None else "")
     if res.get("fallo_rescate"):
         rtxt = f"\nRescate: NO se generó ({res['fallo_rescate']})."
+    # Los avisos de cobertura (ADA/formulario que no llegan al mes) NO bloquean a
+    # proposito (programas/poblacion._verificar_cobertura_fechas), y justamente por eso
+    # tienen que verse ACA: solo en el log y en la LEEME, el "Listo" de abajo se leia
+    # igual que el de una corrida completa, con Activo 12m subcontado para todos.
+    avisos = P.attrs.get("avisos") or []
+    atxt = "".join(f"\n  - {casilla}: {estado} ({motivo})"
+                   for casilla, estado, motivo, _ in avisos)
+    atxt = (f"\n\nOJO, {len(avisos)} aviso(s) de cobertura -- estas cifras pueden "
+            f"estar SUBCONTADAS:{atxt}" if avisos else "")
     return (f"Listo (BETA, sin validar todavía). SP·P6 {y}-{m:02d}.\n"
             f"{len(P)} personas en el snapshot, {n_ingresados} con ¿Ingresado?=SI.\n"
             f"Revisar_Administrativo: {n_admin} fila(s) · Revisar_Clinico: {n_clin} fila(s) "
-            f"— revísalas antes de pegar al SP.{rtxt}\n\n"
+            f"— revísalas antes de pegar al SP.{rtxt}{atxt}\n\n"
             f"Guardado en:\n{res['salida']}")
 
 

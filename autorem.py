@@ -374,15 +374,9 @@ def _manejar_error(e, log, messagebox):
 
 
 def _slim_por_defecto():
-    """Ruta del Maestro SLIM que shippea el repo/exe (`maestro_slim.csv.gz`), o None.
-    Busca en el bundle de PyInstaller (si está congelado) y junto al código."""
-    cands = []
-    if getattr(sys, "frozen", False):
-        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
-        cands += [base / "catalogos" / "maestro_slim.csv.gz",
-                  Path(sys.executable).parent / "maestro_slim.csv.gz"]
-    cands.append(Path(__file__).resolve().parent / "catalogos" / "maestro_slim.csv.gz")
-    return next((str(c) for c in cands if c.exists()), None)
+    """Ruta del Maestro SLIM (`maestro_slim.csv.gz`), o None. Ver `catalogos.maestro_slim`."""
+    from programas.catalogos import maestro_slim
+    return maestro_slim()
 
 
 _FIN = object()   # centinela de fin de trabajo en la cola del runner

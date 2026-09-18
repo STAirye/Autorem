@@ -758,6 +758,94 @@ def test_acerca_de_explica_las_preferencias_y_las_paginas_apuntan_ahi():
         _cerrar(app)
 
 
+def _checkbox(widget, texto):
+    """CTkCheckBox bajo `widget` cuyo texto contiene `texto`, en profundidad."""
+    if isinstance(widget, ctk.CTkCheckBox) and texto in str(widget.cget("text")):
+        return widget
+    for hijo in widget.winfo_children():
+        hallado = _checkbox(hijo, texto)
+        if hallado is not None:
+            return hallado
+    return None
+
+
+def _en_el_dialogo(app, accion):
+    """Corre `accion(top)` apenas el CTkToplevel del dialogo exista (el dialogo se
+    queda en `wait_window`, asi que hay que actuar desde un `after`)."""
+    def intentar():
+        tops = [w for w in app.winfo_children() if isinstance(w, ctk.CTkToplevel)]
+        if tops:
+            accion(tops[-1])
+        else:
+            app.after(50, intentar)
+    app.after(50, intentar)
+
+
+def _dos_ventanas(nombre_cache):
+    """Tabla en disco con Ana y Beto internos. Devuelve (dotacion, tabla que abre la
+    ventana A, lo que hace la ventana B mientras A esta abierta)."""
+    from programas import dotacion
+    dotacion.RUTA_CACHE = _TMP / nombre_cache
+    q = lambda *_a, **_k: None   # noqa: E731
+    dotacion.marcar(dotacion.cargar(log=q), {"Ana Soto": False, "Beto Ruiz": False}, log=q)
+    tabla_a = dotacion.cargar(log=q)
+
+    def ventana_b():
+        dotacion.marcar(dotacion.cargar(log=q), {"Ana Soto": True}, log=q)
+    return dotacion, tabla_a, ventana_b
+
+
+def test_revisar_dotacion_no_revierte_lo_que_guardo_otra_ventana():
+    """Dos autoREM abiertos: A abre «Revisar dotación», B marca externa a Ana, A
+    cambia SOLO a Beto y aplica. Ana tiene que seguir externa: sus atenciones no
+    pueden volver a contar en el REM por un nombre que A ni toco."""
+    if SIN_DISPLAY:
+        return
+    from gui import dialogos
+    dotacion, _tabla_a, ventana_b = _dos_ventanas("dot_revisar.json")
+    app = ctk.CTk()
+    try:
+        def accion(top):
+            ventana_b()
+            _checkbox(top, "BETO RUIZ").select()
+            _buscar_boton(top, "Aplicar").invoke()
+        _en_el_dialogo(app, accion)
+        dialogos.revisar_dotacion(app, "sm")
+        disco = dotacion.cargar(log=lambda *_: None)
+        assert dotacion.clase("Beto Ruiz", disco) == dotacion.EXTERNO, "no guardo el cambio de A"
+        assert dotacion.clase("Ana Soto", disco) == dotacion.EXTERNO, (
+            "«Revisar dotación» devolvio a interna a alguien que no toco")
+    finally:
+        _cerrar(app)
+
+
+def test_precargar_dotacion_no_revierte_y_guarda_los_nuevos():
+    """Mismo caso por el dialogo de «Precargar» (todos los del mes, clasificados o
+    no), con un nombre NUEVO sin tick: ese si se guarda, como interno."""
+    if SIN_DISPLAY:
+        return
+    import pandas as pd
+    from gui import dialogos
+    dotacion, tabla_a, ventana_b = _dos_ventanas("dot_precargar.json")
+    filas = pd.DataFrame({"funcionario": ["Ana Soto", "Beto Ruiz", "Carla Paz"],
+                          "estamento": ["PSICOLOGO"] * 3, "n_atenciones": [3, 2, 1],
+                          "actividades": [""] * 3, "sector": [""] * 3})
+    app = ctk.CTk()
+    try:
+        def accion(top):
+            ventana_b()
+            _buscar_boton(top, "Aplicar").invoke()
+        _en_el_dialogo(app, accion)
+        dialogos.dialogo_dotacion(app, tabla_a, "sm", filas)
+        disco = dotacion.cargar(log=lambda *_: None)
+        assert dotacion.clase("Ana Soto", disco) == dotacion.EXTERNO, (
+            "«Precargar dotación» devolvio a interna a alguien que no toco")
+        assert dotacion.clase("Carla Paz", disco) == dotacion.INTERNO, (
+            "un nombre nuevo sin tick tiene que quedar guardado como interno")
+    finally:
+        _cerrar(app)
+
+
 def test_ctktoplevel_despacha_los_clicks_encolados():
     """PREMISA del candado de `dialogos._DOTACION_ABIERTA`: crear un `CTkToplevel`
     despacha, dentro de su propio constructor, los clicks que estaban encolados

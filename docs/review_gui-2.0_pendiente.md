@@ -25,20 +25,21 @@ Este archivo es la única memoria. Por eso:
 5. Estado del árbol: las rondas 1-4 están en **`fd1b0cc`, un commit de RESPALDO**
    (pusheado a `origin/gui-2.0` solo para no tener 5k líneas sin copia remota; **no es
    un release**: la versión sigue en **1.9.17** y la entrada del CHANGELOG sigue
-   abierta — no reportar eso como hallazgo). Las rondas 5 y 6 están sin commit encima.
-   **237 tests verdes.**
+   abierta — no reportar eso como hallazgo). Las rondas 5 y 6 están en otro respaldo,
+   **`f42308d`**; la 7, la 8 y la 9 están sin commit encima. **257 tests verdes.**
 
 **Foco original pedido** (sigue vigente para lo que falte): el **bug recurrente de
 c38a8cc** — un export con 0 filas de datos que pasa el loader y revienta abajo con un
 error críptico, o peor, da un **0 callado**, en vez de `ArchivoInvalido` sobre la
 FUENTE. Ya visto en 1.9.12 (A23, NaT) y en c38a8cc (Inscritos). §1.A lo cierra para
-todos los loaders conocidos; si aparece uno nuevo, va ahí.
+todos los loaders conocidos; si aparece uno nuevo, va ahí. La variante **«trae filas,
+pero quedan 0 TRAS un filtro»** (corte, programa, fecha ilegible, Asiste) está en §1.J.
 
 ---
 
 ## §1 — YA CORREGIDO. No volver a reportar
 
-55 hallazgos en 6 rondas con resultado (la 0 entregó cero). Todo verificado con
+79 hallazgos en 9 rondas con resultado (la 0 entregó cero). Todo verificado con
 tests; ver §3.
 
 ### §1.A · Bug recurrente «0 filas» — cerrado en TODOS los loaders conocidos
@@ -406,6 +407,146 @@ no de memoria. Nueve corregidos, con test mutado (37 mutantes, 37 cazados).
    que el único test que redirigía. Arreglo: `tests/_aislar_cache.py`, importado primero
    por todo test, y `test_todos_los_tests_aislan_el_cache_del_usuario` lo exige.
 
+### §1.H · Envoltorios e indirecciones (ronda 7)
+
+Ángulo E: cada envoltorio (`Pagina`, `getters`/`_resolver_ctx`, los de `runner`, los
+diálogos de dotación, el override de catálogos del About, el descubrimiento de
+`registro`) ¿llega al destino correcto, con todo lo que usa quien llama? Con repros.
+
+1. **`dialogos.dialogo_dotacion` / `_revisar_dotacion`: «Aplicar» mandaba TODOS los
+   ticks a `dotacion.marcar`** — la foto de cuando se abrió la ventana se escribía sobre
+   el disco, y el re-leer-y-fusionar de §1.G.8 no servía para los nombres que el diálogo
+   mostraba: otra ventana marca externa a Ana, esta aplica sin tocarla → Ana vuelve a
+   interna y cuenta en el REM. (El test de §1.G.8 usaba nombres disjuntos llamando a
+   `marcar` directo, así que no lo veía.) Arreglo: `dialogos.decisiones_cambiadas` (solo
+   lo que difiere de la tabla abierta; un `desconocido` sin tick SÍ cuenta: queda
+   interno) vía `_aplicar_ticks`, en los dos diálogos.
+2. **`about._cargar_manual` + `catalogos.cargar`: el override de sesión no llegaba a
+   nadie** — `_CACHE` va por `(nombre, str(entrada))`; el About cargaba con `entrada=` y
+   toda consulta (`existe`, `descripcion`, `_cruzar`, `anotar`, el futuro `en_rango`)
+   llama sin ella → clave `(nombre, 'None')` = el embebido. «Volver al embebido» recargaba
+   una clave nunca pisada. Arreglo: `catalogos._SESION` + `usar_en_sesion` / `en_sesion`,
+   un paso de la cascada solo en memoria (persistirlo sigue siendo de `main`); el About
+   ya no lleva su propio `_OVERRIDES`. De paso, `cargar(entrada=<no existe>)` caía
+   CALLADO al embebido: ahora `FileNotFoundError`.
+
+Revisado y limpio en esta ronda: `pagina.log` nunca llega al worker (solo `preparar` /
+`dotacion_ada`, hilo GUI; `ctx` no lleva log); `Pagina.mes()` da None sin `SelectorMes`
+y su único usuario (SM) lo tiene; `get_ada` da `list[str]` y `cargar_atenciones` acepta
+lista; `quitar_omision`/`omitir` sin clave `omitidos[modulo]`; ninguna `key` de extra
+choca hoy con un input, `mes` o `carpeta` (el `"carpeta"` del A05 convive con
+`carpeta_salida: False`); `runner.abrir_carpeta`/`slim_por_defecto` = sus pares;
+`pkgutil.iter_modules` en el exe (PyInstaller lo soporta sobre el PYZ; el hueco real es
+`gui.app` fuera del bundle, ya en §4).
+
+### §1.I · Reuso (ronda 8)
+
+Código nuevo que re-implementaba algo que ya existía. En 3 de los 5 la copia ya se
+había apartado del original.
+
+1. **`runner.slim_por_defecto` / `autorem._slim_por_defecto`: cada GUI con su lista a
+   mano** de dónde buscar el Maestro slim, y ninguna miraba `<exe>/catalogos/` (donde
+   `catalogos._carpetas` busca los drop-in) → un maestro dejado ahí se ignoraba, el TP
+   caía callado a la heurística y el About decía «no encontrado». El docstring de
+   `_carpetas` juraba «mismo criterio». Arreglo: `catalogos.maestro_slim` (las carpetas
+   de `_carpetas` + suelto junto al exe); las dos GUI la llaman.
+2. **`widgets.fila_carpeta_salida` / `dialogos.bloque_estamentos`: limpiaban la ruta a
+   mano** (sin el `.strip()` final de `runner.limpiar_ruta`), y la de Cupos no pasaba
+   por NINGUNA validación: mal tecleada, `FileNotFoundError` al final de la corrida SM,
+   con SM y TP escritos y la D.3 en `fallo_a03`. Arreglo: `limpiar_ruta` en los dos
+   getters + `sm.preparar` la valida con `runner.valida_ruta` si viene.
+3. **`dialogos.revisar_dotacion`: copia del candado de `dotacion_ada`**, que callaba el
+   aborto (la otra lo loguea). Arreglo: `_una_ventana_dotacion` (contextmanager, uno
+   para los dos); `_modal` + `_barra_aplicar` para la ventana y la barra repetidas.
+4. **`a05.bloque_periodo`: copia de los Spinbox y del parseo de `widgets.selector_mes`**,
+   fuera del test que amarra `ANIO_MIN/MAX`. Arreglo: usa `selector_mes(etiqueta=None)`
+   y prende/apaga `get.spinboxes`; `preparar` ya no parsea.
+5. **`sm._header_rapido`: copia del criterio de encabezado de `leer_xlsx`** (">3 celdas
+   llenas"); y tres copias de abrir/`filas_hoja(ws, n)`/cerrar (A05, SM, un test).
+   Arreglo: `rem_utils.indice_encabezado` (lo usan `leer_xlsx` y el preview) y
+   `rem_utils.primeras_filas`.
+
+Revisado y limpio en esta ronda: `sm.al_completar`/`a23.al_completar` y el banner ya
+comparten `widgets.pintar_banner_fuente`/`bloque_banner_fuente` (§1.E); la validación de
+mes pasa toda por `runner.valida_mes`; `about._ruta_licencia` no tiene par (y el LICENSE
+va junto al exe, §9). Los pares `runner` ↔ `autorem.py` siguen siendo el hallazgo #14.
+
+### §1.J · Bug recurrente, variante «vacío TRAS un filtro» (ronda 9, empírica)
+
+§1.A cierra el export con 0 filas. Esta ronda corrió cada página contra exports que SÍ
+traen filas pero ninguna sobrevive al corte / máscara de programa / parseo de fecha /
+Asiste. Repros en el scratchpad de la ronda (`r1/h1..h5.py`), 11 mutantes cazados.
+
+1. **`rem_a23_respiratorio._seccion_g`: `if pd.isna(e): continue`** — sin FECHA DE
+   NACIMIENTO legible (o sin la columna: `_resolver_otros` la deja opcional) el
+   inasistente se descartaba; la G entera daba «ninguno» sin aviso. → edad del ADA como
+   respaldo (`edad_extra=fer["Edad"]`); si tampoco, umbral `_UMBRAL_ADULTO` (solo <2
+   años difiere) + aviso `REVISAR` con el conteo (`sin_edad`).
+2. **`poblacion._verificar_cobertura_fechas`: solo miraba `form_max < corte`** — un
+   formulario (o ADA) con TODO posterior al corte daba 0 ingresados con `avisos=[]`. →
+   `ArchivoInvalido("mes_vacio")` si `min > corte`, para las dos fuentes.
+3. **Ídem, sin UNA fecha legible** (`form_min is None` → se saltaban todos los chequeos)
+   → `ArchivoInvalido("sin_fecha")`, las dos fuentes.
+4. **`rem_sm_actividades.procesar`: E vacío tras `filtrar_mes`** (ADA del mes, nada SM:
+   bajado filtrado por otro programa) → todo el REM SM en 0 con «Listo». →
+   `ArchivoInvalido("sin_datos")` si `len(E) == 0`. Una casilla en 0 sigue siendo legítima.
+5. **`rem_a23_respiratorio.cargar_otros`: `pd.to_datetime` pelado** → NaT callado, y sin
+   ninguna fecha el chequeo de historial de la G (`od["FECHA"].notna().any()`) se
+   saltaba. → `fecha_col` (cuenta las ilegibles) + `sin_fecha` si no queda ninguna.
+6. **`gui/paginas/poblacion.resumen` no mostraba `P.attrs["avisos"]`** — los avisos de
+   cobertura no bloquean a propósito (§3.1 de programas/CLAUDE.md), así que tienen que
+   verse: quedaban en el log y la LEEME, con un «Listo» idéntico al de una corrida
+   completa. → el resumen los lista.
+7. **`rem_sm_actividades.procesar`: `gm[gm["ASISTE_n"] == "SI"]`** leía una ASISTE en
+   blanco o «S» como NO → A27 / A06 grupal / A19a grupal en 0. → toda la columna sin
+   SI/NO del mes = `sin_datos`; algunas filas = aviso `SUBCONTADO`. Un NO explícito
+   sigue siendo 0 legítimo.
+8. **`dialogos._dotacion_ada`: «sin funcionarios nuevos que clasificar»** con `trib`
+   vacío (nada del mes tributa) se leía como «todo en orden». → log propio.
+
+**Un fixture era el bug:** `test_cobertura::test_avisos_sin_grupal_aparecen_en_la_hoja`
+armaba un SM entero en 0 (`instr="Medico(a)"`, y A04 exige `MEDICO` exacto) y verificaba
+sus avisos. Se corrigió el fixture, no la guarda.
+
+Revisado y limpio: 0 filas en todos los loaders (§1.A se sostiene); grupal / NSP de
+otro mes y NSP sin fechas legibles → `mes_vacio` (vía `filtrar_mes`); Multiprofesional
+sin ninguna fila marcada y Inscritos sin TRANS → avisan; Trabajo Perdido con 0 a saco roto
+es un resultado legítimo; Estratificación sin cruce de RUT es un dato, no una fuente vacía;
+el A05 detecta sobre `primeras_filas` (un `abrir_xlsx_ro` + `detectar_formato` pelado
+revienta en `ws.max_row=None`, pero ninguna ruta de la GUI lo hace).
+
+**Segunda pasada (sin tope), 9 más** — 13 mutantes cazados (`r1/h6.py`, `h7.py`):
+
+9. **`rem_a03_d3_instrumentos.procesar`: momento fuera de Ingreso/Egreso** (columna
+   `1.- ESTADO` ausente, en blanco u otro vocabulario) → la D.3 ENTERA en 0 con «N
+   aplicaciones» en el resumen. → todas = `ArchivoInvalido`; algunas = aviso SUBCONTADO.
+10. **Ídem, sin puntaje pero con RESULTADO de RAYEN** → fuera del D.3 callado. → nuevo
+    campo `nivel_d3` (DISAM, o la banda de RAYEN si no hay puntaje) + aviso REVISAR;
+    columna `Nivel_D3` en el detalle.
+11. **`poblacion._leer_formulario_1`: preguntas por NÚMERO, la ausente quedaba None** →
+    encabezados renombrados = 0 ingresados, `avisos=[]`. → ninguna = `sin_columnas`;
+    algunas = aviso SUBCONTADO por archivo (un histórico viejo puede no traer las nuevas).
+12. **`poblacion.construir_poblacion`: ADA con filas en la ventana de 13 meses y NINGUNA
+    de las 7 actividades SM** → Activo 12m = NO para todos. → `sin_datos` (gemelo del
+    ítem 4).
+13. **`rem_a23_respiratorio.procesar`: mes cubierto, NADA respiratorio** → 27
+    indicadores en NO con «Listo». → `sin_datos` (gemelo del ítem 4).
+14. **`cargar_otros`: sin columna INSTRUMENTO** → `_med` False para todos, SALA y G en
+    0. → `requeridas=("RUN", "FECHA", "INSTR")`; con la columna pero sin ningún médico,
+    aviso EN 0.
+15. **`rem_utils.grid`: Ambos cuenta lo que H/M y los tramos no** (sexo Intersexual,
+    Desconocido o vacío; edad ilegible) → columnas pegables que suman menos que el
+    total, callado. → `rem_utils.aviso_fuera_de_grid` (REVISAR) en SM y en el D.3.
+    `grid` NO cambia: la atención existió y va en Ambos.
+16. **`dialogos._dotacion_ada`: tributa pero sin FUNCIONARIO** → otra vez «sin
+    funcionarios nuevos» (el ítem 8 solo cubría `trib` vacío). → log propio.
+17. **`rem_sm_trabajo_perdido.analizar`: Maestro que no reconoce ninguna actividad del
+    mes** → todo a heurística sin el aviso HEURISTICA. → aviso.
+
+**Fixtures ajustados** (eran el caso cazado, no el test): `test_a23` (SALA/G sin nada
+respiratorio en el mes → fila de relleno `_RESP`), `test_sp_p6::test_gestante...` (ADA
+sin actividad SM → una fila SM de otro RUN).
+
 ### §1.E · Estructura y versionado
 
 - **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
@@ -428,10 +569,10 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
   módulos) **también** desempaca 4, así que la forma ya está fijada aguas arriba. Un
   aviso mal formado reventaría antes, en `cobertura`, que es donde corresponde
   arreglarlo. Poner un guard defensivo en el banner solo taparía ese bug.
-- **`catalogos.cargar(entrada=, recargar=)` y el override del About** — la firma calza, y
-  el propio mensaje de confirmación le dice al usuario que hoy **ningún** módulo REM
-  consulta los catálogos DEIS (CLAUDE.md §12: «enchufar `en_rango` en el A23» sigue
-  pendiente). No hay consumidor que pueda ignorar el override.
+- ~~**`catalogos.cargar(entrada=, recargar=)` y el override del About**~~ —
+  **DESCARTE EQUIVOCADO, reabierto y corregido en la ronda 7 (§1.H.2).** La premisa «no
+  hay consumidor que pueda ignorar el override» era falsa: por la clave del caché, TODO
+  consumidor lo ignoraba, apenas existiera uno.
 - **El resolver manual de estamentos del A03 standalone borrado** — no se perdió nada.
   `_tab_a03` también pasaba `resolver_estamento=None`: el diálogo Tk no puede abrirse
   desde el worker, y el estamento solo alimenta el DETALLE, no la tabla D.3.
@@ -446,8 +587,8 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 
 ## §3 — Verificación (estado actual)
 
-- **237 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
-  206 tras la 4, 215 tras la 5). `check_version` OK (1.9.17, 237 tests), `check_cp1252`
+- **257 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
+  206 tras la 4, 215 tras la 5, 237 tras la 6, 241 tras la 7, 245 tras la 8). `check_version` OK (1.9.17, 257 tests), `check_cp1252`
   OK (60 archivos).
 - Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
   **dos** test files que antes no se podían correr ahora corren.
@@ -516,8 +657,8 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 Los agentes en paralelo murieron antes de entregar; lo hecho a mano fue más acotado que
 el `max` planeado. Sin cubrir de forma sistemática:
 
-- **Reuso / simplificación / altitud** sobre las ~3200 líneas del diff (solo se sacó el
-  código muerto obvio, §1.E).
+- **Simplificación / altitud** sobre las ~3200 líneas del diff (el reuso se corrió en la
+  ronda 8, §1.I; antes solo se había sacado el código muerto obvio, §1.E).
 - **Eficiencia**: nadie miró si la GUI 2.0 relee archivos o rehace trabajo (el caso de
   la familia población, §1.E, se encontró de casualidad).
 - **Convenciones**: headers de versión de cada `.py` de `gui/` vs su último cambio real
@@ -642,7 +783,10 @@ listados en §4.
 | 4 | **Ángulo B — auditor de comportamiento REMOVIDO**: (a) cada línea que el diff borra o reemplaza (`.gitignore`, el rename del maestro slim, `autoREM.spec`, `tools/slim_maestro.py`) → ¿qué invariante sostenía y dónde se re-establece?; (b) cada página portada contra su `_tab_*` original en `autorem.py` (`_tab_a05`, `_tab_a23`, `_tab_sm`, `_tab_a03`, `_tab_beta`, `_correr_con_reloj`, `_manejar_error`, `_valida_ruta`/`_valida_carpeta`, los helpers de dotación/estamentos, y el selector de perfil que se eliminó) → ¿qué guarda, validación, aviso, `try`, línea de log, default o argumento se cayó? | 7: **4 ✅** + 1 ⏸ (utils/skill) + 1 ⏸ (CLI congelado) + 1 ✅ del ángulo A pendiente | §1.C-ter · §1.D-bis · §1.E-bis · §4 deuda (2) |
 | 5 | **Ángulo C — trazado entre archivos**: cada llamada de `gui/` a `programas/`/`modulos/`/`autorem.py`/`tools/` contra firma, retorno, attrs, excepciones y precondiciones del callee; y al revés, los consumidores de lo que el diff cambió (`cargar_inscritos`, `catalogos/`). Con repros empíricos (`<dimension>` fabricada, ADA mixto IRIS+Monitoreo, ruta con comillas) | 5 ✅ (1 era regresión de la ronda 4) | §1.F |
 | 6 | **Ángulo D — trampas de lenguaje/framework**: thread-safety de Tk, re-entrada de eventos, excepciones en callbacks, closures, fugas de recursos, pandas, customtkinter (contra su fuente 6.0.0 instalada), rutas de Windows. Con repros empíricos (click encolado despachado dentro de `CTkToplevel`, `wraplength` a 150%) | 9 ✅ (1 era la suite pisando el caché real) | §1.G |
-| 7 | _(siguiente: quedan reuso/simplificación/altitud, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
+| 7 | **Ángulo E — envoltorios e indirecciones**: `Pagina` (getters, `mes` y `log` perezosos, `datos` compartido), `_resolver_ctx` y las `key` de extras, los envoltorios de `runner`, los getters de `widgets`, los diálogos de dotación contra el esquema de `dotacion.py`, el override de catálogos del About contra `catalogos._CACHE`, y `registro` + `pkgutil` en el exe. Con repros | 2 ✅ (1 reabre un descarte de §2) | §1.H |
+| 8 | **Reuso**: código nuevo del diff contra los helpers que ya existían en `programas/`, `autorem.py`, `tools/` y los archivos vecinos (Maestro slim vs `catalogos._carpetas`, limpieza de rutas, candado y ventana de dotación, Spinbox de mes, criterio de encabezado) | 5 ✅ (3 ya se habían apartado del original) | §1.I |
+| 9 | **Bug recurrente, EMPÍRICO (R1)**: cada `correr` de página (SM, TP, dotación, Población, A23, A05) contra exports que traen filas pero quedan vacíos TRAS un filtro (corte, máscara de programa, fecha ilegible, Asiste, fecha de nacimiento), clasificando OK / crash críptico / 0 callado | 8 ✅ + 9 ✅ de una 2a pasada sin tope (3 fixtures de test eran el bug) | §1.J |
+| 10 | _(siguiente: quedan simplificación/altitud, eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es

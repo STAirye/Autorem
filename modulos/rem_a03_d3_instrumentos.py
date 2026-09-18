@@ -54,7 +54,7 @@ from programas.rem_utils import (
     norm, solo_entero, buscar_col, num_pregunta,
     encontrar_fila_encabezado, edad_anios,
     grid as _grid, BANDAS_A06, LBL_A06,
-    verificar_hoja_unica, exigir_filas_ws,
+    verificar_hoja_unica, exigir_filas_ws, aviso_fuera_de_grid,
 )
 from programas import formatos
 from programas.estamentos import (cargar_estamentos, buscar_estamento,
@@ -260,6 +260,7 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
                         "Cargar el reporte 'Utilizacion de Cupos'"))
 
     filas = []
+    n_desde_rayen = 0     # sin puntaje: el nivel del D.3 sale del RESULTADO de RAYEN
     no_reconocidos = {}   # RESULTADO de RAYEN con redacción no mapeada
     fuera_rango = []      # puntaje presente que no cae en ninguna banda del corte (p.ej. GHQ-12 >12)
     for r in range(header_idx + 1, ws.max_row + 1):
@@ -279,6 +280,14 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
         if puntaje is not None and resu_disam is None:   # puntaje presente FUERA de las bandas del corte
             fuera_rango.append(puntaje)
         banda_rayen = canon_resultado(resu_rayen)   # canoniza la redacción de RAYEN
+        # Nivel que va al D.3: el calculado (DISAM) manda. SIN puntaje no hay nada que
+        # calcular, pero si RAYEN trae su resultado se usa ESE (y se avisa): antes la
+        # fila quedaba en el detalle y en el total de "aplicaciones", y fuera del D.3
+        # en silencio.
+        nivel_d3 = resu_disam
+        if nivel_d3 is None and puntaje is None and banda_rayen is not None:
+            nivel_d3 = banda_rayen
+            n_desde_rayen += 1
         if resu_rayen not in (None, "") and banda_rayen is None:
             k = str(resu_rayen)
             no_reconocidos[k] = no_reconocidos.get(k, 0) + 1
@@ -292,9 +301,42 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
             "resu_rayen": resu_rayen if resu_rayen is not None else "",
             "banda_rayen": banda_rayen if banda_rayen is not None else "",
             "resu_disam": resu_disam if resu_disam is not None else "",
+            "nivel_d3": nivel_d3 if nivel_d3 is not None else "",
             "disc": disc, "estamento": estamento, "funcionario": funcionario,
             "fila": r,
         })
+
+    # -- Momento (Ingreso/Egreso): el D.3 solo tiene esas dos filas --
+    # Una aplicacion sin momento reconocible NO entra al D.3. Si es TODA la planilla
+    # (columna '1.- ESTADO' ausente, en blanco o con otro vocabulario), la tabla salia
+    # entera en 0 mientras el resumen decia "N aplicaciones": fail loud.
+    momentos_d3 = {m for _, m in _D3_MOMENTOS}
+    sin_momento = sum(1 for e in filas if norm(e["momento"]) not in momentos_d3)
+    if filas and sin_momento == len(filas):
+        vistos = sorted({str(e["momento"]) for e in filas})[:5]
+        raise ArchivoInvalido(
+            "sin_columnas" if momento_col is None else "sin_datos",
+            f"El export de {inst['nombre']} trae {len(filas)} aplicacion(es), pero "
+            + ("no encuentro la columna del momento ('1.- ESTADO')"
+               if momento_col is None else
+               f"ninguna dice Ingreso o Egreso en '1.- ESTADO' (valores: "
+               f"{', '.join(repr(v) for v in vistos)})")
+            + ".\n\nLa tabla A03·D.3 solo tiene filas de Ingreso y Egreso: saldría "
+            "entera en 0. Revisa que sea el export correcto, SIN modificar.")
+    if sin_momento:
+        log(f"[aviso] {sin_momento} aplicacion(es) sin momento Ingreso/Egreso -> NO van "
+            "al D.3 (sí al detalle).")
+        avisos.append(("Tabla D.3", "SUBCONTADO",
+                       f"{sin_momento} aplicacion(es) de {inst['nombre']} sin momento "
+                       "Ingreso/Egreso en '1.- ESTADO': quedan fuera del D.3",
+                       "Revisar el momento de esas aplicaciones en RAYEN"))
+    if n_desde_rayen:
+        log(f"[aviso] {n_desde_rayen} aplicacion(es) SIN puntaje: su nivel en el D.3 es el "
+            "RESULTADO de RAYEN (no se pudo recalcular).")
+        avisos.append(("Tabla D.3", "REVISAR",
+                       f"{n_desde_rayen} aplicacion(es) de {inst['nombre']} sin puntaje: el "
+                       "nivel del D.3 sale del resultado de RAYEN, no del recalculo",
+                       "Revisar el puntaje de esas aplicaciones en RAYEN"))
 
     # -- Estamento (Administrativo): rellenar por nombre desde el lookup --
     # Failsafe: los funcionarios sin match se resuelven a mano (o se IGNORAN, p.ej.
@@ -400,16 +442,18 @@ _D3_NIVELES = ["Bajo", "Medio", "Alto"]
 
 
 def _tabla_d3(det):
-    """DataFrame de aplicaciones (`det`, cols instrumento/momento/resu_disam/edad/sexo)
-    -> tabla A03·D.3 en el ORDEN del template SA_26."""
+    """DataFrame de aplicaciones (`det`, cols instrumento/momento/nivel_d3/edad/sexo)
+    -> tabla A03·D.3 en el ORDEN del template SA_26. `nivel_d3` = el nivel calculado
+    (DISAM), o el de RAYEN si la aplicacion no trae puntaje (ver `procesar`)."""
     import pandas as pd
     d = det.copy()
     d["mom_n"] = d["momento"].map(norm)
     d["edad"] = pd.to_numeric(d["edad"], errors="coerce")
+    nivel = d["nivel_d3"] if "nivel_d3" in d.columns else d["resu_disam"]
     filas = []
     for lbl_mom, mom in _D3_MOMENTOS:
         for niv in _D3_NIVELES:
-            sub = d[(d["mom_n"] == mom) & (d["resu_disam"] == niv)]
+            sub = d[(d["mom_n"] == mom) & (nivel == niv)]
             filas.append({"Evaluación": lbl_mom, "Resultado": niv,
                           **_grid(sub, BANDAS_A06, LBL_A06)})
     return pd.DataFrame(filas)
@@ -422,7 +466,8 @@ def _escribir_unificado(det, tabla, salida, avisos=(), contexto=None):
     from programas import cobertura
     # orden y rótulos del detalle (igual que la hoja del modo single-file)
     ren = [("instrumento", "Instrumento"), ("momento", "Momento"),
-           ("resu_disam", "Resultado_DISAM"), ("banda_rayen", "Banda_RAYEN"),
+           ("resu_disam", "Resultado_DISAM"), ("nivel_d3", "Nivel_D3"),
+           ("banda_rayen", "Banda_RAYEN"),
            ("resu_rayen", "Resultado_RAYEN"), ("disc", "Discrepancia"),
            ("edad", "Edad"), ("sexo", "Sexo"), ("rut", "RUT"), ("puntaje", "Puntaje"),
            ("estamento", "Estamento"), ("funcionario", "Funcionario"), ("fila", "Fila_Origen")]
@@ -461,12 +506,20 @@ def procesar_unificado(por_instrumento, salida, estamentos=None,
         raise ArchivoInvalido("sin_datos", "No hay aplicaciones en los archivos cargados.")
     det = pd.DataFrame(todas)
     tabla = _tabla_d3(det)
+    # Solo las que VAN al D.3 (momento Ingreso/Egreso + nivel Bajo/Medio/Alto): un
+    # 'Sin riesgo' sin sexo no descuadra ninguna fila de la tabla.
+    en_d3 = det["momento"].map(norm).isin({m for _, m in _D3_MOMENTOS}) & \
+        det["nivel_d3"].isin(_D3_NIVELES)
+    _av = aviso_fuera_de_grid(det[en_d3], BANDAS_A06, "Tabla D.3 (columnas por sexo / edad)",
+                              log=log)
+    if _av:
+        avisos.append(_av)
     contexto = {"archivos": [Path(r).name for r in por_instrumento.values() if r]}
     _escribir_unificado(det, tabla, salida, avisos=avisos, contexto=contexto)
     log(f"[a03] D.3 unificado: {len(todas)} aplicaciones de {len(resumen)} instrumento(s) "
         f"-> {salida}")
     return {"salida": str(salida), "total": len(todas), "por_instrumento": resumen,
-            "tabla": tabla}
+            "tabla": tabla, "avisos": avisos}
 
 
 # -- Descriptor para el registro de tareas (lo consume autorem.py) --

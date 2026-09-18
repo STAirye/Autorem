@@ -317,6 +317,39 @@ def test_procesar_unificado():
 
 
 # -- Runner propio -----------------------------------------------------
+def test_d3_sin_momento_o_sin_puntaje_no_queda_en_0_callado():
+    """Ronda 9 (bug recurrente, 2a pasada): (a) sin momento Ingreso/Egreso en TODA la
+    planilla la D.3 salia entera en 0 con "N aplicaciones" en el resumen -> ahora
+    ArchivoInvalido; en ALGUNAS filas, aviso SUBCONTADO. (b) sin puntaje pero con el
+    RESULTADO de RAYEN, la fila quedaba fuera del D.3 -> ahora cuenta con esa banda y
+    avisa REVISAR. (c) sexo vacio: cuenta en Ambos y en ninguna columna H/M -> aviso."""
+    from programas.rem_utils import ArchivoInvalido
+    form = "Cuestionario para Padres PSC"
+    ok = ("1-1", 7, "Hombre", "", "", "Ingreso", 72, "Alto")
+    for mom in ("", "Seguimiento"):
+        p = _iris(f"m9_{mom or 'vacio'}.xlsx", form, [ok[:5] + (mom,) + ok[6:]])
+        try:
+            scr.procesar_unificado({"PSC": p}, _TMP / "m9.xlsx", log=_quiet)
+            assert False, f"momento {mom!r}: debio levantar ArchivoInvalido"
+        except ArchivoInvalido as e:
+            assert e.categoria == "sin_datos", e.categoria
+    p = _iris("m9_mixto.xlsx", form, [ok, ok[:5] + ("",) + ok[6:]])
+    res = scr.procesar_unificado({"PSC": p}, _TMP / "m9b.xlsx", log=_quiet)
+    assert int(res["tabla"]["Ambos"].sum()) == 1
+    assert any(a[1] == "SUBCONTADO" and "momento" in a[2] for a in res["avisos"]), res["avisos"]
+
+    p = _iris("m9_sinpunt.xlsx", form, [ok[:6] + (None, "Alto")])
+    res = scr.procesar_unificado({"PSC": p}, _TMP / "m9c.xlsx", log=_quiet)
+    t = res["tabla"]
+    fila = (t["Evaluación"] == "Evaluación al ingreso") & (t["Resultado"] == "Alto")
+    assert int(t.loc[fila, "Ambos"].iloc[0]) == 1
+    assert any(a[1] == "REVISAR" and "sin puntaje" in a[2] for a in res["avisos"]), res["avisos"]
+
+    p = _iris("m9_sexo.xlsx", form, [ok[:2] + ("",) + ok[3:]])
+    res = scr.procesar_unificado({"PSC": p}, _TMP / "m9d.xlsx", log=_quiet)
+    assert any("sin sexo" in a[2] for a in res["avisos"]), res["avisos"]
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

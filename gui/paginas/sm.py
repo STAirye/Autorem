@@ -77,19 +77,15 @@ def _header_rapido(ruta, max_scan=40):
     """Header CRUDO (lista de celdas) de la primera fila con pinta de
     encabezado, leyendo SOLO las primeras `max_scan` filas -- el preview de
     cruce (SS5.1 del plan) no necesita el archivo completo, y un ADA de un
-    anio puede ser grande. Mismo heuristico que `rem_utils.leer_xlsx` sin
-    ancla (>3 celdas llenas), pero sin leer el resto del archivo. Con
+    anio puede ser grande. El criterio es `rem_utils.indice_encabezado`, el MISMO
+    de `leer_xlsx` (antes era una copia a mano: si el loader cambiaba de criterio,
+    el preview leia otro encabezado que la corrida). `primeras_filas` lee con
     `abrir_xlsx_ro`: un `read_only=True` pelado acota la lectura a la <dimension>
     del .xlsx, y con la etiqueta rota el encabezado llegaba mocho y el cruce ADA<->
     Grupal no se acusaba nunca."""
-    from programas.rem_utils import abrir_xlsx_ro, filas_hoja
-    wb = abrir_xlsx_ro(ruta)
-    try:
-        filas = [list(r) for r in filas_hoja(wb.active, max_scan)]
-    finally:
-        wb.close()
-    return next((r for r in filas if sum(v not in (None, "") for v in r) > 3),
-               filas[0] if filas else [])
+    from programas.rem_utils import primeras_filas, indice_encabezado
+    filas = primeras_filas(ruta, max_scan)
+    return list(filas[indice_encabezado(filas, max_scan=max_scan)]) if filas else []
 
 
 def _chequeo_cruce(frame, pagina, espera):
@@ -200,6 +196,13 @@ def preparar(ctx, pagina):
     import tkinter.messagebox as messagebox
     import modulos.rem_sm_actividades as smact
     a03 = ctx["a03"]
+    # 'Utilizacion de Cupos' es opcional, pero si se escribio una ruta tiene que
+    # existir: se valida ACA, antes del worker. Sin esto una ruta mal tecleada
+    # recien reventaba al final de la corrida, con SM y TP ya escritos y la tabla
+    # A03 perdida en `fallo_a03`.
+    if a03["incluir"] and a03["instrumentos"] and a03["est_ruta"]:
+        if runner.valida_ruta(a03["est_ruta"], messagebox) is None:
+            return None
     ctx["solo_a03"] = _es_solo_a03(a03, ctx["ada"], ctx["grupal"])
     if ctx["solo_a03"]:
         ctx["d"] = None

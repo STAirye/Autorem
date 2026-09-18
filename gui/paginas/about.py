@@ -51,9 +51,11 @@ requiere extender la logica de `programas/catalogos.py` (su cascada
 `cargar()`), y el plan es explicito: **ese cambio se hace en `main`, no en
 esta rama** (SS7.1, aislamiento de ramas SS9.1) -- esta pagina es un
 CONSUMIDOR de `catalogos.py`, no el lugar para tocar su logica. Por eso el
-modo avanzado usa el parametro `entrada=` que `catalogos.cargar()` YA acepta
-hoy: el reemplazo vale solo mientras el proceso sigue abierto (cache en
-memoria de `catalogos._CACHE`), y se pierde al reiniciar. Ademas, hoy NINGUN
+modo avanzado usa `catalogos.usar_en_sesion()`: el reemplazo vale solo mientras
+el proceso sigue abierto (en memoria, `catalogos._SESION`) y se pierde al
+reiniciar. Vale para TODO consumidor que llame `catalogos.cargar(nombre)` sin
+`entrada` -- antes se cargaba con `entrada=` y quedaba bajo su propia clave del
+cache, asi que ninguna consulta lo veia y la pagina decia "cargado a mano" en falso. Ademas, hoy NINGUN
 modulo de `modulos/` consulta `catalogos.cargar()` todavia (CLAUDE.md SS12:
 "enchufar `en_rango` en el A23" sigue pendiente) -- se lo dice al usuario en
 el mensaje de confirmacion para no prometer un efecto que hoy no existe."""
@@ -69,11 +71,6 @@ REPO_URL = "https://github.com/STAirye/Autorem"
 
 _LOCAL_TXT = "Procesa todo localmente. No envía ni descarga ningún dato de internet."
 
-# nombre -> override de esta SESION (Path del .xlsx cargado a mano, o ausente
-# si usa el catalogo incluido). Vive a nivel de modulo -- sobrevive a que el
-# usuario salga y vuelva a "Acerca de", pero NO al reinicio del proceso
-# (ver docstring: es a proposito, la persistencia real es tarea de main).
-_OVERRIDES = {}
 
 
 def _ruta_licencia():
@@ -140,11 +137,10 @@ def _cargar_manual(nombre, root, refrescar):
 
     import programas.catalogos as cat
     try:
-        d = cat.cargar(nombre, entrada=ruta, recargar=True)
+        d = cat.usar_en_sesion(nombre, ruta)
     except Exception as e:   # noqa: BLE001
         messagebox.showerror("No pude leer el catálogo", str(e))
         return
-    _OVERRIDES[nombre] = Path(ruta)
     messagebox.showinfo(
         "Cargado",
         f"'{nombre}': {len(d)} fila(s) leídas de {Path(ruta).name}.\n\n"
@@ -162,17 +158,16 @@ def _volver_a_embebido(nombre, refrescar):
     # FileNotFoundError si el catalogo embebido no esta (empaquetado sin la carpeta
     # catalogos/, caso que `refrescar` ya contempla mas abajo). En un boton Tk de un
     # exe --windowed esa excepcion no se ve en NINGUNA parte: el boton parecia no
-    # hacer nada y, peor, `_OVERRIDES` seguia diciendo "cargado a mano" sobre un
-    # catalogo que ya no estaba en el cache.
+    # hacer nada. `usar_en_sesion` deja puesto el cargado a mano si esto falla, asi
+    # que lo que dice la pagina sigue siendo cierto.
     try:
-        cat.cargar(nombre, entrada=None, recargar=True)
+        cat.usar_en_sesion(nombre, None)
     except Exception as e:   # noqa: BLE001  (hilo GUI: sin esto Tk se lo traga)
         messagebox.showerror(
             "No pude volver al catálogo incluido",
             f"«{nombre}» no se pudo recargar desde el catálogo que trae autoREM:"
             f"\n\n{e}\n\nEl archivo cargado a mano sigue puesto.")
         return
-    _OVERRIDES.pop(nombre, None)
     refrescar()
 
 
@@ -202,8 +197,8 @@ def _bloque_catalogos(frame, root):
         for nombre, meta in fuentes.items():
             fila = ctk.CTkFrame(contenido, fg_color="transparent")
             fila.pack(fill="x", pady=(2, 2))
-            override = _OVERRIDES.get(nombre)
-            estado = (f"cargado a mano: {override.name} (solo esta sesión)" if override
+            override = cat.en_sesion().get(nombre)
+            estado = (f"cargado a mano: {Path(override).name} (solo esta sesión)" if override
                      else "catálogo incluido en autoREM")
             texto = (f"{meta.get('titulo', nombre)}\n"
                     f"edición {meta.get('edicion', '?')} ({meta.get('generado', '?')}) · "

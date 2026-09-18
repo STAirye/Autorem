@@ -10,12 +10,12 @@
 # Los destinos NO son arbitrarios, tienen que calzar con donde los busca el
 # codigo dentro del bundle (sys._MEIPASS):
 #
-#   autorem._slim_por_defecto()   -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
-#   gui.runner.slim_por_defecto() -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
-#   programas.catalogos._carpetas -> _MEIPASS / "catalogos"
+#   programas.catalogos._carpetas     -> _MEIPASS / "catalogos"
+#   programas.catalogos.maestro_slim  -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
 #
 # El Maestro slim vive en `catalogos/` (catalogo actividad<->estamento<->REM,
-# como cie10/eno/ges) y las DOS GUI lo buscan ahi: una sola copia en el bundle.
+# como cie10/eno/ges): las DOS GUI lo piden a `catalogos.maestro_slim`, que busca
+# en las mismas carpetas que los otros catalogos. Una sola copia en el bundle.
 #
 # Si falta el maestro slim, el Trabajo Perdido cae a heuristica (avisa en el log).
 # Si faltan los catalogos, `catalogos.cargar()` levanta FileNotFoundError.

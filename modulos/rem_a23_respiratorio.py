@@ -166,6 +166,18 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     fer["REMA23 Seguimiento Eu"] = _sino(fer.index, set(seg_eu) & resp)
     fer["REMA23 Seguimiento Kine"] = _sino(fer.index, set(seg_ki) & resp)
     fer["¿Atendido 1 mes?"] = _sino(fer.index, dm["RUN"].unique())
+    if not any(fer[c].eq("SI").any() for c in fer.columns if c.startswith("REMA23")):
+        # Fail loud (§3), gemelo del SM sin nada que tribute: el mes esta cubierto
+        # (filtrar_mes paso), pero NINGUNA atencion es respiratoria -> los 27
+        # indicadores en NO. Un indicador en 0 es legitimo; TODOS, es un ADA filtrado
+        # por otro programa o un export cuyas actividades/diagnosticos ya no calzan.
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"El export de atenciones trae {len(dm)} atención(es) de {ini:%m/%Y}, pero "
+            "NINGUNA cuenta para un indicador respiratorio del A23 (IRA/ERA, SALA, "
+            "espirometría, diagnósticos J...).\n\nTodo el A23 saldría en 0. Revisa que "
+            "sea el export COMPLETO del centro (no filtrado por otro programa) y que "
+            "esté SIN modificar.")
 
     # fila más reciente por RUN (una sola pasada: instrumento + demografía).
     # De toda la historia, no del mes. groupby.last() = último no-nulo por columna.
@@ -180,7 +192,17 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
 
     # -- Fase 2: SALA bajo control (si se dieron los inputs) --
     if otros is not None:
-        od, _ = cargar_otros(otros)
+        od, _ = cargar_otros(otros, log=log)
+        if not od["_med"].any():
+            # SALA y la Seccion G cuentan SOLO formularios aplicados por medico (DAX).
+            # Si ninguno lo es, las dos salen enteras en 0: decirlo, no callarlo.
+            log("[a23] NINGÚN formulario 'Otros Cronicos' lo aplicó un médico (columna "
+                "INSTRUMENTO): SALA bajo control y la Sección G van a salir en 0.")
+            fer.attrs["avisos"].append((
+                "SALA bajo control / Seccion G", "EN 0",
+                "ningun formulario 'Otros Cronicos' fue aplicado por medico (INSTRUMENTO), "
+                "y SALA / Seccion G cuentan solo esos",
+                "Revisar la columna INSTRUMENTO del export, o quien llena el formulario"))
         # Sección G solo sirve con historial largo: el inasistente tiene su ÚLTIMO
         # formulario/control hace >1 año. El reporte 'Otros y Respi' se baja POR AÑO
         # calendario, así que reportar un mes exige AL MENOS el año del reporte + el
@@ -214,7 +236,20 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
             f"SBOR={(fer['SALA SBOR']=='SI').sum()} FQ={(fer['SALA FQ']=='SI').sum()} "
             f"Otras={(fer['SALA Otras Respi']=='SI').sum()}")
         # Sección G: inasistentes a control de crónicos (corte = último día del mes)
-        gcounts, gflags = _seccion_g(od, fin)
+        # La edad del ADA rellena la que falte en el formulario; lo que siga sin edad
+        # se cuenta con el umbral >=2 años y se AVISA (antes se descartaba callado).
+        sin_edad = set()
+        gcounts, gflags = _seccion_g(od, fin, edad_extra=fer["Edad"], sin_edad=sin_edad)
+        n_sin_edad = len(sin_edad)
+        if n_sin_edad:
+            log(f"[a23] Sección G: {n_sin_edad} paciente(s) crónico(s) sin fecha de "
+                "nacimiento (ni en 'Otros Cronicos' ni en el ADA) -> evaluados con el "
+                "umbral de >=2 años. Si alguno es menor de 2, puede estar mal clasificado.")
+            fer.attrs["avisos"].append((
+                "Seccion G (inasistentes cronicos)", "REVISAR",
+                f"{n_sin_edad} paciente(s) cronico(s) sin fecha de nacimiento: se uso el "
+                "umbral de >=2 años (11m29d); para <2 años el umbral es menor",
+                "Revisar la FECHA DE NACIMIENTO de esos RUN en el export"))
         for pref, _lbl in _G_COND:
             fer["Inasistente " + pref] = pd.Series(fer.index.isin(gflags[pref]), index=fer.index).map({True: "SI", False: "NO"})
         fer.attrs["seccion_g"] = gcounts
@@ -303,11 +338,25 @@ def _resolver_otros(cols):
     }
 
 
-def cargar_otros(entrada):
+def cargar_otros(entrada, log=print):
     """Formulario(s) Otros y Respi -> DataFrame canónico + FECHA. `entrada` puede ser
     una ruta o una lista (varios años: la Sección G / SALA necesitan el histórico)."""
-    d, col = cargar_canonico(entrada, None, _resolver_otros)
-    d["FECHA"] = pd.to_datetime(d["FECHA"], errors="coerce", dayfirst=True)
+    # RUN/FECHA/INSTR requeridas: sin INSTRUMENTO, `_med` quedaba False para todos y
+    # SALA + Seccion G salian en 0 callados (solo cuentan formularios de medico).
+    d, col = cargar_canonico(entrada, None, _resolver_otros, requeridas=("RUN", "FECHA", "INSTR"))
+    # fecha_col y no un to_datetime pelado: las fechas ilegibles se CUENTAN en el log
+    # en vez de volverse NaT callados (como en el ADA y el formulario SM).
+    d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA ATENCION (Otros Cronicos)")
+    if not d["FECHA"].notna().any():
+        # Sin NINGUNA fecha legible, el chequeo de historial de la Seccion G (procesar)
+        # se saltaba entero y la Encuesta de calidad de vida del mes quedaba en blanco,
+        # sin un solo aviso. Mismo criterio que rem_utils.filtrar_mes.
+        raise ArchivoInvalido(
+            "sin_fecha",
+            "En el formulario 'Otros Cronicos' ninguna fila tiene una FECHA ATENCION "
+            "legible, así que no se puede saber qué período cubre.\n\n"
+            "Revisa que sea el export correcto y que esté SIN modificar "
+            "(una columna de fecha reformateada a mano rompe la lectura).")
     d["_med"] = d["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
     return d, col
 
@@ -411,11 +460,18 @@ _G_COND = [
     ("EPOC", "Enfermedad Pulmonar Obstructiva Crónica"), ("OTRAS", "Otras respiratorias crónicas"),
 ]
 _UMBRAL = {0: (2, 29), 1: (5, 29)}   # (meses, días) de gracia; <1año / 12-23m ; >=2 años -> (11, 29)
+_UMBRAL_ADULTO = (11, 29)
 
 
-def _seccion_g(otros, corte):
+def _seccion_g(otros, corte, edad_extra=None, sin_edad=None):
     """Devuelve (conteos_por_dx_y_sexo, flags_por_RUN). `corte` = último día del
-    mes reportado. Edad y sexo salen del propio formulario (población crónica completa)."""
+    mes reportado. Edad y sexo salen del propio formulario (población crónica completa).
+
+    Sin FECHA DE NACIMIENTO legible en el formulario, la edad se toma de `edad_extra`
+    (Serie RUN -> edad al corte, p.ej. la del ADA). Si tampoco está ahí, el paciente
+    NO se descarta: se usa el umbral de >=2 años (el único que difiere es el de <2) y
+    su RUN se agrega a `sin_edad` (un set, si se pasa) para avisarlo. Antes se
+    descartaba callado: un export sin esa columna daba la Sección G ENTERA en 0."""
     o = otros
     def N(k): return o[k].map(norm)
     med = o["_med"]
@@ -423,6 +479,9 @@ def _seccion_g(otros, corte):
     est = lambda k: N(k).str.contains("INGRESO", na=False) | N(k).str.contains("SEGUIMIENTO", na=False)
     ed = ((corte - pd.to_datetime(o["FNAC_o"], errors="coerce", dayfirst=True)).dt.days // 365.25)
     edad_run = ed.groupby(o["RUN"]).max()
+    if edad_extra is not None:
+        edad_run = edad_run.fillna(pd.to_numeric(edad_extra, errors="coerce")
+                                   .astype("float64").reindex(edad_run.index))
     sexo_run = o.groupby("RUN")["SEXO_o"].agg(lambda s: next((x for x in s if str(x).strip()), ""))
 
     counts, flags = {}, {}
@@ -437,8 +496,11 @@ def _seccion_g(otros, corte):
         for run, p in ult.items():
             e = edad_run.get(run)
             if pd.isna(e):
-                continue
-            m, dd = _UMBRAL.get(int(e), (11, 29))
+                if sin_edad is not None:
+                    sin_edad.add(run)
+                m, dd = _UMBRAL_ADULTO
+            else:
+                m, dd = _UMBRAL.get(int(e), _UMBRAL_ADULTO)
             if corte > p + pd.DateOffset(months=m, days=dd):
                 s.add(run)
         flags[pref] = s

@@ -51,7 +51,8 @@ from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_can
                                  marcar_demografia, gestante_runs, trans_map,
                                  atenid_multiprofesional, _rango_mes, filtrar_mes,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
-                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col)
+                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col,
+                                 ArchivoInvalido, aviso_fuera_de_grid)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 from programas import dotacion          # separación interno/externo (docs/dotacion_externos_plan.md)
 from programas import cobertura         # categorías de aviso (PENDIENTE/OMITIDO) para la hoja LEEME
@@ -520,6 +521,27 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         # El mes se guarda (archivo de otro período = error); Asiste=SI se aplica
         # DESPUÉS y sí puede dejar 0 (mes con talleres pero nadie asistió: legítimo).
         gm = filtrar_mes(g, ini, fin, "el reporte 'Atenciones Grupales'")
+        # "Nadie asistio" es legitimo SOLO si la columna lo DICE (NO). Una ASISTE en
+        # blanco o con otro valor ("S", "Asistio"...) no es un NO: sin esto, el filtro de
+        # abajo la tomaba como tal y A27 / A06 grupal / A19a grupal salian en 0 callados.
+        reconocido = gm["ASISTE_n"].isin(("SI", "NO"))
+        if not reconocido.any():
+            vistos = sorted(set(gm["ASISTE_n"]))[:5]
+            raise ArchivoInvalido(
+                "sin_datos",
+                f"En el reporte 'Atenciones Grupales' ninguna de las {len(gm)} fila(s) de "
+                f"{ini:%m/%Y} dice SI o NO en la columna ASISTE (valores: "
+                f"{', '.join(repr(v) for v in vistos)}).\n\n"
+                "Sin eso no se puede saber quién asistió: A27, A06 grupal y A19a grupal "
+                "saldrían en 0. Revisa que sea el export correcto, SIN modificar.")
+        n_raro = int((~reconocido).sum())
+        if n_raro:
+            log(f"[sm] Grupal: {n_raro} fila(s) del mes sin SI/NO en ASISTE -> NO se "
+                "cuentan (pueden SUBCONTAR A27 / A06 grupal / A19a grupal).")
+            avisos.append(("A06 psicosocial / A19a grupal / A27", "SUBCONTADO",
+                           f"{n_raro} fila(s) del reporte grupal del mes no dicen SI ni NO "
+                           "en ASISTE: no se cuentan",
+                           "Revisar esas filas en RAYEN (asistencia sin registrar)"))
         gm = gm[gm["ASISTE_n"] == "SI"]
         log(f"[sm] Grupal: {len(g)} filas | mes {ini:%Y-%m} + Asiste=SI -> {len(gm)} asistencias")
         Eg = _grupal_eventos(gm)
@@ -531,6 +553,18 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         Eg = _empty_ev()
 
     E = pd.concat([Ea, Eg], ignore_index=True)
+    if len(E) == 0:
+        # Fail loud (§3): el mes esta cubierto (filtrar_mes paso), pero NINGUNA fila
+        # tributa a NINGUNA casilla SM. Una casilla en 0 es legitima; TODAS en 0 es el
+        # gemelo por programa del `mes_vacio`: un ADA bajado filtrado por otro
+        # programa, o un export cuyas actividades ya no calzan con ADA_TRIBUTAN.
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"El ADA trae {len(dm)} atención(es) de {ini:%m/%Y}, pero NINGUNA tributa a "
+            "una casilla de Salud Mental (A04, A06, A19a, A26, A27, A32)"
+            + (", y el reporte grupal tampoco aporta asistencias" if grupal is not None else "")
+            + ".\n\nTodo el REM SM saldría en 0. Revisa que el ADA sea el export COMPLETO "
+            "del centro (no filtrado por otro programa) y que esté SIN modificar.")
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
 
     # Separación interno/externo (docs/dotacion_externos_plan.md): marcar, no
@@ -620,9 +654,14 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                         "cancelo el dialogo) -> ninguna atencion se separo del REM",
                         "Abrir 'Revisar dotacion...' y clasificar al equipo"))
 
+    Erem = E[E["en_rem"]]
+    # BANDAS_A04 y BANDAS_A06 cubren el mismo rango (0-200): una sola pasada basta.
+    _av = aviso_fuera_de_grid(Erem, BANDAS_A04, "Columnas por sexo / edad (todas las secciones)",
+                              log=log)
+    if _av:
+        avisos.append(_av)
     E.attrs["avisos"] = avisos
     E.attrs["fuentes"] = fuentes
-    Erem = E[E["en_rem"]]
     E.attrs["tablas"] = {
         "SM_Resumen": _tabla_resumen(Erem, ini),
         "Externos_Delta": _tabla_externos_delta(E, ini),

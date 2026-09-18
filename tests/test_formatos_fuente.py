@@ -294,12 +294,8 @@ A05_ADMIN = RAIZ / "refs_tablas" / "Formulario_csm_reporte_Administrativo.xlsx"
 
 def _cheap(ruta):
     """Lo que hace la GUI al elegir un archivo: leer SOLO el encabezado."""
-    from programas.rem_utils import abrir_xlsx_ro, filas_hoja
-    wb = abrir_xlsx_ro(ruta)
-    try:
-        return filas_hoja(wb.active, formatos.MAX_FILAS_HEADER)
-    finally:
-        wb.close()
+    from programas.rem_utils import primeras_filas
+    return primeras_filas(ruta, formatos.MAX_FILAS_HEADER)
 
 
 def _full(ruta):

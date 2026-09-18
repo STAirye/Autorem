@@ -39,7 +39,10 @@ aplican **después**, sobre lo que devuelve `filtrar_mes`.
   Perdido. Las opcionales **también fallan duro**: cargarlas fue decisión del usuario.
 - **No se engancha a propósito en:** `om` del A23 (histórico multi-año) y en la
   **familia población**, donde el mes es un CORTE sobre un snapshot y no un filtro.
-  Ahí `_verificar_cobertura_fechas` avisa sin bloquear, y los avisos van a la LEEME.
+  Ahí `_verificar_cobertura_fechas` avisa sin bloquear, y los avisos van a la LEEME y
+  al resumen de la página. **Sí bloquea** si una fuente queda VACÍA para el corte (todas
+  sus filas posteriores al mes, o ninguna fecha legible): eso no es un histórico
+  incompleto, es un P6 entero en 0.
 
 ## §5 Formatos: IRIS vs Administrativo
 

@@ -119,11 +119,18 @@ def _mk_otros(rows):
     return p
 
 
+# Un mes de atenciones sin NADA respiratorio es ArchivoInvalido (ronda 9): los fixtures
+# que miran SALA / Seccion G llevan esta fila de relleno (otro RUN, IRA alta).
+_RESP = {"NUMERO TIPO IDENTIFICACION": "Z", "FECHA ATENCION": date(2026, 7, 5),
+         "DIAGNOSTICOS": "J06.9 IRA alta", "INSTRUMENTO": "Médico"}
+
+
 def test_sala_bajo_control():
     aten = _mk([
         {"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2026, 7, 10), "INSTRUMENTO": "Médico", "FECHA DE NACIMIENTO": date(1990, 1, 1)},
         {"NUMERO TIPO IDENTIFICACION": "S", "FECHA ATENCION": date(2026, 7, 11), "INSTRUMENTO": "Médico", "FECHA DE NACIMIENTO": date(2023, 1, 1)},
         {"NUMERO TIPO IDENTIFICACION": "E", "FECHA ATENCION": date(2026, 7, 12), "INSTRUMENTO": "Médico", "FECHA DE NACIMIENTO": date(1970, 1, 1)},
+        _RESP,
     ])
     otros = _mk_otros([
         {"RUN": "A", "FECHA": date(2026, 5, 1), "INSTR": "Médico", "ASMA_p": "Si", "ASMA_grav": "Moderado", "ASMA_ctrl": "Controlado", "ASMA_est": "Ingreso"},
@@ -321,6 +328,73 @@ def test_cargar_inasistentes_avisa_fecha_ilegible():
     avisos = [m for m in msgs if "[fecha]" in m and "ilegible" in m]
     assert avisos, "debió avisar la fecha ilegible"
     assert "1 valor" in avisos[0]                     # exactamente 1 ilegible (la otra es válida)
+
+
+_G_ATEN = [{"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2026, 7, 10),
+            "INSTRUMENTO": "Médico", "FECHA DE NACIMIENTO": date(1990, 1, 1)}, _RESP]
+# Asma en seguimiento, próximo control 2025-06-01: al corte 2026-07-31 lleva 14 meses
+# vencido -> inasistente con cualquier umbral (el mayor es 11m29d).
+_G_OT = {"RUN": "A", "FECHA": date(2025, 5, 1), "INSTR": "Médico", "SEXO": "Mujer",
+         "ASMA_p": "Si", "ASMA_grav": "Leve", "ASMA_ctrl": "Controlado", "ASMA_est": "Seguimiento",
+         "ASMA_prox": date(2025, 6, 1)}
+
+
+def test_seccion_g_no_descarta_callado_al_que_no_tiene_fecha_de_nacimiento():
+    """Ronda 9: sin FECHA DE NACIMIENTO legible en 'Otros Cronicos' el paciente se
+    DESCARTABA de la Sección G (`continue`), y sin la columna la G entera daba 0 sin
+    ningún aviso. Ahora: edad del ADA como respaldo; si tampoco está, umbral >=2 años
+    + aviso REVISAR."""
+    def g(otros_rows, aten=_G_ATEN):
+        fer = a23.procesar(_mk(aten), otros=_mk_otros(otros_rows), mes=(2026, 7), log=_quiet)
+        return fer.attrs["seccion_g"]["Asma"]["Total"], [a[1] for a in fer.attrs["avisos"]
+                                                          if a[0].startswith("Seccion G")]
+    assert g([dict(_G_OT, FNAC=date(1980, 1, 1))]) == (1, [])        # control
+    assert g([_G_OT]) == (1, [])                                     # edad del ADA (1990)
+    sin_fnac_ada = [{k: v for k, v in _G_ATEN[0].items() if k != "FECHA DE NACIMIENTO"}, _RESP]
+    assert g([_G_OT], aten=sin_fnac_ada) == (1, ["REVISAR"])         # ni ahí -> umbral + aviso
+
+
+def test_otros_cronicos_sin_fechas_legibles_falla_en_la_fuente():
+    """Ronda 9: FECHA ATENCION ilegible en TODO el formulario -> NaT callado (to_datetime
+    pelado), el chequeo de historial de la G se saltaba y la encuesta del mes quedaba
+    vacía. Ahora cuenta las ilegibles en el log y, si no queda ninguna, ArchivoInvalido."""
+    from programas.rem_utils import ArchivoInvalido
+    msgs = []
+    a23.cargar_otros(_mk_otros([_G_OT, dict(_G_OT, RUN="B", FECHA="xx")]), log=msgs.append)
+    assert any("[fecha]" in m and "1 valor" in m for m in msgs), msgs
+    try:
+        a23.procesar(_mk(_G_ATEN), otros=_mk_otros([dict(_G_OT, FECHA="xx")]),
+                     mes=(2026, 7), log=_quiet)
+        assert False, "debió levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_fecha", e.categoria
+
+
+def test_mes_sin_nada_respiratorio_y_otros_sin_medico_no_dan_0_callado():
+    """Ronda 9, 2a pasada: (a) atenciones del mes sin NADA respiratorio -> los 27
+    indicadores en NO con "Listo" -> ahora sin_datos. (b) 'Otros Cronicos' sin columna
+    INSTRUMENTO -> _med False para todos y SALA/G en 0 -> sin_columnas; con la columna
+    pero sin ningun medico -> aviso EN 0."""
+    from programas.rem_utils import ArchivoInvalido
+    nada = [{"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2026, 7, 10),
+             "INSTRUMENTO": "Enfermero(a)", "ACTIVIDADES": "Curacion simple"}]
+    try:
+        a23.procesar(_mk(nada), mes=(2026, 7), log=_quiet)
+        assert False, "debio levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_datos", e.categoria
+
+    o = _mk_otros([dict(_G_OT, FNAC=date(1980, 1, 1))])
+    wb = openpyxl.load_workbook(o); ws = wb.active; ws.delete_cols(3); wb.save(o)   # sin INSTRUMENTO
+    try:
+        a23.procesar(_mk(_G_ATEN), otros=o, mes=(2026, 7), log=_quiet)
+        assert False, "debio levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_columnas", e.categoria
+
+    fer = a23.procesar(_mk(_G_ATEN), otros=_mk_otros([dict(_G_OT, INSTR="Kinesiologo(a)")]),
+                       mes=(2026, 7), log=_quiet)
+    assert any(a[0].startswith("SALA") and a[1] == "EN 0" for a in fer.attrs["avisos"]), fer.attrs["avisos"]
 
 
 def _main():
