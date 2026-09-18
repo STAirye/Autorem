@@ -84,10 +84,14 @@ def detectar_eje_filas(filas, *, iris_ancla=ANCLA_IRIS, iris_rut=RUT_TOKENS_IRIS
     venir de un `load_workbook` SIN `read_only` — o sea, parsear el export entero.
     Eso es lo que la GUI 2.0 hacía para detectar el formato de un click, y después el
     worker volvía a parsearlo completo para procesarlo: dos lecturas completas por
-    corrida. Con las filas por delante, el llamador puede leerlas en modo `read_only`
-    e ir cortando (`islice`), que es la MISMA disciplina de `rem_utils.leer_xlsx` y
-    `verificar_hoja_unica`: nunca `max_row` (sale de la <dimension> del .xlsx, que
-    RAYEN a veces trae rota o ausente), siempre iterar y parar por cuenta propia."""
+    corrida. Con las filas por delante, el llamador puede leer solo el encabezado con
+    `rem_utils.abrir_xlsx_ro` + `filas_hoja(ws, MAX_FILAS_HEADER)`.
+
+    OJO, no con un `load_workbook(read_only=True)` pelado: en ese modo openpyxl acota
+    `iter_rows` a la <dimension> que declara el .xlsx, igual que `max_row`. Con la
+    etiqueta rota (`A1`) la fila del encabezado llega con UNA columna y un IRIS valido
+    sale 'desconocido' -- fue un bug de la ronda 4 de la revision (sep-2026), que
+    habia dado por hecho que el peligro era `max_row` y no `read_only`."""
     filas = list(filas)[:MAX_FILAS_HEADER]
     ancla = [norm(t) for t in iris_ancla]
     rut = [norm(t) for t in (iris_rut or [])]
@@ -194,22 +198,27 @@ def clasificar_fuente(col, solo_iris=SOLO_IRIS_ATENCIONES):
             else FUENTE_CAMBIADA), ausentes
 
 
-def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos"):
+def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos", archivos=None):
     """Tupla (casilla, estado, motivo, que_hacer) para la hoja LEEME, o None si la
     fuente es plena. `consecuencia` = que se degrada EN ESE MODULO (lo sabe el
     modulo, no esta capa: al A23 le mata los indicadores por codigo ICD, al SM le
-    mata el ATEN ID que es su unidad de conteo)."""
+    mata el ATEN ID que es su unidad de conteo). `archivos` = los no-plenos cuando
+    se MEZCLARON con plenos (`df.attrs['fuente_mezcla']`): el aviso dice cuales, y
+    que lo suyo sale de MENOS (no en 0), porque el resto si trae las columnas."""
     if estado == FUENTE_PLENA:
         return None
     faltan = ", ".join(ausentes)
+    mezcla = (f" OJO, afecta SOLO a: {', '.join(archivos)} -- los demas archivos si son "
+              f"el IRIS completo, asi que no sale todo en 0: sale de MENOS."
+              if archivos else "")
     if estado == FUENTE_PARCIAL:
         return (casilla, "FUENTE PARCIAL",
                 f"El archivo no es el export A/D/A de IRIS (no trae NINGUNA de: "
-                f"{faltan}). {consecuencia}",
+                f"{faltan}). {consecuencia}{mezcla}",
                 "Bajar 'Atenciones, Diagnosticos y Actividades' desde IRIS")
     return (casilla, "EXPORT CAMBIADO",
             f"Parece el IRIS pero le faltan columnas que antes traia: {faltan}. "
-            f"O RAYEN cambio el export, o el archivo fue editado. {consecuencia}",
+            f"O RAYEN cambio el export, o el archivo fue editado. {consecuencia}{mezcla}",
             "Avisar al dev: hay que actualizar MAPA_ATENCIONES / SOLO_IRIS_ATENCIONES")
 
 

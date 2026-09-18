@@ -18,6 +18,7 @@ import openpyxl
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 import modulos.rem_sm_actividades as sm   # noqa: E402
 from programas.rem_utils import ArchivoInvalido   # noqa: E402

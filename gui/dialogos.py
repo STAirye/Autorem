@@ -43,6 +43,11 @@ import customtkinter as ctk
 
 from programas import dotacion
 
+# UNA linea en cada caja que usa un caché (Dotacion, Estamentos): el detalle vive en
+# «Acerca de» para no llenar la pagina con un caso borde.
+REF_PREFERENCIAS = ("¿No se guardan tus preferencias? Mira «Acerca de», sección "
+                    "«Preferencias guardadas».")
+
 
 # -- Estamentos (reutilizable por cualquier flujo en formato Administrativo) --
 def bloque_estamentos(parent):
@@ -56,7 +61,8 @@ def bloque_estamentos(parent):
         "¿Por qué? El reporte Administrativo NO indica el estamento de quien atendió, "
         "solo el nombre.\nLa tabla del equipo QUEDA GUARDADA (caché en ~/.autorem): "
         "cárgala una vez y los meses siguientes se autocompleta sola.\nVuelve a cargar "
-        "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).")
+        "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).\n"
+        + REF_PREFERENCIAS)
         ).pack(fill="x", padx=8, pady=(4, 0))
     etiqueta_envolvente(caja, text=(
         "En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes "
@@ -81,7 +87,40 @@ def valores_iniciales(nombres, tabla):
     return {nombre: (dotacion.clase(nombre, tabla) == dotacion.EXTERNO) for nombre in nombres}
 
 
+# UNA sola ventana de dotacion a la vez (Precargar, Revisar o la de `preparar`).
+#
+# POR QUE un candado y no "deshabilitar el boton": `ctk.CTkToplevel(root)` hace un
+# `update()` COMPLETO dentro de su propio constructor en Windows
+# (`_windows_set_titlebar_color`: withdraw + update para repintar la barra de
+# titulo). O sea, abrir el dialogo despacha TODOS los clicks que quedaron encolados
+# mientras la ventana estaba congelada cargando el ADA -- el mismo agujero que
+# `update_idletasks()` cerro en `_dotacion_ada`, reabierto por la libreria. Un
+# «Revisar dotación…» impaciente se abria ANIDADO dentro del dialogo de `preparar`,
+# con su propia copia de la tabla: su 'Aplicar' guardaba, y el 'Aplicar' de afuera
+# (`dotacion.guardar` escribe el dict ENTERO) lo pisaba con la tabla vieja; y la
+# corrida usaba esa tabla vieja -> un externo contado como interno, doble conteo en
+# el REM. Deshabilitar botones no alcanza: cualquier otro widget (Examinar, Quitar,
+# el sidebar) tambien se despacha ahi.
+_DOTACION_ABIERTA = [False]
+
+
 def dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
+    """Ver `_dotacion_ada`. Si ya hay una ventana de dotacion en curso (un click que
+    quedo encolado y se despacho dentro de ella, ver `_DOTACION_ABIERTA`) no hace
+    nada y devuelve (None, None): quien llama lo trata como abortado."""
+    if _DOTACION_ABIERTA[0]:
+        log("[dotacion] ya hay una ventana de dotación abierta: termínala y vuelve a intentarlo.")
+        return None, None
+    _DOTACION_ABIERTA[0] = True
+    try:
+        return _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=mask, todos=todos)
+    finally:
+        _DOTACION_ABIERTA[0] = False
+        from gui.runner import avisar_cache
+        avisar_cache(messagebox)   # caché dañado / no guardado: se dice al cerrar
+
+
+def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
     """Carga el ADA, lo filtra al `mes` y abre el dialogo de dotacion.
 
     `mask(serie_act_norm)` -> booleana con las filas que TRIBUTAN al REM de
@@ -154,7 +193,8 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
         "NO son de tu dotación (p.ej. la sala AIDIA); no deben tributar a este REM (doble "
         "conteo).\nLa PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes "
         "aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo "
-        "por los nombres nuevos.\nLa tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).")
+        "por los nombres nuevos.\nLa tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).\n"
+        + REF_PREFERENCIAS)
         ).pack(fill="x", padx=8, pady=(4, 4))
 
     def _precargar():
@@ -276,6 +316,21 @@ def dialogo_dotacion(root, tabla, modulo, filas, con_evidencia=True,
 
 
 def revisar_dotacion(root, modulo="sm"):
+    """Ver `_revisar_dotacion`. Mismo candado que `dotacion_ada`
+    (`_DOTACION_ABIERTA`): un click encolado no abre una segunda ventana anidada."""
+    if _DOTACION_ABIERTA[0]:
+        return
+    _DOTACION_ABIERTA[0] = True
+    try:
+        _revisar_dotacion(root, modulo)
+    finally:
+        _DOTACION_ABIERTA[0] = False
+        import tkinter.messagebox as messagebox
+        from gui.runner import avisar_cache
+        avisar_cache(messagebox)
+
+
+def _revisar_dotacion(root, modulo="sm"):
     """Reabre la clasificacion GUARDADA (todos los funcionarios ya vistos +
     estamentos omitidos), sin necesitar un ADA cargado -- por eso NO hay
     evidencia (n_atenciones/actividades): solo el nombre y su clase actual.
@@ -332,8 +387,9 @@ def revisar_dotacion(root, modulo="sm"):
             ctk.CTkLabel(fila, text=est).pack(side="left")
 
             def _quitar(e=est):
-                tabla["omitidos"][modulo] = [x for x in tabla["omitidos"].get(modulo, []) if x != e]
-                dotacion.guardar(tabla)
+                # `quitar_omision` y no editar + `guardar(tabla)`: guarda SOLO este
+                # cambio sobre lo que hay en disco (no pisa otra ventana de autoREM).
+                dotacion.quitar_omision(tabla, modulo, e)
                 _pintar_omitidos()
             ctk.CTkButton(fila, text="Quitar omisión", width=120, command=_quitar).pack(side="right")
 

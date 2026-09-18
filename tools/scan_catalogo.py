@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.0
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -65,9 +65,14 @@ MAX_LARGO = 70
 
 
 def _celdas_xlsx(ruta):
-    """[(hoja, fila, col, texto)] de todas las celdas no vacias de un .xlsx/.xlsm."""
-    import openpyxl
-    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    """[(hoja, fila, col, texto)] de todas las celdas no vacias de un .xlsx/.xlsm.
+
+    TODAS de verdad: `abrir_xlsx_ro` descarta la <dimension> del archivo. Con ella
+    respetada, una etiqueta rota (`A1:D5` en una hoja de 10.000 filas) dejaba FUERA
+    del escaneo todo lo que no declaraba -- un RUT en la fila 6 pasaba la guarda de
+    privacidad (CLAUDE.md regla 1) sin que nadie lo viera."""
+    from programas.rem_utils import abrir_xlsx_ro
+    wb = abrir_xlsx_ro(ruta)
     try:
         for ws in wb.worksheets:
             for i, fila in enumerate(ws.iter_rows(values_only=True), start=1):

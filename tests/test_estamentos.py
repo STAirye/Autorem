@@ -20,6 +20,7 @@ import openpyxl
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 from programas import estamentos as est   # noqa: E402
 
@@ -143,6 +144,33 @@ def test_cache_persiste_y_merge():
     assert est.buscar_estamento("Ana Perez", t3) == "Enfermero(a)"   # reporte fresco gana
     assert est.buscar_estamento("Caro Díaz", t3) == "Odontólogo(a)"  # nueva
     assert est.buscar_estamento("Beto Ruiz", t3) == "Psicólogo(a)"   # conservada del caché
+
+
+def test_cache_ilegible_no_se_pisa_con_el_reporte_fresco():
+    """Con el caché EXISTENTE pero ilegible (bloqueado, sin permisos), el merge
+    'caché + reporte fresco' se guardaba encima con solo el reporte: los funcionarios
+    de meses anteriores se perdian en silencio. Ahora no se escribe y se avisa."""
+    import programas.rem_utils as ru
+    est.RUTA_CACHE = _TMP / "cache_estam_ilegible.json"   # no ensuciar el HOME real
+    est.RUTA_CACHE.write_text('{"BETO RUIZ": "Psicólogo(a)"}', encoding="utf-8")
+    antes = est.RUTA_CACHE.read_bytes()
+    ru.tomar_avisos_cache()
+    p = _reporte("mes_ilegible.xlsx", [("Ana Perez", "Médico", "A", "Rojo"),
+                                       ("Caro Díaz", "Odontólogo(a)", "C", "Azul")])
+    orig = Path.read_text
+
+    def falso(ruta, *a, **k):
+        if Path(ruta) == est.RUTA_CACHE:
+            raise PermissionError(13, "bloqueado", str(ruta))
+        return orig(ruta, *a, **k)
+    Path.read_text = falso
+    try:
+        t = est.tabla_efectiva(str(p), log=_quiet)
+    finally:
+        Path.read_text = orig
+    assert est.buscar_estamento("Ana Perez", t) == "Médico", "ESTA corrida perdio el reporte"
+    assert est.RUTA_CACHE.read_bytes() == antes, "piso un caché que no pudo leer"
+    assert any("No pude leer" in a for a in ru.tomar_avisos_cache()), "no aviso"
 
 
 def _main():

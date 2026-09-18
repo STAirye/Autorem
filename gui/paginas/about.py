@@ -266,6 +266,76 @@ def _fila_maestro(caja):
     widgets.etiqueta_envolvente(caja, texto).pack(fill="x", padx=8, pady=(4, 8))
 
 
+_PREFERENCIAS_TXT = (
+    "autoREM recuerda entre meses quién es EXTERNO a tu dotación y la tabla de estamentos "
+    "(«Utilización de Cupos»), en la carpeta de arriba. Si te vuelve a preguntar todo cada "
+    "mes, o te avisa que no pudo leer o guardar:\n"
+    "1.  Cierra las otras ventanas de autoREM: dos abiertas a la vez pueden pisarse.\n"
+    "2.  Mira la línea «Carpeta» de arriba: si dice que NO se puede escribir, en un PC "
+    "institucional suele ser una restricción de TI sobre tu perfil. Pídeles permiso de "
+    "escritura en esa carpeta.\n"
+    "3.  Si al iniciar sesión Windows dijo «Iniciaste sesión con un perfil temporal», todo "
+    "lo que se guarde se pierde al cerrar sesión, sin ningún error. Avísale a TI.\n"
+    "4.  Un archivo «…corrupto-FECHA.json» en la carpeta es una copia dañada que autoREM "
+    "apartó para no perderla ni leerla mal. Puedes borrarlo.\n"
+    "Mientras tanto cada corrida sale bien, pero OJO: si te vuelve a preguntar por gente que "
+    "ya habías marcado como externa, márcala de nuevo -- sin tick cuenta como interna.")
+
+
+def _resumen_cache(nombre, ruta, contar):
+    """Una linea de estado por caché, SIN efectos (rem_utils.estado_cache: no aparta ni
+    avisa nada, solo mira)."""
+    from programas.rem_utils import estado_cache
+    info = estado_cache(ruta)
+    if not info["existe"]:
+        return f"{nombre}: todavía no hay nada guardado."
+    cuando = info["modificado"].strftime("%d/%m/%Y %H:%M") if info["modificado"] else "?"
+    if info["problema"]:
+        return f"{nombre}: {info['problema']} (guardado el {cuando})."
+    return f"{nombre}: {contar(info['datos'])}, guardado el {cuando}."
+
+
+def _bloque_preferencias(frame):
+    """«Preferencias guardadas»: donde vive el caché de usuario, en que estado esta, y
+    que hacer si no se guarda (las paginas solo dejan UNA linea que apunta aca, ver
+    dialogos.REF_PREFERENCIAS)."""
+    from programas import dotacion, estamentos
+    from programas.rem_utils import carpeta_escribible, abrir_carpeta
+    carpeta = dotacion.RUTA_CACHE.parent
+    caja = widgets.caja_titulada(frame, "Preferencias guardadas")
+    caja.pack(fill="x", pady=(0, 8))
+    # UNA etiqueta que se reconfigura (no destruir y re-crear: cada
+    # `etiqueta_envolvente` nueva deja un <Configure> atado a su contenedor).
+    lbl_estado = widgets.etiqueta_envolvente(caja, "")
+    lbl_estado.pack(fill="x", padx=8, pady=(2, 0))
+
+    def refrescar():
+        escribible = carpeta_escribible(carpeta)
+        lineas = [
+            f"Carpeta: {carpeta}  --  " + ("se puede escribir." if escribible
+                                           else "NO se puede escribir (ver el punto 2)."),
+            _resumen_cache("Dotación", dotacion.RUTA_CACHE, lambda d: (
+                f"{len(d.get('funcionarios', {}))} funcionario(s) clasificado(s), "
+                f"{sum(v == dotacion.EXTERNO for v in d.get('funcionarios', {}).values())} "
+                f"externo(s)")),
+            _resumen_cache("Estamentos", estamentos.RUTA_CACHE,
+                           lambda d: f"{len(d)} funcionario(s)"),
+        ]
+        lbl_estado.configure(text="\n".join(lineas), text_color=(
+            widgets.COLOR_TEXTO_TRANSPARENTE if escribible else widgets.COLOR_AVISO))
+
+    refrescar()
+    botones = ctk.CTkFrame(caja, fg_color="transparent")
+    botones.pack(anchor="w", padx=8, pady=(4, 2))
+    ctk.CTkButton(botones, text="Abrir la carpeta", width=140,
+                  command=lambda: abrir_carpeta(carpeta if carpeta.exists() else carpeta.parent)
+                  ).pack(side="left")
+    ctk.CTkButton(botones, text="Volver a revisar", width=140, fg_color="transparent",
+                  border_width=1, text_color=widgets.COLOR_TEXTO_TRANSPARENTE,
+                  command=refrescar).pack(side="left", padx=(6, 0))
+    widgets.etiqueta_envolvente(caja, _PREFERENCIAS_TXT).pack(fill="x", padx=8, pady=(4, 8))
+
+
 def construir(frame, app):
     ctk.CTkLabel(frame, text=f"autoREM {VERSION}",
                 font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w", pady=(0, 8))
@@ -279,6 +349,7 @@ def construir(frame, app):
                  command=lambda: _ver_licencia(app)).pack(anchor="w", padx=8, pady=(0, 8))
 
     _bloque_catalogos(frame, app)
+    _bloque_preferencias(frame)
 
     caja_creditos = widgets.caja_titulada(frame, "Autor y créditos")
     caja_creditos.pack(fill="x", pady=(0, 8))

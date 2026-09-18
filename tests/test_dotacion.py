@@ -22,6 +22,7 @@ import pandas as pd
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 from programas import dotacion as dot          # noqa: E402
 import modulos.rem_sm_actividades as sm         # noqa: E402
@@ -190,6 +191,167 @@ def test_omitido_no_queda_interno():
     assert dot.clase("Kine Uno", tabla) == "desconocido"
     s = pd.Series(["desconocido"])
     assert list(dot.en_rem(s)) == [True]                # sigue contando al REM
+
+
+# ======================================================================
+# 9. Funcionario SIN estamento -> falla ruidoso en la FUENTE (ronda 5)
+# ======================================================================
+def test_atencion_con_funcionario_sin_estamento_falla_ruidoso():
+    """RAYEN no registra una atencion sin el estamento de quien atendio. Antes eso
+    llegaba al dialogo como el grupo '(sin estamento)', cuyo 'Omitir' no guardaba
+    nada (la clave vacia se descarta) aunque el grupo desaparecia de la ventana. Ahora
+    `cargar_atenciones` lo rechaza nombrando a quien. Una fila SIN funcionario y sin
+    estamento no es este caso: no hay nadie a quien le falte el estamento."""
+    from programas.rem_utils import cargar_atenciones, ArchivoInvalido
+    base = {"id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;", "edad": 30}
+    ok = _mk_ada([{**base, "run": "A", "instr": "Médico", "prof": "Ana Soto"},
+                  {**base, "run": "B", "id": "2", "instr": "", "prof": ""}], "ada_est_ok.xlsx")
+    cargar_atenciones(ok, log=_quiet)                     # no levanta
+    malo = _mk_ada([{**base, "run": "A", "instr": "Médico", "prof": "Ana Soto"},
+                    {**base, "run": "B", "id": "2", "instr": "", "prof": "Beto Ruiz"}],
+                   "ada_sin_est.xlsx")
+    try:
+        cargar_atenciones(malo, log=_quiet)
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_estamento", e.categoria
+        assert "Beto Ruiz" in str(e) and "Ana Soto" not in str(e), str(e)
+    else:
+        raise AssertionError("un funcionario sin estamento paso callado")
+
+
+# ======================================================================
+# 9. Caché que no se puede leer / guardar: nunca callado, nunca pisa lo sano
+# ======================================================================
+def _cache_limpio(nombre):
+    import programas.rem_utils as ru
+    dot.RUTA_CACHE = _TMP / nombre              # no ensuciar el HOME real
+    for p in _TMP.glob(Path(nombre).stem + "*"):
+        p.unlink()
+    ru.tomar_avisos_cache()                     # cola vacia al empezar
+    return ru
+
+
+class _read_text_falla:
+    """`Path.read_text` de ESA ruta levanta PermissionError (bloqueo que no se suelta)."""
+
+    def __init__(self, ruta):
+        self.ruta = Path(ruta)
+
+    def __enter__(self):
+        self._orig = Path.read_text
+        ruta, orig = self.ruta, self._orig
+
+        def falso(p, *a, **k):
+            if Path(p) == ruta:
+                raise PermissionError(13, "bloqueado", str(p))
+            return orig(p, *a, **k)
+        Path.read_text = falso
+        return self
+
+    def __exit__(self, *_exc):
+        Path.read_text = self._orig
+        return False
+
+
+def test_cache_danado_se_aparta_y_se_avisa():
+    """Un dotacion.json dañado se leia como tabla VACIA con un print (invisible en el
+    exe): todos los externos volvian a contar al REM sin que nadie se enterara. Ahora
+    se aparta (queda la evidencia, el proximo guardado no la pisa) y se AVISA."""
+    ru = _cache_limpio("cache_danado.json")
+    dot.RUTA_CACHE.write_text("{ esto no es json", encoding="utf-8")
+    assert dot.cargar(log=_quiet) == _tabla_vacia()
+    assert not dot.RUTA_CACHE.exists(), "el caché dañado quedo donde estaba"
+    apartados = list(_TMP.glob("cache_danado.corrupto-*.json"))
+    assert len(apartados) == 1 and apartados[0].read_text(encoding="utf-8") == "{ esto no es json"
+    avisos = ru.tomar_avisos_cache()
+    assert len(avisos) == 1 and "dañado" in avisos[0] and "externos" in avisos[0], avisos
+
+    # Forma equivocada (JSON valido pero no la tabla) = dañado tambien.
+    dot.RUTA_CACHE.write_text('{"funcionarios": ["no", "un", "dict"]}', encoding="utf-8")
+    assert dot.cargar(log=_quiet) == _tabla_vacia() and not dot.RUTA_CACHE.exists()
+    assert ru.tomar_avisos_cache(), "la forma equivocada paso callada"
+
+
+def test_cache_ilegible_no_se_sobreescribe():
+    """Si el archivo EXISTE pero no se puede leer, guardar encima lo perderia ENTERO
+    (la clasificacion de meses): un 'Aplicar' no escribe nada y lo dice."""
+    ru = _cache_limpio("cache_ilegible.json")
+    dot.marcar(_tabla_vacia(), {"Ana Soto": True}, log=_quiet)
+    antes = dot.RUTA_CACHE.read_bytes()
+    ru.tomar_avisos_cache()
+    tabla = _tabla_vacia()
+    with _read_text_falla(dot.RUTA_CACHE):
+        dot.marcar(tabla, {"Beto Ruiz": False}, log=_quiet)
+    assert dot.clase("beto ruiz", tabla) == "interno", "ESTA corrida perdio la decision"
+    assert dot.RUTA_CACHE.read_bytes() == antes, "escribio encima de un caché que no pudo leer"
+    avisos = ru.tomar_avisos_cache()
+    assert any("No pude leer" in a for a in avisos) and any("No guardé" in a for a in avisos), avisos
+
+
+def test_guardar_reintenta_un_bloqueo_pasajero_y_avisa_si_no_se_suelta():
+    import programas.rem_utils as ru
+    _cache_limpio("cache_bloqueo.json")
+    orig, intentos = ru.escribir_atomico, []
+
+    def bloqueado_una_vez(salida, fn):
+        intentos.append(1)
+        if len(intentos) == 1:
+            raise PermissionError(13, "antivirus", str(salida))
+        return orig(salida, fn)
+    ru.escribir_atomico = bloqueado_una_vez
+    try:
+        assert dot.guardar({"funcionarios": {"X": "externo"}, "omitidos": {}}, log=_quiet)
+    finally:
+        ru.escribir_atomico = orig
+    assert len(intentos) == 2 and not ru.tomar_avisos_cache(), "un bloqueo pasajero no se reintento"
+
+    intentos.clear()
+    ru.escribir_atomico = lambda salida, fn: (intentos.append(1), (_ for _ in ()).throw(
+        PermissionError(13, "sin permiso", str(salida))))
+    try:
+        assert dot.guardar(_tabla_vacia(), log=_quiet) is False
+    finally:
+        ru.escribir_atomico = orig
+    assert len(intentos) > 1, "no reintento"
+    avisos = ru.tomar_avisos_cache()
+    assert len(avisos) == 1 and "No pude guardar" in avisos[0] and "próximo mes" in avisos[0], avisos
+
+
+def test_dos_ventanas_no_se_pisan():
+    """Dos autoREM abiertos cargan la tabla; cada 'Aplicar' guardaba su copia ENTERA y
+    la ultima revertia a la otra. Ahora cada una guarda solo SUS cambios sobre el disco."""
+    _cache_limpio("cache_dos.json")
+    a, b = dot.cargar(log=_quiet), dot.cargar(log=_quiet)
+    dot.marcar(a, {"Ana Soto": True}, log=_quiet)
+    dot.marcar(b, {"Beto Ruiz": False}, log=_quiet)
+    dot.omitir(a, "sm", ["Kinesiólogo(a)"], log=_quiet)
+    dot.omitir(b, "sm", ["Técnico Paramédico"], log=_quiet)
+    disco = dot.cargar(log=_quiet)
+    assert dot.clase("ana soto", disco) == "externo", "la segunda ventana revirtio a la primera"
+    assert dot.clase("beto ruiz", disco) == "interno"
+    assert len(dot.omitidos(disco, "sm")) == 2, dot.omitidos(disco, "sm")
+    dot.quitar_omision(a, "sm", "Kinesiólogo(a)", log=_quiet)
+    assert dot.omitidos(dot.cargar(log=_quiet), "sm") == [dot.norm("Técnico Paramédico")]
+
+
+def test_todos_los_tests_aislan_el_cache_del_usuario():
+    """Cada tests/test_*.py importa `_aislar_cache` ANTES que el codigo del proyecto.
+    Sin esto la suite sobreescribia el `~/.autorem/dotacion.json` REAL en cada corrida
+    (un test olvidaba redirigirlo): en el PC de trabajo, la clasificacion de externos."""
+    import _aislar_cache
+    faltan = []
+    for p in sorted(Path(__file__).resolve().parent.glob("test_*.py")):
+        t = p.read_text(encoding="utf-8")
+        i = t.find("import _aislar_cache")
+        primeros = [t.find(m) for m in ("\nfrom programas", "\nimport programas",
+                                        "\nfrom modulos", "\nimport modulos",
+                                        "\nfrom gui", "\nimport autorem") if t.find(m) >= 0]
+        if i < 0 or (primeros and i > min(primeros)):
+            faltan.append(p.name)
+    assert not faltan, (
+        f"estos tests no importan `_aislar_cache` PRIMERO (pueden pisar el caché real "
+        f"del usuario): {faltan}")
+    assert _aislar_cache.CARPETA != Path.home() / ".autorem"
 
 
 def _main():

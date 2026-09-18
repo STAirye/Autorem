@@ -79,9 +79,16 @@ def etiqueta_envolvente(parent, text, **kwargs):
     en vez de desbordar horizontalmente (feedback del autor, sep-2026: prefiere
     esto a un scrollbar horizontal). `parent` debe ser un contenedor que se
     estire con la ventana (pack fill='x' o similar) -- su ancho real es el
-    que manda."""
+    que manda.
+
+    OJO CON EL DPI: `e.width` ya viene en pixeles REALES (escalados), y
+    `CTkLabel.configure(wraplength=)` lo vuelve a escalar (`_apply_widget_scaling`).
+    Sin des-escalarlo, con Windows al 150% el texto pedia 1.5x el ancho de su caja
+    y se cortaba por la derecha -- incluido el mensaje del BannerFuente, o sea un
+    color sin su leyenda completa (SS5.1 del plan, regla 1). Al 100% no se nota."""
     lbl = ctk.CTkLabel(parent, text=text, justify="left", anchor="w", **kwargs)
-    parent.bind("<Configure>", lambda e: lbl.configure(wraplength=max(e.width - 20, 50)), add="+")
+    parent.bind("<Configure>", lambda e: lbl.configure(
+        wraplength=lbl._reverse_widget_scaling(max(e.width - 20, 50))), add="+")
     return lbl
 
 

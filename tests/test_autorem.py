@@ -30,6 +30,7 @@ import openpyxl
 # -- Acceso al código del proyecto (carpeta padre de tests/) --
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 import programas.rem_saludmental as sm       # noqa: E402
 import modulos.rem_a05_o_egresos as egresos    # noqa: E402
@@ -361,6 +362,86 @@ def test_dispatcher_multisheet():
     wb = openpyxl.load_workbook(salida)
     assert {"A05_Egresos", "A05_Ingresos"} <= set(wb.sheetnames)
     assert len(resultados) == 2
+
+
+def test_rutas_libres_un_solo_numero_para_toda_la_corrida():
+    """`rem_utils.rutas_libres`: nada se pisa, y las salidas de UNA corrida llevan el
+    MISMO `(n)` -- el sufijo es lo que dice cuales salieron juntas."""
+    from programas.rem_utils import rutas_libres
+    d = _TMP / "libres"
+    d.mkdir(exist_ok=True)
+    a, b = d / "act_2026_08.xlsx", d / "tp_2026_08.xlsx"
+    assert rutas_libres(a, b) == [a, b], "sin nada previo se renombro igual"
+    a.write_bytes(b"viejo")
+    (d / "tp_2026_08 (1).xlsx").write_bytes(b"viejo")
+    # `a` tomado -> (1); pero `tp (1)` tambien -> las dos saltan juntas a (2).
+    assert [p.name for p in rutas_libres(a, b)] == ["act_2026_08 (2).xlsx",
+                                                     "tp_2026_08 (2).xlsx"]
+    assert rutas_libres() == []
+
+
+def test_el_a05_no_pisa_una_salida_anterior():
+    """Correr dos veces lo mismo deja las DOS salidas: la segunda como `(1)`. Pisar la
+    anterior borraba un resultado bueno si la corrida nueva salia mal a medias (y un
+    archivo abierto en Excel hacia fallar la corrida entera al guardar)."""
+    perfil = sm.perfil_por_id("iris")
+    carpeta = _TMP / "a05_dos_veces"
+    carpeta.mkdir(exist_ok=True)
+    _, s1 = autorem._correr_tareas(autorem.TAREAS, _iris_fixture(), perfil,
+                                   log=_quiet, carpeta=carpeta)
+    Path(s1).write_bytes(b"resultado bueno de antes")
+    _, s2 = autorem._correr_tareas(autorem.TAREAS, _iris_fixture(), perfil,
+                                   log=_quiet, carpeta=carpeta)
+    assert s2 != s1 and Path(s2).name.endswith(" (1).xlsx"), s2
+    assert Path(s1).read_bytes() == b"resultado bueno de antes", "piso la salida anterior"
+
+
+def test_escribir_atomico_nunca_deja_un_xlsx_roto_con_nombre_de_resultado():
+    """Mientras se escribe, el nombre FINAL no existe (un corte ahi -- la ventana
+    cerrada con la corrida viva -- deja un `.escribiendo.xlsx`, no un resultado roto);
+    si la escritura revienta, no queda ni el final ni el temporal."""
+    from programas.rem_utils import escribir_atomico
+    d = _TMP / "atomico"
+    d.mkdir(exist_ok=True)
+    salida = d / "REM_X_2026_08.xlsx"
+    vistos = []
+
+    def escribe(p):
+        vistos.append(Path(p))
+        assert not salida.exists(), "el nombre final ya existia A MITAD de la escritura"
+        Path(p).write_bytes(b"ok")
+    assert escribir_atomico(salida, escribe) == salida
+    assert vistos[0] != salida and vistos[0].name.endswith(".escribiendo.xlsx"), vistos
+    assert salida.read_bytes() == b"ok" and not vistos[0].exists()
+
+    otra = d / "REM_Y_2026_08.xlsx"
+
+    def revienta(p):
+        Path(p).write_bytes(b"a medias")
+        raise OSError("disco lleno")
+    try:
+        escribir_atomico(otra, revienta)
+        assert False, "la excepcion de la escritura se trago"
+    except OSError:
+        pass
+    assert not otra.exists() and list(d.glob("*.escribiendo.*")) == [], (
+        "quedo basura de una escritura fallida")
+
+
+def test_el_a05_escribe_via_temporal():
+    """Cableado: `_correr_tareas` guarda por `escribir_atomico`, no con `wb.save`
+    directo sobre el nombre final."""
+    import programas.rem_utils as ru
+    previo, usados = ru.escribir_atomico, []
+    ru.escribir_atomico = lambda salida, fn: (usados.append(Path(salida).name), previo(salida, fn))[1]
+    try:
+        carpeta = _TMP / "a05_atomico"
+        carpeta.mkdir(exist_ok=True)
+        _, s = autorem._correr_tareas(autorem.TAREAS, _iris_fixture(), sm.perfil_por_id("iris"),
+                                      log=_quiet, carpeta=carpeta)
+    finally:
+        ru.escribir_atomico = previo
+    assert usados == [Path(s).name], f"el A05 no paso por escribir_atomico: {usados}"
 
 
 # -- Runner propio (sin depender de pytest) ----------------------------

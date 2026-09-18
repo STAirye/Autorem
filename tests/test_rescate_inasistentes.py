@@ -21,6 +21,7 @@ import openpyxl
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 import programas.poblacion as pob                          # noqa: E402
 import modulos.rem_sp_p6_poblacion as p6mod                 # noqa: E402

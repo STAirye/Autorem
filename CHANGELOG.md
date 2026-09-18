@@ -13,6 +13,109 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 ## [1.9.17] — 2026-09-17
 
 ### Corregido
+- **GUI 2.0, trampas de Tk/customtkinter/hilos** (`docs/review_gui-2.0_pendiente.md` §1.G,
+  ronda 6):
+  - **Dos ventanas de dotación anidadas, y la de afuera pisaba lo guardado en la de
+    adentro.** `ctk.CTkToplevel(root)` hace un `update()` COMPLETO dentro de su propio
+    constructor en Windows (repinta la barra de título), así que abrir el diálogo de
+    dotación despachaba todos los clicks encolados mientras la ventana estaba congelada
+    cargando el ADA: el mismo agujero que `update_idletasks()` había cerrado, reabierto
+    por la librería. Un «Revisar dotación…» impaciente se abría ANIDADO con su propia
+    copia de la tabla, y el «Aplicar» de afuera (`dotacion.guardar` escribe el dict
+    entero) revertía lo guardado adentro. Además, la corrida usaba la tabla vieja → un
+    externo contado como interno: doble conteo en el REM. Nuevo candado
+    `dialogos._DOTACION_ABIERTA`: una sola ventana de dotación a la vez.
+  - **Con Windows escalado (125-150%) los textos largos se cortaban por la derecha**
+    (instrucciones, avisos, el mensaje del banner de fuente). `etiqueta_envolvente` le
+    pasaba a `CTkLabel` un ancho ya escalado, y CTk lo volvía a escalar: al 150% el texto
+    pedía 787 px en una caja de 570.
+  - **El banner de fuente describía una corrida cuyos archivos se habían cambiado mientras
+    corría** (verde «IRIS completo» junto a un Monitoreo recién elegido). Durante la
+    corrida solo se deshabilita Procesar; ahora `on_procesar` compara los inputs con los
+    del arranque antes de pintar, y lo dice en el log.
+  - **El preview de cruce ADA↔Grupal del SM pintaba el hilo que terminara ÚLTIMO**, no el
+    de la última elección; y «Quitar» apagaba el banner pero el hilo en vuelo lo volvía a
+    encender sobre una casilla vacía. Era el gemelo de la carrera que ya se había cerrado
+    en el A05. Nuevo `runner.Canal` (`en_hilo(..., canal=)`): solo pinta el pedido
+    vigente.
+  - **Un paso opcional que fallaba (A03·D.3, Trabajo Perdido, Rescate) solo se decía en
+    el log**: el «Listo» callaba, y el archivo de una corrida ANTERIOR del mismo mes
+    seguía en la carpeta con el mismo nombre, listo para copiarse al REM. Ahora el
+    resumen dice «NO se generó (motivo)», y las salidas ya no se pisan (ver «Cambiado»).
+  - **Cerrar la ventana con una corrida en curso la mataba sin avisar**, incluso a mitad
+    de escribir el `.xlsx` (el worker es un hilo daemon: muere con el proceso). Ahora la
+    X pregunta si hay una corrida viva («No» por defecto), y toda salida se escribe a un
+    temporal que se renombra al terminar (`rem_utils.escribir_atomico`): un corte deja un
+    `….escribiendo.xlsx`, nunca un resultado roto con nombre de resultado.
+  - **`verificar_hoja_unica` dejaba el export bloqueado si la lectura reventaba**
+    (read_only mantiene el archivo abierto hasta `close()`, y ese `close()` no estaba en
+    un `finally`): un export a medio sincronizar por OneDrive quedaba tomado mientras el
+    diálogo de error seguía abierto.
+  - **El caché de usuario (`~/.autorem`: dotación y estamentos) fallaba CALLADO**, y
+    en la dotación eso cambia cifras del REM. Un guardado que no llegaba al disco solo
+    se decía con un `print` (invisible en el exe), y el mes siguiente se volvía a
+    preguntar todo con «interno» por defecto. Peor: un caché DAÑADO se leía como tabla
+    vacía, así que todos los externos volvían a contar sin que nadie se enterara. Nuevo
+    manejo compartido (`rem_utils.leer_cache_json` / `guardar_cache_json`):
+    - todo problema se MUESTRA en un diálogo al cerrar la fase que lo tocó
+      (`runner.avisar_cache`), diciendo qué se pierde en términos del REM;
+    - un caché dañado se aparta como `….corrupto-<fecha>.json` en vez de leerse vacío o
+      pisarse;
+    - uno que existe pero no se puede leer NUNCA se sobreescribe (se perdería entero);
+    - un bloqueo pasajero (antivirus, indexador) se reintenta;
+    - se escribe vía temporal + rename;
+    - cada «Aplicar» guarda solo SUS cambios sobre lo que hay en disco
+      (`dotacion._persistir`), así dos ventanas de autoREM ya no se revierten entre sí.
+
+    A propósito NO cae a otra carpeta si esta falla: partiría la tabla en dos y el veto
+    volvería en silencio a lo de antes. «Acerca de» tiene una sección nueva,
+    «Preferencias guardadas» (dónde está, si se puede escribir, qué guarda, qué hacer),
+    y las cajas de Dotación y Estamentos dejan una línea que apunta ahí.
+  - **Los tests pisaban el `~/.autorem/dotacion.json` REAL en cada corrida.**
+    `test_externos_delta_y_detalle_conserva_filas` guardaba sin redirigir el caché y
+    corría (orden alfabético) antes del único test que lo redirigía: en un PC de trabajo
+    eso borraba la clasificación de externos del CESFAM. Ahora todo `tests/test_*.py`
+    importa primero `tests/_aislar_cache.py`, y un test exige que ninguno lo olvide.
+- **GUI 2.0, trazado entre archivos** (`docs/review_gui-2.0_pendiente.md` §1.F, ronda 5):
+  - **`rem_utils.leer_xlsx` truncaba EN SILENCIO un export con la `<dimension>` rota**
+    (el peor de la ronda). En modo `read_only`, openpyxl acota `iter_rows` a la
+    `<dimension>` que declara el propio .xlsx: con `A1:D5` en una hoja de 10 filas
+    devolvía 4, sin error ni aviso. Es el cuello de botella de todo el grupo pandas
+    (ADA, grupal, NSP, Otros y Respi, Inscritos, Multiprofesional): un conteo de MENOS
+    con cara de legítimo. Su docstring decía exactamente lo contrario («ROBUSTO a la
+    dimension rota … con la que pandas.read_excel leería 0 filas»), y pandas, al que
+    culpaba, lee las 10: llama `reset_dimensions()` por dentro. Nuevo
+    `rem_utils.abrir_xlsx_ro` (read_only + `reset_dimensions()` en cada hoja) +
+    `filas_hoja` (rellena las filas al mismo ancho, que sin `<dimension>` llegan
+    desparejas). **Toda lectura read_only del proyecto pasa por ahí:** `leer_xlsx`,
+    `verificar_hoja_unica` (una tabla dinámica fuera de la `<dimension>` de su hoja pasaba
+    por vacía), `catalogos._hojas`, `tools/scan_catalogo` (un RUT fuera de la etiqueta
+    **pasaba el escaneo de PII** del About), la detección del A05 y el preview de cruce
+    del SM.
+  - **La detección del A05 rechazaba un IRIS válido con la `<dimension>` rota** —
+    regresión que metió la ronda 4 al leer solo el encabezado. Esa ronda había concluido
+    que el peligro era `max_row` y no `read_only`; los dos salen de la misma etiqueta.
+    Con `A1`, el encabezado llegaba con UNA columna → «Formato no reconocido». Cerrado
+    por el mismo `abrir_xlsx_ro`.
+  - **Con VARIOS archivos de atenciones, la FUENTE se clasificaba mirando solo el
+    PRIMERO** (`cargar_canonico`). [IRIS, Monitoreo] daba «plena»: banner VERDE «A/D/A de
+    IRIS completo» y ningún aviso en la LEEME, sobre filas sin demografía;
+    [Monitoreo, IRIS] daba «parcial». El veredicto dependía del orden en que se
+    eligieron, no del contenido. Ahora se clasifica cada archivo y gana el peor; si se
+    mezclan plenos con no-plenos, el aviso nombra los afectados y dice que lo suyo sale
+    de MENOS, no en 0 (`attrs['fuente_mezcla']`, `aviso_fuente(archivos=)`).
+  - **Ruta pegada con comillas en el A05** (el «Copiar como ruta de acceso» de Windows,
+    que es LA forma de pegar una ruta): `valida_ruta` sacaba las comillas y la detección
+    no, así que openpyxl abría `…xlsx"` y el usuario recibía «No es un .xlsx real» sobre
+    un archivo perfecto. Nuevo `runner.limpiar_ruta`, que usan la validación, la
+    detección y los inputs opcionales de `_resolver_ctx`.
+  - **Atención con funcionario pero SIN estamento → `ArchivoInvalido('sin_estamento')`**
+    en `cargar_atenciones` (decisión del autor: RAYEN no puede registrar eso, así que
+    es un export modificado). Antes llegaba al diálogo de dotación como el grupo
+    «(sin estamento)», cuyo «Omitir estamento» **no guardaba nada** (`dotacion.omitir`
+    descarta la clave vacía) aunque el grupo desaparecía de la ventana; y esas filas no
+    caían en ninguna casilla por estamento. La guarda va sobre la FUENTE (§3.1), no en
+    el diálogo.
 - **GUI 2.0, revisión de paridad contra `autorem.py`** (lo que el port había perdido o
   roto; `docs/review_gui-2.0_pendiente.md` §4, puntos 2 a 5):
   - **`after()` desde un hilo:** la detección de formato del A05 y el chequeo de cruce
@@ -150,13 +253,20 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   `detectar_eje` pide una hoja y depende de `ws.max_row`, que solo es confiable con un
   `load_workbook` sin `read_only`. Nuevo `formatos.detectar_eje_filas` (mismo veredicto,
   sobre filas ya leídas) + `sm.detectar_formato_filas`: la detección lee con
-  `read_only=True` e `islice`, **nunca** `max_row` — que es la disciplina que
-  `rem_utils.leer_xlsx` y `verificar_hoja_unica` ya usaban para sobrevivir a la
-  `<dimension>` rota o ausente de RAYEN. Tests que amarran que el atajo no cambie la
-  respuesta sobre los dos exports reales del repo.
+  `read_only=True` e `islice`, **nunca** `max_row`. Tests que amarran que el atajo no
+  cambie la respuesta sobre los dos exports reales del repo. **Premisa equivocada,
+  corregida en la ronda 5:** `read_only` también respeta la `<dimension>` (y
+  `leer_xlsx` tampoco era robusto); ver el primer bloque de esta sección.
 - (Renumerado: esta rama había tomado 1.9.16, que `main` ya usó.)
 
 ### Cambiado
+- **Las salidas NUNCA se sobreescriben** (decisión del autor, sep-2026): si un nombre ya
+  existe, la corrida entera sale como `… (1).xlsx`, `… (2).xlsx`, con el MISMO número en
+  todos sus archivos (`rem_utils.rutas_libres`), así el sufijo dice qué archivos salieron
+  juntos. Aplica a la GUI 2.0 (A05, A23, SM, Población) y a `_correr_tareas`, que también
+  usan la pestaña A05 1.x y el CLI. Las demás pestañas 1.x siguen pisando: se borran en
+  el paso 11. De paso, un archivo abierto en Excel ya no hace fallar la corrida al
+  guardar.
 - **El orden de las páginas DENTRO de su grupo del sidebar es ahora un dato**
   (`registro.ORDEN_PAGINAS`). Venía del orden en que `pkgutil.iter_modules` encuentra los
   archivos, o sea del **nombre del .py**: hoy A05 va antes de Actividades solo porque
@@ -187,6 +297,39 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   pestaña vieja ya no existe).
 
 ### Agregado
+- **Tests de la ronda 6** (237 en total), con 37 mutantes (13 + 12 del cierre y la
+  escritura vía temporal + 12 del caché), todos cazados por el test previsto. Los 9 del
+  caché: dañado se aparta y avisa; ilegible no se sobreescribe (dotación y estamentos);
+  reintento de un bloqueo pasajero y aviso si no se suelta; dos ventanas no se pisan
+  (incluido «Quitar omisión»); los avisos se muestran al cerrar los diálogos de dotación
+  y al terminar una corrida; «Acerca de» explica y las dos cajas apuntan ahí; y todo
+  test aísla el caché real. Los 4 de la segunda
+  tanda: `escribir_atomico` (el nombre final no existe mientras se escribe; una
+  escritura fallida no deja basura), el A05 escribe vía temporal, la X de la ventana
+  pregunta con una corrida viva (por el comando REGISTRADO, no un método llamado a
+  mano) y `verificar_hoja_unica` cierra aunque reviente; más el cableado del temporal en
+  SM/A23/Población dentro de sus tests. La primera tanda: `test_gui_registro.py` (3: candado de dotación ante un click encolado; SM no
+  pisa y el resumen dice que la D.3 no salió; A23 y Población tampoco pisan) ·
+  `test_gui_construccion.py` (4: el cruce del SM solo pinta la última elección, incluido
+  «Quitar» con un hilo en vuelo; el banner no describe una corrida cuyos archivos se
+  cambiaron; etiquetas al 150% caben en su caja; y la PREMISA del candado, que
+  `CTkToplevel` despacha los clicks encolados, para que avise si customtkinter deja de
+  hacerlo) · `test_autorem.py` (2: `rutas_libres` con un solo número por corrida; el A05
+  no pisa).
+- **Tests de la ronda 5** (215 en total), cada uno verificado reintroduciendo su bug
+  (10 mutantes, los 10 cazados por el test previsto). Rompen la `<dimension>` a
+  propósito y comprueban primero que el fixture de verdad arma la trampa, para que el
+  test no quede verde por un fixture que ya no la reproduce:
+  - `test_formatos_fuente.py` (6, 7 casos): `leer_xlsx` no trunca (`A1:D5` y `A1`),
+    `verificar_hoja_unica` ve la hoja extra, la detección A05 sobre el IRIS real, el
+    escaneo de PII ve un RUT fuera de la etiqueta (el RUT se ARMA en el test, con DV
+    calculado, para no dejar uno literal en el repo), el catálogo se lee entero, y la
+    fuente multi-archivo da lo mismo en los dos órdenes y nombra al archivo afectado.
+  - `test_gui_construccion.py` (2): la PÁGINA (no solo la capa) del A05 y el preview del
+    SM leen el encabezado con la `<dimension>` rota; la ruta pegada con comillas se
+    detecta.
+  - `test_dotacion.py` (1): funcionario sin estamento → `sin_estamento` nombrando a
+    quién; una fila sin funcionario ni estamento no dispara.
 - **Tests de la ronda 4** (206 en total). Cada uno se verificó reintroduciendo su bug:
   en la primera pasada **dos sobrevivieron** (probaban la pieza suelta, no el cableado),
   así que se rehicieron — el del desglose A03 ahora corre `sm.correr` de verdad con

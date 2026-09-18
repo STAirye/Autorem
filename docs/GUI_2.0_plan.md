@@ -363,7 +363,9 @@ banner se pinta cuando arranca la corrida, no antes. No se puede prometer previe
 no lo hay.
 
 **Costo práctico:** abrir el `.xlsx` al seleccionarlo **congela la ventana** si el
-export es grande. Va con `load_workbook(read_only=True)` y **en un hilo**, con el label
+export es grande. Va con `rem_utils.abrir_xlsx_ro` + `filas_hoja(ws, MAX_FILAS_HEADER)` (solo el
+encabezado; **no** un `load_workbook(read_only=True)` pelado, que respeta la `<dimension>`
+rota y lee el encabezado mocho) y **en un hilo**, con el label
 en "detectando..." mientras tanto. Barato, pero no gratis: no llamarlo directo en el
 callback del `Examinar...`.
 

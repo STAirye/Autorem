@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 from programas import formatos
 from programas.rem_utils import (leer_xlsx, resolver_columnas, MAPA_ATENCIONES, norm,
@@ -293,12 +294,10 @@ A05_ADMIN = RAIZ / "refs_tablas" / "Formulario_csm_reporte_Administrativo.xlsx"
 
 def _cheap(ruta):
     """Lo que hace la GUI al elegir un archivo: leer SOLO el encabezado."""
-    from itertools import islice
-    import openpyxl
-    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    from programas.rem_utils import abrir_xlsx_ro, filas_hoja
+    wb = abrir_xlsx_ro(ruta)
     try:
-        return list(islice(wb.active.iter_rows(values_only=True),
-                           formatos.MAX_FILAS_HEADER))
+        return filas_hoja(wb.active, formatos.MAX_FILAS_HEADER)
     finally:
         wb.close()
 
@@ -343,3 +342,176 @@ def test_detectar_eje_filas_no_necesita_el_resto_del_archivo(tmp_path):
     # Y con MENOS filas todavia (solo el banner + el header) sigue acertando.
     assert formatos.detectar_eje_filas(completo[:9]) == "administrativo"
     assert formatos.detectar_eje(_full(p)) == "administrativo"
+
+
+# -- La <dimension> del .xlsx NO manda (ronda 5) -------------------------------
+# En modo read_only openpyxl acota `iter_rows` a la <dimension> que declara el
+# archivo. Con la etiqueta rota se perdian filas/columnas SIN ningun error: el ADA
+# contaba de menos, el A05 rechazaba un IRIS valido, y el escaner de PII no veia lo
+# de fuera. `rem_utils.abrir_xlsx_ro` la descarta; estos tests la rompen a proposito.
+
+def _con_dimension(origen, destino, ref, hoja="xl/worksheets/sheet1.xml"):
+    """Copia un .xlsx reescribiendo la <dimension> de `hoja` a `ref` (o
+    insertandola si no la trae)."""
+    import zipfile
+    with zipfile.ZipFile(origen) as zi, zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as zo:
+        for it in zi.infolist():
+            data = zi.read(it.filename)
+            if it.filename == hoja:
+                xml = data.decode("utf-8")
+                i = xml.find("<dimension ")
+                if i >= 0:
+                    xml = xml[:i] + f'<dimension ref="{ref}"/>' + xml[xml.find(">", i) + 1:]
+                else:
+                    j = xml.find(">", xml.find("<worksheet")) + 1
+                    xml = xml[:j] + f'<dimension ref="{ref}"/>' + xml[j:]
+                data = xml.encode("utf-8")
+            zo.writestr(it, data)
+    return destino
+
+
+def _read_only_pelado(ruta, n):
+    """Lo que hacia el codigo ANTES: prueba que el fixture de verdad arma la trampa."""
+    from itertools import islice
+    import openpyxl
+    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    try:
+        return list(islice(wb.active.iter_rows(values_only=True), n))
+    finally:
+        wb.close()
+
+
+@pytest.mark.parametrize("ref", ["A1:D5", "A1"])
+def test_leer_xlsx_no_trunca_con_la_dimension_rota(tmp_path, ref):
+    """El cuello de botella de TODO el grupo pandas (ADA, grupal, NSP, Inscritos...).
+    Truncar aca es el peor bug posible: un numero de menos con cara de legitimo."""
+    import openpyxl
+    src = tmp_path / "diez.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["RUN", "FECHA", "ACT", "DIAG"])
+    for i in range(10):
+        ws.append([f"r{i}", "01/08/2026", "x", "y"])
+    wb.save(src)
+    roto = _con_dimension(src, tmp_path / "roto.xlsx", ref)
+    assert len(_read_only_pelado(roto, 100)) < 11, "el fixture ya no reproduce la trampa"
+    hdr, filas = leer_xlsx(roto)
+    assert len(hdr) == 4 and len(filas) == 10, (len(hdr), len(filas))
+    assert all(len(f) == 4 for f in filas), "las filas tienen que salir del mismo ancho"
+
+
+def test_verificar_hoja_unica_ve_datos_fuera_de_la_dimension(tmp_path):
+    """Una hoja extra con datos (tabla dinamica agregada) que su <dimension> no declara
+    pasaba por vacia, y el export modificado entraba como bueno."""
+    import openpyxl
+    from programas.rem_utils import verificar_hoja_unica
+    src = tmp_path / "dos_hojas.xlsx"
+    wb = openpyxl.Workbook()
+    wb.active.append(["RUN", "FECHA"])
+    wb.active.append(["r1", "01/08/2026"])
+    ws2 = wb.create_sheet("Pivote")
+    ws2["C3"] = "suma"
+    wb.save(src)
+    roto = _con_dimension(src, tmp_path / "dos_hojas_roto.xlsx", "A1",
+                          hoja="xl/worksheets/sheet2.xml")
+    with pytest.raises(ArchivoInvalido) as ex:
+        verificar_hoja_unica(roto)
+    assert ex.value.categoria == "modificado"
+
+
+def test_verificar_hoja_unica_cierra_el_archivo_aunque_la_lectura_reviente(monkeypatch):
+    """read_only deja el .xlsx ABIERTO hasta `close()`. Sin `finally`, un export a medio
+    sincronizar por OneDrive que revienta a mitad de la lectura quedaba bloqueado
+    mientras el dialogo de error seguia abierto."""
+    import programas.rem_utils as ru
+    cerrado = []
+
+    class HojaRota:
+        title = "Hoja1"
+
+        def iter_rows(self, **_kw):
+            raise EOFError("zip truncado")
+
+    class LibroFalso:
+        worksheets = [HojaRota()]
+
+        def close(self):
+            cerrado.append(True)
+
+    monkeypatch.setattr(ru, "abrir_xlsx_ro", lambda _e: LibroFalso())
+    with pytest.raises(EOFError):
+        ru.verificar_hoja_unica("export.xlsx")
+    assert cerrado, "el workbook quedo abierto tras la excepcion"
+
+
+def test_deteccion_a05_con_dimension_rota(tmp_path):
+    """El IRIS real con la <dimension> en `A1`: un read_only pelado ve el encabezado
+    con UNA columna y lo daba 'desconocido' (-> 'Formato no reconocido' sobre un
+    archivo valido). Regresion que metio la ronda 4 al leer solo el encabezado."""
+    roto = _con_dimension(A05_IRIS, tmp_path / "iris_dim_a1.xlsx", "A1")
+    assert formatos.detectar_eje_filas(
+        _read_only_pelado(roto, formatos.MAX_FILAS_HEADER)) == "desconocido", \
+        "el fixture ya no reproduce la trampa"
+    assert formatos.detectar_eje_filas(_cheap(roto)) == "iris"
+
+
+def test_scan_catalogo_ve_ruts_fuera_de_la_dimension(tmp_path):
+    """La guarda de PII del About (CLAUDE.md regla 1): un RUT fuera de la <dimension>
+    no se escaneaba. El RUT se ARMA aca (DV calculado) para no dejar uno literal en
+    el repo -- el hook anti-RUT tambien mira los tests."""
+    import openpyxl
+    from tools.hook_pre_commit_rut import dv, sospechosos
+    from tools.scan_catalogo import escanear
+    cuerpo = "1" + "5432876"
+    rut = f"{cuerpo}-{dv(cuerpo)}"
+    assert sospechosos(rut), "el RUT sintetico tiene que parecerle real al detector"
+    src = tmp_path / "catalogo.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for i in range(10):
+        ws.append([f"C{i:02d}", "descripcion"])
+    ws.append(["J00", f"paciente {rut}"])
+    wb.save(src)
+    roto = _con_dimension(src, tmp_path / "catalogo_roto.xlsx", "A1:B5")
+    hallazgos, _, _ = escanear(roto)
+    assert [h for h in hallazgos if h[0] == "RUT"], "un RUT fuera de la <dimension> paso el escaneo"
+
+
+def test_catalogo_deis_se_lee_entero_con_la_dimension_rota(tmp_path):
+    """`catalogos._hojas` (lo que carga un catalogo elegido a mano en el About) tiene
+    que ver lo MISMO que el escaner de PII que lo aprobo: todo el archivo."""
+    import openpyxl
+    from programas import catalogos
+    src = tmp_path / "cat.xlsx"
+    wb = openpyxl.Workbook()
+    for i in range(10):
+        wb.active.append([f"C{i:02d}", "descripcion"])
+    wb.save(src)
+    roto = _con_dimension(src, tmp_path / "cat_roto.xlsx", "A1:B5")
+    (_titulo, filas), = catalogos._hojas(roto)
+    assert len(filas) == 10, len(filas)
+
+
+# -- Varios archivos: la FUENTE se clasifica por archivo (ronda 5) --------------
+
+def test_fuente_multi_archivo_no_depende_del_orden(tmp_path):
+    """[IRIS, Monitoreo] daba 'plena' (se miraba solo el PRIMERO): banner verde 'A/D/A
+    de IRIS completo' y sin aviso en LEEME, sobre filas sin demografia. [Monitoreo,
+    IRIS] daba 'parcial'. Ahora los dos ordenes dan lo mismo, y el aviso nombra al
+    archivo que no es IRIS."""
+    import shutil
+    from programas.rem_utils import cargar_atenciones
+    iris = _con_una_fila(ADA_IRIS, tmp_path / "iris.xlsx")
+    moni = _con_una_fila(MONITOREO, tmp_path / "moni.xlsx")
+    for orden in ([iris, moni], [moni, iris]):
+        d = cargar_atenciones(orden, log=lambda *_: None)
+        assert d.attrs["fuente"][0] == formatos.FUENTE_PARCIAL, (orden, d.attrs["fuente"])
+        assert d.attrs["fuente_mezcla"] == ["moni.xlsx"]
+    av = formatos.aviso_fuente(*d.attrs["fuente"], "CONSECUENCIA",
+                               archivos=d.attrs["fuente_mezcla"])
+    assert "moni.xlsx" in av[2] and "MENOS" in av[2]
+
+    iris2 = shutil.copy(iris, tmp_path / "iris2.xlsx")
+    d = cargar_atenciones([iris, iris2], log=lambda *_: None)
+    assert d.attrs["fuente"][0] == formatos.FUENTE_PLENA
+    assert d.attrs["fuente_mezcla"] is None

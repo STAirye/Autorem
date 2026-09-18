@@ -36,6 +36,7 @@ import openpyxl
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_gui_"))
 
@@ -470,6 +471,344 @@ def test_la_salida_por_defecto_de_poblacion_va_junto_al_inscritos():
     assert ctx["carpeta"] == snap, (
         f"la salida por defecto quedo en {ctx['carpeta']}, no junto al Inscritos "
         f"({snap}) -- el ancla_salida no se esta respetando")
+
+
+def test_a05_acepta_la_ruta_pegada_con_comillas():
+    """'Copiar como ruta de acceso' del Explorador (shift + click derecho) pega la ruta
+    ENTRE COMILLAS, y es LA forma de pegar una ruta en Windows. `valida_ruta` las
+    sacaba, pero la deteccion del A05 abria la ruta con comillas: openpyxl respondia
+    InvalidFileException ('.xlsx" no soportado') y el usuario recibia 'No es un .xlsx
+    real' sobre un archivo perfecto. Deteccion, `get()` y validacion tienen que ver
+    la MISMA ruta."""
+    if SIN_DISPLAY:
+        return
+    from gui.paginas import a05
+    from gui import runner
+
+    assert runner.limpiar_ruta('  "C:/x/y.xlsx"  ') == "C:/x/y.xlsx"
+    assert runner.limpiar_ruta(None) == ""
+
+    app = _app()
+    try:
+        frame = ctk.CTkFrame(app)
+        pagina = type("P", (), {"datos": {}, "root": app})()
+        get = a05.bloque_archivo_formato(frame, pagina)
+        entry = _buscar_entry(frame)
+        entry.insert(0, f'"{_fixture_iris()}"')
+        assert get()["detectar_ahora"]() == ("iris", None)
+        assert get()["ruta"] == str(_fixture_iris()), "get() entrega la ruta con comillas"
+        assert get()["categoria"] == "iris", "la categoria no quedo amarrada a la ruta limpia"
+    finally:
+        app.destroy()
+
+
+def test_a05_y_sm_leen_el_encabezado_aunque_la_dimension_este_rota():
+    """La PAGINA, no solo la capa: el A05 detecta y el SM hace el preview de cruce
+    leyendo solo el encabezado, y ahi un `read_only=True` pelado respetaba la
+    <dimension> del .xlsx. Con la etiqueta en `A1` el encabezado llegaba con UNA
+    columna: el A05 daba 'Formato no reconocido' sobre un IRIS valido y el SM nunca
+    acusaba un cruce ADA<->Grupal."""
+    if SIN_DISPLAY:
+        return
+    from test_formatos_fuente import _con_dimension, _con_una_fila, ADA_IRIS
+    from programas import formatos
+    from gui.paginas import a05, sm
+
+    iris_roto = _con_dimension(_fixture_iris(), _TMP / "iris_dim_a1.xlsx", "A1")
+    ada_roto = _con_dimension(_con_una_fila(ADA_IRIS, _TMP / "ada_1f.xlsx"),
+                              _TMP / "ada_dim_a1.xlsx", "A1")
+    assert formatos.parece_reporte(sm._header_rapido(ada_roto)) == "ada", (
+        "el preview de cruce del SM leyo el encabezado mocho")
+
+    app = _app()
+    try:
+        frame = ctk.CTkFrame(app)
+        pagina = type("P", (), {"datos": {}, "root": app})()
+        get = a05.bloque_archivo_formato(frame, pagina)
+        _buscar_entry(frame).insert(0, str(iris_roto))
+        assert get()["detectar_ahora"]() == ("iris", None), (
+            "un IRIS valido con la <dimension> rota no se reconocio")
+    finally:
+        app.destroy()
+
+
+def _esperar(app, segundos=0.6):
+    """Como `_bombear`, pero dejando pasar TIEMPO de verdad: el poll de
+    `runner.en_hilo` / `correr_con_reloj` es un `after(60/80 ms)`, y un rafaga de
+    `update()` termina antes de que venza -- el resultado del hilo nunca llegaba."""
+    import time
+    fin = time.monotonic() + segundos
+    while time.monotonic() < fin:
+        app.update()
+        time.sleep(0.02)
+
+
+def test_el_cruce_del_sm_solo_pinta_la_ultima_eleccion():
+    """Preview de cruce ADA<->Grupal: dos elecciones seguidas lanzan dos hilos, y
+    pintaba el que terminara ULTIMO -- el veredicto del archivo viejo quedaba junto al
+    nuevo. Y 'Quitar' apagaba el banner, pero el hilo en vuelo lo volvia a encender
+    sobre una casilla VACIA. Gemelo de la carrera del A05 (ledger SS1.B)."""
+    if SIN_DISPLAY:
+        return
+    import threading
+    from programas import formatos
+    from gui.paginas import sm
+
+    soltar = threading.Event()
+    previos = (sm._header_rapido, formatos.parece_reporte)
+
+    def header_falso(ruta):
+        if "lento" in str(ruta):
+            soltar.wait(5)
+        return ruta
+    sm._header_rapido = header_falso
+    formatos.parece_reporte = lambda h: "grupal" if "grupal" in str(h) else "ada"
+    app = _app()
+    try:
+        frame = ctk.CTkFrame(app)
+        on_elegido = sm._chequeo_cruce(frame, None, "ada")
+        banner = _buscar_banner(frame)
+
+        # 1. Grupal (lento) en la casilla del ADA, y 'Quitar' antes de que termine.
+        on_elegido(["grupal_lento.xlsx"])
+        on_elegido([])
+        soltar.set(); _esperar(app)
+        assert not banner._visible, (
+            "el hilo de un archivo ya QUITADO volvio a encender el banner de cruce")
+
+        # Control: sin nada que lo reemplace, el cruce SI se acusa (el test prueba algo).
+        on_elegido(["grupal.xlsx"]); _esperar(app)
+        assert banner._visible, "el cruce no se acuso nunca: el test no prueba nada"
+
+        # 2. Viejo lento (cruzado) y nuevo rapido (correcto): gana el nuevo.
+        soltar.clear()
+        on_elegido(["grupal_lento.xlsx"])
+        on_elegido(["ada.xlsx"]); _esperar(app)
+        assert not banner._visible, "el archivo correcto no apago el banner"
+        soltar.set(); _esperar(app)
+        assert not banner._visible, (
+            "el resultado del archivo VIEJO se pinto sobre el nuevo")
+    finally:
+        sm._header_rapido, formatos.parece_reporte = previos
+        soltar.set()
+        _cerrar(app)
+
+
+def test_el_banner_no_describe_una_corrida_cuyos_archivos_se_cambiaron_mientras_corria():
+    """Durante la corrida solo Procesar esta deshabilitado: el usuario puede elegir otro
+    archivo mientras el worker trabaja, y `al_completar` pintaba igual el veredicto de
+    fuente de ESTA corrida al lado del archivo nuevo (verde 'IRIS completo' junto a un
+    Monitoreo recien elegido)."""
+    if SIN_DISPLAY:
+        return
+    import threading
+    import pandas as pd
+    from gui import widgets
+    from gui.app import App
+
+    soltar = threading.Event()
+
+    def correr(ctx, log):
+        soltar.wait(5)
+        return pd.DataFrame({"x": [1]})
+
+    pantalla = {"id": "prueba", "programa": "Respiratorio", "titulo": "Prueba",
+                "estado": "estable",
+                "inputs": [{"key": "atenciones", "etiqueta": "Atenciones:", "multi": True}],
+                "mes": False, "carpeta_salida": False,
+                "extras": [{"despues_de": "atenciones", "construir": widgets.bloque_banner_fuente}],
+                "correr": correr, "resumen": lambda res: "Listo.",
+                "al_completar": lambda res, pagina: widgets.pintar_banner_fuente(pagina, res)}
+    app = App(registro=[pantalla])
+    try:
+        app.mostrar("prueba")
+        frame = app._frames["prueba"]
+        banner = _buscar_banner(frame)
+        examinar, procesar = _buscar_boton(frame, "Examinar…"), _buscar_boton(frame, "Procesar")
+
+        # Control: sin cambios, la corrida SI pinta el banner.
+        with _dialogo_devuelve(_TMP / "a.xlsx"):
+            examinar.invoke()
+        soltar.set(); procesar.invoke(); _esperar(app)
+        assert banner._visible, "la corrida no pinto el banner: el test no prueba nada"
+
+        # El archivo cambia MIENTRAS corre -> el banner no afirma nada.
+        soltar.clear(); procesar.invoke()
+        with _dialogo_devuelve(_TMP / "b.xlsx"):
+            examinar.invoke()
+        soltar.set(); _esperar(app)
+        assert not banner._visible, (
+            "el banner describe una corrida cuyos archivos ya no son los elegidos")
+    finally:
+        soltar.set()
+        _cerrar(app)
+
+
+def test_cerrar_la_ventana_con_una_corrida_viva_pregunta_primero():
+    """El worker es un hilo daemon: la X de la ventana terminaba el proceso y lo mataba
+    donde estuviera, sin avisar (incluso escribiendo el .xlsx). Con una corrida viva
+    tiene que preguntar -- y un «No» deja la ventana abierta --; sin corridas, cierra
+    de una, sin preguntar nada."""
+    if SIN_DISPLAY:
+        return
+    import threading
+    import gui.app as appmod
+    from gui.app import App
+
+    soltar = threading.Event()
+    pantalla = {"id": "prueba", "programa": "Respiratorio", "titulo": "Prueba",
+                "estado": "estable", "inputs": [], "mes": False, "carpeta_salida": False,
+                "correr": lambda ctx, log: soltar.wait(5), "resumen": lambda res: "Listo."}
+    preguntas = []
+    previo = appmod.messagebox.askyesno
+    app = App(registro=[pantalla])
+    try:
+        app.mostrar("prueba")
+
+        def cerrar_con_la_x():
+            # Lo que hace el gestor de ventanas: el comando REGISTRADO en la X, no un
+            # metodo llamado a mano (si nadie lo registro, esto revienta).
+            app.tk.call(app.protocol("WM_DELETE_WINDOW"))
+        _buscar_boton(app._frames["prueba"], "Procesar").invoke()
+        assert app._corridas == 1, "la corrida no quedo contada como viva"
+
+        appmod.messagebox.askyesno = lambda *a, **k: (preguntas.append(a[0]), False)[1]
+        cerrar_con_la_x()
+        assert preguntas, "cerro con una corrida viva sin preguntar"
+        assert app.winfo_exists(), "el «No» cerro la ventana igual"
+
+        soltar.set(); _esperar(app)
+        assert app._corridas == 0, "la corrida terminada sigue contada como viva"
+        preguntas.clear()
+        cerrar_con_la_x()
+        assert not preguntas, "sin corridas vivas no deberia preguntar nada"
+        app = None   # ya la cerro `_al_cerrar`
+    finally:
+        appmod.messagebox.askyesno = previo
+        soltar.set()
+        if app is not None:
+            _cerrar(app)
+
+
+def _textos(widget):
+    """Todo el texto de las etiquetas bajo `widget`, en profundidad."""
+    out = []
+    if isinstance(widget, ctk.CTkLabel):
+        out.append(str(widget.cget("text")))
+    for hijo in widget.winfo_children():
+        out += _textos(hijo)
+    return out
+
+
+def test_el_aviso_de_cache_de_una_corrida_se_muestra():
+    """El worker puede leer/guardar un caché (estamentos en el A03, dotacion en el SM).
+    Si falla, el aviso tiene que salir en pantalla al terminar la corrida -- en el exe
+    el log de `print` no lo ve nadie."""
+    if SIN_DISPLAY:
+        return
+    import gui.app as appmod
+    import programas.rem_utils as ru
+    from gui.app import App
+
+    def correr(ctx, log):
+        ru._avisar_cache(lambda *_: None, "No pude guardar la tabla de estamentos")
+        return "ok"
+
+    pantalla = {"id": "prueba", "programa": "Respiratorio", "titulo": "Prueba",
+                "estado": "estable", "inputs": [], "mes": False, "carpeta_salida": False,
+                "correr": correr, "resumen": lambda res: "Listo."}
+    vistos, previo = [], appmod.messagebox.showwarning
+    ru.tomar_avisos_cache()
+    app = App(registro=[pantalla])
+    try:
+        appmod.messagebox.showwarning = lambda t, m, **k: vistos.append(m)
+        app.mostrar("prueba")
+        _buscar_boton(app._frames["prueba"], "Procesar").invoke()
+        _esperar(app)
+        assert any("No pude guardar" in m for m in vistos), (
+            f"el aviso de caché de la corrida no se mostro: {vistos}")
+    finally:
+        appmod.messagebox.showwarning = previo
+        _cerrar(app)
+
+
+def test_acerca_de_explica_las_preferencias_y_las_paginas_apuntan_ahi():
+    """El detalle de «no se guardan tus preferencias» vive en Acerca de (donde esta el
+    caché, su estado, que hacer); las cajas que usan un caché dejan UNA linea que
+    apunta ahi, para no llenar la pagina con un caso borde."""
+    if SIN_DISPLAY:
+        return
+    from gui import dialogos
+    from programas import dotacion
+    app = _app()
+    try:
+        app.mostrar("acerca_de")
+        _bombear(app)
+        about = "\n".join(_textos(app._frames["acerca_de"]))
+        assert "Preferencias guardadas" in about, "Acerca de no tiene la seccion"
+        assert str(dotacion.RUTA_CACHE.parent) in about, "no dice DONDE esta el caché"
+        assert "perfil temporal" in about, "faltan las instrucciones"
+
+        app.mostrar("sm_actividades")
+        _bombear(app)
+        sm = _textos(app._frames["sm_actividades"])
+        n = sum(dialogos.REF_PREFERENCIAS in t for t in sm)
+        assert n == 2, f"la referencia a Acerca de deberia estar en Dotación y Estamentos ({n})"
+    finally:
+        _cerrar(app)
+
+
+def test_ctktoplevel_despacha_los_clicks_encolados():
+    """PREMISA del candado de `dialogos._DOTACION_ABIERTA`: crear un `CTkToplevel`
+    despacha, dentro de su propio constructor, los clicks que estaban encolados
+    (en Windows hace withdraw + `update()` para repintar la barra de titulo). Si
+    customtkinter deja de hacerlo, este test avisa que el candado sobra -- no que
+    este mal."""
+    if SIN_DISPLAY or not sys.platform.startswith("win"):
+        return
+    app = ctk.CTk()   # ventana pelada: `App` usa grid y aca se empaca con pack
+    try:
+        clicks = []
+        boton = ctk.CTkButton(app, text="Revisar", command=lambda: clicks.append(1))
+        boton.pack()
+        _bombear(app)
+        # Un click del usuario mientras la ventana estaba congelada (queda en la cola).
+        boton._canvas.event_generate("<Enter>", when="tail", x=5, y=5)
+        boton._canvas.event_generate("<ButtonRelease-1>", when="tail", x=5, y=5)
+        assert clicks == [], "el click se despacho antes de tiempo: el test no prueba nada"
+        top = ctk.CTkToplevel(app)
+        assert clicks == [1], (
+            "CTkToplevel ya NO despacha los clicks encolados en su constructor: el "
+            "candado de dialogos._DOTACION_ABIERTA quizas sobra (revisalo)")
+        top.destroy()
+    finally:
+        _cerrar(app)
+
+
+def test_las_etiquetas_envolventes_caben_en_su_caja_con_el_dpi_escalado():
+    """`e.width` (evento <Configure>) viene en pixeles REALES y `CTkLabel` escala su
+    `wraplength` otra vez: con Windows al 150% el texto pedia 1.5x el ancho de la caja
+    y se cortaba por la derecha (instrucciones, avisos, el mensaje del BannerFuente)."""
+    if SIN_DISPLAY:
+        return
+    from gui import widgets
+    previa = ctk.ScalingTracker.widget_scaling
+    ctk.set_widget_scaling(1.5)
+    app = ctk.CTk()
+    app.geometry("600x300")
+    try:
+        caja = ctk.CTkFrame(app)
+        caja.pack(fill="x", padx=10)
+        lbl = widgets.etiqueta_envolvente(caja, "palabra " * 80)
+        lbl.pack(fill="x", padx=8)
+        _bombear(app)
+        assert lbl._get_widget_scaling() > 1.2, "el escalado no se aplico: el test no prueba nada"
+        assert lbl._label.winfo_reqwidth() <= caja.winfo_width(), (
+            f"la etiqueta pide {lbl._label.winfo_reqwidth()} px en una caja de "
+            f"{caja.winfo_width()} px: el texto se corta por la derecha")
+    finally:
+        _cerrar(app)
+        ctk.set_widget_scaling(previa)
 
 
 def _main():

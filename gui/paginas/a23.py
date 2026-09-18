@@ -61,13 +61,14 @@ instrucciones = (
 
 def correr(ctx, log):
     import modulos.rem_a23_respiratorio as a23
+    from programas.rem_utils import rutas_libres, escribir_atomico
     y, m = ctx["mes"]
     estrat = ctx["estratificacion"][0] if ctx["estratificacion"] else None
     nsp = ctx["nsp"] or None   # Sección H acepta VARIOS años -> la lista entera, no solo el primero
     fer = a23.procesar(ctx["atenciones"], otros=ctx["otros_cronicos"], estrat=estrat,
                        inasistentes=nsp, mes=(y, m), log=log)
-    salida = ctx["carpeta"] / f"REM_A23_{y}_{m:02d}_procesado.xlsx"
-    a23.escribir(fer, salida)
+    salida, = rutas_libres(ctx["carpeta"] / f"REM_A23_{y}_{m:02d}_procesado.xlsx")   # nunca pisa
+    escribir_atomico(salida, lambda p: a23.escribir(fer, p))   # temporal + rename
     return {"fer": fer, "salida": salida, "mes": (y, m)}
 
 

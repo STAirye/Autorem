@@ -28,6 +28,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
 
 from gui.registro import cargar_registro, ORDEN_PAGINAS, ORDEN_PROGRAMAS   # noqa: E402
 
@@ -216,13 +217,19 @@ def test_el_desglose_por_instrumento_del_a03_llega_hasta_el_resumen():
     import programas.estamentos as estam
     from gui.paginas import sm
 
+    import tempfile
     por_inst = {"PSC": 20, "PSC-Y": 18, "GHQ-12": 22}
     previos = (screening.procesar_unificado, estam.tabla_efectiva)
-    screening.procesar_unificado = lambda por_instrumento, salida, **kw: {
-        "salida": str(salida), "total": 60, "por_instrumento": por_inst, "tabla": None}
+
+    def unificado_falso(por_instrumento, salida, **kw):
+        Path(salida).write_bytes(b"d3")   # escribe como el real (lo renombra escribir_atomico)
+        return {"salida": str(salida), "total": 60, "por_instrumento": por_inst, "tabla": None}
+    screening.procesar_unificado = unificado_falso
     estam.tabla_efectiva = lambda *_a, **_kw: None
     try:
-        ctx = {"mes": (2026, 8), "carpeta": Path("."), "solo_a03": True,
+        # Carpeta TEMPORAL: la corrida escribe, y nunca dentro del repo.
+        ctx = {"mes": (2026, 8), "carpeta": Path(tempfile.mkdtemp(prefix="autorem_a03_")),
+               "solo_a03": True,
                "a03": {"incluir": True, "est_ruta": "",
                        "instrumentos": {k: f"{k}.xlsx" for k in por_inst}}}
         res = sm.correr(ctx, log=lambda *_a: None)
@@ -236,6 +243,221 @@ def test_el_desglose_por_instrumento_del_a03_llega_hasta_el_resumen():
     # Sin dato no se inventa un parentesis vacio.
     assert sm._por_instrumento({"por_inst_a03": None}) == ""
     assert sm._por_instrumento({}) == ""
+
+
+def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
+    """Corrida COMPLETA de SM (Actividades + A03) en una carpeta que ya tiene el A03·D.3
+    de una corrida anterior del mismo mes, y el A03 de esta falla. Antes: el A03 viejo
+    quedaba junto a la salida nueva con su mismo nombre, el fallo solo se veia en el
+    log, y el 'Listo' no decia nada -> el usuario abria el archivo viejo y copiaba al
+    REM una D.3 de otros cuestionarios. Ahora (1) toda la corrida sale como `(1)`, (2)
+    el viejo queda intacto, y (3) el resumen dice que la D.3 NO se genero."""
+    import tempfile
+    import pandas as pd
+    import modulos.rem_sm_actividades as smact
+    import modulos.rem_sm_trabajo_perdido as tpmod
+    import programas.rem_utils as ru
+    import modulos.rem_a03_d3_instrumentos as screening
+    import programas.estamentos as estam
+    from gui.paginas import sm
+
+    carpeta = Path(tempfile.mkdtemp(prefix="autorem_sm_"))
+    viejo = carpeta / "REM_A03_D3_2026_08.xlsx"
+    viejo.write_bytes(b"D.3 de otra corrida")
+
+    E = pd.DataFrame({"x": [1]})
+    E.attrs["tablas"] = {"SM_Resumen": pd.DataFrame({"Casilla": ["A04"], "Total mes": [1]})}
+
+    def a03_falla(*_a, **_k):
+        raise ValueError("instrumento raro")
+
+    atomico, atomicos = ru.escribir_atomico, []
+    parches = [(ru, "escribir_atomico",
+                lambda s, fn: (atomicos.append(Path(s).name), atomico(s, fn))[1]),
+               (smact, "procesar", lambda *_a, **_k: E),
+               (smact, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
+               (tpmod, "procesar", lambda *_a, **_k: []),
+               (tpmod, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
+               (screening, "procesar_unificado", a03_falla),
+               (estam, "tabla_efectiva", lambda *_a, **_k: None)]
+    previos = [(m, n, getattr(m, n)) for m, n, _ in parches]
+    for m, n, v in parches:
+        setattr(m, n, v)
+    try:
+        ctx = {"mes": (2026, 8), "carpeta": carpeta, "solo_a03": False,
+               "ada": [Path("ada.xlsx")], "grupal": [], "inscritos": [],
+               "multiprofesional": [], "maestro": [Path("maestro.csv")],
+               "d": None, "tabla_dot": None,
+               "a03": {"incluir": True, "est_ruta": "", "instrumentos": {"PSC": "psc.xlsx"}}}
+        res = sm.correr(ctx, log=lambda *_a: None)
+    finally:
+        for m, n, v in previos:
+            setattr(m, n, v)
+
+    assert atomicos == ["REM_SM_actividades_2026_08 (1).xlsx",
+                        "REM_SM_trabajo_perdido_2026_08 (1).xlsx",
+                        "REM_A03_D3_2026_08 (1).xlsx"], (
+        f"alguna salida no se escribio via temporal (escribir_atomico): {atomicos}")
+    assert res["salida"].name == "REM_SM_actividades_2026_08 (1).xlsx", (
+        f"la corrida no tomo el mismo `(1)` que el A03 que ya existia: {res['salida'].name}")
+    assert viejo.read_bytes() == b"D.3 de otra corrida", "piso el A03 de la corrida anterior"
+    texto = sm.resumen(res)
+    assert "NO se generó" in texto and "instrumento raro" in texto, (
+        f"el resumen calla que la D.3 no salio: {texto!r}")
+
+
+def test_a23_y_poblacion_tampoco_pisan_salidas():
+    """Mismo arreglo que SM, en las otras dos paginas que escriben: nada se pisa, y el
+    Rescate que falla se dice en el resumen de Poblacion (no solo en el log)."""
+    import tempfile
+    import pandas as pd
+    import modulos.rem_a23_respiratorio as a23m
+    import programas.poblacion as pob
+    import modulos.rem_sp_p6_poblacion as p6
+    import modulos.rem_sm_rescate_inasistentes as resc
+    import programas.rem_utils as ru
+    from gui.paginas import a23, poblacion
+
+    carpeta = Path(tempfile.mkdtemp(prefix="autorem_pag_"))
+    (carpeta / "REM_A23_2026_08_procesado.xlsx").write_bytes(b"viejo")
+    (carpeta / "REM_SM_Rescate_2026_08_BETA.xlsx").write_bytes(b"viejo")
+    P = pd.DataFrame({"¿Ingresado?": ["SI"]})
+
+    def rescate_falla(*_a, **_k):
+        raise ValueError("brecha rara")
+
+    escribe = lambda *a: Path(a[-1]).write_bytes(b"nuevo")   # noqa: E731
+    atomico, atomicos = ru.escribir_atomico, []
+    parches = [(ru, "escribir_atomico",
+                lambda s, fn: (atomicos.append(Path(s).name), atomico(s, fn))[1]),
+               (a23m, "procesar", lambda *_a, **_k: pd.DataFrame({"x": [1]})),
+               (a23m, "escribir", escribe),
+               (pob, "cargar_inscritos", lambda *_a, **_k: None),
+               (pob, "cargar_formulario_sm", lambda *_a, **_k: None),
+               (ru, "cargar_atenciones", lambda *_a, **_k: None),
+               (pob, "construir_poblacion", lambda *_a, **_k: P),
+               (p6, "construir_p6", lambda *_a, **_k: {"revisar_administrativo": [],
+                                                      "revisar_clinico": []}),
+               (p6, "escribir", escribe),
+               (resc, "procesar", rescate_falla)]
+    previos = [(m, n, getattr(m, n)) for m, n, _ in parches]
+    for m, n, v in parches:
+        setattr(m, n, v)
+    try:
+        ra = a23.correr({"mes": (2026, 8), "carpeta": carpeta, "atenciones": [],
+                         "otros_cronicos": [], "estratificacion": [], "nsp": []},
+                        log=lambda *_a: None)
+        rp = poblacion.correr({"mes": (2026, 8), "carpeta": carpeta,
+                               "inscritos": Path("insc.xlsx"), "formularios": [], "ada": []},
+                              log=lambda *_a: None)
+    finally:
+        for m, n, v in previos:
+            setattr(m, n, v)
+
+    assert ra["salida"].name == "REM_A23_2026_08_procesado (1).xlsx", ra["salida"].name
+    # El Rescate revienta DENTRO de procesar, antes de escribir: solo A23 y P6 pasan.
+    assert atomicos == ["REM_A23_2026_08_procesado (1).xlsx",
+                        "REM_SP_P6_2026_08_BETA (1).xlsx"], (
+        f"alguna salida no se escribio via temporal (escribir_atomico): {atomicos}")
+    # El Rescate viejo ocupa el nombre -> el P6 de ESTA corrida tambien va como (1).
+    assert rp["salida"].name == "REM_SP_P6_2026_08_BETA (1).xlsx", rp["salida"].name
+    assert (carpeta / "REM_SM_Rescate_2026_08_BETA.xlsx").read_bytes() == b"viejo"
+    assert "NO se generó" in poblacion.resumen(rp), "el resumen calla que el Rescate fallo"
+
+
+def test_un_click_encolado_no_abre_una_segunda_ventana_de_dotacion():
+    """`ctk.CTkToplevel(root)` hace un `update()` completo en su constructor (Windows),
+    asi que un click que quedo encolado mientras se cargaba el ADA se despacha DENTRO
+    del dialogo de dotacion de `preparar`. Sin candado, un «Revisar»/«Precargar
+    dotación…» se abria anidado con su propia copia de la tabla, y el 'Aplicar' de
+    afuera pisaba lo guardado adentro (y la corrida usaba la tabla vieja).
+
+    El dialogo se reemplaza por uno falso que hace lo mismo que el constructor de
+    CTkToplevel: despachar esos clicks. La premisa (que CTkToplevel de verdad los
+    despacha) la amarra `test_gui_construccion`."""
+    import pandas as pd
+    import programas.rem_utils as ru
+    from programas import dotacion
+    from gui import dialogos
+
+    lecturas, logs, anidadas = [], [], {}
+    ada = pd.DataFrame({"ACT_n": ["X"]})
+    fila = pd.DataFrame({"funcionario": ["ANA SOTO"], "estamento": ["PSICOLOGO"],
+                         "n_atenciones": [3]})
+
+    def dialogo_falso(root, tabla, modulo, filas, **_kw):
+        if anidadas:
+            return
+        anidadas["en_curso"] = True
+        anidadas["precargar"] = dialogos.dotacion_ada(
+            None, "sm", ["ada.xlsx"], (2026, 8), logs.append, None, todos=True)
+        dialogos.revisar_dotacion(None)
+
+    parches = [
+        (ru, "cargar_atenciones", lambda *_a, **_k: (lecturas.append("ada"), ada)[1]),
+        (ru, "filtrar_mes", lambda d, *_a, **_k: d),
+        (dotacion, "cargar", lambda *_a, **_k: {"funcionarios": {}, "omitidos": {}}),
+        (dotacion, "evidencia", lambda *_a, **_k: fila),
+        (dotacion, "nuevos", lambda ev, *_a: ev),
+        (dialogos, "dialogo_dotacion", dialogo_falso),
+        (dialogos, "_revisar_dotacion", lambda *_a, **_k: lecturas.append("revisar")),
+    ]
+    previos = [(m, n, getattr(m, n)) for m, n, _ in parches]
+    for m, n, v in parches:
+        setattr(m, n, v)
+    try:
+        d, tabla = dialogos.dotacion_ada(None, "sm", ["ada.xlsx"], (2026, 8),
+                                         logs.append, None)
+    finally:
+        for m, n, v in previos:
+            setattr(m, n, v)
+
+    assert anidadas.get("en_curso"), "el dialogo falso no se abrio: el test no prueba nada"
+    assert lecturas == ["ada"], (
+        f"un click encolado entro a otra ventana de dotacion anidada: {lecturas}")
+    assert anidadas["precargar"] == (None, None), "el Precargar anidado no aborto"
+    assert any("ya hay una ventana" in m for m in logs), "el aborto no se dijo en el log"
+    assert d is ada and tabla is not None, "la ventana de afuera no termino normal"
+    assert dialogos._DOTACION_ABIERTA[0] is False, "el candado quedo tomado"
+
+
+class _MbAvisos:
+    def __init__(self):
+        self.vistos = []
+
+    def showwarning(self, titulo, mensaje):
+        self.vistos.append((titulo, mensaje))
+
+
+def test_los_avisos_de_cache_se_muestran_al_cerrar_los_dialogos_de_dotacion():
+    """Un caché dañado o que no se pudo guardar tiene que VERSE (no solo el log, que en
+    el exe --windowed no ve nadie): `avisar_cache` junta todos en UN dialogo, y los
+    dialogos de dotacion (Precargar/Procesar y Revisar) lo llaman al cerrarse."""
+    import tkinter.messagebox as tkmb
+    import programas.rem_utils as ru
+    from gui import dialogos, runner
+
+    ru.tomar_avisos_cache()
+    mb = _MbAvisos()
+    runner.avisar_cache(mb)
+    assert mb.vistos == [], "sin avisos no se muestra nada"
+
+    def empuja(*_a, **_k):
+        ru._avisar_cache(lambda *_: None, "No pude guardar la tabla de dotación")
+        return None, None
+    previos = (dialogos._dotacion_ada, dialogos._revisar_dotacion, tkmb.showwarning)
+    revisar = _MbAvisos()
+    dialogos._dotacion_ada = empuja
+    dialogos._revisar_dotacion = empuja
+    tkmb.showwarning = revisar.showwarning
+    try:
+        dialogos.dotacion_ada(None, "sm", [], (2026, 8), lambda *_: None, mb)
+        dialogos.revisar_dotacion(None)
+    finally:
+        dialogos._dotacion_ada, dialogos._revisar_dotacion, tkmb.showwarning = previos
+    assert len(mb.vistos) == 1 and "No pude guardar" in mb.vistos[0][1], mb.vistos
+    assert len(revisar.vistos) == 1, "Revisar dotación no mostro el aviso de caché"
+    assert ru.tomar_avisos_cache() == [], "quedaron avisos sin mostrar"
 
 
 def test_construye_todas_las_paginas_sin_excepcion():

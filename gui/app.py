@@ -231,7 +231,8 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
                     return None
                 ctx[inp["key"]] = p
             else:
-                ctx[inp["key"]] = Path(valor) if (valor or "").strip() else None
+                limpia = runner.limpiar_ruta(valor)   # comillas de 'Copiar como ruta'
+                ctx[inp["key"]] = Path(limpia) if limpia else None
 
     if get_mes:
         # valida_mes y no solo `is None`: el Spinbox acota sus flechas, no lo tecleado
@@ -307,6 +308,9 @@ class App(ctk.CTk):
         self._frames = {}         # id -> CTkFrame ya construido (perezoso)
         self._logs = {}           # id -> log(msg) (existe recien tras construir la pagina)
         self._botones_sidebar = {}
+        # Corridas con el worker vivo (todas las paginas): ver `_al_cerrar`.
+        self._corridas = 0
+        self.protocol("WM_DELETE_WINDOW", self._al_cerrar)
 
         self._construir_sidebar()
 
@@ -387,6 +391,23 @@ class App(ctk.CTk):
         if ctk.get_appearance_mode() == "Dark":
             switch_oscuro.select()
         switch_oscuro.pack(anchor="w", padx=6, pady=(2, 10))
+
+    def _al_cerrar(self):
+        """La X de la ventana. El worker es un hilo `daemon`: al cerrar, el proceso
+        termina y lo mata donde este, aunque sea escribiendo el .xlsx. Sin corridas
+        vivas cierra de una; con alguna, pregunta (con «No» por defecto). No es un
+        timeout: esperar a que termine sola puede ser un minuto con la ventana
+        congelada, y matarla sin avisar es perder la corrida sin saberlo. Lo que un
+        corte deje a medias es un `… .escribiendo.xlsx` (rem_utils.escribir_atomico),
+        nunca un resultado roto con nombre de resultado."""
+        if self._corridas and not messagebox.askyesno(
+                "Hay una corrida en curso",
+                "autoREM todavía está procesando. Si cierras ahora, la corrida se corta "
+                "y su resultado NO se guarda (a lo más queda un «….escribiendo.xlsx» a "
+                "medio escribir, que puedes borrar).\n\n¿Cerrar igual?",
+                icon="warning", default="no"):
+            return
+        self.destroy()
 
     def _alternar_tema(self):
         nuevo = "dark" if ctk.get_appearance_mode() == "Light" else "light"
@@ -561,19 +582,41 @@ class App(ctk.CTk):
                 except Exception as e:   # noqa: BLE001  (hilo GUI: sin esto Tk se lo traga)
                     ctx = None
                     runner.manejar_error(e, log, messagebox)
+                runner.avisar_cache(messagebox)   # `preparar` carga/guarda la dotacion
                 if ctx is None:   # abortado (ADA ilegible, mes vacio) o reventado
                     btn.configure(state="normal")   # el usuario tiene que poder reintentar
                     return
+
+            # Los inputs TAL COMO estaban al arrancar. Durante la corrida solo se
+            # deshabilita Procesar: el usuario puede elegir otro archivo mientras el
+            # worker trabaja, y `al_completar` pintaba entonces el veredicto de fuente
+            # de ESTA corrida al lado de un archivo que ya no es el suyo (banner verde
+            # «IRIS completo» junto a un Monitoreo recien elegido) -- mismo patron que
+            # runner.Canal. Se compara el valor CRUDO de cada getter, asi tambien cuenta
+            # una ruta tecleada, que no dispara `al_elegir`.
+            inicio = {inp["key"]: getters[inp["key"]]() for inp in inputs}
 
             def trabajo(log_hilo):
                 return pantalla["correr"](ctx, log_hilo)
 
             def al_terminar(res, err):
+                self._corridas -= 1   # primero: el worker ya termino, pase lo que pase abajo
                 if err is not None:
                     runner.manejar_error(err, log, messagebox)
+                    runner.avisar_cache(messagebox)
                     return
+                # El worker puede haber leido/guardado un caché (estamentos, dotacion).
+                runner.avisar_cache(messagebox)
+                cambiados = [k for k, v in inicio.items() if getters[k]() != v]
                 try:
-                    if pantalla.get("al_completar"):
+                    if cambiados and pantalla.get("al_completar"):
+                        banner = datos.get("banner_fuente")
+                        if banner is not None:
+                            banner.ocultar()
+                        log("[fuente] cambiaste un archivo mientras corría: no pinto el "
+                            "veredicto de fuente, describiría archivos que ya no son los "
+                            "elegidos. El resultado SÍ es de los archivos con que partió.")
+                    elif pantalla.get("al_completar"):
                         # Hilo GUI, simetrico de `preparar` pero DESPUES del worker
                         # (SS5.1 del plan): p.ej. actualizar un BannerFuente con
                         # formatos.clasificar_fuente, que solo se sabe una vez que
@@ -589,6 +632,7 @@ class App(ctk.CTk):
                         "Listo", texto + "\n\n¿Abrir la carpeta del resultado?"):
                     runner.abrir_carpeta(carpeta)
 
+            self._corridas += 1
             runner.correr_con_reloj(self, barra_botones, btn, log, trabajo, al_terminar)
 
         btn.configure(command=on_procesar)

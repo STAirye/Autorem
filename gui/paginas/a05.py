@@ -78,8 +78,13 @@ def bloque_archivo_formato(frame, pagina):
     # `detectar_ahora()` (lo llama `preparar`) resuelve en el hilo GUI.
     estado = {"ruta": None, "categoria": None, "error": None}
 
+    def _ruta_caja():
+        # Una sola lectura de la caja para detectar, comparar y validar: con comillas
+        # (Copiar como ruta de Windows) la deteccion abria OTRA ruta que la validada.
+        return runner.limpiar_ruta(var_ruta.get())
+
     def _aplicar(categoria, ruta, error=None):
-        if ruta != var_ruta.get().strip():
+        if ruta != _ruta_caja():
             return          # resultado de una eleccion ya reemplazada: se descarta
         estado["ruta"] = ruta
         estado["categoria"] = categoria
@@ -106,23 +111,23 @@ def bloque_archivo_formato(frame, pagina):
         arreglos DISTINTOS que un `except Exception` generico aplastaba en uno solo
         ("Formato no reconocido"), culpando al contenido del export.
 
-        `read_only=True` + `islice` y NUNCA `max_row`: esa es la disciplina de
-        `rem_utils.leer_xlsx` y `verificar_hoja_unica` para sobrevivir a la
-        <dimension> rota o ausente que RAYEN trae a veces. Asi el click cuesta ~60
-        filas en vez de parsear el export completo (lo que hacia que la corrida
-        leyera el archivo entero DOS veces: aca y despues en `sm.abrir_validado`)."""
-        from itertools import islice
-        import openpyxl
+        Lee solo las primeras MAX_FILAS_HEADER filas: el click cuesta ~60 filas en
+        vez de parsear el export completo (lo que hacia que la corrida leyera el
+        archivo entero DOS veces: aca y despues en `sm.abrir_validado`). Con
+        `abrir_xlsx_ro` y no un `read_only=True` pelado: ese modo acota la lectura a
+        la <dimension> del .xlsx, y con la etiqueta rota el encabezado llegaba con
+        UNA columna -> un IRIS valido salia 'Formato no reconocido'."""
         from programas.formatos import MAX_FILAS_HEADER
-        wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+        from programas.rem_utils import abrir_xlsx_ro, filas_hoja
+        wb = abrir_xlsx_ro(ruta)
         try:
-            filas = list(islice(wb.active.iter_rows(values_only=True), MAX_FILAS_HEADER))
+            filas = filas_hoja(wb.active, MAX_FILAS_HEADER)
         finally:
             wb.close()
         return sm.detectar_formato_filas(filas)
 
     def _detectar(ruta):
-        ruta = (ruta or "").strip()
+        ruta = runner.limpiar_ruta(ruta)
         banner.mostrar("detectando", "Detectando formato...")
 
         # runner.en_hilo y NO frame.after(0,...) desde el hilo: Tk.after no es
@@ -135,7 +140,7 @@ def bloque_archivo_formato(frame, pagina):
         todavia no hay categoria para ELLA. La llama `preparar` justo antes de
         procesar: cubre la ruta tecleada/pegada/precargada, que no dispara
         `on_elegido`. Devuelve (categoria, error) -- ver `get()`."""
-        ruta = var_ruta.get().strip()
+        ruta = _ruta_caja()
         if ruta and estado["ruta"] != ruta:
             try:
                 _aplicar(_leer_categoria(ruta), ruta)
@@ -149,14 +154,14 @@ def bloque_archivo_formato(frame, pagina):
 
     # Ruta PRECARGADA (arrastrar el .xlsx sobre el exe, `pagina.datos['ruta_inicial']`):
     # se pinta y se detecta como si la hubiera elegido el usuario.
-    inicial = (pagina.datos.get("ruta_inicial") or "").strip()
+    inicial = runner.limpiar_ruta(pagina.datos.get("ruta_inicial"))
     if inicial:
         var_ruta.set(inicial)
         _detectar(inicial)
 
     def get():
         # `categoria`/`error` solo valen si son los de la ruta que HOY esta en la caja.
-        ruta = var_ruta.get().strip()
+        ruta = _ruta_caja()
         vigente = estado["ruta"] == ruta
         return {"ruta": ruta,
                 "categoria": estado["categoria"] if vigente else None,

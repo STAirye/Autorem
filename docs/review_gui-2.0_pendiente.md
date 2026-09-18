@@ -22,8 +22,11 @@ Este archivo es la única memoria. Por eso:
 4. **Por qué de a uno:** el primer intento fue 12 agentes en paralelo y los 12 murieron
    al arrancar (límite de gasto de la API, HTTP 429), sin entregar nada. No reintentar
    el fan-out.
-5. Estado del árbol: **todo sin commit**, en el working tree de `gui-2.0`, versión
-   **1.9.17**, **206 tests verdes**.
+5. Estado del árbol: las rondas 1-4 están en **`fd1b0cc`, un commit de RESPALDO**
+   (pusheado a `origin/gui-2.0` solo para no tener 5k líneas sin copia remota; **no es
+   un release**: la versión sigue en **1.9.17** y la entrada del CHANGELOG sigue
+   abierta — no reportar eso como hallazgo). Las rondas 5 y 6 están sin commit encima.
+   **237 tests verdes.**
 
 **Foco original pedido** (sigue vigente para lo que falte): el **bug recurrente de
 c38a8cc** — un export con 0 filas de datos que pasa el loader y revienta abajo con un
@@ -35,7 +38,7 @@ todos los loaders conocidos; si aparece uno nuevo, va ahí.
 
 ## §1 — YA CORREGIDO. No volver a reportar
 
-41 hallazgos en 4 rondas con resultado (la 0 entregó cero). Todo verificado con
+55 hallazgos en 6 rondas con resultado (la 0 entregó cero). Todo verificado con
 tests; ver §3.
 
 ### §1.A · Bug recurrente «0 filas» — cerrado en TODOS los loaders conocidos
@@ -211,7 +214,9 @@ orden declarado gane igual.
   traga) → ahora pasan por `manejar_error`.
 - Detección de formato del A05 con `read_only=True`: la `<dimension>` ausente o rota de
   RAYEN hacía **rechazar un archivo válido**. Ahora sin `read_only`, igual que
-  `sm.abrir_validado`, que es quien procesa después.
+  `sm.abrir_validado`, que es quien procesa después. **[Superado:** la ronda 4 volvió a
+  `read_only` para leer solo el encabezado (§1.E-bis) y reabrió este bug; la ronda 5 lo
+  cerró de verdad con `rem_utils.abrir_xlsx_ro`, ver §1.F.**]**
 - Banner / acuse / caja de cuestionarios se empacaban tarde y quedaban **bajo el botón
   Procesar** → `pack(after=…)`.
 - SM solo-cuestionarios: la salida (que lleva RUT) iba al cwd, o sea **al repo** →
@@ -285,6 +290,122 @@ Arreglo: `formatos.detectar_eje_filas` (mismo veredicto, sobre filas ya leídas)
 La detección lee con `read_only=True` + `islice(..., MAX_FILAS_HEADER)`. Tests que amarran
 que el atajo **no cambie la respuesta** sobre los dos exports A05 reales del repo.
 
+> ⚠ **La premisa de esta sección era FALSA** (la cazó la ronda 5, §1.F). En modo
+> `read_only`, `iter_rows` **también** sale de la `<dimension>`: `_cells_by_row` hace
+> `max_row = max_row or self.max_row` y corta ahí. «Nunca `max_row`» no protegía de
+> nada, y `leer_xlsx`/`verificar_hoja_unica` no eran robustos: truncaban callados. Este
+> arreglo reabrió el bug que §1.D ya había cerrado; los dos exports reales del repo
+> traen la `<dimension>` bien, así que sus tests no lo podían ver. Lección: un test de
+> «robusto a X» tiene que **fabricar X** y comprobar que el fixture de verdad lo arma.
+
+### §1.F · Trazado entre archivos (ronda 5)
+
+Ángulo C: cada llamada de `gui/` hacia `programas/`/`modulos/`/`autorem.py`/`tools/`,
+contra la firma, la forma de retorno, las excepciones y las precondiciones del callee.
+Cinco hallazgos, los cinco corregidos y con test mutado (10 mutantes, 10 cazados).
+
+1. **`rem_utils.leer_xlsx` truncaba EN SILENCIO con la `<dimension>` rota** — el peor.
+   `A1:D5` en una hoja de 10 filas → 4, sin error. Es el cuello de botella del grupo
+   pandas (ADA, grupal, NSP, Otros y Respi, Inscritos, Multiprofesional): conteo de MENOS
+   con cara de legítimo. Su docstring decía lo contrario, y culpaba a pandas, que lee
+   las 10 (llama `reset_dimensions()` por dentro). Arreglo: **`rem_utils.abrir_xlsx_ro`**
+   (read_only + `reset_dimensions()` en cada hoja) + **`filas_hoja`** (rellena al mismo
+   ancho, porque sin `<dimension>` las filas llegan desparejas). **Regla: toda lectura
+   `read_only` pasa por ahí** (anotada en `programas/CLAUDE.md`). Cubre también
+   `verificar_hoja_unica` (una tabla dinámica fuera de la `<dimension>` de su hoja
+   pasaba por vacía), `catalogos._hojas` y **`tools/scan_catalogo`** — un RUT fuera de
+   la etiqueta **pasaba el escaneo de PII** del About.
+2. **`a05._leer_categoria` rechazaba un IRIS válido con la `<dimension>` rota** (y
+   `sm._header_rapido` no acusaba el cruce). Regresión de la ronda 4, ver el ⚠ de
+   §1.E-bis. Mismo arreglo.
+3. **`rem_utils.cargar_canonico` clasificaba la FUENTE mirando solo el PRIMER archivo**
+   (`col0`). [IRIS, Monitoreo] → «plena», banner VERDE y sin aviso en LEEME sobre filas
+   sin demografía; [Monitoreo, IRIS] → «parcial». Ahora por archivo, gana el peor, y
+   `attrs['fuente_mezcla']` + `formatos.aviso_fuente(archivos=)` nombran los afectados y
+   dicen que lo suyo sale de MENOS (no en 0).
+4. **Ruta pegada con comillas en el A05** («Copiar como ruta de acceso» de Windows):
+   `valida_ruta` las sacaba, la detección no → `InvalidFileException` → «No es un .xlsx
+   real» sobre un archivo perfecto. **`runner.limpiar_ruta`**, usado por la validación,
+   la detección (`_ruta_caja`) y los inputs opcionales de `_resolver_ctx`.
+5. **Funcionario SIN estamento** → el diálogo de dotación lo mostraba como el grupo
+   «(sin estamento)», cuyo «Omitir» no guardaba nada (`dotacion.omitir` descarta la
+   clave vacía) aunque el grupo desaparecía. **Decisión del autor:** RAYEN no puede
+   registrar eso, así que es un export modificado → **`rem_utils.exigir_estamento`** en
+   `cargar_atenciones`, `ArchivoInvalido('sin_estamento')` nombrando a quién. Sobre la
+   FUENTE (§3.1), no en el diálogo. Una fila sin funcionario no dispara.
+
+**Revisado y NO era bug** (ronda 5): firmas/retornos/attrs de `_correr_tareas`,
+`_resumen_texto`, `buscar_tarea`, `perfil_por_id`, `smact.procesar` (`d=` es el ADA
+COMPLETO, que es lo que devuelve `dotacion_ada`), `tpmod.procesar` (maestro como str),
+`procesar_unificado`, `tabla_efectiva`, `a23.procesar` + `seccion_g`, `rescate.procesar`
+con DataFrames precargados + `P`/`fuentes`, `dotacion.evidencia`/`nuevos`/`por_estamento`.
+`ArchivoInvalido` hereda de `Exception` (no de `ValueError`), así que los
+`except ValueError` de `trans_map`/Multiprofesional no lo tragan. `maestro_slim.csv.gz`
+en `catalogos/` no confunde a `catalogos.cargar`/`fuentes` (buscan por nombre).
+`tools.scan_catalogo` se empaqueta, y el hook que importa no tiene efectos al importar.
+
+### §1.G · Trampas de Tk / customtkinter / hilos (ronda 6)
+
+Ángulo D (trampas de lenguaje y framework). customtkinter **6.0.0 SÍ está instalado**
+en el Python 3.9 local (`site-packages/customtkinter`): se verificó contra su fuente,
+no de memoria. Nueve corregidos, con test mutado (37 mutantes, 37 cazados).
+
+1. **`dialogos.dialogo_dotacion` → `ctk.CTkToplevel(root)` hace un `update()` COMPLETO
+   en su constructor** (Windows, `_windows_set_titlebar_color`: withdraw + update). Eso
+   despachaba los clicks encolados durante la carga del ADA, y **reabría el agujero de
+   §1.B** que `update_idletasks()` había cerrado. Solo Procesar estaba deshabilitado: un
+   «Revisar/Precargar dotación…» se abría ANIDADO con otra copia de la tabla; el
+   «Aplicar» de afuera (`dotacion.guardar` escribe el dict entero) revertía lo de
+   adentro, y la corrida usaba la tabla vieja (externo → interno, doble conteo).
+   Arreglo: candado `_DOTACION_ABIERTA` en `dotacion_ada` y `revisar_dotacion`. **Ojo:
+   cualquier `CTkToplevel` bombea eventos**; un modal nuevo necesita el mismo cuidado.
+   Premisa amarrada por `test_ctktoplevel_despacha_los_clicks_encolados`.
+2. **`widgets.etiqueta_envolvente` escalaba el `wraplength` DOS veces**: `e.width` ya
+   viene escalado y `CTkLabel.configure(wraplength=)` aplica `_apply_widget_scaling`. Al
+   150% de Windows el texto pedía 787 px en una caja de 570 y se cortaba (incluido el
+   mensaje del BannerFuente). Arreglo: `_reverse_widget_scaling`.
+3. **`app.on_procesar`: el banner de fuente se pintaba aunque los inputs hubieran
+   cambiado DURANTE la corrida** (solo Procesar se deshabilita). Arreglo: foto de los
+   getters al arrancar; si difieren al terminar, no se pinta y se dice en el log.
+4. **`sm._chequeo_cruce` sin descarte de resultados viejos**, el gemelo de la carrera
+   del A05 (§1.B): pintaba el hilo que terminara último, y «Quitar» con un hilo en vuelo
+   dejaba el banner rojo sobre una casilla vacía. Arreglo: `runner.Canal` +
+   `en_hilo(..., canal=)`. **El patrón** (resultado asíncrono pintado sobre una
+   pantalla que ya cambió) está documentado en `runner.Canal`, con sus tres apariciones.
+5. **Un paso opcional que fallaba solo se decía en el log** (A03·D.3 dentro de SM,
+   Trabajo Perdido, Rescate), y la salida de una corrida ANTERIOR del mismo mes seguía
+   ahí con el mismo nombre. Arreglo, por decisión del autor: **las salidas nunca se
+   sobreescriben** (`rem_utils.rutas_libres`: toda la corrida sale como `… (n)` con el
+   MISMO número), y el resumen dice «NO se generó (motivo)».
+6. **Cerrar la ventana con una corrida viva** la mataba sin avisar (worker `daemon`,
+   sin `WM_DELETE_WINDOW`), incluso escribiendo el `.xlsx`. Arreglo, sin timeout:
+   `App._al_cerrar` pregunta si hay corridas vivas (`App._corridas`, «No» por defecto),
+   y **toda salida se escribe vía `rem_utils.escribir_atomico`** (temporal +
+   `os.replace`): un corte deja un `….escribiendo.xlsx`, nunca un `.xlsx` roto con
+   nombre de resultado.
+7. **`rem_utils.verificar_hoja_unica`: `wb.close()` sin `finally`** — una excepción a
+   mitad de la lectura dejaba el export bloqueado mientras seguía abierto el diálogo.
+8. **`dotacion.guardar` / `estamentos.guardar_cache` fallaban CALLADO** (el `print` no se
+   ve en el exe), y **leer un caché dañado daba tabla vacía** → todos los externos
+   volvían a contar. Arreglo (segunda pasada, encolada por el autor):
+   `rem_utils.leer_cache_json` / `guardar_cache_json` / `apartar_cache` + la cola
+   `_AVISOS_CACHE` que la GUI muestra (`runner.avisar_cache`, al cerrar los diálogos de
+   dotación, tras `preparar` y al terminar cada corrida).
+   - Dañado → se aparta como `.corrupto-<fecha>.json`.
+   - Ilegible → NO se sobreescribe.
+   - Bloqueo pasajero → se reintenta.
+   - Escritura vía temporal.
+   - Re-leer y fusionar al guardar (`dotacion._persistir`, `quitar_omision`).
+
+   **Decisión: sin carpeta de respaldo** (partiría la tabla en dos). «Acerca de» →
+   «Preferencias guardadas» + una línea en cada caja (`dialogos.REF_PREFERENCIAS`). El
+   perfil temporal de Windows NO se puede detectar desde adentro: por eso la sección
+   muestra dónde está el caché y cuándo se guardó.
+9. **La suite pisaba el `~/.autorem/dotacion.json` REAL** —
+   `test_externos_delta_y_detalle_conserva_filas` guardaba sin redirigir, y corría antes
+   que el único test que redirigía. Arreglo: `tests/_aislar_cache.py`, importado primero
+   por todo test, y `test_todos_los_tests_aislan_el_cache_del_usuario` lo exige.
+
 ### §1.E · Estructura y versionado
 
 - **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
@@ -325,11 +446,13 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 
 ## §3 — Verificación (estado actual)
 
-- **206 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3).
-  `check_version` OK (1.9.17, 206 tests), `check_cp1252` OK (59 archivos).
+- **237 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
+  206 tras la 4, 215 tras la 5). `check_version` OK (1.9.17, 237 tests), `check_cp1252`
+  OK (60 archivos).
 - Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
   **dos** test files que antes no se podían correr ahora corren.
-  `test_formatos_fuente` 25/25 · `test_gui_registro` 15/15.
+  `test_formatos_fuente` 33/33 · `test_gui_registro` 19/19 · `test_gui_construccion`
+  19/19 · `test_autorem` 19/19 · `test_dotacion` 14/14 · `test_estamentos` 7/7.
 - **Tests nuevos (23):** `test_gui_construccion.py` (8: construcción de las 6 páginas,
   ruta precargada del A05, `detectar_ahora`, vaciar un input múltiple, solo-cuestionarios
   alcanzable tras un ADA elegido por error, banner de fuente que no sobrevive al cambio
@@ -347,6 +470,14 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
   exports A05 reales, y le alcanza el encabezado).
   **De la primera pasada, 2 sobrevivieron a la mutación** (probaban la pieza suelta, no
   el cableado) y se rehicieron — ver §1.C-ter y §1.D-bis.
+- **Tests de la ronda 5 (9):** `test_formatos_fuente.py` (6, 7 casos: `leer_xlsx` no
+  trunca; `verificar_hoja_unica` ve la hoja extra; detección A05 sobre el IRIS real con
+  la `<dimension>` en `A1`; el escaneo de PII ve un RUT fuera de la etiqueta; el catálogo
+  se lee entero; fuente multi-archivo igual en los dos órdenes) · `test_gui_construccion.py`
+  (2: la PÁGINA del A05 y el preview del SM con la `<dimension>` rota; ruta con comillas)
+  · `test_dotacion.py` (1: `sin_estamento`). Cada test de `<dimension>` comprueba
+  **primero** que el fixture arma la trampa (un read_only pelado sí trunca), para no
+  quedar verde por un fixture que dejó de reproducirla.
 - **Un test cambió de expectativa a propósito:**
   `test_a23::test_export_sin_filas_falla_claro` esperaba `mes_vacio` y ahora corta antes
   con `sin_datos`, nombrando el archivo. Es la guarda más temprana y más precisa, no un
@@ -362,6 +493,13 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 ---
 
 ## §4 — QUÉ FALTA
+
+### Para probar a mano (ronda 6)
+
+- **El caché que no se puede escribir, en el PC del trabajo** (el autor lo va a probar en
+  OTRO perfil, no en el suyo): quitarle la escritura a `~/.autorem`, procesar SM con
+  dotación, y confirmar el diálogo + la línea «NO se puede escribir» en «Acerca de».
+  Mismo ejercicio con un `dotacion.json` dañado a mano.
 
 ### Lo que no se puede automatizar (no es para un agente)
 
@@ -502,7 +640,9 @@ listados en §4.
 | 3 | **Ángulo A — barrido LÍNEA POR LÍNEA del diff** (todo `gui/`, `tools/check_version.py`, `tools/slim_maestro.py`, `autoREM.spec`, hunk de `programas/poblacion.py`), con las firmas de cada callee verificadas contra `programas/`+`modulos/` | 6: **5 ✅** + 1 ⏸ al merge | §1.D (5) · §4 deuda (el `.spec`) |
 | 3b | **A OJO, el autor corriendo `python -m gui.app`** — lo que ningún test ve. Dio los 2 hallazgos de layout del sidebar, con la misma causa raíz (posición = orden de ejecución) | 2 ✅ | §1.C-bis |
 | 4 | **Ángulo B — auditor de comportamiento REMOVIDO**: (a) cada línea que el diff borra o reemplaza (`.gitignore`, el rename del maestro slim, `autoREM.spec`, `tools/slim_maestro.py`) → ¿qué invariante sostenía y dónde se re-establece?; (b) cada página portada contra su `_tab_*` original en `autorem.py` (`_tab_a05`, `_tab_a23`, `_tab_sm`, `_tab_a03`, `_tab_beta`, `_correr_con_reloj`, `_manejar_error`, `_valida_ruta`/`_valida_carpeta`, los helpers de dotación/estamentos, y el selector de perfil que se eliminó) → ¿qué guarda, validación, aviso, `try`, línea de log, default o argumento se cayó? | 7: **4 ✅** + 1 ⏸ (utils/skill) + 1 ⏸ (CLI congelado) + 1 ✅ del ángulo A pendiente | §1.C-ter · §1.D-bis · §1.E-bis · §4 deuda (2) |
-| 5 | _(siguiente: quedan reuso/simplificación/altitud, convenciones —headers de versión del resto de `gui/`—, y otra pasada a ojo del autor)_ | | |
+| 5 | **Ángulo C — trazado entre archivos**: cada llamada de `gui/` a `programas/`/`modulos/`/`autorem.py`/`tools/` contra firma, retorno, attrs, excepciones y precondiciones del callee; y al revés, los consumidores de lo que el diff cambió (`cargar_inscritos`, `catalogos/`). Con repros empíricos (`<dimension>` fabricada, ADA mixto IRIS+Monitoreo, ruta con comillas) | 5 ✅ (1 era regresión de la ronda 4) | §1.F |
+| 6 | **Ángulo D — trampas de lenguaje/framework**: thread-safety de Tk, re-entrada de eventos, excepciones en callbacks, closures, fugas de recursos, pandas, customtkinter (contra su fuente 6.0.0 instalada), rutas de Windows. Con repros empíricos (click encolado despachado dentro de `CTkToplevel`, `wraplength` a 150%) | 9 ✅ (1 era la suite pisando el caché real) | §1.G |
+| 7 | _(siguiente: quedan reuso/simplificación/altitud, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es

@@ -78,11 +78,14 @@ def _header_rapido(ruta, max_scan=40):
     encabezado, leyendo SOLO las primeras `max_scan` filas -- el preview de
     cruce (SS5.1 del plan) no necesita el archivo completo, y un ADA de un
     anio puede ser grande. Mismo heuristico que `rem_utils.leer_xlsx` sin
-    ancla (>3 celdas llenas), pero sin leer el resto del archivo."""
-    import openpyxl
-    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    ancla (>3 celdas llenas), pero sin leer el resto del archivo. Con
+    `abrir_xlsx_ro`: un `read_only=True` pelado acota la lectura a la <dimension>
+    del .xlsx, y con la etiqueta rota el encabezado llegaba mocho y el cruce ADA<->
+    Grupal no se acusaba nunca."""
+    from programas.rem_utils import abrir_xlsx_ro, filas_hoja
+    wb = abrir_xlsx_ro(ruta)
     try:
-        filas = [list(r) for r in wb.active.iter_rows(values_only=True, max_row=max_scan)]
+        filas = [list(r) for r in filas_hoja(wb.active, max_scan)]
     finally:
         wb.close()
     return next((r for r in filas if sum(v not in (None, "") for v in r) > 3),
@@ -97,9 +100,13 @@ def _chequeo_cruce(frame, pagina, espera):
     (`formatos.parece_reporte`: nunca un falso positivo sin evidencia)."""
     banner = widgets.BannerFuente(frame)
     nombres = {"ada": "Atenciones/Diag/Activ (ADA)", "grupal": "Atenciones Grupales"}
+    # Solo pinta el hilo de la ULTIMA eleccion (ver runner.Canal): sin esto, el
+    # veredicto de un archivo ya reemplazado -- o ya quitado -- quedaba pintado.
+    canal = runner.Canal()
 
     def on_elegido(archivos):
         if not archivos:
+            canal.invalidar()   # un hilo en vuelo no puede volver a encender el banner
             banner.ocultar()
             return
 
@@ -119,7 +126,8 @@ def _chequeo_cruce(frame, pagina, espera):
         # thread-safe (ver la nota en runner.en_hilo). Un archivo raro revienta en
         # `trabajo` -> llega como `err` y NO se acusa nada (nunca un falso positivo).
         runner.en_hilo(frame, trabajo,
-                       lambda otro, err: _aplicar(otro if err is None else None))
+                       lambda otro, err: _aplicar(otro if err is None else None),
+                       canal=canal)
     return on_elegido
 
 
@@ -216,17 +224,27 @@ def correr(ctx, log):
     import modulos.rem_a03_d3_instrumentos as screening
     import programas.estamentos as estam
     from gui.runner import slim_por_defecto
+    from programas.rem_utils import rutas_libres, escribir_atomico
 
     y, m = ctx["mes"]
     carpeta = ctx["carpeta"]
     a03 = ctx["a03"]
     res = {"mes": (y, m), "solo_a03": ctx["solo_a03"], "salida": None,
            "salida_a03": None, "n_tp": None, "n_a03": None, "por_inst_a03": None,
-           "E": None}
+           "E": None, "fallo_tp": None, "fallo_a03": None}
+
+    # Los nombres de TODA la corrida se resuelven juntos, antes de escribir nada: si
+    # alguno ya existe, todos llevan el mismo `(n)` (ver rem_utils.rutas_libres).
+    salidas = {}
+    if not ctx["solo_a03"]:
+        salidas["sm"] = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
+        salidas["tp"] = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+    if a03["incluir"] and a03["instrumentos"]:
+        salidas["a03"] = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
+    salidas = dict(zip(salidas, rutas_libres(*salidas.values())))
 
     if not ctx["solo_a03"]:
-        salida = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
-        salida_tp = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+        salida, salida_tp = salidas["sm"], salidas["tp"]
         inscritos = ctx["inscritos"][0] if ctx["inscritos"] else None
         multiprofesional = ctx["multiprofesional"][0] if ctx["multiprofesional"] else None
         maestro = ctx["maestro"][0] if ctx["maestro"] else slim_por_defecto()
@@ -234,7 +252,8 @@ def correr(ctx, log):
         E = smact.procesar(ctx["ada"], grupal=ctx["grupal"], inscritos=inscritos,
                            multiprofesional=multiprofesional, mes=(y, m), log=log,
                            d=ctx["d"], dotacion_tabla=ctx["tabla_dot"])
-        smact.escribir(E, salida)
+        # Temporal + rename (rem_utils.escribir_atomico): un corte no deja un .xlsx roto.
+        escribir_atomico(salida, lambda p: smact.escribir(E, p))
         res["E"] = E
         res["salida"] = salida
 
@@ -248,15 +267,16 @@ def correr(ctx, log):
         try:
             import modulos.rem_sm_trabajo_perdido as tpmod
             Etp = tpmod.procesar(ctx["ada"], maestro=maestro, mes=(y, m), log=log, d=ctx["d"])
-            tpmod.escribir(Etp, salida_tp)
+            escribir_atomico(salida_tp, lambda p: tpmod.escribir(Etp, p))
             res["n_tp"] = len(Etp)
             log(f"OK Trabajo perdido: {len(Etp)} atenciones a saco roto -> {salida_tp.name}")
         except Exception as e:   # noqa: BLE001
+            res["fallo_tp"] = str(e)   # el resumen lo dice: no basta con el log
             log(f"[tp] no se generó el reporte de trabajo perdido: {e}")
 
     if a03["incluir"]:
         if a03["instrumentos"]:
-            salida_a03 = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
+            salida_a03 = salidas["a03"]
 
             def _correr_a03():
                 # El nombre del archivo lleva el mes (para no pisar corridas distintas),
@@ -268,9 +288,10 @@ def correr(ctx, log):
                     f"cuestionarios, NO solo {m:02d}/{y}. El mes en el nombre del archivo es "
                     f"solo para distinguir corridas: filtra el periodo al descargarlos de RAYEN.")
                 tabla_est = estam.tabla_efectiva(a03["est_ruta"] or None, log=log)
-                r03 = screening.procesar_unificado(a03["instrumentos"], salida_a03,
-                                                   estamentos=(tabla_est or None),
-                                                   resolver_estamento=None, log=log)
+                r03 = {}
+                escribir_atomico(salida_a03, lambda p: r03.update(screening.procesar_unificado(
+                    a03["instrumentos"], p, estamentos=(tabla_est or None),
+                    resolver_estamento=None, log=log)))
                 res["n_a03"] = r03["total"]
                 res["por_inst_a03"] = r03["por_instrumento"]
                 res["salida_a03"] = salida_a03
@@ -288,6 +309,10 @@ def correr(ctx, log):
                 try:
                     _correr_a03()
                 except Exception as e:   # noqa: BLE001
+                    # En el RESUMEN, no solo en el log: un "Listo" que calla que la
+                    # D.3 no salio deja al usuario buscando el archivo -- y encontrando
+                    # el de una corrida anterior.
+                    res["fallo_a03"] = str(e)
                     log(f"[a03] no se generó la tabla A03·D.3: {e}")
         else:
             log("[a03] 'Incluir cuestionarios' marcado pero sin archivos -> se omite.")
@@ -321,8 +346,13 @@ def resumen(res):
     resu = E.attrs["tablas"]["SM_Resumen"]
     rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
     tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco roto." if res["n_tp"] is not None else ""
+    if res.get("fallo_tp"):
+        tptxt = f"\nTrabajo perdido: NO se generó ({res['fallo_tp']})."
     a03txt = (f"\nA03·D.3: {res['n_a03']} aplicaciones{_por_instrumento(res)}."
               if res["n_a03"] is not None else "")
+    if res.get("fallo_a03"):
+        a03txt = (f"\nA03·D.3: NO se generó ({res['fallo_a03']}). Ningún archivo "
+                  f"REM_A03_D3 de esta carpeta es de esta corrida.")
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
             f"{rtxt}\n\nGuardado en:\n{res['salida']}")
 

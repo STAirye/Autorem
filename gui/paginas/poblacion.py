@@ -61,7 +61,7 @@ def correr(ctx, log):
     import modulos.rem_sp_p6_poblacion as p6
     import modulos.rem_sm_rescate_inasistentes as resc
 
-    from programas.rem_utils import cargar_atenciones
+    from programas.rem_utils import cargar_atenciones, rutas_libres, escribir_atomico
     y, m = ctx["mes"]
     # Se carga UNA vez (Inscritos es enorme) y se pasa el DataFrame al P6 y al rescate;
     # los nombres de archivo viajan aparte para la hoja LEEME del rescate.
@@ -71,23 +71,28 @@ def correr(ctx, log):
     ada = cargar_atenciones(ctx["ada"], log=log)
     P = pob.construir_poblacion(insc, form, ada, mes=(y, m), log=log)
     resultado = p6.construir_p6(P, log=log)
-    salida = ctx["carpeta"] / f"REM_SP_P6_{y}_{m:02d}_BETA.xlsx"
-    p6.escribir(P, resultado, salida)
+    # Los dos nombres juntos, con el mismo `(n)` si alguno ya existe (rem_utils.rutas_libres).
+    salida, salida_rescate = rutas_libres(ctx["carpeta"] / f"REM_SP_P6_{y}_{m:02d}_BETA.xlsx",
+                                          ctx["carpeta"] / f"REM_SM_Rescate_{y}_{m:02d}_BETA.xlsx")
+    # Temporal + rename (rem_utils.escribir_atomico): un corte no deja un .xlsx roto.
+    escribir_atomico(salida, lambda p: p6.escribir(P, resultado, p))
 
-    salida_rescate = ctx["carpeta"] / f"REM_SM_Rescate_{y}_{m:02d}_BETA.xlsx"
     n_rescate = None
+    fallo_rescate = None
     # Rescate de inasistentes (SS8): reutiliza el MISMO P (exigir_medico=True) que
     # el P6, no lo reconstruye. Try propio para que un fallo aca (p.ej. Brecha_Medico,
     # todavia en validacion) no tumbe el P6, que es lo que si se copia al SP.
     try:
         Er = resc.procesar(insc, form, ada, mes=(y, m), log=log, P=P, fuentes=fuentes)
-        resc.escribir(Er, salida_rescate)
+        escribir_atomico(salida_rescate, lambda p: resc.escribir(Er, p))
         n_rescate = {h: len(t) for h, t in Er.attrs["tablas"].items()}
         log(f"OK Rescate de inasistentes -> {salida_rescate.name}")
     except Exception as e:   # noqa: BLE001
+        fallo_rescate = str(e)   # el resumen lo dice: no basta con el log
         log(f"[rescate] no se generó el reporte de rescate: {e}")
 
-    return {"P": P, "resultado": resultado, "n_rescate": n_rescate, "salida": salida, "mes": (y, m)}
+    return {"P": P, "resultado": resultado, "n_rescate": n_rescate, "salida": salida,
+            "mes": (y, m), "fallo_rescate": fallo_rescate}
 
 
 def resumen(res):
@@ -98,6 +103,8 @@ def resumen(res):
     n_clin = len(resultado["revisar_clinico"])
     rtxt = ("\nRescate: " + " · ".join(f"{h}={n}" for h, n in n_rescate.items())
            if n_rescate is not None else "")
+    if res.get("fallo_rescate"):
+        rtxt = f"\nRescate: NO se generó ({res['fallo_rescate']})."
     return (f"Listo (BETA, sin validar todavía). SP·P6 {y}-{m:02d}.\n"
             f"{len(P)} personas en el snapshot, {n_ingresados} con ¿Ingresado?=SI.\n"
             f"Revisar_Administrativo: {n_admin} fila(s) · Revisar_Clinico: {n_clin} fila(s) "

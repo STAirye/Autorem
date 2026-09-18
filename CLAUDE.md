@@ -73,7 +73,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.17** (§9). **206 tests.**
+Versión **1.9.17** (§9). **237 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -122,8 +122,15 @@ El CLI queda **CONGELADO** al pasar a la GUI 2.0 (§12): no se le portan los cam
 - La carpeta de salida por defecto es **la de los archivos de entrada**, no el cwd
   desde donde se corre el `.py`: las salidas llevan RUT y deben quedar junto a los
   exports, fuera del repo.
+- **Una salida nunca pisa otra** (`rem_utils.rutas_libres`): si el nombre existe, la
+  corrida entera sale como `… (1).xlsx`, con el mismo número en todos sus archivos. Y
+  se escribe vía temporal + rename (`escribir_atomico`): un corte deja un
+  `….escribiendo.xlsx`, nunca un resultado roto con nombre de resultado.
 - El caché de usuario vive en **`~/.autorem/`** (`C:\Users\<usuario>\.autorem\`), no en
-  `%APPDATA%` ni junto al exe: `estamentos.json` y `dotacion.json`.
+  `%APPDATA%` ni junto al exe: `estamentos.json` y `dotacion.json`. Se lee y guarda por
+  `rem_utils.leer_cache_json`/`guardar_cache_json`: **ningún problema de caché es
+  callado** (se muestra, y el detalle para el usuario está en «Acerca de»). Los tests
+  **nunca** tocan el real: todo `tests/test_*.py` importa primero `_aislar_cache`.
 
 **`refs_tablas/`:** planillas de ejemplo **sí versionadas**, con whitelist POR ARCHIVO
 en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill

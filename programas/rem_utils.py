@@ -145,15 +145,47 @@ def encontrar_fila_encabezado(ws, ancla, usar_blanco_en_a=True,
 
 
 # -- Lectura + clasificación de reportes (compartido; usado por módulos pandas) --
+def abrir_xlsx_ro(entrada):
+    """`load_workbook(read_only=True, data_only=True)` con la <dimension> de CADA
+    hoja descartada. TODA lectura read_only del proyecto pasa por aca.
+
+    POR QUE (sep-2026): en modo read_only openpyxl ACOTA `iter_rows` a la
+    <dimension> que declara el propio .xlsx (`max_row`/`max_column` salen de ahi;
+    ver `ReadOnlyWorksheet._cells_by_row`). Si esa etiqueta viene rota -- p.ej.
+    `A1:D5` en una hoja de 10 filas, tipico de exports copy-paste / de BD --, las
+    filas y columnas de fuera se pierden SIN ningun error: un ADA truncado cuenta de
+    menos con cara de resultado legitimo. `reset_dimensions()` hace que se lea lo que
+    el archivo trae de verdad (es lo mismo que hace pandas.read_excel por dentro).
+    Quien cierra el workbook es el llamador (`wb.close()`)."""
+    wb = openpyxl.load_workbook(entrada, data_only=True, read_only=True)
+    for ws in wb.worksheets:
+        ws.reset_dimensions()
+    return wb
+
+
+def filas_hoja(ws, max_filas=None):
+    """Filas (tuplas de VALORES) de una hoja abierta con `abrir_xlsx_ro`, todas del
+    MISMO ancho. Sin <dimension> openpyxl entrega cada fila hasta su ultima celda
+    escrita (filas desparejas); se rellenan con None para que un indice de columna
+    valga en todas, como antes. `max_filas` corta temprano (encabezado, deteccion)."""
+    from itertools import islice
+    filas = list(islice(ws.iter_rows(values_only=True), max_filas))
+    ancho = max((len(f) for f in filas), default=0)
+    return [tuple(f) + (None,) * (ancho - len(f)) for f in filas]
+
+
 def leer_xlsx(entrada, ancla=None, max_scan=40):
     """Lee un .xlsx con openpyxl y devuelve (headers, filas_de_datos). ROBUSTO a
-    la 'dimension' rota de los exports copy-paste / de BD (con la que
-    pandas.read_excel leería 0 filas). `ancla` = nombres de columna que deben
+    la 'dimension' rota o ausente de los exports copy-paste / de BD: lee con
+    `abrir_xlsx_ro`, que la descarta (hasta 1.9.17 NO lo era: la respetaba y
+    truncaba en silencio -- ver ahi). `ancla` = nombres de columna que deben
     estar TODOS en la fila de encabezado; si es None, toma la 1ª fila con >3
     celdas llenas."""
-    ws = openpyxl.load_workbook(entrada, data_only=True, read_only=True).active
-    filas = list(ws.iter_rows(values_only=True))
-    ws.parent.close()
+    wb = abrir_xlsx_ro(entrada)
+    try:
+        filas = filas_hoja(wb.active)
+    finally:
+        wb.close()
     if not filas:   # hoja SIN ninguna fila (ni encabezado): filas[hi] seria IndexError
         raise ArchivoInvalido(
             "sin_datos",
@@ -195,13 +227,18 @@ def verificar_hoja_unica(entrada):
     """Guarda de integridad de los exports RAYEN/IRIS: SIEMPRE bajan UNA hoja con
     datos + 2 vacías. Si hay datos en más de una hoja, el archivo fue MODIFICADO
     (típicamente se le agregó una tabla dinámica) y sus resultados no son confiables
-    -> levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx:
-    itera celdas (corta en la 1ª no vacía), no confía en max_row."""
-    wb = openpyxl.load_workbook(entrada, data_only=True, read_only=True)
-    con_datos = [ws.title for ws in wb.worksheets
-                 if any(any(v not in (None, "") for v in row)
-                        for row in ws.iter_rows(values_only=True))]
-    wb.close()
+    -> levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx
+    (`abrir_xlsx_ro`): con la <dimension> respetada, una hoja extra con datos FUERA
+    de lo que declara la etiqueta pasaba por vacia."""
+    wb = abrir_xlsx_ro(entrada)
+    try:   # read_only deja el .xlsx ABIERTO hasta close(): sin finally, un export a
+        # medio sincronizar que revienta a mitad de la lectura quedaba bloqueado
+        # (OneDrive no lo termina de bajar, el usuario no lo puede reemplazar).
+        con_datos = [ws.title for ws in wb.worksheets
+                     if any(any(v not in (None, "") for v in row)
+                            for row in ws.iter_rows(values_only=True))]
+    finally:
+        wb.close()
     if len(con_datos) > 1:
         raise ArchivoInvalido(
             "modificado",
@@ -302,8 +339,13 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
 
     `solo_iris` = claves que SOLO trae el export IRIS pleno (ej.
     `formatos.SOLO_IRIS_ATENCIONES`). Si se pasan, clasifica la FUENTE y deja el
-    resultado en `df.attrs['fuente'] = (estado, ausentes)`, logueando cuando NO es
-    plena. Este es el único cuello de botella de carga del grupo pandas — ADA,
+    resultado en `df.attrs['fuente'] = (estado, ausentes)`. Con VARIOS archivos se clasifica CADA UNO y gana el PEOR (plena <
+    cambiada < parcial); si se mezclan plenos con no-plenos, los no-plenos quedan en
+    `df.attrs['fuente_mezcla']` = [nombre, ...] para que el aviso diga cuales (None si
+    no hay mezcla). Hasta 1.9.17 se clasificaba solo el PRIMERO: [IRIS, Monitoreo]
+    daba 'plena' y banner verde sobre filas sin demografia, [Monitoreo, IRIS] daba
+    'parcial' -- el veredicto dependia del orden en que se eligieron, no del contenido.
+    Loguea cuando NO es plena. Este es el único cuello de botella de carga del grupo pandas — ADA,
     grupal, NSP y 'Otros y Respi' pasan todos por acá —, así que la fase 2 del eje
     de formatos se engancha en UN solo punto. Ver `formatos.clasificar_fuente`.
 
@@ -311,7 +353,7 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
     reporte del par, se levanta un error que dice CUÁL cruce, en vez del genérico
     'no reconozco el archivo'. Ver `formatos.verificar_cruce`."""
     import pandas as pd
-    partes, col0 = [], None
+    partes, col0, cols_por_archivo = [], None, []
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
         nombre = Path(str(e)).name
         try:
@@ -346,6 +388,7 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
                     "¿Está SIN la fila de encabezado (nombres de columna) o modificado? "
                     "Cárgalo tal como sale de RAYEN/IRIS, sin editar.")
         col0 = col0 or col
+        cols_por_archivo.append((nombre, col))
         idx = {c: i for i, c in enumerate(hdr)}
         parte = pd.DataFrame(
             {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
@@ -361,8 +404,20 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
     if solo_iris:
         from programas import formatos
-        estado, ausentes = formatos.clasificar_fuente(col0, solo_iris)
+        gravedad = {formatos.FUENTE_PLENA: 0, formatos.FUENTE_CAMBIADA: 1,
+                    formatos.FUENTE_PARCIAL: 2}
+        por_archivo = [(n, *formatos.clasificar_fuente(c, solo_iris))
+                       for n, c in cols_por_archivo]
+        estado = max((e for _, e, _ in por_archivo), key=gravedad.__getitem__)
+        ausentes = list(dict.fromkeys(a for _, _, aus in por_archivo for a in aus))
+        no_plenos = [n for n, e, _ in por_archivo if e != formatos.FUENTE_PLENA]
         d.attrs["fuente"] = (estado, ausentes)
+        d.attrs["fuente_mezcla"] = (no_plenos if no_plenos and len(no_plenos) < len(por_archivo)
+                                    else None)
+        if d.attrs["fuente_mezcla"]:
+            log(f"[fuente] MEZCLA: {', '.join(no_plenos)} NO es/son el A/D/A de IRIS "
+                f"completo, el resto si. Lo de esos archivos cuenta de MENOS en lo que "
+                f"dependa de: {', '.join(ausentes)}.")
         if estado == formatos.FUENTE_PARCIAL:
             log(f"[fuente] PARCIAL: el archivo no es el export A/D/A de IRIS (no trae "
                 f"ninguna de: {', '.join(ausentes)}). Los indicadores que dependen "
@@ -419,7 +474,36 @@ def cargar_atenciones(entrada, log=print):
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención")
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
+    exigir_estamento(d)
     return d
+
+
+def exigir_estamento(d):
+    """Fail loud sobre la FUENTE (CLAUDE.md regla 2): toda atencion con funcionario
+    (PROF) trae su estamento (INSTR). RAYEN no puede registrar una atencion sin el
+    estamento de quien atendio, asi que una fila asi es un export MODIFICADO (o
+    armado a mano), no un dato legitimo.
+
+    POR QUE aca y no en el dialogo de dotacion (sep-2026): el dialogo la mostraba
+    como el grupo '(sin estamento)', cuyo 'Omitir estamento' no guardaba nada
+    (`dotacion.omitir` descarta la clave vacia) aunque el grupo desaparecia de la
+    ventana -- y esa misma fila, aguas abajo, no cae en NINGUNA casilla por
+    estamento. Emparcharlo en el dialogo era darle un lugar a algo que no deberia
+    existir. `d` = DataFrame canonico con INSTR_n ya calculado."""
+    if "PROF" not in d.columns:
+        return      # fuente sin funcionario (p.ej. Monitoreo sin esa columna): nada que exigir
+    prof = d["PROF"].map(norm)
+    sin = d[(prof != "") & (d["INSTR_n"] == "")]
+    if len(sin):
+        nombres = sorted(set(sin["PROF"].astype(str).str.strip()))
+        muestra = ", ".join(nombres[:5]) + (f" y {len(nombres) - 5} mas" if len(nombres) > 5 else "")
+        raise ArchivoInvalido(
+            "sin_estamento",
+            f"{len(sin)} atencion(es) de {len(nombres)} funcionario(s) vienen SIN "
+            f"estamento (columna INSTRUMENTO vacia): {muestra}.\n\n"
+            "RAYEN siempre registra el estamento de quien atiende, asi que el export "
+            "fue MODIFICADO o no es el reporte de Atenciones. Vuelve a descargarlo desde "
+            "RAYEN/IRIS y cargalo tal cual.")
 
 
 # -- Maestro de Actividades (catálogo RAYEN: actividad <-> estamento <-> casilla REM) --
@@ -793,6 +877,204 @@ def contiene_alguno(serie, subs):
         c = serie.str.contains(norm(x), regex=False, na=False)
         m = c if m is None else (m | c)
     return m
+
+
+# -- Salidas -----------------------------------------------------------
+def rutas_libres(*rutas):
+    """Las rutas de salida de UNA corrida, sin pisar nada que ya exista: si alguna
+    esta tomada, TODAS pasan a `nombre (1).xlsx`, `nombre (2).xlsx`... con el MISMO
+    numero, el menor que deja libres a todas (como Windows al copiar).
+
+    POR QUE no se sobreescribe (decision del autor, sep-2026): una corrida que falla a
+    medias (un paso opcional que revienta, la ventana cerrada mientras escribe) dejaba
+    junto a la salida nueva un archivo VIEJO del mismo mes, de otra corrida con otros
+    archivos -- un A03·D.3 de agosto que nadie regenero, con cara de ser de esta
+    corrida y listo para copiarse al REM. Y un archivo abierto en Excel ya no hace
+    fallar la corrida entera al guardar.
+
+    POR QUE el mismo numero para todas: el sufijo es lo que dice que archivos salieron
+    JUNTOS. `actividades (1)` al lado de un `trabajo_perdido` sin numero delata que
+    ese no es de esta corrida."""
+    rutas = [Path(r) for r in rutas]
+    n = 0
+    while True:
+        cands = [r if n == 0 else r.with_name(f"{r.stem} ({n}){r.suffix}") for r in rutas]
+        if not any(c.exists() for c in cands):
+            return cands
+        n += 1
+
+
+def escribir_atomico(salida, escribir):
+    """`escribir(ruta)` sobre un TEMPORAL junto a `salida` y, solo si termina, lo
+    renombra a `salida` (`os.replace`). Devuelve `salida`.
+
+    POR QUE: si la corrida se corta a mitad de la escritura (el usuario cierra la
+    ventana y el hilo del worker muere con el proceso, o revienta el disco), lo que
+    queda es un `… .escribiendo.xlsx` que dice lo que es -- nunca un `.xlsx` roto con
+    nombre de resultado, listo para abrirse y copiarse al REM. Si `escribir` levanta,
+    el temporal se borra y la excepcion sigue su camino."""
+    import os
+    salida = Path(salida)
+    tmp = salida.with_name(f"{salida.stem}.escribiendo{salida.suffix}")
+    try:
+        escribir(tmp)
+        os.replace(tmp, salida)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+    return salida
+
+
+# -- Caches del usuario (~/.autorem): leer/guardar con fallas RUIDOSAS ---
+# dotacion.json (quien es externo) y estamentos.json cambian CIFRAS del REM: un veto de
+# dotacion que no llego al disco hace que el mes siguiente se pregunte todo de nuevo con
+# 'interno' por defecto (doble conteo si se aprieta Aplicar de pasada), y un caché dañado
+# que se lee como vacio vuelve a contar a todos los externos. Por eso aca nada falla
+# callado: cada problema queda en `_AVISOS_CACHE`, que la GUI vacia y MUESTRA
+# (`gui.runner.avisar_cache`), ademas de ir al log. Lo que NO se hace, a proposito: caer
+# a otra carpeta cuando esta falla -- partiria la tabla en dos (este mes se guarda en B,
+# el proximo se lee de A) y el veto volveria en silencio a lo de antes.
+_AVISOS_CACHE = []
+_SIGUE = ("Más detalle y qué hacer: «Acerca de», sección «Preferencias guardadas».")
+
+
+def _avisar_cache(log, msg):
+    log(f"[caché] {msg}")
+    _AVISOS_CACHE.append(msg)
+
+
+def tomar_avisos_cache():
+    """Los avisos de caché pendientes, vaciando la cola (los muestra la GUI)."""
+    avisos = _AVISOS_CACHE[:]
+    del _AVISOS_CACHE[:len(avisos)]
+    return avisos
+
+
+def apartar_cache(ruta, que, motivo, si_se_pierde, log=print):
+    """Un caché DAÑADO no se sobreescribe ni se lee como vacio en silencio: se renombra
+    a `<nombre>.corrupto-<fecha>.json` (queda la evidencia, y el proximo guardado no lo
+    pisa) y se avisa."""
+    import os
+    import time
+    ruta = Path(ruta)
+    apartado = ruta.with_name(f"{ruta.stem}.corrupto-{time.strftime('%Y%m%d-%H%M%S')}{ruta.suffix}")
+    try:
+        os.replace(ruta, apartado)
+        donde = f"Lo aparté como «{apartado.name}» (puedes borrarlo)."
+    except OSError as e:
+        donde = f"Tampoco pude apartarlo ({e})."
+    _avisar_cache(log, f"{que} estaba dañado ({motivo}). {donde} Empiezo sin él: "
+                       f"{si_se_pierde} {_SIGUE}")
+
+
+def leer_cache_json(ruta, que, si_se_pierde, log=print, intentos=4):
+    """(datos, estado) del caché JSON `ruta`. estado:
+      'ok'        -> datos = lo leido (un dict; la FORMA la valida quien llama).
+      'falta'     -> nunca se guardo (primera vez): datos None, sin aviso.
+      'corrupto'  -> se aparto (`apartar_cache`) y se aviso: datos None.
+      'ilegible'  -> existe pero no se pudo leer (permisos, bloqueo que no se solto):
+                     datos None y aviso. Quien llama NO debe guardar encima: el archivo
+                     puede estar sano y se perderia entero.
+    Un `PermissionError` se reintenta: en Windows el antivirus o el indexador toman el
+    archivo unos milisegundos y lo sueltan solos."""
+    import json
+    import time
+    ruta = Path(ruta)
+    if not ruta.exists():
+        return None, "falta"
+    error = None
+    for i in range(intentos):
+        try:
+            texto = ruta.read_text(encoding="utf-8")
+            break
+        except PermissionError as e:
+            error = e
+            time.sleep(0.1 * (i + 1))
+        except OSError as e:
+            error = e
+            break
+    else:
+        texto = None
+    if texto is None:
+        _avisar_cache(log, f"No pude leer {que} en {ruta} ({error}). Esta corrida sigue sin "
+                           f"él y NO lo sobreescribo: {si_se_pierde} {_SIGUE}")
+        return None, "ilegible"
+    try:
+        datos = json.loads(texto)
+    except ValueError as e:
+        apartar_cache(ruta, que, e, si_se_pierde, log=log)
+        return None, "corrupto"
+    if not isinstance(datos, dict):
+        apartar_cache(ruta, que, "no tiene la forma esperada", si_se_pierde, log=log)
+        return None, "corrupto"
+    return datos, "ok"
+
+
+def guardar_cache_json(ruta, datos, que, si_no_se_guarda, log=print, intentos=4):
+    """Guarda `datos` en `ruta` via `escribir_atomico` (un corte no deja un JSON a
+    medias), reintentando un `PermissionError` pasajero. True si quedo guardado; si no,
+    aviso RUIDOSO (no excepcion: lo que esta en memoria sigue sirviendo para ESTA
+    corrida, solo que no se recuerda)."""
+    import json
+    import time
+    ruta = Path(ruta)
+    texto = json.dumps(datos, ensure_ascii=False, sort_keys=True, indent=0)
+    error = None
+    for i in range(intentos):
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            escribir_atomico(ruta, lambda p: p.write_text(texto, encoding="utf-8"))
+            return True
+        except PermissionError as e:
+            error = e
+            time.sleep(0.15 * (i + 1))
+        except OSError as e:
+            error = e
+            break
+    _avisar_cache(log, f"No pude guardar {que} en {ruta} ({error}). Esta corrida la usa "
+                       f"igual, pero no queda recordada: {si_no_se_guarda} {_SIGUE}")
+    return False
+
+
+def estado_cache(ruta):
+    """Diagnostico SIN efectos (para «Acerca de»): nunca aparta ni avisa.
+    {'existe', 'modificado' (datetime|None), 'datos' (dict|None), 'problema' (str|None)}."""
+    import json
+    from datetime import datetime
+    ruta = Path(ruta)
+    info = {"existe": ruta.exists(), "modificado": None, "datos": None, "problema": None}
+    if not info["existe"]:
+        return info
+    try:
+        info["modificado"] = datetime.fromtimestamp(ruta.stat().st_mtime)
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        if isinstance(datos, dict):
+            info["datos"] = datos
+        else:
+            info["problema"] = "dañado (no tiene la forma esperada)"
+    except ValueError:
+        info["problema"] = "dañado (no es JSON válido)"
+    except OSError as e:
+        info["problema"] = f"no se puede leer ({e})"
+    return info
+
+
+def carpeta_escribible(carpeta):
+    """True si se puede crear un archivo en `carpeta` (o, si todavia no existe, en la
+    primera carpeta existente hacia arriba). Prueba de verdad: crea y borra."""
+    import tempfile
+    c = Path(carpeta)
+    while not c.exists() and c.parent != c:
+        c = c.parent
+    try:
+        with tempfile.NamedTemporaryFile(dir=c, prefix=".autorem-prueba-"):
+            pass
+        return True
+    except OSError:
+        return False
 
 
 # -- Utilidad de SO ----------------------------------------------------

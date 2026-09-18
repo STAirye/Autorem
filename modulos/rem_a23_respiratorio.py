@@ -137,7 +137,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
         *d.attrs.get("fuente", (formatos.FUENTE_PLENA, [])),
         "Ira Alta, Bronquitis y EPOC exacerbado se detectan por CODIGO ICD (j0/J20/"
         "J44.1) y van a salir en 0; ademas se pierde la demografia (pueblo, migrante).",
-        casilla="Atenciones (fuente del A23)")
+        casilla="Atenciones (fuente del A23)", archivos=d.attrs.get("fuente_mezcla"))
     if _av:
         fer.attrs["avisos"].append(_av)
     fuentes = [Path(p).name for p in (entrada if isinstance(entrada, (list, tuple)) else [entrada])]

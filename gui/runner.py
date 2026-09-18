@@ -65,6 +65,7 @@ _TITULO_INVALIDO = {
     "no_legible":             "No pude leer el archivo",
     "cruzados":               "Archivos cruzados",
     "no_estamentos":          "No es «Utilización de Cupos»",
+    "sin_estamento":          "Atenciones sin estamento",
     "no_instrumento":         "No es un export de instrumento",
     "instrumento_desconocido": "No reconozco el instrumento",
 }
@@ -98,9 +99,21 @@ def abrir_carpeta(carpeta):
     _abrir(carpeta)
 
 
+def limpiar_ruta(ruta):
+    """Ruta tal como la escribio/pego el usuario, sin espacios ni COMILLAS alrededor.
+
+    Las comillas no son un caso raro: el 'Copiar como ruta de acceso' del Explorador
+    de Windows (shift + click derecho) las pone siempre, y es LA forma de pegar una
+    ruta. Todo lo que lee una ruta de una caja de texto pasa por aca, para que la
+    validacion y quien abre el archivo vean la MISMA ruta: el A05 validaba sin
+    comillas y detectaba el formato con ellas, y openpyxl respondia 'no es un .xlsx'
+    sobre un archivo perfecto."""
+    return (ruta or "").strip().strip('"').strip("'").strip()
+
+
 def valida_ruta(ruta, messagebox):
     """Valida que la ruta exista. Devuelve Path o None (avisa con messagebox)."""
-    ruta = (ruta or "").strip().strip('"').strip("'")
+    ruta = limpiar_ruta(ruta)
     if not ruta:
         messagebox.showwarning("Falta el archivo", "Primero elige el Excel.")
         return None
@@ -147,7 +160,7 @@ def valida_carpeta(ruta, messagebox, defecto=None):
     """Valida la carpeta de salida. Si `ruta` esta vacia, cae a `defecto` (la
     carpeta del archivo de entrada) y, si tampoco hay, a `dir_salida_default()`.
     Devuelve Path o None."""
-    ruta = (ruta or "").strip().strip('"').strip("'")
+    ruta = limpiar_ruta(ruta)
     p = Path(ruta) if ruta else (Path(defecto) if defecto else dir_salida_default())
     if not p.exists() or not p.is_dir():
         messagebox.showerror("Carpeta inválida", f"No existe la carpeta de salida:\n{p}")
@@ -196,6 +209,19 @@ def error_inesperado(e, log, messagebox):
         "Copia el texto del registro y pásaselo a Simón.")
 
 
+def avisar_cache(messagebox):
+    """Muestra (UN dialogo) los avisos de caché pendientes: el caché de dotacion o de
+    estamentos que no se pudo leer, estaba dañado o no se pudo guardar
+    (rem_utils.leer_cache_json / guardar_cache_json). Hilo GUI. Se llama al terminar
+    cada fase que toca el caché (corrida, `preparar`, los dialogos de dotacion). No es
+    un error de la corrida -- lo que esta en memoria la sirve igual --, pero cambia
+    cifras de los meses siguientes, asi que no puede quedar solo en el log."""
+    from programas.rem_utils import tomar_avisos_cache
+    avisos = tomar_avisos_cache()
+    if avisos and messagebox is not None:
+        messagebox.showwarning("Problema con tus preferencias guardadas", "\n\n".join(avisos))
+
+
 def manejar_error(e, log, messagebox):
     """Despacha una excepcion de procesamiento a un messagebox claro (hilo
     GUI). Incluye ArchivoInvalido (p.ej. la guarda multi-hoja, o 'cruzados'
@@ -226,7 +252,37 @@ def manejar_error(e, log, messagebox):
         error_inesperado(e, log, messagebox)
 
 
-def en_hilo(widget, trabajo, al_terminar):
+class Canal:
+    """El pedido VIGENTE de un preview asincrono: solo el ultimo pintado vale.
+
+    EL PATRON (se repitio tres veces en la GUI 2.0): un resultado que llega DESPUES
+    -- de un hilo, de una corrida -- se pinta sobre una pantalla que el usuario ya
+    cambio. Dos elecciones seguidas lanzan dos hilos, y si el del archivo VIEJO
+    termina ultimo, su veredicto queda pintado junto al archivo nuevo; «Quitar»
+    apaga el banner y el hilo en vuelo lo vuelve a encender sobre una casilla vacia.
+    Cada pedido nuevo (o un `invalidar()`, p.ej. al vaciar el input) deja obsoletos
+    todos los anteriores, y `en_hilo(..., canal=)` los descarta al llegar.
+
+    Hermanos del mismo patron que NO usan esta clase porque tienen una clave mejor:
+    el A05 guarda la categoria junto a la RUTA para la que se calculo
+    (`a05.bloque_archivo_formato`), y `app.on_procesar` compara los inputs de la
+    corrida con los que hay en pantalla antes de pintar el banner de fuente."""
+
+    def __init__(self):
+        self._n = 0
+
+    def nuevo(self):
+        self._n += 1
+        return self._n
+
+    def invalidar(self):
+        self._n += 1
+
+    def vigente(self, n):
+        return n == self._n
+
+
+def en_hilo(widget, trabajo, al_terminar, canal=None):
     """Corre `trabajo()` en un hilo y entrega su resultado a `al_terminar(res, err)`
     EN EL HILO DE LA GUI. Version liviana de `correr_con_reloj` para los previews
     baratos de `on_elegido` (deteccion de formato del A05, chequeo de cruce del SM):
@@ -238,7 +294,11 @@ def en_hilo(widget, trabajo, al_terminar):
     estado de Tk de forma intermitente. Por eso `correr_con_reloj` usa cola + poll
     a proposito; esto es el mismo patron, y el `after` sale SIEMPRE del hilo GUI.
 
+    `canal` (un `Canal`, opcional): si otro pedido del mismo canal salio despues (o
+    se invalido), el resultado de este se DESCARTA en vez de llamar `al_terminar`.
+
     Si `trabajo` revienta, la excepcion llega como `err` (nunca se pierde callada)."""
+    pedido = canal.nuevo() if canal is not None else None
     q = queue.Queue()
 
     def worker():
@@ -255,6 +315,8 @@ def en_hilo(widget, trabajo, al_terminar):
         except queue.Empty:
             widget.after(60, poll)
             return
+        if canal is not None and not canal.vigente(pedido):
+            return   # lo reemplazo un pedido posterior (o se vacio el input)
         al_terminar(res, err)
     widget.after(60, poll)
 

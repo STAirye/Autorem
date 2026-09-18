@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.0
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -210,11 +210,13 @@ def _casa(cod, patron):
 # -- Lectura de los .xlsx del DEIS ------------------------------------------
 def _hojas(entrada):
     """[(titulo, [filas])] de todas las hojas de un .xlsx (no solo la activa,
-    como rem_utils.leer_xlsx: la Lista Tabular trae 3)."""
-    import openpyxl
-    wb = openpyxl.load_workbook(entrada, read_only=True, data_only=True)
+    como rem_utils.leer_xlsx: la Lista Tabular trae 3). Via `abrir_xlsx_ro`, que
+    descarta la <dimension>: si no, un .xlsx con la etiqueta rota se leia TRUNCADO
+    en silencio (y tools/scan_catalogo, que escanea PII antes de aceptarlo, igual)."""
+    from programas.rem_utils import abrir_xlsx_ro, filas_hoja
+    wb = abrir_xlsx_ro(entrada)
     try:
-        return [(ws.title, list(ws.iter_rows(values_only=True))) for ws in wb.worksheets]
+        return [(ws.title, filas_hoja(ws)) for ws in wb.worksheets]
     finally:
         wb.close()
 

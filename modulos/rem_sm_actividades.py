@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -460,7 +460,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         "sale en 0 (pueblos originarios, migrante, SENAME, Mejor Ninez, cuidador, "
         "demencia, gestante): esas columnas no existen en la fuente. Copiar los "
         "totales, NO las columnas demograficas (AN-AV del SA_26).",
-        casilla="ADA (fuente de las casillas SM)")
+        casilla="ADA (fuente de las casillas SM)", archivos=d.attrs.get("fuente_mezcla"))
     if _av:
         avisos.append(_av)
     fuentes = [Path(p).name for p in (ada if isinstance(ada, (list, tuple)) else [ada])]

@@ -98,8 +98,10 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
 
     sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""   # mes elegido -> …_procesado_2026_07.xlsx
     destino = Path(carpeta) if carpeta else entrada.parent
-    salida = destino / (entrada.stem + "_procesado" + sufijo + ".xlsx")
-    wb.save(salida)
+    # Nunca pisa una salida anterior: `… (1).xlsx` (ver rem_utils.rutas_libres).
+    from programas.rem_utils import rutas_libres, escribir_atomico
+    salida, = rutas_libres(destino / (entrada.stem + "_procesado" + sufijo + ".xlsx"))
+    escribir_atomico(salida, wb.save)   # un corte a medias no deja un .xlsx roto con este nombre
     log(f"[ok] guardado: {salida}")
     return resultados, str(salida)
 
