@@ -149,6 +149,113 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
       (`rem_utils.aviso_fuera_de_grid`).
     - **Un Maestro que no reconoce ninguna actividad del mes** ahora avisa HEURISTICA
       igual que la falta de Maestro.
+- **Contratos de fuentes, al commitear** (`tools/check_fuentes.py` +
+  `tests/contratos_fuentes.py` + skill `tests-fuentes`). Las 10 rondas de revisión de
+  esta rama cazaron a mano, y siempre después, el mismo bug: un export que pasa el
+  loader y da un 0 plausible o un crash críptico. Ahora cada función que lee una
+  planilla del usuario tiene un contrato que la ataca con el encabezado REAL de
+  `refs_tablas/`: 0 filas, columna crítica renombrada, clave vacía, fechas ilegibles,
+  y una columna extra al inicio (caza el índice fijo, como la col 11 del A05). El
+  pre-commit corre solo los contratos de lo que el commit toca, y **bloquea** un lector
+  nuevo o cambiado sin contrato. Arrancó con 11 contratos y la ronda 11 lo dejó en 18:
+  **todo lector de planillas del proyecto tiene contrato**, y todos corren contra el
+  export real salvo el Maestro `.xlsx` (no se versiona). Los 3 pendientes que dejó a la
+  vista se cerraron en la ronda 11 (ver abajo): el grupal «sin ASISTE» era una
+  referencia editada a mano, y el RUN vacío en todas las filas ya falla.
+- **GUI 2.0, ronda 11: cada referencia y cada fallback contra el export REAL**
+  (`docs/review_gui-2.0_pendiente.md` §1.L). Llegaron los exports que faltaban (NSP,
+  Otros Crónicos IRIS y Admin, Estratificación, Utilización de Cupos, Monitoreo
+  Multiprofesional, Monitoreo de Inasistentes) y se re-bajaron el grupal y los
+  formularios IRIS de SM y Goldberg, ahora **con su banner**.
+  - **El A05 y el P6 aceptaban un cuestionario como formulario de Salud Mental.** Un
+    Goldberg o un PSC traen las mismas firmas IRIS/Admin y su «1.- ESTADO» dice Ingreso:
+    el A05 contaba ingresos con patología «Estado», y el P6 leía el ítem 3 de Goldberg
+    como Violencia. Ahora el formulario se reconoce por CONTENIDO
+    (`rem_saludmental.verificar_formulario_sm`: cada número de pregunta que se usa contra
+    lo que su encabezado dice, verificado en los dos formatos reales): un cuestionario u
+    otro formulario es `no_formulario_sm`, y un formulario SM **renumerado** por RAYEN, que
+    antes cruzaba los diagnósticos en silencio, es `formulario_cambiado`.
+  - **Sin fallbacks posicionales para el encabezado.** `encontrar_fila_encabezado`
+    caía a «la fila siguiente a la primera con la columna A vacía» y a una fila fija (16
+    en IRIS, 8 en el Administrativo): los dos devolvían una fila de DATOS como encabezado.
+    Ahora sin ancla es `sin_encabezado`. De paso: el IRIS de formularios SÍ trae banner
+    (15 filas); las referencias no lo mostraban porque se habían recortado a mano.
+  - **El RUN del Monitoreo se heredaba con un ffill global**, sin mirar el formato ni la
+    atención: en IRIS una fila sin RUN quedaba atribuida al paciente de la fila de arriba.
+    Ahora se hereda solo dentro del mismo ATENID (el `N°` del Monitoreo se repite en las
+    filas hijas), y una fila sin RUN ni atención de la cual heredarlo se loguea.
+  - **A23 en el Monitoreo: 6 indicadores en NO callados** (Autocuidado, Inhaloterapia,
+    Otras, Educación Integral, Antitabaco, Vida Saludable). Piden dos actividades en la
+    MISMA atención y se comparaban fila por fila; en el Monitoreo cada actividad es una
+    fila. Ahora miran la atención entera (`_act_de_la_atencion`).
+  - **3 de las 7 actividades del «Activo 12m» no existían en el Maestro** (venían del
+    DAX: «…con **patología** de salud mental», etc.). Quien solo tenía esas visitas salía
+    no activo y caía al rescate. Se cambiaron por los nombres reales (la de demencia, en
+    consulta con el autor), y un test exige ahora que **todo** literal de actividad de SM,
+    A23, Población y Trabajo Perdido calce con alguna actividad del Maestro.
+  - **Estratificación: el fallback a «CONDICIONES CRONICAS» caía en «Cantidad de
+    Condiciones Crónicas»**, un conteo, y la SALA quedaba sin diagnósticos. Se sacó.
+  - **RUN/ATEN ID vacío en todas las filas** ahora falla en el ADA/Monitoreo, Otros
+    Crónicos, Estratificación, Inscritos (TRANS) y Monitoreo Multiprofesional.
+  - **`tools/limpiar_refs.py`**: no arrancaba en el Python del proyecto (3.9: `int |
+    None` sin `from __future__`), partía los encabezados de dos pisos (Utilización de
+    Cupos), no abría un export con una imagen rota adentro (Otros Crónicos IRIS) y
+    guardaba el original editado, con lo que no son celdas (caché de tablas dinámicas,
+    comentarios, propiedades). Ahora arma un libro nuevo con **banner + encabezado** y lo
+    escanea antes de escribirlo: con un RUT, correo o teléfono, no lo escribe.
+  - **Decisiones del autor sobre lo que quedó abierto:**
+    - La VDI del **PADDS con demencia cuenta para «Activo 12m»** (y sigue fuera del
+      Trabajo Perdido de SM: tributa al REM del PADDS).
+    - **El A23 acepta el Otros Crónicos y el NSP Administrativos.** El Otros Crónicos
+      admin no trae INSTRUMENTO: el estamento sale del nombre del funcionario (export de
+      atenciones + caché de estamentos), con aviso por los que no se resuelven y
+      `sin_estamento` si no se resuelve ninguno. El NSP admin («Monitoreo de
+      Inasistentes») trae `RUN` / `FECHA CITA` / `EDAD` en texto.
+    - **Un archivo opcional que no sirve pregunta «¿continuar sin él?»** (Estratificación,
+      NSP, Inscritos para TRANS, Multiprofesional, Maestro cargado a mano). Si sí, se
+      re-corre sin él y la hoja LEEME lo marca `OMITIDO`. Antes TRANS y el
+      Multiprofesional inválidos quedaban solo en el log.
+- **GUI 2.0, bug recurrente: auditoría ESTÁTICA de cada loader y filtro**
+  (`docs/review_gui-2.0_pendiente.md` §1.K, ronda 10). Lo que la ronda empírica no
+  alcanzó: cruces entre fuentes, casilleros que fijan el tipo y columnas opcionales.
+  - **SP·P6 entero en 0 con «Listo».** Si la base (Estado=Activo × Activo 12m ×
+    Ingresado) queda vacía, ahora es `sin_datos`, con el conteo de cada filtro. Pasaba
+    con ESTADO en otro vocabulario («Activa») o con el RUN del ADA en otro formato que
+    el del Inscritos: cada fuente tenía datos, el cruce no.
+  - **A23 con nadie en SALA → TODAS las hojas copy-paste en 0.** Se calculan solo sobre
+    «Pertenece a SALA», así que ahora `sin_datos`. Y una pregunta de condición renombrada
+    («TIENE» por «PADECE DE») ya no deja esa condición en 0 callada: aviso SUBCONTADO por
+    archivo; si no hay ninguna, `sin_columnas`.
+  - **A03·D.3 con el export en el casillero equivocado.** Los casilleros fijaban el
+    instrumento sin mirar el contenido: un PSC-Y en el de GHQ-12 (todo fuera de rango) o
+    un GHQ-12 en el del PSC (todo bajo 33) daban la D.3 en 0. Ahora `instrumento_cruzado`.
+    Puntajes fuera de rango: todos, `sin_datos`; algunos, aviso SUBCONTADO (antes solo el
+    log).
+  - **Sección H con un reporte NSP incompleto.** TIPO, INSTRUMENTO y AÑOS pasan a ser
+    requeridos: sin los dos primeros la H salía 0, y sin AÑOS todo caía en «20 y más».
+    Una edad ilegible da aviso REVISAR.
+  - **Rescate sin MOTIVO/FECHA PASIVACION:** la lista de a quién llamar salía sin la
+    marca de fallecido. Ahora el rescate falla (`sin_columnas`); el P6 no se entera.
+  - **Histórico SM con un año que bajó solo con encabezado:** se perdía callado en el
+    concat. Ahora `sin_datos` POR ARCHIVO, nombrándolo.
+  - **Inscritos:** el guard de c38a8cc (que ya no ve el solo-encabezado, lo corta antes
+    `cargar_canonico`) dice ahora por qué no queda nadie (N sin RUN, M «RUN
+    Responsable»). Y una fila sin RUN ya no sobrevive como la persona `"None"`.
+  - **A05: la edad ya no se toma de la columna 11 POR POSICIÓN.** Si el encabezado de
+    edad no calzaba, el A05 leía la columna 11 — la posición del layout IRIS, armada
+    antes de `refs_tablas/` —, que en el Administrativo es **Convenio**: bandas etarias
+    con datos de otra columna, callado. En IRIS nunca hacía falta (el encabezado de edad
+    es el ancla de la detección). Ahora la edad se busca solo por nombre, o `sin_columnas`.
+  - **Histórico SM sin INSTRUMENTO:** todos los diagnósticos que exigen médico salían
+    en NO y el P6 subcontaba sin aviso. Ahora es columna requerida.
+  - **A05 sin ninguna fecha legible:** el error aconsejaba «Archivo completo», que cuenta
+    todo el archivo como el mes. Ahora `sin_fecha`, con el consejo contrario.
+  - **P6, persona sin edad:** contaba en Ambos y en ninguna banda, sin rastro. Ahora va a
+    Revisar_Administrativo.
+  - **Los resúmenes de A23 y SM muestran sus avisos** (y los del A03), como ya lo hacía
+    Población: un «Listo» ya no se lee igual que una corrida sin nada que advertir.
+  - **Estratificación sin columna de diagnósticos** y **«Utilización de Cupos» sin
+    ningún estamento:** cargaban sin aportar nada; ahora fallan claro.
 - **GUI 2.0, trazado entre archivos** (`docs/review_gui-2.0_pendiente.md` §1.F, ronda 5):
   - **`rem_utils.leer_xlsx` truncaba EN SILENCIO un export con la `<dimension>` rota**
     (el peor de la ronda). En modo `read_only`, openpyxl acota `iter_rows` a la
@@ -391,7 +498,24 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   (257 en total, 13 mutantes más): D.3 sin momento / sin puntaje / sin sexo, preguntas
   del formulario y ADA sin actividad SM, A23 sin nada respiratorio y «Otros Crónicos»
   sin médico, el aviso de sexo/edad del SM, y el Maestro que no reconoce nada. Un fixture de `test_cobertura`
-  era justo el caso cazado (un SM entero en 0) y se corrigió. Los 4 de la segunda
+  era justo el caso cazado (un SM entero en 0) y se corrigió. Más 11 de la ronda 10
+  (268 en total), con 24 mutantes cazados: la base del P6 vacía y el año vacío del
+  histórico, SALA vacía + preguntas renombradas + NSP incompleto, el casillero cruzado
+  del A03 y sus puntajes fuera de rango, el Inscritos sin RUN usable, el rescate sin
+  pasivación y la edad del A05 por nombre (con el encabezado REAL del Administrativo de
+  `refs_tablas/` como guardarraíl: edad = col 4, la 11 es Convenio), el formulario sin INSTRUMENTO + la persona sin edad
+  del P6, el A05 sin fechas legibles, la Estratificación sin diagnósticos, Cupos sin
+  estamentos y los avisos en los resúmenes de A23/SM (el de SM, corriendo `correr`); 3 fixtures de población/A23 eran el caso cazado (nadie en la base, nadie
+  en SALA) y llevan ahora un ingreso real. Más 3 de los contratos de fuentes (271) y 7
+  de la ronda 11 (278; 283 con las decisiones del autor), con 15 + 12 mutantes cazados: la firma de contenido del
+  formulario SM (un Goldberg, un PSC y el Otros Crónicos reales en el casillero SM; un
+  formulario renumerado), la atención multifila del Monitoreo y el RUN heredado solo
+  dentro de su atención, la Estratificación con «Cantidad de Condiciones Crónicas» y sin
+  «Detalle», todo literal de actividad contra el Maestro, y `test_refs_tablas.py` (4: el
+  script arranca en 3.9, deja banner + encabezado de dos pisos y nada más, no escribe
+  un banner con RUT, y toda referencia versionada está limpia). Los fixtures IRIS del
+  A05 traían «18.- ESTADO» (en el formulario real es la 19, y la 18 quedaba duplicada):
+  justo lo que la firma de contenido rechaza, así que se corrigieron. Los 4 de la segunda
   tanda: `escribir_atomico` (el nombre final no existe mientras se escribe; una
   escritura fallida no deja basura), el A05 escribe vía temporal, la X de la ventana
   pregunta con una corrida viva (por el comando REGISTRADO, no un método llamado a

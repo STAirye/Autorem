@@ -305,6 +305,40 @@ def test_inscritos_vacio_falla_ruidoso_no_attributeerror():
         assert ai.categoria == "sin_datos"
 
 
+def test_inscritos_con_filas_pero_ningun_run_usable_lo_dice():
+    """Ronda 10: el guard de c38a8cc quedo DETRAS de cargar_canonico (que ya corta el
+    solo-encabezado), asi que solo lo alcanza un Inscritos CON filas y ninguna usable.
+    Su mensaje decia "no trae ninguna fila de datos" -> ahora dice por que. Y las filas
+    sin RUN ya no sobreviven como la persona 'None' (astype(str))."""
+    for filas, clave in (([{"rut": "11111111-1", "tipoid": "RUN Responsable"}], "1 'RUN Responsable'"),
+                         ([{"rut": None}, {"rut": ""}], "2 sin RUN")):
+        try:
+            pob.cargar_inscritos(_mk_inscritos(filas), log=_quiet)
+            assert False, f"{clave}: debio levantar ArchivoInvalido"
+        except ArchivoInvalido as ai:
+            assert ai.categoria == "sin_datos" and clave in str(ai), str(ai)
+    d = pob.cargar_inscritos(_mk_inscritos([{"rut": "11111111-1"}, {"rut": None}]), log=_quiet)
+    assert list(d["RUN"]) == ["11111111-1"], list(d["RUN"])
+
+
+def test_rescate_sin_columnas_de_pasivacion_falla():
+    """Ronda 10: sin MOTIVO/FECHA PASIVACION (opcionales para el P6) Posibles_Fallecidos,
+    Fallecidos_mes y Posibles_Traslados salian VACIAS sin aviso: la lista de a quien
+    llamar sin la marca de fallecido. Ahora el rescate falla (el P6 no se entera)."""
+    ada = _mk_ada([_sm("10000001-1", date(2026, 2, 10))])
+    for col in ("MOTIVO PASIVACION", "FECHA PASIVACION"):
+        _INS_HDR.remove(col)
+        try:
+            ins = _mk_inscritos([{"rut": "10000001-1"}])
+        finally:
+            _INS_HDR.append(col)
+        try:
+            resc.procesar(str(ins), str(_mk_formulario([])), str(ada), mes=MES, log=_quiet)
+            assert False, f"sin {col}: debio levantar ArchivoInvalido"
+        except ArchivoInvalido as ai:
+            assert ai.categoria == "sin_columnas" and col in str(ai), str(ai)
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
               if k.startswith("test_") and callable(v)]

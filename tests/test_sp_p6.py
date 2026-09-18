@@ -271,6 +271,26 @@ def test_activo12m_y_rescate_6m_13m_misma_lista_actividades():
     assert fila["¿Última atención hace 6m?"] == "Si"
 
 
+def test_activo12m_cuenta_las_visitas_con_su_nombre_real_del_maestro():
+    """Ronda 11: 3 de las 7 actividades venian del DAX con nombres que no existen en el
+    Maestro ('...con PATOLOGIA de salud mental', etc.): quien solo tenia esas visitas
+    salia no activo. Y la VDI del PADDS con demencia SI cuenta (decision del autor),
+    aunque el Trabajo Perdido la mande al REM del PADDS."""
+    visitas = {
+        "11111111-1": "Visita Domiciliaria Integral Familia con Integrante con Problema de "
+                      "Salud Mental - Primera Visita",
+        "22222222-2": "Otras Visitas Integrales - Visita Integral de Salud Mental - A "
+                      "Domicilio (Nivel Secundario) (Individual)",
+        "33333333-3": "Visita Domiciliaria Integral a personas con PADDS - Familia con "
+                      "integrante con dependencia severa con diagnostico de demencia - "
+                      "Primera visita anual",
+    }
+    P = _poblacion([], [{"rut": r} for r in visitas], ada_filas=[
+        {"rut": r, "fecha": date(2026, 7, 10), "act": a} for r, a in visitas.items()])
+    for r in visitas:
+        assert P.loc[P["Número"] == r, "¿Activo 12m?"].iloc[0] == "SI", r
+
+
 def test_ingresado_si_cualquier_dx_activo():
     P = _poblacion([
         {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[57]: "SI", _Q[58]: "INGRESO"}},
@@ -618,11 +638,16 @@ def test_bloques_pegables_fila28_es_bloque_propio():
     assert fila28.iloc[0]["Pegar_desde"] == "J28"    # 10-14 años, mujeres = primera banda abierta
 
 
+# Ronda 10: un P6 con NADIE en la base (Ingresado/Activo 12m/Estado) es ArchivoInvalido,
+# asi que los fixtures que miran otra cosa llevan un ingreso real.
+_ING_FEB = {"rut": "11111111-1", "fecha": date(2026, 2, 1), _Q[18]: "SI", _Q[19]: "19.- INGRESO"}
+
+
 def test_desfase_de_fechas_queda_en_el_leeme_del_p6():
     """El P6 usa el mes como CORTE (no filtra filas), así que un ADA que no llega
     al mes NO bloquea: es decisión del usuario. Pero el desfase tiene que quedar
     escrito en la hoja LEEME de la planilla, no solo en el log de la corrida."""
-    P = _poblacion([], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
+    P = _poblacion([_ING_FEB], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
     assert any(a[1] == "INCOMPLETO" for a in P.attrs.get("avisos", [])), P.attrs.get("avisos")
     salida = _TMP / "p6_desfase.xlsx"
     p6mod.escribir(P, _p6(P), salida)
@@ -665,7 +690,7 @@ def test_resumen_de_poblacion_muestra_los_avisos_de_cobertura():
     TIENE que mostrarlos: antes quedaban solo en el log y en la LEEME, y el "Listo"
     era igual al de una corrida completa con Activo 12m subcontado para todos."""
     from gui.paginas.poblacion import resumen
-    P = _poblacion([], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
+    P = _poblacion([_ING_FEB], [{"rut": "11111111-1"}], [_sm("11111111-1", date(2026, 2, 10))], mes=(2026, 8))
     assert any(a[1] == "INCOMPLETO" for a in P.attrs["avisos"])
     res = {"P": P, "resultado": _p6(P), "n_rescate": None, "salida": _TMP / "x.xlsx",
            "mes": (2026, 8), "fallo_rescate": None}
@@ -699,7 +724,9 @@ def test_preguntas_ausentes_y_ada_sin_actividad_sm_no_dan_0_callado():
                                 str(_mk_ada([_sm("11111111-1")])), mes=(2026, 8), log=_quiet)
         assert False, "debio levantar ArchivoInvalido"
     except ArchivoInvalido as e:
-        assert e.categoria == "sin_columnas", e.categoria
+        # Ronda 11: sin NINGUNA pregunta reconocible lo corta antes la firma de contenido
+        # (rem_saludmental.verificar_formulario_sm), la misma que usa el A05.
+        assert e.categoria == "no_formulario_sm", e.categoria
     P = pob.construir_poblacion(str(_mk_inscritos(ins)),
                                 str(_renombrar(_mk_formulario([ing]), {83, 84})),
                                 str(_mk_ada([_sm("11111111-1")])), mes=(2026, 8), log=_quiet)
@@ -710,6 +737,59 @@ def test_preguntas_ausentes_y_ada_sin_actividad_sm_no_dan_0_callado():
         assert False, "debio levantar ArchivoInvalido"
     except ArchivoInvalido as e:
         assert e.categoria == "sin_datos", e.categoria
+
+
+def test_base_vacia_del_p6_y_anio_vacio_del_historico_fallan_en_la_fuente():
+    """Ronda 10 (R2 estatica): (a) Estado con otro vocabulario, o el RUN del ADA en otro
+    formato que el del Inscritos, dejaban la BASE del P6 (Estado x Activo 12m x
+    Ingresado) vacia -> P6 entero en 0 con "Listo" -> sin_datos. (b) un año del
+    historico que bajo solo con encabezado se perdia callado en el concat -> sin_datos
+    NOMBRANDO el archivo."""
+    import shutil
+    ing = {"rut": "11111111-1", "fecha": date(2026, 7, 1), _Q[57]: "SI", _Q[58]: "INGRESO"}   # TDAH
+    control = _p6(_poblacion([ing], [{"rut": "11111111-1"}], [_sm("11111111-1")]))
+    assert _fila_p6(control["grid"], 35)["Ambos"] == 1                  # control: si cuenta
+    for etq, ins, ada in (("Estado 'Activa'", [{"rut": "11111111-1", "estado": "Activa"}],
+                           [_sm("11111111-1")]),
+                          ("RUN del ADA con puntos", [{"rut": "11111111-1"}], [_sm("11.111.111-1")])):
+        P = _poblacion([ing], ins, ada)
+        try:
+            _p6(P)
+            assert False, f"{etq}: debio levantar ArchivoInvalido"
+        except ArchivoInvalido as e:
+            assert e.categoria == "sin_datos", (etq, e.categoria)
+
+    bueno = _mk_formulario([ing])
+    b2 = _TMP / "form_2026.xlsx"; shutil.copy(bueno, b2)
+    vacio = _TMP / "form_2025.xlsx"
+    wb = openpyxl.load_workbook(bueno); ws = wb.active; ws.delete_rows(18, ws.max_row); wb.save(vacio)
+    try:
+        pob.cargar_formulario_sm([str(vacio), str(b2)], log=_quiet)
+        assert False, "debio levantar ArchivoInvalido por el año vacio"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_datos" and "form_2025.xlsx" in str(e), (e.categoria, str(e))
+
+
+def test_formulario_sin_instrumento_falla_y_sin_edad_va_a_revisar():
+    """Ronda 10, 2a pasada: (a) sin columna INSTRUMENTO, todos los dx que exigen medico
+    salian NO y el P6 subcontaba callado (los FR mantienen viva la base) ->
+    sin_columnas. (b) una persona sin edad contaba en Ambos y en NINGUNA banda, sin
+    fila en Revisar -> 'Sin edad' en Revisar_Administrativo."""
+    tdah = {"rut": "11111111-1", "fecha": date(2026, 7, 1), _Q[57]: "SI", _Q[58]: "INGRESO"}
+    p = _mk_formulario([tdah])
+    wb = openpyxl.load_workbook(p); ws = wb.active
+    ws.delete_cols([c.value for c in ws[17]].index("INSTRUMENTO") + 1); wb.save(p)
+    try:
+        pob.cargar_formulario_sm(str(p), log=_quiet)
+        assert False, "debio levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "sin_columnas" and "INSTRUMENTO" in str(e), (e.categoria, str(e))
+
+    r = _p6(_poblacion([tdah], [{"rut": "11111111-1", "edad": ""}], ada_filas=[_sm("11111111-1")]))
+    assert _fila_p6(r["grid"], 35)["Ambos"] == 1
+    assert "Sin edad: cuenta en Ambos, en ninguna banda" in _motivos(r), _motivos(r)
+    r = _p6(_poblacion([tdah], [{"rut": "11111111-1"}], ada_filas=[_sm("11111111-1")]))
+    assert not [m for m in _motivos(r) if m.startswith("Sin edad")]          # control
 
 
 def _main():

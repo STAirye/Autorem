@@ -55,10 +55,10 @@ from programas.rem_utils import (
 from programas import formatos
 
 # -- Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) --
-# Header en fila 9 (banner Comuna/Establecimiento/Mes/Año/'Utilización de Cupos'
-# arriba). Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento).
-# Es un export Administrativo -> comparte los params de encabezado con A05/A03
-# (`formatos.HEADER_ADMIN`), pero con su PROPIA ancla (Profesional/Instrumento).
+# Header en fila 9, de DOS pisos (celdas combinadas; banner Comuna/Establecimiento/Mes/
+# Año/'Utilización de Cupos' arriba; ver refs_tablas/Utilizacion_cupos_admin.xlsx).
+# Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento). Se
+# ubica con `formatos.fila_encabezado_admin`, con su PROPIA ancla.
 ANCLA = ["PROFESIONAL", "INSTRUMENTO"]
 MAX_FILAS_HEADER = 40
 
@@ -126,6 +126,15 @@ def cargar_estamentos(entrada, log=print):
             continue                      # conserva el primero visto
         tabla[k] = e
 
+    if not tabla:
+        # exigir_filas_ws de arriba mira que HAYA filas; esto, que alguna sirva. Sin
+        # ninguna fila con Profesional E Instrumento, la tabla sale vacia y la corrida
+        # sigue con el cache solo, sin decirlo.
+        raise ArchivoInvalido(
+            "sin_datos",
+            "El reporte de 'Utilización de Cupos' trae filas, pero ninguna con Profesional "
+            "e Instrumento a la vez: no hay ningún estamento que leer.\n\n"
+            "Revisa que sea el reporte completo, sin modificar.")
     log(f"[estamentos] {len(tabla)} funcionarios (de {n_filas} filas de agenda) "
         f"| encabezado fila {hidx}")
     if conflictos:

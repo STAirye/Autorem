@@ -49,7 +49,7 @@ import pandas as pd
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  marcar_demografia, gestante_runs, trans_map,
-                                 atenid_multiprofesional, _rango_mes, filtrar_mes,
+                                 atenid_multiprofesional, _rango_mes, filtrar_mes, opcional,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col,
                                  ArchivoInvalido, aviso_fuera_de_grid)
@@ -474,11 +474,10 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     d["dem_gestante"] = d["RUN"].isin(gset)
     # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita).
     if inscritos is not None:
-        try:
+        # Invalido -> OpcionalInvalido: la GUI pregunta si seguir sin el (ronda 11; antes
+        # quedaba en una linea del log y TRANS en 0, sin llegar a la LEEME).
+        with opcional("inscritos"):
             tmap = trans_map(inscritos)
-        except ValueError as e:                       # archivo modificado / reporte equivocado
-            tmap = {}
-            log(f"[sm] TRANS NO calculado: {e}  -> TRANS queda en 0.")
         gen = d["RUN"].map(tmap)                       # M/F/X por RUN (NaN si no TRANS)
         d["dem_trans_m"] = gen.eq("M")
         d["dem_trans_f"] = gen.eq("F")
@@ -581,23 +580,18 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     # ninguna VDI del mes, probablemente es de otro período -> avisamos RUIDOSO (fail loud).
     multi = set()
     if multiprofesional is not None:
-        try:
+        with opcional("multiprofesional"):   # invalido: la GUI pregunta si seguir sin el
             multi = atenid_multiprofesional(multiprofesional)
-            log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
-            a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
-            if a26_ids and not (a26_ids & multi):
-                log("[sm] el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
-                    f"{len(a26_ids)} VDI de A26 del mes -> parece de OTRO período. A26 saldría "
-                    "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
-                avisos.append(("A26 (composicion profesional)", "SUBCONTADO",
-                                "el 'Monitoreo Multiprofesional' no coincide con ninguna VDI "
-                                "del mes (parece de otro periodo)",
-                                "Revisar que el reporte cubra el mes reportado"))
-        except ValueError as e:
-            log(f"[sm] Multiprofesional NO usado: {e}  -> A26 queda todo mono-profesional.")
-            avisos.append(("A26 (composicion profesional)", "MENOS PRECISO",
-                            f"'Monitoreo Multiprofesional' invalido: {e}",
-                            "Cargar el reporte correcto"))
+        log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
+        a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
+        if a26_ids and not (a26_ids & multi):
+            log("[sm] el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
+                f"{len(a26_ids)} VDI de A26 del mes -> parece de OTRO período. A26 saldría "
+                "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
+            avisos.append(("A26 (composicion profesional)", "SUBCONTADO",
+                            "el 'Monitoreo Multiprofesional' no coincide con ninguna VDI "
+                            "del mes (parece de otro periodo)",
+                            "Revisar que el reporte cubra el mes reportado"))
     else:
         avisos.append(("A26 (composicion profesional)", "SIN DESGLOSAR",
                         "no se cargo 'Monitoreo Multiprofesional' (opcional)",

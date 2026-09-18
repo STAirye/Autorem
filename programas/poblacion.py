@@ -67,7 +67,7 @@ from programas.rem_utils import (
     buscar_col, num_pregunta, encontrar_fila_encabezado, _rango_mes,
 )
 from programas import formatos
-from programas.rem_saludmental import DIAGNOSTICOS_CON_SUBTIPO
+from programas.rem_saludmental import DIAGNOSTICOS_CON_SUBTIPO, verificar_formulario_sm
 
 # ======================================================================
 # Tabla A/B — config por diagnóstico (docs/SP_P6_config_por_dx.md, APROBADA)
@@ -160,14 +160,31 @@ ESTADOS_TODOS = sorted({spec["estado"] for spec in TODAS_LAS_SPECS} | {_E_TGD_FA
 # CASILLAS del REM; esta lista es la del DAX "SM Activo 12m", ver §8.1 del
 # plan: rescate 6m/13m usan la MISMA lista, no el 'contains "salud mental"'
 # laxo del DAX original). Fuente única para Activo12m / rescate 6m / rescate 13m.
+#
+# Ronda 11 (sep-2026): 3 de las 7 venian del DAX con nombres que NO EXISTEN en el
+# Maestro de Actividades (catalogos/maestro_slim.csv.gz) -> no calzaban con nada, y
+# quien solo tenia esas visitas salia NO Activo 12m (y al rescate como inasistente).
+# Mismo bug que el A32-F2. Se cambiaron por los nombres reales del Maestro; un test
+# (tests/test_refs_tablas.py) exige que cada una calce con alguna actividad del Maestro.
 ACTIVIDADES_SM_7 = [
     "control salud mental",
     "controles salud mental",
     "consulta de salud mental",
-    "visita domiciliaria integral familia con integrante con patologia de salud mental",
-    "visita domiciliaria integral a familia con adulto mayor con demencia",
+    # DAX: "...con integrante con PATOLOGIA de salud mental". El Maestro dice PROBLEMA.
+    "visita domiciliaria integral familia con integrante con problema de salud mental",
+    # DAX: "visita domiciliaria integral a familia con adulto mayor con demencia". En el
+    # Maestro calza con las actividades de gestion (AG_VIDOPCDS / AG_VISITA DOMICILIARA
+    # INTEGRALES ... ADULTO MAYOR CON DEMENCIA) y la VDI A26 de hoy es la del PADDS.
+    "adulto mayor con demencia",
+    # La VDI del PADDS con demencia SI cuenta para 'Activo 12m' (decision del autor,
+    # sep-2026): es contacto del programa con la persona. Que el Trabajo Perdido la saque
+    # del universo SM (EXCLUIR_SMISH) es otra cosa: dice a que REM TRIBUTA (al del PADDS,
+    # A26·A1), no si la persona esta activa.
+    "dependencia severa con diagnostico de demencia",
     "visita domiciliaria integral a familia con niños/as de 5 a 9 años con problemas y/o trastorno",
-    "visita integral de salud mental a domicilio",
+    # DAX: "visita integral de salud mental a domicilio". El Maestro: "OTRAS VISITAS
+    # INTEGRALES - VISITA INTEGRAL DE SALUD MENTAL - A DOMICILIO (NIVEL SECUNDARIO)".
+    "visita integral de salud mental - a domicilio",
 ]
 
 # -- Columnas de salida (nombres = export PowerBI; §3.2 slim) --
@@ -217,10 +234,13 @@ def cargar_inscritos(entrada, log=print):
     """'Informe Inscritos y Adscritos' (IRIS, snapshot) -> DataFrame, 1 fila por
     RUN. Es la base de la tabla Ferrada: TODA la población, sin filtrar (el filtro
     Activo/Ingresado lo aplica quien consuma la tabla)."""
-    d, _ = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
-                          requeridas=("RUN", "SEXO", "ESTADO", "SITUACION"))
+    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
+                            requeridas=("RUN", "SEXO", "ESTADO", "SITUACION"))
+    n_filas = len(d)
     d["RUN"] = d["RUN"].astype(str).str.strip()
-    d = d[d["RUN"] != ""]
+    sin_run = d["RUN"].isin(("", "None", "nan"))
+    n_sin_run = int(sin_run.sum())
+    d = d[~sin_run]
 
     # «RUN Responsable» (§5.5.2 del plan sp-p6): un recién nacido de <1 mes sin RUT
     # propio se inscribe con el RUN de un tercero (típicamente la madre) -> ESE RUN
@@ -228,6 +248,7 @@ def cargar_inscritos(entrada, log=print):
     # COLISIÓN de clave, no una fila más: si no se saca ANTES de deduplicar, el
     # `drop_duplicates` de abajo puede quedarse con la fila del RN y perder la de la
     # madre (el caso de riesgo real: madre con Depresión Postparto activa).
+    n_resp = 0
     if "TIPOID" in d.columns:
         es_responsable = d["TIPOID"].map(norm) == "RUN RESPONSABLE"
         n_resp = int(es_responsable.sum())
@@ -242,13 +263,19 @@ def cargar_inscritos(entrada, log=print):
         # Fail loud sobre la FUENTE (CLAUDE.md regla 2), no sobre una casilla mas
         # abajo: con 0 filas, las columnas de mas adelante (ALERTAS, etc.) quedan
         # con dtype float64 en vez de object y revientan con un AttributeError
-        # criptico en .str.contains(), en vez de decir claramente que el archivo
-        # esta vacio.
+        # criptico en .str.contains(). El export SOLO-encabezado ya lo corta
+        # cargar_canonico (ronda 1); aca llega el que SI trae filas pero ninguna sirve
+        # (todas sin RUN, o todas 'RUN Responsable') -> decir ESO, no "archivo vacio".
         raise ArchivoInvalido(
             "sin_datos",
-            "El 'Informe Inscritos y Adscritos' no trae ninguna fila de datos.\n\n"
-            "Revisa que sea el export completo de RAYEN (no solo el encabezado) "
-            "y que este sin modificar.")
+            f"El 'Informe Inscritos y Adscritos' trae {n_filas} fila(s), pero ninguna con "
+            f"un RUN usable: {n_sin_run} sin RUN en 'NUMERO TIPO IDENTIFICACION' y "
+            f"{n_resp} 'RUN Responsable' (recién nacidos con el RUN de un tercero).\n\n"
+            "Revisa que sea el export completo del centro, sin modificar.")
+    # Columnas opcionales que NO vinieron (quedan en None para todos). Las usa quien
+    # depende de ellas para decir que no puede, en vez de dar un resultado vacio
+    # callado: p.ej. el rescate sin MOTIVO/FECHA PASIVACION no flagea fallecidos.
+    d.attrs["columnas_ausentes"] = [k for k, c in col.items() if not c]
     log(f"[poblacion] Inscritos: {len(d)} personas (snapshot)")
     return d
 
@@ -277,19 +304,24 @@ def _leer_formulario_1(entrada, log):
             f"Archivo «{nombre}»:\n\nEl histórico de 'Control de Salud Mental' debe "
             "venir en formato IRIS (no el Reporte Administrativo): trae columnas que "
             "el Administrativo no tiene y que este módulo necesita.")
-    header_idx, _modo = encontrar_fila_encabezado(
-        ws, formatos.ANCLA_IRIS, True, 16, formatos.MAX_FILAS_HEADER)
+    header_idx, _modo = encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
     filas = list(ws.iter_rows(values_only=True))
     wb.close()
     headers = list(filas[header_idx - 1])
     headers_n = [norm(h) for h in headers]
+    verificar_formulario_sm(headers, nombre)   # por CONTENIDO (regla 5), mismo que el A05
     rut_col, _edad_col, _sexo_col = formatos.resolver_identidad(headers_n)
     fecha_col_i = buscar_col(headers_n, tokens=["FECHA", "FORMULARIO"])
     instr_col_i = buscar_col(headers_n, exacto="INSTRUMENTO")
-    if not rut_col or not fecha_col_i:
+    # INSTRUMENTO es requerido (gemelo del A23, ronda 9): sin el, `INSTR_n` queda "" y
+    # TODOS los diagnosticos que exigen medico salen no-Activos -> el P6 subcuenta
+    # callado (los factores de riesgo, que no lo exigen, mantienen la base viva).
+    faltan_id = [n for n, c in (("RUT", rut_col), ("FECHA FORMULARIO", fecha_col_i),
+                                ("INSTRUMENTO", instr_col_i)) if not c]
+    if faltan_id:
         raise ArchivoInvalido(
             "sin_columnas",
-            f"Archivo «{nombre}»:\n\nNo encuentro RUT y/o FECHA FORMULARIO. "
+            f"Archivo «{nombre}»:\n\nNo encuentro la(s) columna(s) {', '.join(faltan_id)}. "
             "¿Es el export IRIS de 'Control de Salud Mental', sin modificar?")
     num2col = {num_pregunta(h): i for i, h in enumerate(headers) if num_pregunta(h) is not None}
     # Las preguntas se ubican por su NUMERO ("18.- ..."). Una que falta quedaba como
@@ -318,10 +350,21 @@ def _leer_formulario_1(entrada, log):
             continue
         out["RUN"].append(str(rut).strip())
         out["FECHA"].append(row[fecha_col_i - 1] if fecha_col_i - 1 < len(row) else None)
-        out["INSTR"].append(row[instr_col_i - 1] if instr_col_i and instr_col_i - 1 < len(row) else "")
+        out["INSTR"].append(row[instr_col_i - 1] if instr_col_i - 1 < len(row) else "")
         for n in QUESTIONS:
             c = num2col.get(n)
             out[f"q{n}"].append(row[c] if c is not None and c < len(row) else None)
+    if not out["RUN"]:
+        # Fail loud POR ARCHIVO (CLAUDE.md regla 2), igual que cargar_canonico: en un
+        # historico de varios años, un año que bajo cortado (solo encabezado) se perdia
+        # callado en el concat -- los RUN cuyo unico formulario valido era de ese año
+        # quedaban sin diagnostico, y la cobertura por fecha min/max no lo ve.
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"Archivo «{nombre}»:\n\nNo trae ninguna fila de datos con RUT "
+            f"({len(filas) - header_idx} fila(s) bajo el encabezado).\n\n"
+            "Revisa que sea el export completo de IRIS (no solo el encabezado) y que "
+            "este sin modificar.")
     d = pd.DataFrame(out)
     d.attrs["preguntas_faltantes"] = {nombre: faltan} if faltan else {}
     return d
@@ -347,14 +390,7 @@ def cargar_formulario_sm(entrada, log=print):
     faltantes = {k: v for p in partes for k, v in p.attrs.get("preguntas_faltantes", {}).items()}
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
     d.attrs["preguntas_faltantes"] = faltantes   # concat no conserva attrs
-    if len(d) == 0:
-        # Fail loud sobre la FUENTE (CLAUDE.md regla 2), igual que cargar_inscritos:
-        # con 0 filas las columnas quedan float64 y .str.contains() revienta abajo.
-        raise ArchivoInvalido(
-            "sin_datos",
-            "El formulario 'Control de Salud Mental' no trae ninguna fila de datos.\n\n"
-            "Revisa que sea el export completo de IRIS (no solo el encabezado) "
-            "y que este sin modificar.")
+    # (0 filas ya no llega aca: _leer_formulario_1 falla POR ARCHIVO, nombrandolo.)
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA FORMULARIO (histórico SM)")
     d["INSTR_n"] = d["INSTR"].map(norm)
     for n in QUESTIONS:

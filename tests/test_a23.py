@@ -392,9 +392,180 @@ def test_mes_sin_nada_respiratorio_y_otros_sin_medico_no_dan_0_callado():
     except ArchivoInvalido as e:
         assert e.categoria == "sin_columnas", e.categoria
 
-    fer = a23.procesar(_mk(_G_ATEN), otros=_mk_otros([dict(_G_OT, INSTR="Kinesiologo(a)")]),
+    # Sin ningun medico en el formulario pero con SALA no vacia (asma por el dx J45 del
+    # ADA): aviso EN 0. Con SALA vacia del todo, ver el test de la ronda 10 de abajo.
+    j45 = dict(_G_ATEN[0], DIAGNOSTICOS="J45.9 Asma")
+    fer = a23.procesar(_mk([j45, _RESP]), otros=_mk_otros([dict(_G_OT, INSTR="Kinesiologo(a)")]),
                        mes=(2026, 7), log=_quiet)
     assert any(a[0].startswith("SALA") and a[1] == "EN 0" for a in fer.attrs["avisos"]), fer.attrs["avisos"]
+
+
+def test_sala_vacia_preguntas_renombradas_y_nsp_incompleto_no_dan_0_callado():
+    """Ronda 10 (R2 estática): (a) nadie 'Pertenece a SALA' -> TODAS las hojas del A23
+    en 0 (se calculan solo sobre SALA) -> sin_datos. (b) una pregunta de condición
+    renombrada ('TIENE' por 'PADECE DE') dejaba esa condición en 0 callada -> aviso
+    SUBCONTADO; ninguna -> sin_columnas. (c) NSP sin TIPO/INSTRUMENTO/AÑOS daba la H
+    en 0 o todo en '20 y más' -> sin_columnas; AÑOS ilegible -> aviso REVISAR."""
+    import pandas as pd
+    from programas.rem_utils import ArchivoInvalido
+
+    def _cat(fn):
+        try:
+            fn()
+        except ArchivoInvalido as e:
+            return e.categoria
+        return None
+
+    # (a) formulario sin ningun medico y sin dx J45 en el ADA -> SALA vacia
+    assert _cat(lambda: a23.procesar(_mk(_G_ATEN), otros=_mk_otros([dict(_G_OT, INSTR="Kine")]),
+                                     mes=(2026, 7), log=_quiet)) == "sin_datos"
+
+    # (b) asma renombrada: A deja de estar en SALA por el formulario -> aviso
+    o = _mk_otros([dict(_G_OT, FNAC=date(1980, 1, 1))])
+    wb = openpyxl.load_workbook(o); ws = wb.active
+    ws.cell(row=1, column=10, value="9.- ¿TIENE ASMA BRONQUIAL?"); wb.save(o)
+    j45 = dict(_G_ATEN[0], DIAGNOSTICOS="J45.9 Asma")          # SALA no vacia via el ADA
+    fer = a23.procesar(_mk([j45, _RESP]), otros=o, mes=(2026, 7), log=_quiet)
+    av = [a for a in fer.attrs["avisos"] if a[0].startswith("SALA / Seccion G")]
+    assert av and "Asma" in av[0][2] and av[0][1] == "SUBCONTADO", fer.attrs["avisos"]
+    ws.cell(row=1, column=6, value="1.- ¿TIENE SBO?")          # + SBOR y EPOC: ya no queda
+    ws.cell(row=1, column=15, value="14.- ¿TIENE EPOC?"); wb.save(o)   # ninguna '¿PADECE...?'
+    assert _cat(lambda: a23.cargar_otros(o, log=_quiet)) == "sin_columnas"
+
+    # (c) NSP
+    fila = {"instr": "Médico", "tipo": "Control IRA", "fecha": "10-07-2026 09:00:00", "run": "A", "anos": 5}
+    for i, nombre in ((1, "PRESTACION"), (0, "PROFESIONAL"), (4, "EDAD AL DESCARGAR")):   # "EDAD" pelado = Admin
+        viejo = _NSP_HDR[i]; _NSP_HDR[i] = nombre
+        try:
+            assert _cat(lambda: a23.cargar_inasistentes(_mk_nsp([fila]), log=_quiet)) == "sin_columnas", nombre
+        finally:
+            _NSP_HDR[i] = viejo
+    h = a23._seccion_h(a23.cargar_inasistentes(_mk_nsp([dict(fila, anos="")]), log=_quiet),
+                       pd.Timestamp(2026, 7, 1), pd.Timestamp(2026, 7, 31))
+    assert h.attrs["sin_edad"] == 1
+
+
+def test_estratificacion_sin_columna_de_diagnosticos_falla():
+    """Ronda 10, 2a pasada: sin la columna de diagnosticos el reporte cargaba y no
+    aportaba NADA a SALA, callado -> sin_columnas. Ronda 11, contra el export real: el
+    fallback "CONDICIONES CRONICAS" calzaba con 'Cantidad de Condiciones Crónicas' (un
+    CONTEO), asi que sin 'Detalle...' tiene que fallar igual aunque esa este."""
+    from programas.rem_utils import ArchivoInvalido
+    for hdr, fila in ((["RUT", "DV", "COMUNA"], [11111111, "1", "Maipu"]),
+                      (["RUT", "DV", "Cantidad de Condiciones Crónicas"], [11111111, "1", 2])):
+        try:
+            a23.cargar_estrat(_mk_estrat(hdr, [fila]))
+            assert False, f"debio levantar ArchivoInvalido con {hdr}"
+        except ArchivoInvalido as e:
+            assert e.categoria == "sin_columnas", e.categoria
+    s = a23.cargar_estrat(_mk_estrat(["DETALLE DIAGNOSTICOS", "RUT", "DV"],
+                                     [["Asma Moderada", 11111111, "1"]]))
+    assert s.loc["11111111-1"] == "ASMA MODERADA"                  # col 0 SI cuenta
+
+
+def test_atencion_multifila_y_run_heredado_solo_dentro_de_la_atencion():
+    """Ronda 11, contra los encabezados REALES (refs_tablas): (a) en el Monitoreo una
+    atencion son VARIAS filas con el mismo 'N°', y los indicadores con AND entre
+    actividades («autocuidado» Y «control sala») comparaban fila por fila -> NO callado;
+    (b) el RUN se rellenaba con un ffill global: en IRIS una fila sin RUN heredaba el
+    paciente de la fila de ARRIBA, de otra atencion."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    from programas.rem_utils import cargar_atenciones, dv_rut
+
+    def _fx(ref, filas):
+        b, h, p = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+        return escribir(_TMP / f"multi_{ref}", b, h, filas, p)
+    otro = "10000013-" + dv_rut("10000013")
+    mon = cargar_atenciones(_fx("Monitoreo_de_Actividades_anonimizado.xlsx", [
+        {"N°": 1, "RUN": "11111111-1", "FECHA CONSULTA": "05/08/2026", "AÑOS": 40,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": "CONTROL SALA (IRA, ERA O MIXTA)", "DIAGNÓSTICO": "ASMA",
+         "INSTRUMENTO": "MEDICO", "TIPO DE ATENCIÓN": "CONTROL", "FUNCIONARIO": "DR X"},
+        {"N°": 1, "ACTIVIDAD Y/O PROCEDIMIENTO":
+            "EDUCACION INDIVIDUAL EN SALA - AUTOCUIDADO SEGUN PATOLOGIA"},
+        {"N°": 2, "RUN": otro, "FECHA CONSULTA": "06/08/2026", "AÑOS": 7,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": "EDUCACION INDIVIDUAL EN SALA - AUTOCUIDADO SEGUN PATOLOGIA",
+         "DIAGNÓSTICO": "ASMA", "INSTRUMENTO": "KINESIOLOGO(A)", "TIPO DE ATENCIÓN": "CONTROL",
+         "FUNCIONARIO": "KINE Z"},
+    ]), log=_quiet)
+    assert list(mon["RUN"]) == ["11111111-1", "11111111-1", otro], list(mon["RUN"])
+    auto = a23._masks_simples(mon)["REMA23 Autocuidado"]
+    assert set(mon.loc[auto, "RUN"]) == {"11111111-1"}, set(mon.loc[auto, "RUN"])  # la 2 no
+
+    iris = cargar_atenciones(_fx("ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx", [
+        {"NUMERO TIPO IDENTIFICACION": "11111111-1", "ATEN ID": "901", "FECHA ATENCION": "05/08/2026",
+         "ACTIVIDADES": "CONTROL SALA (IRA, ERA O MIXTA); EDUCACION INDIVIDUAL EN SALA - "
+                        "AUTOCUIDADO SEGUN PATOLOGIA", "DIAGNOSTICOS": "J45",
+         "INSTRUMENTO": "MEDICO", "TIPO ATENCION": "CONTROL", "PROFESIONAL ATENCION": "DR X"},
+        {"ATEN ID": "902", "FECHA ATENCION": "06/08/2026", "ACTIVIDADES": "CONSULTA SALA (IRA, ERA O MIXTA)",
+         "DIAGNOSTICOS": "J45", "INSTRUMENTO": "MEDICO", "TIPO ATENCION": "CONSULTA",
+         "PROFESIONAL ATENCION": "DR Y"},
+    ]), log=_quiet)
+    assert iris["RUN"].iloc[1] != "11111111-1", "la 902 heredo el RUN de la 901 (otra atencion)"
+    assert bool(a23._masks_simples(iris)["REMA23 Autocuidado"].iloc[0])
+
+
+def test_otros_cronicos_administrativo_saca_el_estamento_del_funcionario():
+    """Ronda 11 (decision del autor: se soporta). El 'Otros Cronicos' Administrativo trae
+    RUT / Fecha Formulario / Funcionario y NO trae INSTRUMENTO: el estamento sale del
+    nombre del funcionario en el propio export de atenciones. Encabezados REALES."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+
+    def _fx(ref, filas):
+        b, h, p = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+        return escribir(_TMP / f"adm_{ref}", b, h, filas, p)
+    ada = _fx("ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx", [
+        {"NUMERO TIPO IDENTIFICACION": "11111111-1", "ATEN ID": "901", "FECHA ATENCION": "10/07/2026",
+         "ACTIVIDADES": "CONTROL SALA (IRA, ERA O MIXTA)", "DIAGNOSTICOS": "J45 ASMA",
+         "INSTRUMENTO": "Médico", "TIPO ATENCION": "CONTROL", "PROFESIONAL ATENCION": "ANA PEREZ",
+         "FECHA DE NACIMIENTO": "01/01/1990"}])
+    asma = {"9.- ¿Padece de Asma Bronquial?": "Si", "10.- Estado": "Ingreso",
+            "11.- Gravedad Asma Bronquial": "Moderado", "13.- Estado de Control Asma": "Controlado"}
+    otros = _fx("Otros_cronicos_admin.xlsx", [
+        dict(asma, **{"RUT": "11111111-1", "Fecha Formulario": "2026/05/01", "Funcionario": "ANA PEREZ"}),
+        dict(asma, **{"RUT": "11111111-1", "Fecha Formulario": "2026/04/01", "Funcionario": "NN DESCONOCIDO"}),
+    ])
+    f = a23.procesar(ada, otros=otros, mes=(2026, 7), log=_quiet)
+    fila = f.set_index("RUN").loc["11111111-1"]
+    assert fila["SALA ASMA"] == "SI" and fila["SALA ASMA Gravedad"] == "Moderado", dict(fila)
+    assert any(a[1] == "SUBCONTADO" and "NN DESCONOCIDO" in a[2] for a in f.attrs["avisos"]), \
+        f.attrs["avisos"]
+
+
+def test_seccion_h_con_el_monitoreo_de_inasistentes_administrativo():
+    """Ronda 11: el NSP Administrativo ('Monitoreo de Inasistentes') trae RUN, FECHA CITA
+    y EDAD (en texto) en vez de NUMERO... / FECHA HORA CITA / AÑOS. Encabezado REAL."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    import pandas as pd
+    b, h, p = plantilla(Contrato(id="nsp", cubre=(), llamar=None, fila={},
+                                 ref="Monitoreo_de_Inasistentes_admin.xlsx"))
+    base = {"INSTRUMENTO": "Kinesiólogo(a)", "TIPO ATENCION": "Control ERA", "FECHA CITA": "10-08-2026",
+            "RUN": "11111111-1", "SEXO": "Mujer"}
+    ruta = escribir(_TMP / "nsp_admin.xlsx", b, h, [dict(base, EDAD="8 años 2 meses"),
+                                                     dict(base, EDAD="45 años")], p)
+    hh = a23._seccion_h(a23.cargar_inasistentes(ruta, log=_quiet),
+                        pd.Timestamp(2026, 8, 1), pd.Timestamp(2026, 8, 31, 23, 59))
+    kine = hh[hh["Profesional"] == "Kinesiólogo/a"].iloc[0]
+    assert (kine["Menor de 20"], kine["20 y más"]) == (1, 1), dict(kine)
+
+
+def test_estratificacion_o_nsp_invalidos_son_opcional_invalido():
+    """Ronda 11: un opcional que no sirve levanta OpcionalInvalido con el NOMBRE del
+    parametro, para que la GUI ofrezca seguir sin el (gui/runner.sin_opcional)."""
+    from programas.rem_utils import OpcionalInvalido
+    aten = _mk([{"NUMERO TIPO IDENTIFICACION": "A", "FECHA ATENCION": date(2026, 7, 10),
+                 "INSTRUMENTO": "Médico", "FECHA DE NACIMIENTO": date(1990, 1, 1)}, _RESP])
+    otros = _mk_otros([{"RUN": "A", "FECHA": date(2026, 5, 1), "INSTR": "Médico", "ASMA_p": "Si",
+                        "ASMA_grav": "Moderado", "ASMA_ctrl": "Controlado", "ASMA_est": "Ingreso"}])
+    malo = _mk_estrat(["RUT", "DV", "COMUNA"], [[11111111, "1", "Maipu"]])   # sin diagnosticos
+    for kw, entrada in ((dict(estrat=malo), "estrat"), (dict(inasistentes=[malo]), "inasistentes")):
+        try:
+            a23.procesar(aten, otros=otros, mes=(2026, 7), log=_quiet, **kw)
+            assert False, f"{entrada}: debio levantar OpcionalInvalido"
+        except OpcionalInvalido as e:
+            assert e.entrada == entrada, (entrada, e.entrada)
 
 
 def _main():

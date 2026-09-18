@@ -52,7 +52,7 @@ def _iris_fixture():
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
                "1.- ¿Usted es Madre de Hijo menor de 5 años?", "PUEBLO ORIGINARIO",
                "ALERTAS ADMINISTRATIVAS", "GÉNERO", "18.- ¿ TIENE DEPRESIÓN ?",
-               "18.- ESTADO", "20.- TIPO DE DEPRESIÓN"])
+               "19.- ESTADO", "20.- TIPO DE DEPRESIÓN"])
     ws.append(["11111111-1", 45, "Mujer", "SI", "", "MIGRANTE; PRAIS", "Femenino",
                "SI", "EGRESO ALTA", "Depresión Moderada"])
     ws.append(["22222222-2", 30, "Hombre", "", "Mapuche", "", "Trans Masculino",
@@ -98,7 +98,7 @@ def _iris_fecha_fixture():
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
-               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO",
+               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO",
                "20.- TIPO DE DEPRESIÓN"])
     ws.append(["11111111-1", 45, "Mujer", "06/07/2026", "SI", "EGRESO ALTA", "Depresión Moderada"])
     ws.append(["22222222-2", 30, "Hombre", "20/07/2026", "SI", "EGRESO ALTA", "Depresión Severa"])
@@ -145,7 +145,7 @@ def test_nombre_patologia_y_exclusion():
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(["Servicio", None]); ws.append(["Filtros", None])
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
-               "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO", "20.- TIPO DE DEPRESIÓN",
+               "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO", "20.- TIPO DE DEPRESIÓN",
                "75.- ¿Paciente Presenta Epilepsia?", "76.- Estado"])
     ws.append(["11111111-1", 50, "Hombre", "SI", "EGRESO ALTA", "Depresión Moderada",
                "SI", "EGRESO ALTA"])          # 1 egreso depresión + 1 epilepsia (se excluye)
@@ -181,7 +181,7 @@ def test_madre_menor5_filtra_por_sexo_no_por_genero():
     ws.append(["Servicio", None]); ws.append(["Filtros", None])
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
                "1.- ¿Usted es Madre de Hijo menor de 5 años?", "GÉNERO",
-               "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO"])
+               "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO"])
     ws.append(["11111111-1", 30, "Mujer",  "SI", "Femenino",       "SI", "EGRESO ALTA"])
     ws.append(["22222222-2", 40, "Hombre", "SI", "Masculino",      "SI", "EGRESO ALTA"])
     ws.append(["33333333-3", 25, "Mujer",  "SI", "Trans Masculino", "SI", "EGRESO ALTA"])
@@ -223,7 +223,7 @@ def test_a05_trans_implicito():
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(["Servicio", None]); ws.append(["Filtros", None])
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
-               "GÉNERO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO"])
+               "GÉNERO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO"])
     ws.append(["11111111-1", 30, "Hombre", "Femenina",        "SI", "EGRESO ALTA"])
     ws.append(["22222222-2", 40, "Mujer",  "Femenina",        "SI", "EGRESO ALTA"])
     ws.append(["33333333-3", 25, "Mujer",  "Trans Masculino", "SI", "EGRESO ALTA"])
@@ -342,7 +342,7 @@ def test_export_sin_filas_falla_en_la_fuente():
         wb = openpyxl.Workbook(); ws = wb.active
         ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
         ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
-                   "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO",
+                   "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO",
                    "20.- TIPO DE DEPRESIÓN"])
         wb.save(p)
     for mod in (egresos, ingresos):
@@ -352,6 +352,80 @@ def test_export_sin_filas_falla_en_la_fuente():
                 assert False, f"{mod.__name__} mes={mes} debió levantar ArchivoInvalido"
             except sm.ArchivoInvalido as e:
                 assert e.categoria == "sin_datos", e.categoria
+
+
+def test_edad_se_busca_por_nombre_nunca_por_posicion():
+    """Hasta 1.9.17, sin la columna de edad por nombre el A05 tomaba la columna 11 POR
+    POSICION (el layout IRIS, armado antes de refs_tablas/). En el Administrativo esa es
+    'Convenio': edades de otra columna, calladas. Ahora: por nombre, o sin_columnas.
+    Guardarrail con el encabezado REAL del Administrativo (refs_tablas, solo header):
+    la edad es la col 4 ('Edad de registro formulario') y la 11 no lo es."""
+    from programas import formatos
+    ref = Path(__file__).resolve().parent.parent / "refs_tablas" / "Formulario_csm_reporte_Administrativo.xlsx"
+    ws = openpyxl.load_workbook(ref).active
+    hdr = [sm.norm(c.value) for c in ws[9]]
+    _, edad_col, _ = formatos.resolver_identidad(hdr)
+    assert edad_col == 4 and "EDAD" in hdr[3] and "CONVENIO" in hdr[10], (edad_col, hdr[:12])
+
+    p = _TMP / "admin_sin_edad.xlsx"
+    wb = openpyxl.load_workbook(_admin_fixture()); ws = wb.active
+    ws.cell(row=9, column=4, value="Edad"); wb.save(p)      # renombrada: ya no calza
+    for mod in (egresos, ingresos):
+        try:
+            mod.procesar(p, _TMP / "no_se_escribe.xlsx", perfil=sm.PERFIL_ADMIN, log=_quiet)
+            assert False, f"{mod.__name__}: debio levantar ArchivoInvalido"
+        except sm.ArchivoInvalido as e:
+            # Desde la ronda 11 corta antes: en los dos formatos el ANCLA del encabezado
+            # es la columna de edad, y sin ancla ya no hay fila «de repuesto» por posicion.
+            assert e.categoria == "sin_encabezado", e.categoria
+
+
+def test_el_a05_y_el_p6_reconocen_el_formulario_por_contenido():
+    """Ronda 11 (contra refs_tablas): un cuestionario RAYEN (Goldberg, PSC) trae las
+    mismas firmas IRIS/Admin que el formulario SM y su '1.- ESTADO' dice Ingreso: el A05
+    contaba ingresos con patologia «Estado», y el P6 leia el item 3 de Goldberg como
+    Violencia. La firma de CONTENIDO (numero de pregunta -> lo que dice) lo corta, y
+    tiene que dejar pasar los DOS formatos reales del formulario."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    import programas.poblacion as pob
+
+    def _ref(ref):
+        return plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+
+    for ref in ("Formularios_RAYEN_csm_IRis.xlsx", "Formulario_csm_reporte_Administrativo.xlsx"):
+        sm.verificar_formulario_sm(_ref(ref)[1])          # el real SI pasa
+    iris = {"NUMERO TIPO IDENTIFICACION": "11111111-1", "AÑO APLICACIÓN FORMULARIO": 45,
+            "SEXO": "Mujer", "FECHA FORMULARIO": "05/08/2026", "1.- ESTADO": "Ingreso"}
+    admin = {"RUT": "11111111-1", "Edad de registro formulario": "7 años", "Sexo": "Mujer",
+             "Fecha Formulario": "2026/08/05", "1.- Estado": "Ingreso"}
+    for ref, fila, perfil in (("goldberg_iris.xlsx", iris, sm.PERFIL_IRIS),
+                              ("psc_administrativo.xlsx", admin, sm.PERFIL_ADMIN),
+                              ("Otros_cronicos_iris.xlsx", iris, sm.PERFIL_IRIS)):
+        banner, hdr, pisos = _ref(ref)
+        p = escribir(_TMP / f"cruzado_{ref}", banner, hdr, [fila], pisos)
+        for mod in (egresos, ingresos):
+            try:
+                mod.procesar(p, _TMP / "no_se_escribe.xlsx", perfil=perfil, log=_quiet)
+                assert False, f"{ref} en {mod.__name__}: debio levantar ArchivoInvalido"
+            except sm.ArchivoInvalido as e:
+                assert e.categoria == "no_formulario_sm", (ref, e.categoria)
+        if perfil is sm.PERFIL_IRIS:                      # el historico del P6 es solo IRIS
+            try:
+                pob.cargar_formulario_sm(str(p), log=_quiet)
+                assert False, f"{ref} en el P6: debio levantar ArchivoInvalido"
+            except sm.ArchivoInvalido as e:
+                assert e.categoria == "no_formulario_sm", (ref, e.categoria)
+    # Renumerado (una pregunta nueva corre las de mas abajo): no es «otro formulario»,
+    # es el mismo con los numeros cambiados -> formulario_cambiado.
+    hdr = _ref("Formularios_RAYEN_csm_IRis.xlsx")[1]
+    corrido = [h.replace("51.- ", "52.- ", 1) if str(h).startswith("51.- ") else h for h in hdr]
+    corrido = [h for h in corrido if not str(h).startswith("52.- ESTADO")]
+    try:
+        sm.verificar_formulario_sm(corrido)
+        assert False, "debio levantar ArchivoInvalido"
+    except sm.ArchivoInvalido as e:
+        assert e.categoria == "formulario_cambiado", e.categoria
 
 
 def test_dispatcher_multisheet():
@@ -445,6 +519,28 @@ def test_el_a05_escribe_via_temporal():
 
 
 # -- Runner propio (sin depender de pytest) ----------------------------
+def test_a05_sin_ninguna_fecha_legible_no_manda_a_archivo_completo():
+    """Ronda 10, 2a pasada: con TODAS las FECHA FORMULARIO ilegibles el mes_vacio decia
+    "revisa el mes ... o elige Archivo completo", y eso procesa el año entero como si
+    fuera el mes. Ahora sin_fecha, que dice lo contrario. Con fechas legibles de otro mes
+    sigue siendo mes_vacio."""
+    def _cat(fecha):
+        p = _TMP / "a05_fecha.xlsx"
+        wb = openpyxl.Workbook(); ws = wb.active
+        ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
+        ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+                   "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO"])
+        ws.append(["11111111-1", 45, "Mujer", fecha, "SI", "EGRESO ALTA"]); wb.save(p)
+        try:
+            egresos.procesar(p, _TMP / "no_se_escribe.xlsx", log=_quiet, mes=(2026, 8))
+        except sm.ArchivoInvalido as e:
+            return e.categoria, str(e)
+        return None, ""
+    cat, msg = _cat("31-31-2026")
+    assert cat == "sin_fecha" and "NO lo proceses" in msg, (cat, msg)
+    assert _cat("06/07/2026")[0] == "mes_vacio"                               # otro mes
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

@@ -219,7 +219,7 @@ def test_rechaza_no_instrumento():
     """Un export sin PUNTAJE/RESULTADO (ej. el de Control de Salud Mental) se rechaza."""
     p = _TMP / "noinst.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active
-    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO", "18.- ESTADO"])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO", "19.- ESTADO"])
     ws.append(["1-9", 30, "Mujer", "EGRESO ALTA"])
     wb.save(p)
     try:
@@ -348,6 +348,38 @@ def test_d3_sin_momento_o_sin_puntaje_no_queda_en_0_callado():
     p = _iris("m9_sexo.xlsx", form, [ok[:2] + ("",) + ok[3:]])
     res = scr.procesar_unificado({"PSC": p}, _TMP / "m9d.xlsx", log=_quiet)
     assert any("sin sexo" in a[2] for a in res["avisos"]), res["avisos"]
+
+
+def test_casillero_cruzado_y_puntajes_fuera_de_rango_no_dan_d3_en_0():
+    """Ronda 10 (R2 estatica): los casilleros de la GUI FIJAN el instrumento y el
+    contenido no se miraba: un PSC-Y en el casillero GHQ-12 (todo fuera de rango) o un
+    GHQ-12 en el del PSC (todo bajo 33) daban la D.3 en 0 con "N aplicaciones" ->
+    instrumento_cruzado. Sin nombre detectable y TODO fuera de rango -> sin_datos;
+    ALGUNOS fuera de rango -> aviso SUBCONTADO (antes solo el log)."""
+    from programas.rem_utils import ArchivoInvalido
+
+    def _cat(slot, p):
+        try:
+            scr.procesar_unificado({slot: p}, _TMP / "x_out.xlsx", log=_quiet)
+        except ArchivoInvalido as e:
+            return e.categoria
+        return None
+
+    pscy = _iris("x_pscy.xlsx", "Cuestionario para Adolescentes (PSC-Y)", [
+        ("1-9", 12, "Hombre", "", "", "Ingreso", 40, "Bajo")])
+    ghq = _iris("x_ghq.xlsx", "Cuestionario de Salud de Goldberg", [
+        ("2-7", 30, "Mujer", "", "", "Ingreso", 9, "Indicativos de presencia de psicopatologia")])
+    assert _cat("GHQ-12", pscy) == "instrumento_cruzado"
+    assert _cat("PSC", ghq) == "instrumento_cruzado"
+    assert _cat("PSC-Y", pscy) is None and _cat("GHQ-12", ghq) is None           # control
+
+    sin_nombre = _iris("x_anon.xlsx", "", [
+        ("3-5", 30, "Mujer", "", "", "Ingreso", 40, ""), ("4-3", 31, "Hombre", "", "", "Egreso", 66, "")])
+    assert _cat("GHQ-12", sin_nombre) == "sin_datos"
+    uno_fuera = _iris("x_uno.xlsx", "Cuestionario de Salud de Goldberg", [
+        ("5-1", 30, "Mujer", "", "", "Ingreso", 15, ""), ("6-K", 31, "Hombre", "", "", "Ingreso", 8, "")])
+    res = scr.procesar_unificado({"GHQ-12": uno_fuera}, _TMP / "x_out2.xlsx", log=_quiet)
+    assert any(a[1] == "SUBCONTADO" and "fuera del rango" in a[2] for a in res["avisos"]), res["avisos"]
 
 
 def _main():

@@ -31,7 +31,9 @@ meses pasados.
 Lee atenciones IRIS o Monitoreo admin (rem_utils.cargar_atenciones). SALA bajo
 control + Sección G inasistentes ya integrados. PENDIENTE: agregación mensual por
 edad×sexo; admin es PARCIAL (los dx por código ICD no vienen -> Ira Alta/Bronquitis/
-EPOC exac. = 0, ver rem_utils.MAPA_ATENCIONES) + formulario Otros Crónicos admin.
+EPOC exac. = 0, ver rem_utils.MAPA_ATENCIONES). El Otros Crónicos y el NSP también
+se aceptan en su formato Administrativo (ronda 11; el estamento del Otros Crónicos admin
+sale del funcionario: `_estamento_por_funcionario`).
 """
 
 import pandas as pd
@@ -41,7 +43,8 @@ from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_cano
                                  contiene_alguno as _any, _rango_mes, filtrar_mes,
                                  _mujer, _hombre,
                                  grid as _grid, fecha_col, PUEBLO_VACIO, indice_col,
-                                 exigir_filas, ArchivoInvalido)
+                                 exigir_filas, ArchivoInvalido, Path, edad_anios,
+                                 opcional)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
@@ -73,9 +76,25 @@ _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 # _masks_simples y A23·N VDI Hogar Libre de Humo) -> no duplicar.
 
 
+def _act_de_la_atencion(d):
+    """ACT_n de TODA la atención (mismo ATENID) en cada una de sus filas.
+
+    Los indicadores con AND entre actividades («autocuidado» Y «control sala», del DAX)
+    piden las dos en la MISMA atención. En IRIS una atención es UNA fila, con todas sus
+    actividades en la celda ACTIVIDADES. En el Monitoreo es VARIAS filas (una actividad
+    cada una, con el mismo 'N°'): comparando fila por fila el AND no se cumplía nunca y
+    seis indicadores salían NO callados (ronda 11). Una fila sin ATENID queda sola."""
+    if "ATENID" not in d.columns:
+        return d["ACT_n"]
+    clave = d["ATENID"].replace("", pd.NA).astype(object)
+    clave = clave.where(clave.notna(), "fila|" + d.index.astype(str))
+    return d.groupby(clave)["ACT_n"].transform(lambda s: " || ".join(dict.fromkeys(s)))
+
+
 def _masks_simples(d):
-    """dict indicador -> máscara BOOLEANA por fila (atención del mes)."""
-    A, D, I, T = d["ACT_n"], d["DIAG_n"], d["INSTR_n"], d["TIPO_n"]
+    """dict indicador -> máscara BOOLEANA por fila (atención del mes). Las de actividad
+    miran la atención ENTERA (`_act_de_la_atencion`)."""
+    A, D, I, T = _act_de_la_atencion(d), d["DIAG_n"], d["INSTR_n"], d["TIPO_n"]
     return {
         "REMA23 Autocuidado":        _all(A, "autocuidado") & _all(A, "control sala"),
         "REMA23 Bronquitis Aguda":   _all(D, "J20"),
@@ -193,6 +212,13 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     # -- Fase 2: SALA bajo control (si se dieron los inputs) --
     if otros is not None:
         od, _ = cargar_otros(otros, log=log)
+        fer.attrs["avisos"].extend(_estamento_por_funcionario(od, d, log=log))   # Admin
+        for nombre, falt in od.attrs.get("condiciones_incompletas", {}).items():
+            fer.attrs["avisos"].append((
+                "SALA / Seccion G (preguntas del formulario)", "SUBCONTADO",
+                f"«{nombre}» no trae todas las columnas de: {', '.join(falt)} (encabezado "
+                "renombrado o export viejo): esas condiciones pueden salir en 0",
+                "Revisar que 'Otros Cronicos' sea el export completo, sin modificar"))
         if not od["_med"].any():
             # SALA y la Seccion G cuentan SOLO formularios aplicados por medico (DAX).
             # Si ninguno lo es, las dos salen enteras en 0: decirlo, no callarlo.
@@ -222,11 +248,27 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
                     f"'Otros y Respi' arranca en {od['FECHA'].min():%Y-%m}, se necesita "
                     f"historial hasta {limite:%Y-%m}",
                     "Cargar el año del reporte Y el anterior (ideal 5, como el PowerBI)"))
-        est = cargar_estrat(estrat) if estrat is not None else pd.Series(dtype="object")
+        est = pd.Series(dtype="object")
+        if estrat is not None:
+            with opcional("estrat"):   # opcional invalida: la GUI pregunta si seguir sin ella
+                est = cargar_estrat(estrat)
         sala, _ing = _sala(fer.index, fer["Edad"], d, od, est)
         for c in sala.columns:
             fer[c] = sala[c]
-        vdi = fer.pop("REMA23 VDI Respi (aten)").eq("SI") & fer["SALA Ingresado"].eq("SI")
+        if not fer["Pertenece a SALA"].eq("SI").any():
+            # Fail loud (CLAUDE.md regla 2): las hojas copy-paste del A23 se calculan SOLO
+            # sobre 'Pertenece a SALA' (_tablas_a23). Nadie bajo control = TODAS en 0, con
+            # el detalle lleno de atenciones respiratorias. No es un mes real: es un
+            # formulario que no cruza con el ADA, o sin formularios validos.
+            raise ArchivoInvalido(
+                "sin_datos",
+                f"El formulario 'Otros Cronicos' trae {len(od)} formulario(s), pero NINGUNA "
+                f"de las {len(fer)} personas del ADA queda bajo control en SALA: todas las "
+                "hojas del A23 saldrían en 0.\n\nRevisa que el formulario sea el export "
+                "completo (con las preguntas '¿Padece...?' y su ESTADO, aplicado por "
+                f"médico: {int(od['_med'].sum())} de {len(od)} lo son) y que el RUN venga en "
+                "el mismo formato que en el ADA.")
+        vdi =fer.pop("REMA23 VDI Respi (aten)").eq("SI") & fer["SALA Ingresado"].eq("SI")
         fer["REMA23 VDI Respi"] = vdi.map({True: "SI", False: "NO"})
         om = od[(od["FECHA"] >= ini) & (od["FECHA"] <= fin)]
         cdv = om.sort_values("FECHA").groupby("RUN")["CDV"].last()
@@ -264,8 +306,17 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
 
     # -- Sección H: inasistentes a citación agendada (reporte NSP, independiente) --
     if inasistentes is not None:
-        nsp = cargar_inasistentes(inasistentes, log=log)
-        h = _seccion_h(nsp, ini, fin)
+        with opcional("inasistentes"):   # opcional invalido: la GUI pregunta si seguir sin el
+            h = _seccion_h(cargar_inasistentes(inasistentes, log=log), ini, fin)
+        if h.attrs.get("sin_edad"):
+            n = h.attrs["sin_edad"]
+            log(f"[a23] Sección H: {n} inasistencia(s) sin AÑOS legible -> contadas en "
+                "'20 y más'.")
+            fer.attrs["avisos"].append((
+                "Seccion H (inasistentes a citacion)", "REVISAR",
+                f"{n} inasistencia(s) sin edad (AÑOS) legible en el reporte NSP: van en "
+                "'20 y mas' (pueden ser menores de 20)",
+                "Revisar la columna AÑOS de esas citas en el reporte NSP"))
         fer.attrs["seccion_h"] = h
         tot = int(h.loc[h["Profesional"] == "TOTAL", "Total"].iloc[0])
         log(f"[a23] Sección H inasistentes a citación (Control/Ingreso IRA/ERA): total={tot} · "
@@ -314,8 +365,16 @@ def _resolver_otros(cols):
     def estado_tras(a): return tras(a, lambda n: n.endswith("ESTADO"))
     def prox_tras(a): return tras(a, lambda n: "PROXIMO CONTROL" in n)
 
+    def exacto(nombre): return next((c for c, n in hn if n == norm(nombre)), None)
+
+    # IRIS | Administrativo (ronda 11, contra refs_tablas/Otros_cronicos_*.xlsx): el Admin
+    # trae 'RUT', 'Fecha Formulario' y 'Funcionario', y NO trae INSTRUMENTO (el estamento
+    # sale del nombre del funcionario, ver `_estamento_por_funcionario`) ni fecha de
+    # nacimiento (la edad sale del ADA, como ya hacia la Seccion G sin FNAC).
     return {
-        "RUN": find("NUMERO", "IDENTIFICACION"), "FECHA": find("FECHA ATENCION"),
+        "RUN": find("NUMERO", "IDENTIFICACION") or exacto("RUT"),
+        "FECHA": find("FECHA ATENCION") or find("FECHA FORMULARIO"),
+        "FUNC": exacto("FUNCIONARIO"),
         "INSTR": find("INSTRUMENTO", no=["ESTABLECIMIENTO"]),
         "SEXO_o": find("SEXO"), "FNAC_o": find("FECHA", "NACIMIENTO"),
         "SBOR_p": find("SINDROME BRONQUIAL OBSTRUCTIVO"), "SBOR_rec": find("ES RECURRENTE"),
@@ -338,12 +397,68 @@ def _resolver_otros(cols):
     }
 
 
+# Columnas que necesita cada condicion (SALA y/o Seccion G). La 1a es la pregunta
+# '¿Padece?': si NINGUNA resuelve, el archivo no es el formulario 'Otros Cronicos'.
+_OTROS_CONDICIONES = {
+    "SBOR": ("SBOR_p", "SBOR_rec", "SBOR_est", "SBOR_grav", "SBOR_prox"),
+    "Asma": ("ASMA_p", "ASMA_est", "ASMA_grav", "ASMA_ctrl", "ASMA_prox"),
+    "EPOC": ("EPOC_p", "EPOC_tipo", "EPOC_est", "EPOC_ctrl", "EPOC_prox"),
+    "O2 dependiente": ("O2_p", "O2_est"),
+    "Asistencia ventilatoria": ("AV_p", "AV_val", "AV_est"),
+    "Fibrosis quistica": ("FQ_p", "FQ_est", "FQ_prox"),
+    "Otras respiratorias": ("OTRAS_p", "OTRAS_est", "OTRAS_prox"),
+    "Displasia broncopulmonar": ("DISP_p", "DISP_est", "DISP_prox"),
+}
+
+
 def cargar_otros(entrada, log=print):
     """Formulario(s) Otros y Respi -> DataFrame canónico + FECHA. `entrada` puede ser
     una ruta o una lista (varios años: la Sección G / SALA necesitan el histórico)."""
     # RUN/FECHA/INSTR requeridas: sin INSTRUMENTO, `_med` quedaba False para todos y
     # SALA + Seccion G salian en 0 callados (solo cuentan formularios de medico).
-    d, col = cargar_canonico(entrada, None, _resolver_otros, requeridas=("RUN", "FECHA", "INSTR"))
+    cols = []   # resolucion POR ARCHIVO (un historico viejo puede no traer una pregunta)
+
+    def _resolver(h):
+        c = _resolver_otros(h)
+        cols.append(c)
+        return c
+    d, col = cargar_canonico(entrada, None, _resolver, requeridas=("RUN", "FECHA"))
+    for nombre, c in zip((Path(str(e)).name for e in
+                          (entrada if isinstance(entrada, (list, tuple)) else [entrada])), cols):
+        if not (c.get("INSTR") or c.get("FUNC")):
+            # Sin estamento ni funcionario no hay como saber que formularios son de
+            # medico: SALA y la Seccion G en 0 callados.
+            raise ArchivoInvalido(
+                "sin_columnas",
+                f"Archivo «{nombre}»:\n\nNo encuentro ni la columna INSTRUMENTO (IRIS) ni "
+                "'Funcionario' (Administrativo): no se puede saber qué formularios aplicó "
+                "un médico.\n\nCárgalo tal como sale de RAYEN, sin editar.")
+    if not d["RUN"].map(norm).ne("").any():
+        # Filas, pero ningun paciente: SALA y la Seccion G en 0 callados (ronda 11).
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"El formulario 'Otros Cronicos' trae {len(d)} fila(s), pero ninguna con RUN "
+            "('NUMERO TIPO IDENTIFICACION' vacia en todas).\n\nRevisa que sea el export "
+            "completo, sin modificar.")
+    # Las preguntas de cada condicion son opcionales para el loader, y una que no
+    # resuelve (RAYEN reformulo el encabezado: 'TIENE' por 'PADECE DE') deja esa
+    # condicion en 0 en SALA y en la Seccion G, callada. Ninguna -> no es este
+    # formulario; algunas -> aviso por archivo (lo agrega procesar a la LEEME).
+    incompletas = {}
+    for nombre, c in zip((Path(str(e)).name for e in
+                          (entrada if isinstance(entrada, (list, tuple)) else [entrada])), cols):
+        if not any(c.get(ks[0]) for ks in _OTROS_CONDICIONES.values()):
+            raise ArchivoInvalido(
+                "sin_columnas",
+                f"Archivo «{nombre}»:\n\nNo encuentro NINGUNA pregunta de condición "
+                "respiratoria ('¿PADECE DE ASMA BRONQUIAL?', '¿PADECE DE SÍNDROME BRONQUIAL "
+                "OBSTRUCTIVO?', ...): SALA bajo control y la Sección G saldrían en 0.\n\n"
+                "¿Es el formulario 'Otros Cronicos' de RAYEN, sin modificar?")
+        falt = [cond for cond, ks in _OTROS_CONDICIONES.items() if any(not c.get(k) for k in ks)]
+        if falt:
+            incompletas[nombre] = falt
+            log(f"[a23] «{nombre}» no trae todas las columnas de: {', '.join(falt)} -> esas "
+                "condiciones pueden SUBCONTAR en SALA y en la Sección G.")
     # fecha_col y no un to_datetime pelado: las fechas ilegibles se CUENTAN en el log
     # en vez de volverse NaT callados (como en el ADA y el formulario SM).
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA ATENCION (Otros Cronicos)")
@@ -358,7 +473,47 @@ def cargar_otros(entrada, log=print):
             "Revisa que sea el export correcto y que esté SIN modificar "
             "(una columna de fecha reformateada a mano rompe la lectura).")
     d["_med"] = d["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
+    d.attrs["condiciones_incompletas"] = incompletas
     return d, col
+
+
+def _estamento_por_funcionario(od, aten, log=print):
+    """Formularios SIN estamento (el 'Otros Cronicos' Administrativo no trae INSTRUMENTO):
+    se lo busca por el nombre del funcionario, primero en el propio export de atenciones
+    (PROF -> INSTR: el mismo nombre de RAYEN con su estamento) y despues en el cache de
+    estamentos (`programas/estamentos`, el mismo del A03 Administrativo). Recalcula
+    `_med`. Devuelve avisos para la LEEME; si NINGUNO se resuelve, ArchivoInvalido
+    (SALA y la Seccion G saldrian en 0)."""
+    falta = od["INSTR"].map(norm).eq("")
+    if not falta.any():
+        return []
+    from programas import estamentos as estam
+    tabla = dict(estam.tabla_efectiva(None, log=log))            # cache (nombre norm -> estamento)
+    if "PROF" in aten.columns:
+        par = aten[["PROF", "INSTR"]].dropna()
+        tabla.update({norm(p): i for p, i in zip(par["PROF"], par["INSTR"]) if norm(p) and norm(i)})
+    od.loc[falta, "INSTR"] = od.loc[falta, "FUNC"].map(lambda f: tabla.get(norm(f), ""))
+    od["_med"] = od["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
+    quedan = od["INSTR"].map(norm).eq("")
+    log(f"[a23] 'Otros Cronicos' sin INSTRUMENTO: estamento por funcionario en "
+        f"{int(falta.sum() - quedan.sum())} de {int(falta.sum())} formulario(s)")
+    if quedan.all():
+        raise ArchivoInvalido(
+            "sin_estamento",
+            "El formulario 'Otros Cronicos' no trae el estamento de quien lo aplicó (el "
+            "Administrativo no tiene INSTRUMENTO), y ninguno de sus funcionarios aparece en "
+            "el export de atenciones ni en tus estamentos guardados: no se puede saber qué "
+            "formularios son de médico (SALA y la Sección G saldrían en 0).\n\nCarga el "
+            "reporte 'Utilización de Cupos' en Salud Mental > Actividades (bloque de "
+            "estamentos) una vez para guardarlos, o usa el export IRIS del formulario.")
+    if not quedan.any():
+        return []
+    sin = sorted({str(f).strip() or "(sin funcionario)" for f in od.loc[quedan, "FUNC"]})
+    muestra = ", ".join(sin[:5]) + (f" y {len(sin) - 5} más" if len(sin) > 5 else "")
+    return [("SALA / Seccion G (estamento del formulario)", "SUBCONTADO",
+             f"{int(quedan.sum())} formulario(s) 'Otros Cronicos' sin estamento conocido "
+             f"({len(sin)} funcionario(s): {muestra}): no cuentan como de médico",
+             "Cargar 'Utilizacion de Cupos' (bloque de estamentos) o usar el export IRIS")]
 
 
 def cargar_estrat(entrada):
@@ -366,7 +521,11 @@ def cargar_estrat(entrada):
     hdr, filas = leer_xlsx(entrada)
     hn = [norm(h) for h in hdr]
     i_rut, i_dv = indice_col(hn, "RUT"), indice_col(hn, "DV")
-    i_dg = indice_col(hn, "DETALLE", "DIAGNOSTICOS") or indice_col(hn, "CONDICIONES CRONICAS")
+    # Solo por su nombre. Hasta la ronda 11 habia un fallback a "CONDICIONES CRONICAS",
+    # armado sin el export a la vista: en el real (refs_tablas/Estratificacion_de_
+    # Riesgo_iris.xlsx) eso calza PRIMERO con 'Cantidad de Condiciones Crónicas', un
+    # CONTEO, y la SALA quedaba sin diagnosticos callada.
+    i_dg = indice_col(hn, "DETALLE", "DIAGNOSTICOS")
     # Fail loud sobre la FUENTE (CLAUDE.md regla 2). Sin estas dos guardas, un reporte
     # equivocado revienta con TypeError en f[None], y uno con solo el encabezado deja
     # la gravedad/tipo de TODOS en "" via _gate: un 0 callado en la SALA.
@@ -375,9 +534,24 @@ def cargar_estrat(entrada):
             "sin_columnas",
             "No reconozco el reporte de Estratificacion: no encuentro la columna "
             "RUT.\n\nCargalo tal como sale de RAYEN, sin editar.")
+    if i_dg is None:
+        # Sin diagnosticos el reporte carga y no aporta NADA a SALA, callado: el usuario
+        # lo cargo para mejorar la deteccion, asi que es fail loud (§3.1: las opcionales
+        # cargadas tambien fallan duro).
+        raise ArchivoInvalido(
+            "sin_columnas",
+            "No reconozco el reporte de Estratificacion: no encuentro la columna de "
+            "diagnósticos ('Detalle de Condiciones Crónicas (Diagnósticos)').\n\n"
+            "Cargalo tal como sale de RAYEN, sin editar.")
     exigir_filas(filas, "el reporte de Estratificacion")
-    run = [f"{f[i_rut]}-{f[i_dv]}" if i_dv is not None and f[i_rut] not in (None, "") else str(f[i_rut])
-           for f in filas]
+    filas = [f for f in filas if f[i_rut] not in (None, "")]
+    if not filas:
+        # Filas, pero ninguna con RUT: el cruce con SALA daba 0 callado (ronda 11).
+        raise ArchivoInvalido(
+            "sin_datos",
+            "El reporte de Estratificacion trae filas, pero ninguna con RUT.\n\n"
+            "Revisa que sea el reporte completo, sin modificar.")
+    run = [f"{f[i_rut]}-{f[i_dv]}" if i_dv is not None else str(f[i_rut]) for f in filas]
     dg = [norm(f[i_dg]) if i_dg is not None else "" for f in filas]
     return pd.DataFrame({"RUN": run, "DIAG": dg}).drop_duplicates("RUN").set_index("RUN")["DIAG"]
 
@@ -514,20 +688,28 @@ def _seccion_g(otros, corte, edad_extra=None, sin_edad=None):
 # Citas Control/Ingreso IRA/ERA (NO KTR) que el paciente NO asistió (NSP), por
 # estamento (Médico/Kinesiólogo/Enfermera) y tramo etario (<20 / >=20). Conteo por
 # CITA (cada fila = una inasistencia). Mes por FECHA HORA CITA (no fecha NSP).
+# Dos formatos, verificados contra refs_tablas/ (ronda 11): IRIS 'Pacientes Inasistentes'
+# y el Administrativo 'Monitoreo de Inasistentes' (RUN, FECHA CITA, EDAD en vez de AÑOS;
+# la edad puede venir en texto '55 años 3 meses' -> edad_anios en el loader).
 MAPA_NSP = {
-    "RUN":   [("subs", ["NUMERO", "IDENTIFICACION"])],
+    "RUN":   [("subs", ["NUMERO", "IDENTIFICACION"]), ("exact", "RUN")],
     "INSTR": ("exact", "INSTRUMENTO"),
     "TIPO":  ("subs", ["TIPO", "ATENCION"]),
-    "FECHA": ("subs", ["FECHA", "HORA", "CITA"]),
-    "ANOS":  ("exact", "AÑOS"),
+    "FECHA": [("subs", ["FECHA", "HORA", "CITA"]), ("exact", "FECHA CITA")],
+    "ANOS":  [("exact", "AÑOS"), ("exact", "EDAD")],
 }
 _H_ESTAM = [("Médico/a", "MEDICO"), ("Kinesiólogo/a", "KINE"), ("Enfermera/o", "ENFERMER")]
 
 
 def cargar_inasistentes(entrada, log=print):
     """Reporte NSP ('pacientes inasistentes') -> DataFrame + FECHA CITA parseada."""
-    d, _col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_NSP))
+    # Todo lo que la Seccion H usa es requerido: sin TIPO o INSTRUMENTO la H daba 0
+    # callada (otro reporte de citas cargado por error), y sin AÑOS todas las
+    # inasistencias caian en '20 y mas' (NaN < 20 es False).
+    d, _col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_NSP),
+                              requeridas=("FECHA", "TIPO", "INSTR", "ANOS"))
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA HORA CITA (NSP)")
+    d["ANOS"] = d["ANOS"].map(edad_anios)   # numero (IRIS) o '55 años 3 meses' (Admin)
     d["TIPO_n"] = d["TIPO"].map(norm)
     d["INSTR_n"] = d["INSTR"].map(norm)
     return d
@@ -552,7 +734,11 @@ def _seccion_h(nsp, ini, fin):
         filas.append({"Profesional": lbl, "Total": nm + ny, "Menor de 20": nm, "20 y más": ny})
         tmen += nm; tmay += ny
     filas.append({"Profesional": "TOTAL", "Total": tmen + tmay, "Menor de 20": tmen, "20 y más": tmay})
-    return pd.DataFrame(filas)
+    out = pd.DataFrame(filas)
+    # Sin AÑOS legible la cita cae en '20 y mas' (NaN < 20 es False): se cuenta para
+    # que procesar lo avise, en vez de repartirla callada en el tramo equivocado.
+    out.attrs["sin_edad"] = int(edad.isna().sum())
+    return out
 
 
 # -- Tablas agregadas edad×sexo (forma exacta del template SA_26, hoja A23) --

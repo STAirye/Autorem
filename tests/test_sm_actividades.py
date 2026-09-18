@@ -310,7 +310,10 @@ def test_gestante_flag():
 
 def test_trans_inscritos_modificado():
     """Inscritos SIN columna GÉNERO (archivo modificado/otro reporte): trans_map
-    levanta ValueError y procesar NO crashea (TRANS queda en 0 con aviso)."""
+    levanta ValueError. Ronda 11 (decision del autor): procesar ya NO sigue callado con
+    TRANS en 0 (quedaba solo en el log): levanta OpcionalInvalido('inscritos') y la GUI
+    pregunta si seguir sin el. Sin el archivo, corre normal con TRANS en 0."""
+    from programas.rem_utils import OpcionalInvalido
     from programas.rem_utils import trans_map
     p = _TMP / "inscritos_malo.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active
@@ -323,7 +326,12 @@ def test_trans_inscritos_modificado():
     assert raised
     ada = _mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
                     "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}])
-    E = sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)   # no debe crashear
+    try:
+        sm.procesar(ada, inscritos=str(p), mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
+        assert False, "debio levantar OpcionalInvalido"
+    except OpcionalInvalido as e:
+        assert e.entrada == "inscritos", e.entrada
+    E = sm.procesar(ada, inscritos=None, mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
     a06 = E.attrs["tablas"]["A06_Controles"]
     assert _a06_tot(a06, "TRANS Masculino") == 0 and _a06_tot(a06, "TRANS Femenina") == 0
 

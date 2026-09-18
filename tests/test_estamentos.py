@@ -173,6 +173,18 @@ def test_cache_ilegible_no_se_pisa_con_el_reporte_fresco():
     assert any("No pude leer" in a for a in ru.tomar_avisos_cache()), "no aviso"
 
 
+def test_rechaza_reporte_con_filas_pero_sin_estamentos():
+    """Ronda 10, 2a pasada: exigir_filas_ws mira que HAYA filas, no que alguna sirva.
+    Con Instrumento en blanco en todas, la tabla salia {} y la corrida seguia con el
+    cache solo, sin decirlo -> sin_datos."""
+    try:
+        est.cargar_estamentos(_reporte("cupos_sin_estam.xlsx", [("ANA PEREZ", "", "Control", "A")]),
+                              log=_quiet)
+        assert False, "debio rechazar un reporte sin ningun estamento"
+    except est.ArchivoInvalido as e:
+        assert e.categoria == "sin_datos", e.categoria
+
+
 def _main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("test_") and callable(v)]

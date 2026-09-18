@@ -244,6 +244,49 @@ def manejar_error(e, log, messagebox):
         error_inesperado(e, log, messagebox)
 
 
+def sin_opcional(err, ctx, inputs, messagebox, log):
+    """Un archivo OPCIONAL que no sirve (`rem_utils.OpcionalInvalido`): pregunta si
+    seguir sin él (decisión del autor, ronda 11). Hilo GUI. Devuelve:
+      - el `ctx` NUEVO, sin ese archivo y con él anotado en `ctx['descartados']`, si
+        el usuario dijo que sí (quien llama re-corre con él);
+      - False si dijo que no (ya vio el motivo en la pregunta: no hay otro diálogo);
+      - None si el error no es de un opcional de esta página (va a `manejar_error`).
+    `inputs` = los de la PANTALLA; un input se reconoce por `entrada` (el nombre del
+    parámetro del módulo) o, si no la declara, por su `key`."""
+    from programas.rem_utils import OpcionalInvalido
+    if not isinstance(err, OpcionalInvalido):
+        return None
+    inp = next((i for i in inputs if i.get("entrada", i["key"]) == err.entrada
+                and not i.get("obligatorio")), None)
+    if inp is None or not ctx.get(inp["key"]):
+        return None
+    nombre = inp["etiqueta"].rstrip(": ")
+    motivo = " ".join(str(err).split())
+    log(f"[opcional] «{nombre}» no es válido: {motivo}")
+    if not messagebox.askyesno(
+            "Archivo opcional inválido",
+            f"El archivo opcional «{nombre}» no sirve:\n\n{err}\n\n"
+            "¿Quieres continuar sin él?\n\n"
+            "Sí: se procesa todo lo demás, y la hoja LEEME dice que se omitió.\n"
+            "No: se cancela, para que cargues el archivo correcto."):
+        log("[opcional] cancelado.")
+        return False
+    nuevo = dict(ctx)
+    nuevo[inp["key"]] = [] if inp.get("multi") else None
+    nuevo["descartados"] = list(ctx.get("descartados") or []) + [(nombre, motivo)]
+    log(f"[opcional] se continúa SIN «{nombre}».")
+    return nuevo
+
+
+def avisos_descartados(ctx):
+    """Avisos para la hoja LEEME de los opcionales que el usuario decidió omitir
+    (ver `sin_opcional`). Cada página los suma a los avisos de su resultado."""
+    return [(f"{nombre} (opcional)", "OMITIDO",
+             f"el archivo cargado no era válido y se continuó sin él: {motivo}",
+             "Cargar el archivo correcto y volver a procesar")
+            for nombre, motivo in (ctx.get("descartados") or [])]
+
+
 class Canal:
     """El pedido VIGENTE de un preview asincrono: solo el ultimo pintado vale.
 

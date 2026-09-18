@@ -234,7 +234,7 @@ def correr(ctx, log):
     a03 = ctx["a03"]
     res = {"mes": (y, m), "solo_a03": ctx["solo_a03"], "salida": None,
            "salida_a03": None, "n_tp": None, "n_a03": None, "por_inst_a03": None,
-           "E": None, "fallo_tp": None, "fallo_a03": None}
+           "E": None, "fallo_tp": None, "fallo_a03": None, "avisos_a03": []}
 
     # Los nombres de TODA la corrida se resuelven juntos, antes de escribir nada: si
     # alguno ya existe, todos llevan el mismo `(n)` (ver rem_utils.rutas_libres).
@@ -251,10 +251,18 @@ def correr(ctx, log):
         inscritos = ctx["inscritos"][0] if ctx["inscritos"] else None
         multiprofesional = ctx["multiprofesional"][0] if ctx["multiprofesional"] else None
         maestro = ctx["maestro"][0] if ctx["maestro"] else slim_por_defecto()
+        if ctx["maestro"]:
+            # Un Maestro cargado a mano que no sirve se detecta ANTES de escribir nada: la
+            # app pregunta si seguir sin el (con el slim embebido). El Trabajo Perdido
+            # tiene su propio try, que lo habria dejado en un «no se generó».
+            from programas.rem_utils import cargar_maestro, opcional
+            with opcional("maestro"):
+                cargar_maestro(maestro)
 
         E = smact.procesar(ctx["ada"], grupal=ctx["grupal"], inscritos=inscritos,
                            multiprofesional=multiprofesional, mes=(y, m), log=log,
                            d=ctx["d"], dotacion_tabla=ctx["tabla_dot"])
+        E.attrs.setdefault("avisos", []).extend(runner.avisos_descartados(ctx))   # opcionales omitidos
         # Temporal + rename (rem_utils.escribir_atomico): un corte no deja un .xlsx roto.
         escribir_atomico(salida, lambda p: smact.escribir(E, p))
         res["E"] = E
@@ -297,6 +305,7 @@ def correr(ctx, log):
                     resolver_estamento=None, log=log)))
                 res["n_a03"] = r03["total"]
                 res["por_inst_a03"] = r03["por_instrumento"]
+                res["avisos_a03"] = r03.get("avisos", [])   # al resumen, no solo a la LEEME
                 res["salida_a03"] = salida_a03
                 log(f"OK A03·D.3: {r03['total']} aplicaciones -> {salida_a03.name}")
 
@@ -343,7 +352,7 @@ def resumen(res):
     y, m = res["mes"]
     if res["solo_a03"]:
         return (f"Listo. A03·D.3 {y}-{m:02d}: {res['n_a03']} aplicaciones"
-                f"{_por_instrumento(res)}.\n\n"
+                f"{_por_instrumento(res)}.{widgets.texto_avisos(res.get('avisos_a03'))}\n\n"
                 f"Guardado en:\n{res['salida_a03']}")
     E = res["E"]
     resu = E.attrs["tablas"]["SM_Resumen"]
@@ -356,8 +365,9 @@ def resumen(res):
     if res.get("fallo_a03"):
         a03txt = (f"\nA03·D.3: NO se generó ({res['fallo_a03']}). Ningún archivo "
                   f"REM_A03_D3 de esta carpeta es de esta corrida.")
+    avisos = list(E.attrs.get("avisos") or []) + list(res.get("avisos_a03") or [])
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
-            f"{rtxt}\n\nGuardado en:\n{res['salida']}")
+            f"{rtxt}{widgets.texto_avisos(avisos)}\n\nGuardado en:\n{res['salida']}")
 
 
 PANTALLA = {

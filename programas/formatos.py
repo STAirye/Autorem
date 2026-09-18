@@ -40,10 +40,11 @@ Nota de lenguaje: acá "perfil"/"eje" = formato del export. NO confundir con los
 
 Qué es compartido y qué es por-reporte:
   - COMPARTIDO: vocabulario del eje (banner/markers/tokens de identidad), la lógica
-    `detectar_eje`, la resolución RUT/edad/sexo (`resolver_identidad`) y los params
-    de encabezado del lado ADMIN (mismo banner-layout en A05/A03/Utilización de Cupos).
-  - POR-REPORTE: las anclas/markers que identifican ESE reporte y los params de
-    encabezado del lado IRIS (varían: A05 con banner de 16 filas, instrumentos con 0).
+    `detectar_eje`, la resolución RUT/edad/sexo (`resolver_identidad`) y la ubicación
+    del encabezado ADMIN por su ancla (`fila_encabezado_admin`).
+  - POR-REPORTE: las anclas/markers que identifican ESE reporte. Los dos formatos
+    traen banner arriba (el IRIS de formularios, 15 filas) y el encabezado se ubica
+    SOLO por el ancla: nunca por un número de fila.
 """
 
 from programas.rem_utils import (norm, buscar_col, encontrar_fila_encabezado,
@@ -56,11 +57,6 @@ ADMIN_BANNER = "SERVICIO DE SALUD"                      # A1 del Administrativo
 ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
 MAX_FILAS_HEADER = 60                                   # tope del barrido de firmas
 
-# Params de localización de encabezado del lado ADMIN. TRANSVERSAL: mismo banner
-# (col A con blancos -> no fiarse del blanco; header en fila 9 = n_hardcode+1 como
-# último recurso) en A05, A03 y 'Utilización de Cupos'. El lado IRIS varía por
-# reporte, así que cada perfil define su propio n_hardcode.
-HEADER_ADMIN = dict(usar_blanco_en_a=False, n_hardcode=8)
 
 # -- Identidad del paciente (RUT/edad/sexo), aceptando AMBOS formatos --
 # QUIRK RAYEN (IRIS): 'AÑO APLICACIÓN FORMULARIO' NO trae el año; trae la EDAD a la
@@ -223,11 +219,10 @@ def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos", arch
 
 
 def fila_encabezado_admin(ws, ancla=ANCLA_ADMIN, max_filas=MAX_FILAS_HEADER):
-    """Ubica el encabezado en un export ADMINISTRATIVO con los params compartidos
-    (`HEADER_ADMIN`). `ancla` por si el reporte tiene su propia (ej. 'Utilización
-    de Cupos' usa Profesional/Instrumento). Devuelve (fila_idx, modo)."""
-    return encontrar_fila_encabezado(ws, ancla, HEADER_ADMIN["usar_blanco_en_a"],
-                                     HEADER_ADMIN["n_hardcode"], max_filas)
+    """Ubica el encabezado en un export ADMINISTRATIVO por su ancla. `ancla` por si el
+    reporte tiene su propia (ej. 'Utilización de Cupos' usa Profesional/Instrumento).
+    Devuelve (fila_idx, modo); sin ancla, ArchivoInvalido."""
+    return encontrar_fila_encabezado(ws, ancla, max_filas)
 
 
 # -- Cruce de reportes: el ADA en la casilla del grupal, o al revés -----

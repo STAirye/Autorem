@@ -1,4 +1,4 @@
-# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-17)
+# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-18)
 
 Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`, ~3200 líneas).
 Sin PII. Borrar este archivo cuando la revisión esté cerrada y mergeada.
@@ -26,20 +26,22 @@ Este archivo es la única memoria. Por eso:
    (pusheado a `origin/gui-2.0` solo para no tener 5k líneas sin copia remota; **no es
    un release**: la versión sigue en **1.9.17** y la entrada del CHANGELOG sigue
    abierta — no reportar eso como hallazgo). Las rondas 5 y 6 están en otro respaldo,
-   **`f42308d`**; la 7, la 8 y la 9 están sin commit encima. **257 tests verdes.**
+   **`f42308d`**; la 7, la 8 y la 9 en **`299e7d4`**; la 10 y la 11 están sin commit encima. **283 tests verdes.**
 
 **Foco original pedido** (sigue vigente para lo que falte): el **bug recurrente de
 c38a8cc** — un export con 0 filas de datos que pasa el loader y revienta abajo con un
 error críptico, o peor, da un **0 callado**, en vez de `ArchivoInvalido` sobre la
 FUENTE. Ya visto en 1.9.12 (A23, NaT) y en c38a8cc (Inscritos). §1.A lo cierra para
 todos los loaders conocidos; si aparece uno nuevo, va ahí. La variante **«trae filas,
-pero quedan 0 TRAS un filtro»** (corte, programa, fecha ilegible, Asiste) está en §1.J.
+pero quedan 0 TRAS un filtro»** (corte, programa, fecha ilegible, Asiste) está en §1.J;
+la auditoría ESTÁTICA de cruces entre fuentes, casilleros y columnas opcionales, en §1.K;
+cada referencia y fallback contra el export REAL, en §1.L.
 
 ---
 
 ## §1 — YA CORREGIDO. No volver a reportar
 
-79 hallazgos en 9 rondas con resultado (la 0 entregó cero). Todo verificado con
+108 hallazgos en 11 rondas con resultado (la 0 entregó cero). Todo verificado con
 tests; ver §3.
 
 ### §1.A · Bug recurrente «0 filas» — cerrado en TODOS los loaders conocidos
@@ -547,6 +549,175 @@ revienta en `ws.max_row=None`, pero ninguna ruta de la GUI lo hace).
 respiratorio en el mes → fila de relleno `_RESP`), `test_sp_p6::test_gestante...` (ADA
 sin actividad SM → una fila SM de otro RUN).
 
+### §1.K · Bug recurrente, auditoría ESTÁTICA de loaders y filtros (ronda 10, R2)
+
+Lectura de cada loader y cada filtro alcanzable desde las páginas, buscando lo que la
+ronda empírica no podía ver: **cruces entre fuentes** (cada una con datos, el join
+vacío), **casilleros que fijan el tipo** sin mirar el contenido, y **columnas opcionales**
+que quedan en None para todos. Repros en `r2/*.py` del scratchpad; 14 mutantes cazados
+(`r2/mut10.py` + el de la edad del A05).
+
+1. **`rem_sp_p6_poblacion._base_valida`: base (Estado=Activo × Activo 12m × Ingresado)
+   vacía** → P6 entero en 0 con «Listo»; solo un log. Casos: ESTADO «Activa», RUN del
+   ADA con puntos. → `sin_datos` con el conteo de cada filtro.
+2. **`rem_a23_respiratorio.procesar`: nadie «Pertenece a SALA»** → `_tablas_a23`
+   filtra por eso, así que TODAS las hojas copy-paste en 0 (con el detalle lleno de
+   IRA). → `sin_datos`. El aviso EN 0 de «sin médico» sigue para cuando SALA no queda
+   vacía.
+3. **`rem_a03_d3_instrumentos.procesar`: el casillero fija `instrumento` y se saltaba
+   `detectar_instrumento`** → PSC-Y en el de GHQ-12 (todo fuera de rango) o GHQ-12 en
+   el del PSC (todo bajo 33) = D.3 en 0, y el desglose por instrumento no lo delataba
+   («GHQ-12: 3»). → `instrumento_cruzado` si el contenido dice otro.
+4. **Ídem, `fuera_rango` solo al log** → todos = `sin_datos`; algunos = aviso SUBCONTADO.
+5. **`rem_a23_respiratorio.cargar_otros`: preguntas de condición opcionales** (RAYEN
+   cambia «PADECE DE» por «TIENE») → esa condición en 0 en SALA y en la G, callada.
+   → `_OTROS_CONDICIONES`: aviso SUBCONTADO POR ARCHIVO (resolución por archivo, no la
+   del primero); ninguna «¿Padece?» = `sin_columnas`.
+6. **`rem_a23_respiratorio.cargar_inasistentes`: sin `requeridas`** → sin TIPO/
+   INSTRUMENTO la H daba 0, sin AÑOS todo en «20 y más» (`NaN < 20` es False). →
+   requeridas `FECHA/TIPO/INSTR/ANOS`; edad ilegible = aviso REVISAR (`attrs["sin_edad"]`).
+7. **`rem_sm_rescate_inasistentes.procesar`: sin MOTIVO/FECHA PASIVACION** (opcionales
+   para `cargar_inscritos`) → Posibles_Fallecidos/Fallecidos_mes/Traslados vacías, y la
+   lista de a quién llamar sin la marca de fallecido. → `sin_columnas` (vía
+   `insc.attrs["columnas_ausentes"]`); el P6 no se entera.
+8. **`poblacion._leer_formulario_1`: sin guarda POR ARCHIVO** → un año del histórico
+   solo-encabezado se perdía en el concat, y la cobertura por min/max no lo ve. →
+   `sin_datos` nombrando el archivo (la guarda sobre el concat quedó muerta y se sacó).
+9. **`poblacion.cargar_inscritos`: el guard de c38a8cc quedó DETRÁS de
+   `cargar_canonico`** (que ya corta el solo-encabezado) → su mensaje «no trae ninguna
+   fila» era falso para el único caso que lo alcanza, y su test ya no lo ejercitaba. →
+   mensaje con N sin RUN / M «RUN Responsable» + test propio. De paso: una fila sin RUN
+   sobrevivía como la persona `"None"` (`astype(str)`); ya no.
+10. **`rem_saludmental._preparar`: `ANIO_COL_FALLBACK = 11`** — sin la columna de edad
+    por nombre, se tomaba la col 11 POR POSICIÓN (layout IRIS, armado a ciegas antes de
+    `refs_tablas/`). En el Administrativo la 11 es **Convenio** (confirmado por el autor
+    contra `refs_tablas/Formulario_csm_reporte_Administrativo.xlsx`; la edad es la col 4).
+    En IRIS era código muerto (el encabezado de edad ES el ancla de `detectar_eje`). →
+    constante borrada; sin edad por nombre = `sin_columnas`. Test con el encabezado real.
+
+**2a pasada sin tope, corregidos también (6)** — 10 mutantes más (`r2/mut11.py`):
+
+11. **`poblacion._leer_formulario_1`: `INSTRUMENTO` opcional** → todos los dx que exigen
+    médico en NO y el P6 subcontando con `avisos=[]` (la base sigue viva por los FR, así
+    que el ítem 1 no lo ve). → requerida junto a RUT y FECHA FORMULARIO (`sin_columnas`).
+12. **`rem_saludmental.marcar_eventos` (A05): todas las FECHA FORMULARIO ilegibles** →
+    `mes_vacio` aconsejaba «elige Archivo completo», que cuenta el año entero como el mes.
+    → `sin_fecha` (contador `filas_con_rut`) con el consejo contrario.
+13. **`rem_sp_p6_poblacion._grid_y_detalle`: persona sin edad** → Ambos sí, ninguna
+    banda, sin Revisar. → fila «Sin edad: cuenta en Ambos, en ninguna banda» en
+    Revisar_Administrativo (el gemelo de §1.J.15 para el P6).
+14. **`gui/paginas/a23.resumen` / `sm.resumen`: sin los avisos** (y `sm.correr` botaba
+    `r03["avisos"]`) → «Listo» igual a una corrida limpia. → `widgets.texto_avisos`,
+    compartido con Población (que tenía su copia en línea); `res["avisos_a03"]`. El test
+    de SM corre `correr` de verdad (el de `_por_instrumento` ya había caído en la trampa
+    del dict a mano).
+15. **`rem_a23_respiratorio.cargar_estrat`: sin columna de diagnósticos** → cargaba sin
+    aportar nada → `sin_columnas`. Y el `x or y` entre las dos columnas trataba el índice
+    0 como ausente → `is None`.
+16. **`estamentos.cargar_estamentos`: filas sin Profesional/Instrumento** → `{}` callado
+    (`exigir_filas_ws` va antes del filtro) → `sin_datos`.
+
+**Fixtures ajustados** (eran el caso cazado): `test_sp_p6::test_desfase...` y
+`test_resumen_de_poblacion...` (formulario vacío = nadie en la base → `_ING_FEB`),
+`test_a23::test_mes_sin_nada_respiratorio...` (sin médico y sin J45 = SALA vacía → una
+atención J45 para seguir probando el aviso EN 0).
+
+Revisado y limpio: `dotacion.evidencia`/`nuevos` y el tramo de `_dotacion_ada` fuera
+del `try` (corre en `preparar`, que ya pasa por `manejar_error`; todas las columnas de
+la evidencia son str); `marcar_demografia` y `gestante_runs` con 0 filas;
+`rem_saludmental.marcar_eventos` (0 filas en el mes → `mes_vacio`); `trans_map` /
+`atenid_multiprofesional` (guardas + avisos de §1.A/§1.J); `filtrar_mes` con NaT parcial.
+Queda como está a propósito: `trans_map` falla duro con 0 filas pero solo avisa con
+columnas faltantes (`except ValueError`) — las dos cosas son ruidosas.
+
+### §1.L · Cada referencia y cada fallback contra el export REAL (ronda 11, interactiva)
+
+Pedida por el autor tras §1.K.10 (la edad del A05 por posición). Método: cada mapa de
+columnas, número de pregunta, ancla y literal de actividad contrastado contra
+`refs_tablas/` y el Maestro, con un repro por sospecha; el autor bajó los exports que
+faltaban. **Verificados y correctos** (no re-auditar): `MAPA_ATENCIONES` (IRIS y
+Monitoreo), `MAPA_INSCRITOS`, `MAPA_GRUPAL`, `MAPA_NSP`, `_resolver_otros` (IRIS, las 35
+claves), `trans_map`, `atenid_multiprofesional`, `MAPA_MAESTRO`, identidad/fecha/demografía
+del formulario SM en los dos formatos, los ~50 números de pregunta (P6, `OVERRIDE_*`,
+subtipos, `EXCLUIR`, TGD 63/64), las columnas del A03 en los 5 instrumentos, y las
+columnas de salida del P6 contra el export del PowerBI.
+
+1. **`rem_saludmental` / `poblacion._leer_formulario_1`: un cuestionario pasaba como
+   formulario SM** (mismas firmas de eje; su «1.- ESTADO» dice Ingreso) → el A05 contaba
+   ingresos con patología «Estado» y el P6 leía el ítem 3 de Goldberg como Violencia.
+   → `verificar_formulario_sm` (`FIRMA_FORMULARIO_SM` + `ESTADOS_FORMULARIO_SM`):
+   `no_formulario_sm` si calza menos de la mitad de las preguntas de diagnóstico (Otros
+   Crónicos coincide en la 75, Epilepsia), `formulario_cambiado` si es el SM renumerado.
+2. **`rem_utils.encontrar_fila_encabezado`: fallbacks POSICIONALES** («1ª fila con A
+   vacía», fila 16/8 fija) → una fila de datos como encabezado. → solo ancla, o
+   `sin_encabezado`. Se fueron `HEADER_ADMIN` y `usar_blanco_en_a`/`n_hardcode` de los
+   perfiles. **Corrección a la ronda:** se dijo primero que el IRIS no trae banner; SÍ lo
+   trae (15 filas en los formularios). Las referencias no lo mostraban porque se habían
+   recortado a mano (ítem 10).
+3. **`rem_utils.cargar_atenciones`: ffill GLOBAL del RUN** (el comentario decía «en IRIS
+   no se toca nada», el código no miraba el formato) → en IRIS una fila sin RUN heredaba
+   el paciente de otra atención. → `groupby(ATENID).ffill()` (el `N°` del Monitoreo se
+   repite en las hijas: confirmado por el autor) + log de las huérfanas.
+4. **`a23._masks_simples`: AND entre actividades fila por fila** → en el Monitoreo (una
+   actividad por fila) Autocuidado, Inhaloterapia, Otras, Edu Integral, Antitabaco y Vida
+   Saludable en NO callados. → `_act_de_la_atencion` (decisión del autor: el AND se queda,
+   por ATENID en IRIS y por `N°` en el Monitoreo).
+5. **`poblacion.ACTIVIDADES_SM_7`: 3 de 7 literales del DAX no existen en el Maestro**
+   («…con **patología** de salud mental», «…a familia con adulto mayor con demencia»,
+   «visita integral de salud mental a domicilio») → Activo 12m / rescate ciegos a esas
+   visitas. → nombres reales del Maestro. **Pendiente del autor:** la de demencia hoy
+   calza solo con actividades de gestión (`AG_…`); la VDI A26 equivalente es la del
+   PADDS, que el Trabajo Perdido excluye de SM.
+6. **`a23.cargar_estrat`: el fallback «CONDICIONES CRONICAS»** calzaba primero con
+   «Cantidad de Condiciones Crónicas» del export real (un CONTEO) → SALA sin
+   diagnósticos, callada. Lo destapó pasar el contrato de sintético a real. → fuera.
+7. **RUN / ATEN ID vacío en TODAS las filas** (el pendiente C4 de los contratos) no
+   fallaba en `cargar_atenciones`, `cargar_otros`, `cargar_estrat`, `trans_map` ni
+   `atenid_multiprofesional` → `sin_datos` / `ValueError` (los dos opcionales del SM).
+8. **`tools/limpiar_refs.py` no arrancaba en Python 3.9** (`int | None` sin
+   `from __future__ import annotations`) y no tenía ni un test.
+9. **`limpiar_refs.recortar` editaba el original**: partía el encabezado de dos pisos
+   (Utilización de Cupos), no abría un export con una imagen rota (Otros Crónicos IRIS) y
+   conservaba lo que no son celdas (caché de tabla dinámica, comentarios, propiedades).
+   → libro NUEVO con banner + bloque de encabezado + hojas; escaneo antes de escribir.
+10. **Referencias editadas a mano en Excel**: el grupal sin banner y con `Columna1`/
+    `Columna2` donde el export dice `ASISTE (SI/NO)`/`ESTADO CITA` (el «pendiente ASISTE»
+    de los contratos era esto), y los formularios IRIS SM y Goldberg sin su banner. →
+    re-bajados por el autor y recortados con el script. El banner **se conserva** en toda
+    referencia (decisión del autor: al usuario se le pide no borrarlo).
+11. **Arnés de contratos**: `plantilla` tomaba como encabezado la ÚLTIMA fila no vacía
+    (con un encabezado de dos pisos, la de abajo) y el C6 comparaba salidas que llevan el
+    nombre del archivo adentro (`c0.xlsx|1` vs `c6.xlsx|1`) → mismo criterio que
+    `limpiar_refs` + el C6 escribe con el mismo nombre en otra carpeta.
+
+**Segunda parte: decisiones del autor sobre lo que quedó abierto.**
+
+12. **`poblacion.ACTIVIDADES_SM_7`**: la VDI del PADDS con demencia («dependencia severa
+    con diagnostico de demencia») **cuenta para Activo 12m**. El Trabajo Perdido la sigue
+    sacando de SM: eso dice a qué REM tributa, no si la persona está activa.
+13. **El Otros Crónicos y el NSP Administrativos se soportan.** `_resolver_otros` acepta
+    `RUT` / `Fecha Formulario` / `Funcionario`; sin INSTRUMENTO, el estamento sale del
+    nombre del funcionario (`a23._estamento_por_funcionario`: primero el export de
+    atenciones, `PROF -> INSTR`, después el caché de estamentos). Los que no se resuelven
+    dan un aviso SUBCONTADO, y si no se resuelve ninguno, `sin_estamento`. `MAPA_NSP` acepta `RUN` /
+    `FECHA CITA` / `EDAD` (en texto -> `edad_anios`). Contratos nuevos para los dos.
+14. **Opcional inválido → «¿continuar sin él?».** `rem_utils.OpcionalInvalido` +
+    `with opcional("<param>")` en el A23 (Estratificación, NSP) y el SM (Inscritos para
+    TRANS, Multiprofesional, y el Maestro cargado a mano, validado ANTES de escribir nada).
+    La app (`runner.sin_opcional`, llamada desde `lanzar_corrida` en `gui/app.py`) pregunta; si
+    la respuesta es sí, re-corre sin ese archivo y sin repetir `preparar`, y la LEEME dice `OMITIDO`
+    (`runner.avisos_descartados`). Antes, TRANS y Multiprofesional quedaban en el log.
+    Los inputs cuyo `key` no es el parámetro del módulo lo declaran con `entrada`.
+    `test_sm_actividades::test_trans_inscritos_modificado` fijaba el comportamiento viejo
+    («no crashea, TRANS en 0») y se actualizó a la decisión.
+
+**Fixture ajustado** (era el caso cazado): los IRIS del A05 traían «18.- ESTADO» — en el
+formulario real es la 19, y la 18 quedaba duplicada. **Contratos:** 16, todos contra el
+export real salvo el Maestro `.xlsx` (no se versiona; banner + encabezado copiados a
+mano). **Guardarraíles nuevos:** `test_refs_tablas.py` (toda referencia versionada limpia
++ todo literal de actividad calza con el Maestro, leído por AST). 15/15 mutantes, más
+12/12 de la segunda parte.
+
 ### §1.E · Estructura y versionado
 
 - **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
@@ -587,9 +758,13 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 
 ## §3 — Verificación (estado actual)
 
-- **257 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
-  206 tras la 4, 215 tras la 5, 237 tras la 6, 241 tras la 7, 245 tras la 8). `check_version` OK (1.9.17, 257 tests), `check_cp1252`
-  OK (60 archivos).
+- **283 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
+  206 tras la 4, 215 tras la 5, 237 tras la 6, 241 tras la 7, 245 tras la 8, 257 tras la 9,
+  268 tras la 10, 271 con los contratos, 278 tras la 11 y 283 con las decisiones del
+  autor). `check_version` OK (1.9.17, 283 tests),
+  `check_cp1252` OK (64 archivos), `check_fuentes --todo` OK (18 contratos). En la
+  corrida completa de pytest sigue saliendo a veces el `tk.tcl` intermitente de
+  `test_gui_construccion` (pasa solo; lo investiga una sesión aparte).
 - Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
   **dos** test files que antes no se podían correr ahora corren.
   `test_formatos_fuente` 33/33 · `test_gui_registro` 19/19 · `test_gui_construccion`
@@ -651,6 +826,36 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 2. **Compilar el .exe y abrirlo** — `pyinstaller autoREM.spec`. Los arreglos de §1.C
    están razonados pero **no probados contra un build real**. Confirmar: el sidebar trae
    las 4 páginas, y el botón de catálogos del About no dice que falta el escáner.
+
+### Abierto tras la ronda 11 (referencias contra el export real, §1.L)
+
+**Decisiones del autor, ya implementadas (ronda 11, 2a parte; ver §1.L.12-14):**
+- La VDI del PADDS con demencia **cuenta para «Activo 12m»**, y sigue fuera del Trabajo
+  Perdido de SM (tributa al REM del PADDS).
+- **Se soportan** el Otros Crónicos Administrativo y el Monitoreo de Inasistentes
+  Administrativo.
+- Un opcional inválido **pregunta «¿continuar sin él?»**.
+
+**Referencias:** el autor re-bajó el ADA IRIS y el Inscritos con su banner (18 y 17
+filas). Siguen sin banner `pscy_10_14_iris.xlsx` (RAYEN no la deja bajar, probablemente
+por 0 filas) y `poblacion_sm_powerbi.xlsx` (export del PowerBI, sin banner de RAYEN). El
+PSC para padres IRIS no existe como export. El Maestro `.xlsx` (8.6 MB) no se versiona:
+su contrato va con encabezado copiado a mano.
+
+**Supuesto sin verificar (necesita datos, no encabezados):** que el nombre del
+funcionario del Otros Crónicos Admin se escribe IGUAL que en el export de atenciones y en
+«Utilización de Cupos». Si no, todos sus formularios caen en `sin_estamento` (ruidoso,
+no callado); el A03 Admin ya cruza por nombre contra Cupos y funciona.
+
+**Lo que una referencia de solo-encabezado no puede verificar:** el VOCABULARIO de los
+valores (ESTADO del formulario, «Activo» del Inscritos, el nombre en la columna
+FORMULARIO de los cuestionarios IRIS, el separador de actividades en la celda
+ACTIVIDADES del IRIS). Una fila inventada con el vocabulario real (sin PII) por export lo
+cubriría; no se ha decidido.
+
+- Ojo al diseñar el chequeo de posición: los formularios RAYEN SÍ dependen del orden
+  RELATIVO (el ESTADO va pegado a su pregunta: `encontrar_diagnostico`, `estado_tras`).
+  El contrato por eso corre las columnas una posición (C6), no las invierte.
 
 ### Ángulos de revisión que NO se han corrido todavía
 
@@ -786,7 +991,9 @@ listados en §4.
 | 7 | **Ángulo E — envoltorios e indirecciones**: `Pagina` (getters, `mes` y `log` perezosos, `datos` compartido), `_resolver_ctx` y las `key` de extras, los envoltorios de `runner`, los getters de `widgets`, los diálogos de dotación contra el esquema de `dotacion.py`, el override de catálogos del About contra `catalogos._CACHE`, y `registro` + `pkgutil` en el exe. Con repros | 2 ✅ (1 reabre un descarte de §2) | §1.H |
 | 8 | **Reuso**: código nuevo del diff contra los helpers que ya existían en `programas/`, `autorem.py`, `tools/` y los archivos vecinos (Maestro slim vs `catalogos._carpetas`, limpieza de rutas, candado y ventana de dotación, Spinbox de mes, criterio de encabezado) | 5 ✅ (3 ya se habían apartado del original) | §1.I |
 | 9 | **Bug recurrente, EMPÍRICO (R1)**: cada `correr` de página (SM, TP, dotación, Población, A23, A05) contra exports que traen filas pero quedan vacíos TRAS un filtro (corte, máscara de programa, fecha ilegible, Asiste, fecha de nacimiento), clasificando OK / crash críptico / 0 callado | 8 ✅ + 9 ✅ de una 2a pasada sin tope (3 fixtures de test eran el bug) | §1.J |
-| 10 | _(siguiente: quedan simplificación/altitud, eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
+| 10 | **Bug recurrente, ESTÁTICO (R2)**: lectura de cada loader y filtro alcanzable desde las páginas (A05, A03, A23, SM, TP, Población, Rescate, dotación), con foco en cruces entre fuentes, casilleros que fijan el tipo y columnas opcionales; cada candidato confirmado con un repro | 8 ✅ (9 ítems; 3 fixtures eran el bug) + 7 ✅ de la 2a pasada sin tope (la edad del A05 por posición + 6) | §1.K |
+| 11 | **Cada referencia y fallback contra el export REAL, interactiva**: todo mapa de columnas, número de pregunta, ancla y literal de actividad contra `refs_tablas/` y el Maestro; el autor bajó los exports que faltaban y re-bajó los editados a mano; `limpiar_refs` revisado (lo pidió el autor) | 11 ✅ (1 fixture era el caso) + 3 decisiones del autor, implementadas (§1.L.12-14) | §1.L · §4 «Abierto tras la ronda 11» |
+| 12 | _(siguiente: simplificación/altitud, eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es

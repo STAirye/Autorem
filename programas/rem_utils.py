@@ -34,6 +34,7 @@ Contenido:
   - Utilidad de SO: abrir_carpeta.
 """
 
+import contextlib
 import re
 import sys
 from pathlib import Path   # reexport de conveniencia para los módulos
@@ -65,6 +66,31 @@ class ArchivoInvalido(Exception):
     def __init__(self, categoria, mensaje):
         self.categoria = categoria
         super().__init__(mensaje)
+
+
+class OpcionalInvalido(ArchivoInvalido):
+    """Un archivo OPCIONAL que el usuario cargó y no sirve. `entrada` = cuál (el nombre
+    del parámetro del módulo; la página lo traduce a su input).
+
+    Decisión del autor (ronda 11, sep-2026): ni seguir callado sin él (TRANS y el
+    Multiprofesional quedaban en un log) ni tumbar la corrida sin salida: la GUI
+    pregunta «¿quieres continuar sin él?», y si sí, re-corre sin ese archivo y lo deja
+    en la LEEME. Fuera de la GUI se comporta como cualquier ArchivoInvalido."""
+    def __init__(self, entrada, error):
+        super().__init__(getattr(error, "categoria", "opcional_invalido"), str(error))
+        self.entrada = entrada
+
+
+@contextlib.contextmanager
+def opcional(entrada):
+    """`with opcional("inscritos"): tmap = trans_map(ruta)` -> un ArchivoInvalido o
+    ValueError del bloque sale como OpcionalInvalido(entrada)."""
+    try:
+        yield
+    except OpcionalInvalido:
+        raise
+    except (ArchivoInvalido, ValueError) as e:
+        raise OpcionalInvalido(entrada, e) from e
 
 
 # -- Normalización y parsing de celdas ---------------------------------
@@ -123,25 +149,28 @@ def num_pregunta(header):
 
 
 # -- Localización de la fila de encabezado (banner + filtros arriba) ----
-def encontrar_fila_encabezado(ws, ancla, usar_blanco_en_a=True,
-                              n_hardcode=16, max_filas=60):
-    """Ubica la fila del encabezado real saltando el banner y los filtros que
-    RAYEN pone arriba. Cascada de detección:
-      1. Fila que contiene TODOS los tokens de `ancla` (match por substring).
-      2. Si `usar_blanco_en_a`: la fila siguiente a la 1ª con la columna A vacía.
-      3. Fallback: `n_hardcode` (+1).
-    Devuelve (fila_encabezado_1based, modo)."""
+def encontrar_fila_encabezado(ws, ancla, max_filas=60):
+    """Ubica la fila del encabezado real saltando el banner y los filtros que RAYEN pone
+    arriba: la 1ª fila que contiene TODOS los tokens de `ancla` (match por substring).
+    Sin ancla -> ArchivoInvalido('sin_encabezado'). Devuelve (fila_encabezado_1based, modo).
+
+    Hasta la ronda 11 (sep-2026) habia dos fallbacks POSICIONALES detras del ancla: «la
+    fila siguiente a la 1ª con la columna A vacia» y un numero fijo de fila (16 en IRIS,
+    8 en el Administrativo), para el export al que le borraron el encabezado. Los dos
+    devolvian una fila de DATOS como encabezado y seguian: se armaron antes de tener
+    refs_tablas/ y, con la deteccion por contenido, ya no tenian caso."""
     tope = min(ws.max_row, max_filas)
     ancla_n = [norm(t) for t in ancla]
     for r in range(1, tope + 1):
         vals = [norm(c.value) for c in ws[r]]
         if all(any(tok in v for v in vals) for tok in ancla_n):
             return r, "ancla"
-    if usar_blanco_en_a:
-        for r in range(1, tope + 1):
-            if norm(ws.cell(row=r, column=1).value) == "":
-                return r + 1, "blanco_en_A"
-    return n_hardcode + 1, "hardcode"
+    raise ArchivoInvalido(
+        "sin_encabezado",
+        f"No encuentro la fila de encabezado del export (busqué una fila con: "
+        f"{', '.join(ancla)}) en las primeras {tope} filas.\n\n"
+        "¿Le borraste o editaste el encabezado? Carga el archivo tal como sale de "
+        "RAYEN/IRIS, con su banner y su fila de nombres de columna.")
 
 
 # -- Lectura + clasificación de reportes (compartido; usado por módulos pandas) --
@@ -479,17 +508,30 @@ def cargar_atenciones(entrada, log=print):
                              requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"),
                              solo_iris=SOLO_IRIS_ATENCIONES, log=log, espera="ada")
     # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
-    # de actividad, con RUN y datos de cabecera SOLO en la 1ª. Se rellena la cabecera
-    # a las filas HIJAS (RUN vacío) para atribuir cada actividad/diagnóstico a su
-    # paciente. En IRIS (sin filas hijas) NO se toca nada (evita contaminar campos
-    # vacíos legítimos entre pacientes distintos).
-    cab = ["RUN", "ATENID", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACION",
+    # de actividad, con RUN y datos de cabecera SOLO en la 1ª (el 'N°' SÍ se repite en
+    # las hijas, confirmado por el autor). Se rellena la cabecera a las filas HIJAS
+    # (RUN vacío) DENTRO DE SU MISMA ATENCIÓN (ATENID). Hasta la ronda 11 el relleno era
+    # un ffill global que no miraba ni el formato ni la atención: en IRIS una fila sin
+    # RUN heredaba el RUN del paciente de la fila anterior, de OTRA atención.
+    cab = ["RUN", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACION",
            "EMIG", "ALERTAS", "FORMCLIN", "PUEBLO", "FNAC", "NOMBRES", "APAT",
            "AMAT", "ANOS", "ANOS_AT"]
     child = d["RUN"].replace("", pd.NA).isna()
     if child.any():
         dd = d[cab].replace("", pd.NA)
-        d[cab] = dd.where(~child, dd.ffill())
+        aten = d["ATENID"].replace("", pd.NA)
+        d[cab] = dd.where(~child, dd.groupby(aten).ffill())
+        huerfanas = int(d["RUN"].isna().sum())
+        if huerfanas == len(d):
+            # Fail loud sobre la FUENTE: filas, pero ninguna de ningun paciente.
+            raise ArchivoInvalido(
+                "sin_datos",
+                f"El export de atenciones trae {len(d)} fila(s), pero ninguna con RUN "
+                "(la columna del RUN viene vacia en todas).\n\nRevisa que sea el export "
+                "completo, sin modificar.")
+        if huerfanas:
+            log(f"[atenciones] {huerfanas} fila(s) sin RUN y sin una fila de su misma "
+                "atencion de la cual heredarlo: no se atribuyen a ningun paciente.")
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención")
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
@@ -867,6 +909,10 @@ def trans_map(entrada):
         raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {' y '.join(faltan)}. "
                          "¿Está modificado o es otro reporte? Descárgalo de nuevo SIN tocar.")
     exigir_filas(filas, "el 'Informe Inscritos y Adscritos'")
+    filas = [f for f in filas if i_run < len(f) and str(f[i_run] or "").strip()]
+    if not filas:   # filas, pero ninguna persona: TRANS en 0 con cara de dato (ronda 11)
+        raise ValueError("el 'Informe Inscritos' no trae ningun RUN (la columna viene vacia "
+                         "en todas las filas). ¿Está modificado? Descárgalo de nuevo SIN tocar.")
     out = {}
     for f in filas:
         t = trans_de(f[i_sex] if i_sex < len(f) else "", f[i_gen] if i_gen < len(f) else "")
@@ -887,6 +933,10 @@ def atenid_multiprofesional(entrada):
         raise ValueError("el 'Monitoreo Multiprofesional' no trae ATEN ID / "
                          "Multiprofesional-1. ¿Modificado o reporte equivocado?")
     exigir_filas(filas, "el 'Monitoreo Multiprofesional'")
+    filas = [f for f in filas if i_aten < len(f) and str(f[i_aten] or "").strip()]
+    if not filas:   # sin ATEN ID no cruza con nada: A26 todo 'Un Profesional' (ronda 11)
+        raise ValueError("el 'Monitoreo Multiprofesional' no trae ningun ATEN ID (la columna "
+                         "viene vacia en todas las filas). ¿Modificado o reporte equivocado?")
     return {str(f[i_aten]).strip() for f in filas if i_m1 < len(f) and norm(f[i_m1])}
 
 

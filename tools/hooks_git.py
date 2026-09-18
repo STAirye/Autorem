@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -19,7 +19,7 @@
 hooks_git.py - instalador COMUN de los hooks del repo (lado desarrollo).
 
 Fuente unica de `--instalar`: la usan hook_pre_commit_rut.py (#8.2),
-check_cp1252.py y check_version.py (#9). Los tres encadenan al MISMO
+check_cp1252.py, check_version.py (#9) y check_fuentes.py. Los cuatro encadenan al MISMO
 .git/hooks/pre-commit, y hasta 1.9.5 cada uno traia su propia copia de la
 logica de encadenado -- copias que ya habian divergido (la de check_cp1252 no
 sacaba el 'exit 0' final, asi que instalarlo despues de check_version dejaba su
@@ -44,7 +44,7 @@ invocacion falla y BLOQUEA el commit: es raro, se ve en el acto y se destraba co
 --no-verify. Preferible a saltarse en silencio un check de privacidad.
 
 USO
-    python tools/hooks_git.py --instalar     # instala los 3 hooks y VERIFICA el resultado
+    python tools/hooks_git.py --instalar     # instala los 4 checks y VERIFICA el resultado
 
     Desde los checks (cada uno sigue siendo dueno de SUS args):
     from tools.hooks_git import encadenar
@@ -52,7 +52,7 @@ USO
 
 Hasta 1.9.14 este archivo no tenia CLI: `python tools/hooks_git.py --instalar`
 corria, no imprimia nada, salia 0 y no instalaba ni un hook -- un no-op callado
-que se confundia con exito. Ahora instala los tres llamando al instalador de cada
+que se confundia con exito. Ahora instala todos llamando al instalador de cada
 check (no duplica sus args) y falla con exit 1 si alguno no quedo en el hook.
 """
 
@@ -113,9 +113,11 @@ def encadenar(script, hook="pre-commit", args=""):
 # los args (ej. '--hook commit-msg "$@"' del anti-RUT) vivan en un solo lugar.
 INSTALADORES = (("tools.hook_pre_commit_rut", "instalar"),
                 ("tools.check_cp1252", "instalar_hook"),
-                ("tools.check_version", "instalar_hook"))
+                ("tools.check_version", "instalar_hook"),
+                ("tools.check_fuentes", "instalar_hook"))
 # Lo que tiene que quedar escrito: se verifica por el RESULTADO, no por el exit code.
-ESPERADOS = {"pre-commit": ("hook_pre_commit_rut.py", "check_cp1252.py", "check_version.py"),
+ESPERADOS = {"pre-commit": ("hook_pre_commit_rut.py", "check_cp1252.py", "check_version.py",
+                            "check_fuentes.py"),
              "commit-msg": ("hook_pre_commit_rut.py",)}
 
 
@@ -133,14 +135,14 @@ def instalar_todos():
         print("\nERROR: estos hooks NO quedaron instalados:\n  " + "\n  ".join(faltan),
               file=sys.stderr)
         return 1
-    print(f"\nOK: los 3 hooks estan instalados en {hooks}")
+    print(f"\nOK: los 4 checks estan instalados en {hooks}")
     return 0
 
 
 def main():
     if "--instalar" in sys.argv[1:]:
         return instalar_todos()
-    print("uso: python tools/hooks_git.py --instalar   (instala y verifica los 3 hooks)",
+    print("uso: python tools/hooks_git.py --instalar   (instala y verifica los 4 checks)",
           file=sys.stderr)
     return 2
 

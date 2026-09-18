@@ -59,7 +59,7 @@ def _fixture_iris():
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
     ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
-               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "18.- ESTADO",
+               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO",
                "20.- TIPO DE DEPRESIÓN"])
     ws.append(["11111111-1", 45, "Mujer", "06/07/2026", "SI", "EGRESO ALTA",
                "Depresión Moderada"])

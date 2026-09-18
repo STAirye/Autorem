@@ -363,6 +363,19 @@ def pintar_banner_fuente(pagina, df):
         banner.mostrar(*estado_mensaje)
 
 
+def texto_avisos(avisos, titulo="OJO, {n} aviso(s) -- revísalos (y la hoja LEEME) antes de copiar:"):
+    """Bloque de texto con los avisos de una corrida (tuplas `(casilla, estado, motivo,
+    que_hacer)`) para el RESUMEN de la página, o '' si no hay. Los avisos no bloquean a
+    proposito, y justamente por eso tienen que verse en el «Listo»: solo en el log y la
+    LEEME, se leía igual que una corrida sin nada que advertir. `titulo` con `{n}`."""
+    avisos = list(avisos or [])
+    if not avisos:
+        return ""
+    lineas = "".join(f"\n  - {casilla}: {estado} ({motivo})"
+                     for casilla, estado, motivo, _ in avisos)
+    return f"\n\n{titulo.format(n=len(avisos))}{lineas}"
+
+
 def estado_fuente_de_avisos(avisos):
     """(estado_banner, mensaje) para BannerFuente.mostrar(), extraido de un
     `.attrs['avisos']` de A23/SM (formatos.aviso_fuente, ver programas/CLAUDE.md

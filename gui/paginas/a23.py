@@ -52,9 +52,11 @@ instrucciones = (
     "4.  Inasistentes NSP (opcional)  ->  Sección H: citas Control/Ingreso IRA/ERA no asistidas.\n"
     "     También acepta VARIOS años (ctrl-click); se filtra al mes por FECHA CITA.\n"
     "\n"
-    "OJO CON RAYEN ADMINISTRATIVO: desde ahí SOLO obtienes el formulario Otros Crónicos y un\n"
-    "   «monitoreo de actividades» mensual — con MUCHO menos info que el export IRIS (y horrible de\n"
-    "   parsear). Para los indicadores del mes conviene el export completo de atenciones (IRIS / BD PowerBI).\n"
+    "RAYEN ADMINISTRATIVO: sirven el formulario Otros Crónicos, el «Monitoreo de Inasistentes» (Sección H)\n"
+    "   y el «Monitoreo de Actividades», con MENOS info que IRIS: el Otros Crónicos no trae el estamento\n"
+    "   (se saca del nombre del funcionario en el export de atenciones; si no lo encuentra, te avisa), y el\n"
+    "   Monitoreo trae los diagnósticos sin código (Ira Alta, Bronquitis y EPOC exacerbado salen en 0).\n"
+    "Un archivo OPCIONAL que no sirve no corta la corrida: te pregunta si seguir sin él.\n"
     "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
 )
 
@@ -62,11 +64,13 @@ instrucciones = (
 def correr(ctx, log):
     import modulos.rem_a23_respiratorio as a23
     from programas.rem_utils import rutas_libres, escribir_atomico
+    from gui.runner import avisos_descartados
     y, m = ctx["mes"]
     estrat = ctx["estratificacion"][0] if ctx["estratificacion"] else None
     nsp = ctx["nsp"] or None   # Sección H acepta VARIOS años -> la lista entera, no solo el primero
     fer = a23.procesar(ctx["atenciones"], otros=ctx["otros_cronicos"], estrat=estrat,
                        inasistentes=nsp, mes=(y, m), log=log)
+    fer.attrs.setdefault("avisos", []).extend(avisos_descartados(ctx))   # opcionales que se omitieron
     salida, = rutas_libres(ctx["carpeta"] / f"REM_A23_{y}_{m:02d}_procesado.xlsx")   # nunca pisa
     escribir_atomico(salida, lambda p: a23.escribir(fer, p))   # temporal + rename
     return {"fer": fer, "salida": salida, "mes": (y, m)}
@@ -77,7 +81,8 @@ def resumen(res):
     g = fer.attrs.get("seccion_g", {})
     gtxt = " · ".join(f"{lbl.split()[0]}:{d['Total']}" for lbl, d in g.items() if d["Total"])
     return (f"Listo. REM A23 {y}-{m:02d}.\n{len(fer)} pacientes en el detalle.\n"
-            f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}\n\nGuardado en:\n{salida}")
+            f"Sección G (inasistentes crónicos): {gtxt or 'ninguno'}"
+            f"{widgets.texto_avisos(fer.attrs.get('avisos'))}\n\nGuardado en:\n{salida}")
 
 
 def al_completar(res, pagina):
@@ -99,9 +104,12 @@ PANTALLA = {
          "motivo_obligatorio": "De ahí salen SALA bajo control y la Sección G "
                                "(inasistentes crónicos). Ideal varios años.",
          "titulo_dialogo": "Formulario Otros Crónicos — selecciona VARIOS años (año del reporte + anterior, ideal 5)"},
+        # `entrada` = el parametro de a23.procesar: con eso la app sabe que archivo
+        # omitir si el modulo dice que este opcional no sirve (runner.sin_opcional).
         {"key": "estratificacion", "etiqueta": "Estratificación (opcional):", "multi": True,
-         "obligatorio": False, "titulo_dialogo": "Estratificación de Riesgo — opcional"},
+         "obligatorio": False, "entrada": "estrat", "titulo_dialogo": "Estratificación de Riesgo — opcional"},
         {"key": "nsp", "etiqueta": "Inasistentes NSP (opc):", "multi": True, "obligatorio": False,
+         "entrada": "inasistentes",
          "titulo_dialogo": "Reporte de pacientes inasistentes (NSP) — Sección H "
                            "(puedes cargar VARIOS años; se filtra al mes por FECHA CITA)"},
     ],

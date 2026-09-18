@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.13
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -299,6 +299,19 @@ def _base_valida(P, log):
             log(f"[sp_p6]    {col:<21} solo={int((P[col] == 'SI').sum()):>6}"
                 "   (no filtra: solo para comparar con el prefiltro del PowerBI)")
     log(f"[sp_p6] base (los 3 filtros): {int(base.sum())} de {len(P)} personas del snapshot")
+    if len(P) and not base.any():
+        # Fail loud (CLAUDE.md regla 2): un P6 del centro ENTERO en 0 no es un mes real,
+        # es un cruce roto -- 'Estado' con otro vocabulario (no dice ACTIVO), o el RUN
+        # del ADA/formulario en otro formato que el del Inscritos. Las guardas por fuente
+        # (poblacion.construir_poblacion) no lo ven: cada fuente por separado tiene datos.
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"Ninguna de las {len(P)} personas del Inscritos cumple a la vez Estado=Activo "
+            f"({int(f_estado.sum())}), ¿Activo 12m?=SI ({int(f_a12m.sum())}) e "
+            f"¿Ingresado?=SI ({int(f_ingr.sum())}): el P6 saldría entero en 0.\n\n"
+            "Si uno de esos conteos es 0, revisa ESA fuente: la columna ESTADO del "
+            "Inscritos (tiene que decir 'Activo'), o que el ADA y el formulario traigan el "
+            "RUN en el mismo formato que el Inscritos (sin puntos, con guion y DV).")
     _desglose_ingresado(P, log)
 
     sexo_raro = P.loc[base, "Sexo"].map(lambda s: not (_hombre(s) or _mujer(s)))
@@ -361,6 +374,13 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
                             "Fila_P6": fila, "Detalle": f"edad real {r['Edad']}",
                             "Valor_crudo": f"-> banda destino desde idx {lo}-{hi}",
                             "Categoria": "Clinico"})
+        elif r["_edad_grid"] is None:
+            # Sin edad (Inscritos sin FECHA DE NACIMIENTO ni EDAD AÑOS legibles): grid()
+            # la cuenta en Ambos y en NINGUNA banda -> las columnas pegables suman menos
+            # que el total, callado. Mismo criterio que el sexo fuera de H/M: a Revisar.
+            revisar.append({"RUN": r["Número"], "Motivo": "Sin edad: cuenta en Ambos, en ninguna banda",
+                            "Fila_P6": fila, "Detalle": "sin fecha de nacimiento ni edad legible",
+                            "Valor_crudo": r["Edad"], "Categoria": "Administrativo"})
         detalle_rows.append({
             "RUN": r["Número"], "Fila_P6": fila,
             "Concepto": ROW_LABELS.get(fila, ("", ""))[0], "Subconcepto": ROW_LABELS.get(fila, ("", ""))[1],

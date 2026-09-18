@@ -54,6 +54,21 @@ SENSITIVE_PII/
 # programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible
 # del proyecto (nombre, RUT, direccion, telefonos, email) -> el crudo NUNCA al repo.
 !refs_tablas/Informe_Inscritos__Adscritos_heads.xlsx
+# Ronda 11 (sep-2026): los reportes que los contratos tenian con encabezado SINTETICO.
+# Recortados con tools/limpiar_refs.py a BANNER + ENCABEZADO (el banner se conserva: al
+# usuario se le pide no borrarlo) y escaneados sin hallazgos (0 RUT, 0 correos, 0
+# telefonos; 'GENERADO PARA:' vacio). El Atenciones_Grupales de arriba se REEMPLAZO por
+# el export real: el anterior estaba editado a mano (sin banner, y 'Columna1'/'Columna2'
+# donde el real dice 'ASISTE (SI/NO)'/'ESTADO CITA'). Los crudos de todos estos traen
+# nombre, RUN, direccion y telefono -> el crudo NUNCA al repo.
+# El Maestro_de_Actividades.xlsx (8.6 MB) NO se versiona: lo cubre catalogos/maestro_slim.
+!refs_tablas/Estratificacion_de_Riesgo_iris.xlsx
+!refs_tablas/Monitoreo_Multiprofesional_iris.xlsx
+!refs_tablas/Monitoreo_de_Inasistentes_admin.xlsx
+!refs_tablas/Otros_cronicos_admin.xlsx
+!refs_tablas/Otros_cronicos_iris.xlsx
+!refs_tablas/Pacientes_Inasistentes_iris.xlsx
+!refs_tablas/Utilizacion_cupos_admin.xlsx
 
 # --- Catálogos oficiales DEIS/MINSAL (catalogos/) — SÍ versionados, en bloque ---
 # Otra naturaleza que refs_tablas/: no son "ejemplos anonimizados" sino DATOS

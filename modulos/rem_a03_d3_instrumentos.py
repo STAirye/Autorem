@@ -138,12 +138,10 @@ NOMBRE_HOJA_SALIDA = "A03_D3_Instrumentos"
 
 # -- Localización de encabezado / detección de instrumento -------------
 def _fila_encabezado(ws, formato):
-    """Ubica el header. Admin comparte params (`formatos.HEADER_ADMIN`); el IRIS
-    de instrumentos NO trae banner (n_hardcode=0), distinto al A05."""
+    """Ubica el header por el ancla de cada formato (los dos traen banner arriba)."""
     if formato == "administrativo":
         return formatos.fila_encabezado_admin(ws)
-    return encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, usar_blanco_en_a=True,
-                                     n_hardcode=0, max_filas=formatos.MAX_FILAS_HEADER)
+    return encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
 
 
 def detectar_instrumento(ws, formato, header_idx, headers_norm):
@@ -220,10 +218,22 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
     Devuelve un resumen."""
     wb, ws, formato, header_idx = abrir_validado(entrada)
 
+    headers_norm0 = [norm(ws.cell(row=header_idx, column=c).value)
+                     for c in range(1, ws.max_column + 1)]
+    detectado = detectar_instrumento(ws, formato, header_idx, headers_norm0)
     if instrumento is None:
-        headers_norm0 = [norm(ws.cell(row=header_idx, column=c).value)
-                         for c in range(1, ws.max_column + 1)]
-        instrumento = detectar_instrumento(ws, formato, header_idx, headers_norm0)
+        instrumento = detectado
+    elif detectado is not None and detectado != instrumento:
+        # Los 3 casilleros de la GUI FIJAN el instrumento. Si el contenido dice otro
+        # (CLAUDE.md regla 5: detectar por CONTENIDO), los cortes son los de otro test:
+        # un PSC-Y en el casillero GHQ-12 cae entero fuera de rango y un GHQ-12 en el
+        # del PSC entero bajo 33 -> la D.3 en 0 con "N aplicaciones" en el resumen.
+        raise ArchivoInvalido(
+            "instrumento_cruzado",
+            f"Cargaste este export en el casillero de {INSTRUMENTOS[instrumento]['nombre']}, "
+            f"pero por su contenido es un {INSTRUMENTOS[detectado]['nombre']}.\n\n"
+            "Los cortes de cada cuestionario son distintos: la tabla A03·D.3 saldría mal. "
+            "Muévelo a su casillero.")
     if instrumento not in INSTRUMENTOS:
         raise ArchivoInvalido(
             "instrumento_desconocido",
@@ -330,6 +340,20 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
                        f"{sin_momento} aplicacion(es) de {inst['nombre']} sin momento "
                        "Ingreso/Egreso en '1.- ESTADO': quedan fuera del D.3",
                        "Revisar el momento de esas aplicaciones en RAYEN"))
+    if filas and len(fuera_rango) == len(filas):
+        # TODAS con puntaje fuera de las bandas: la D.3 de este instrumento entera en 0.
+        raise ArchivoInvalido(
+            "sin_datos",
+            f"Las {len(filas)} aplicacion(es) de {inst['nombre']} traen un puntaje FUERA "
+            f"del rango de sus cortes (valores: {sorted(set(fuera_rango))[:8]}): ninguna "
+            "entra a la tabla A03·D.3.\n\n¿Es el export de este cuestionario, o cambió el "
+            "puntaje (p.ej. GHQ-12 en Likert 0-36)? Revisa el archivo.")
+    if fuera_rango:
+        avisos.append(("Tabla D.3", "SUBCONTADO",
+                       f"{len(fuera_rango)} aplicacion(es) de {inst['nombre']} con puntaje "
+                       f"fuera del rango del corte ({sorted(set(fuera_rango))[:8]}): quedan "
+                       "fuera del D.3",
+                       "Revisar el puntaje de esas aplicaciones en RAYEN"))
     if n_desde_rayen:
         log(f"[aviso] {n_desde_rayen} aplicacion(es) SIN puntaje: su nivel en el D.3 es el "
             "RESULTADO de RAYEN (no se pudo recalcular).")

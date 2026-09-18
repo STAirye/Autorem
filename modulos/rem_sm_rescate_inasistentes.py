@@ -255,6 +255,19 @@ def procesar(inscritos, formulario_sm, ada, mes=None, log=print, P=None, fuentes
     no reconstruirlo) y arma las 5 hojas de rescate (§8). `P` debe venir de una
     pasada NORMAL (`exigir_medico=True`, el default)."""
     insc = inscritos if isinstance(inscritos, pd.DataFrame) else cargar_inscritos(inscritos, log=log)
+    # Fail loud (CLAUDE.md regla 2): sin estas dos columnas Posibles_Fallecidos,
+    # Fallecidos_mes y Posibles_Traslados salen VACIAS sin aviso, y la lista de rescate
+    # (a quien LLAMAR) queda sin la marca de fallecido. cargar_inscritos no las exige
+    # porque el P6 no las usa; el rescate si.
+    faltan = [c for c, k in (("MOTIVO PASIVACION", "MPASIV"), ("FECHA PASIVACION", "FPASIV"))
+              if k in insc.attrs.get("columnas_ausentes", ())]
+    if faltan:
+        raise ArchivoInvalido(
+            "sin_columnas",
+            f"El 'Informe Inscritos y Adscritos' no trae la(s) columna(s) "
+            f"{' y '.join(faltan)}.\n\nSin ellas el rescate no puede marcar a los "
+            "fallecidos ni a los trasladados, y la lista de a quién llamar saldría sin esa "
+            "advertencia. Descarga el Informe completo desde RAYEN, sin modificar.")
     form = formulario_sm if isinstance(formulario_sm, pd.DataFrame) else cargar_formulario_sm(formulario_sm, log=log)
     d_ada = ada if isinstance(ada, pd.DataFrame) else cargar_atenciones(ada, log=log)
 

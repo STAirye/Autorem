@@ -223,7 +223,8 @@ def test_el_desglose_por_instrumento_del_a03_llega_hasta_el_resumen():
 
     def unificado_falso(por_instrumento, salida, **kw):
         Path(salida).write_bytes(b"d3")   # escribe como el real (lo renombra escribir_atomico)
-        return {"salida": str(salida), "total": 60, "por_instrumento": por_inst, "tabla": None}
+        return {"salida": str(salida), "total": 60, "por_instrumento": por_inst, "tabla": None,
+                "avisos": [("Tabla D.3", "SUBCONTADO", "2 fuera de rango", "revisar")]}
     screening.procesar_unificado = unificado_falso
     estam.tabla_efectiva = lambda *_a, **_kw: None
     try:
@@ -238,7 +239,8 @@ def test_el_desglose_por_instrumento_del_a03_llega_hasta_el_resumen():
 
     assert res["por_inst_a03"] == por_inst, "el desglose no llego a `res`"
     texto = sm.resumen(res)
-    for trozo in ("60 aplicaciones", "PSC: 20", "PSC-Y: 18", "GHQ-12: 22"):
+    # Ronda 10: los avisos del A03 tambien tienen que llegar (antes `correr` los botaba).
+    for trozo in ("60 aplicaciones", "PSC: 20", "PSC-Y: 18", "GHQ-12: 22", "2 fuera de rango"):
         assert trozo in texto, f"falta {trozo!r} en el resumen: {texto!r}"
     # Sin dato no se inventa un parentesis vacio.
     assert sm._por_instrumento({"por_inst_a03": None}) == ""
@@ -277,6 +279,7 @@ def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
                (smact, "procesar", lambda *_a, **_k: E),
                (smact, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
                (tpmod, "procesar", lambda *_a, **_k: []),
+               (ru, "cargar_maestro", lambda *_a, **_k: None),   # el Maestro de mentira
                (tpmod, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
                (screening, "procesar_unificado", a03_falla),
                (estam, "tabla_efectiva", lambda *_a, **_k: None)]
@@ -363,6 +366,50 @@ def test_a23_y_poblacion_tampoco_pisan_salidas():
     assert rp["salida"].name == "REM_SP_P6_2026_08_BETA (1).xlsx", rp["salida"].name
     assert (carpeta / "REM_SM_Rescate_2026_08_BETA.xlsx").read_bytes() == b"viejo"
     assert "NO se generó" in poblacion.resumen(rp), "el resumen calla que el Rescate fallo"
+
+
+def test_un_opcional_invalido_pregunta_si_seguir_sin_el():
+    """Ronda 11 (decision del autor): un archivo OPCIONAL que no sirve no se calla (TRANS
+    y el Multiprofesional quedaban en el log) ni tumba la corrida: la app pregunta
+    «¿continuar sin el?»; si si, re-corre sin el y la LEEME dice que se omitio."""
+    import tempfile
+    import pandas as pd
+    import modulos.rem_a23_respiratorio as a23m
+    from programas.rem_utils import ArchivoInvalido, OpcionalInvalido
+    from gui import runner
+    from gui.paginas import a23
+
+    class _Msg:
+        def __init__(self, resp): self.resp, self.preguntas = resp, []
+        def askyesno(self, titulo, texto): self.preguntas.append(texto); return self.resp
+
+    inputs = a23.PANTALLA["inputs"]
+    ctx = {"mes": (2026, 8), "carpeta": Path(tempfile.mkdtemp(prefix="autorem_opc_")),
+           "atenciones": [Path("a.xlsx")], "otros_cronicos": [Path("o.xlsx")],
+           "estratificacion": [Path("e.xlsx")], "nsp": []}
+    err = OpcionalInvalido("estrat", ArchivoInvalido("sin_columnas", "no encuentro RUT"))
+    q = lambda *_a: None   # noqa: E731
+
+    si = _Msg(True)
+    nuevo = runner.sin_opcional(err, ctx, inputs, si, q)
+    assert nuevo["estratificacion"] == [] and ctx["estratificacion"], "no quito el archivo (o toco el ctx original)"
+    assert nuevo["descartados"][0][0].startswith("Estratificación") and "RUT" in si.preguntas[0]
+    assert runner.sin_opcional(err, ctx, inputs, _Msg(False), q) is False      # dijo que no
+    assert runner.sin_opcional(ArchivoInvalido("x", "y"), ctx, inputs, si, q) is None   # no es opcional
+    oblig = OpcionalInvalido("otros_cronicos", ArchivoInvalido("x", "y"))
+    assert runner.sin_opcional(oblig, ctx, inputs, si, q) is None             # obligatorio: no se ofrece
+
+    fer = pd.DataFrame({"x": [1]})
+    fer.attrs["avisos"] = []
+    previos = (a23m.procesar, a23m.escribir)
+    a23m.procesar = lambda *_a, **_k: fer
+    a23m.escribir = lambda _f, p: Path(p).write_bytes(b"x")
+    try:
+        res = a23.correr(nuevo, log=q)
+    finally:
+        a23m.procesar, a23m.escribir = previos
+    assert any(a[1] == "OMITIDO" and "Estratificación" in a[0] for a in fer.attrs["avisos"]), fer.attrs
+    assert "OMITIDO" in a23.resumen(dict(res, fer=fer)) or "Estratificación" in a23.resumen(dict(res, fer=fer))
 
 
 def test_un_click_encolado_no_abre_una_segunda_ventana_de_dotacion():
@@ -592,6 +639,32 @@ def test_construye_todas_las_paginas_sin_excepcion():
             assert pid in app._frames, f"{pid}: no quedó construida tras mostrar()"
     finally:
         app.destroy()
+
+
+def test_resumen_de_a23_y_sm_muestra_los_avisos():
+    """Ronda 10, 2a pasada: los resumenes de A23 y SM decian "Listo" sin sus avisos
+    (solo log y LEEME), y SM descartaba los del A03 (gemelo de §1.J.6, que solo arreglo
+    Poblacion). Ahora los listan; sin avisos no inventan nada."""
+    import pandas as pd
+    from gui.paginas import a23 as pa23, sm as psm
+    av = ("Seccion G (inasistentes cronicos)", "SUBCONTADO", "falta historial", "cargar mas")
+    fer = pd.DataFrame({"RUN": ["A"]}); fer.attrs.update(seccion_g={}, avisos=[av])
+    txt = pa23.resumen({"fer": fer, "salida": "x.xlsx", "mes": (2026, 7)})
+    assert "SUBCONTADO" in txt and "falta historial" in txt, txt
+    fer.attrs["avisos"] = []
+    assert "aviso" not in pa23.resumen({"fer": fer, "salida": "x.xlsx", "mes": (2026, 7)})
+
+    av03 = ("Tabla D.3", "SUBCONTADO", "1 aplicacion fuera de rango", "revisar")
+    E = pd.DataFrame({"casilla": ["A04"]})
+    E.attrs.update(tablas={"SM_Resumen": pd.DataFrame({"Casilla": ["A04"], "Total mes": [1]})},
+                   avisos=[av])
+    base = {"mes": (2026, 7), "solo_a03": False, "E": E, "n_tp": 0, "n_a03": 3,
+            "por_inst_a03": {"PSC": 3}, "salida": "x.xlsx", "salida_a03": "y.xlsx",
+            "avisos_a03": [av03]}
+    txt = psm.resumen(base)
+    assert "falta historial" in txt and "fuera de rango" in txt, txt
+    txt = psm.resumen(dict(base, solo_a03=True))
+    assert "fuera de rango" in txt, txt
 
 
 def _main():

@@ -586,7 +586,12 @@ class App(ctk.CTk):
                 if ctx is None:   # abortado (ADA ilegible, mes vacio) o reventado
                     btn.configure(state="normal")   # el usuario tiene que poder reintentar
                     return
+            lanzar_corrida(ctx)
 
+        def lanzar_corrida(ctx):
+            """El worker de UNA corrida. Aparte de `on_procesar` para poder re-lanzarla
+            sin un opcional invalido (`runner.sin_opcional`) sin repetir `preparar`,
+            que puede abrir dialogos (la dotacion del SM)."""
             # Los inputs TAL COMO estaban al arrancar. Durante la corrida solo se
             # deshabilita Procesar: el usuario puede elegir otro archivo mientras el
             # worker trabaja, y `al_completar` pintaba entonces el veredicto de fuente
@@ -602,8 +607,14 @@ class App(ctk.CTk):
             def al_terminar(res, err):
                 self._corridas -= 1   # primero: el worker ya termino, pase lo que pase abajo
                 if err is not None:
-                    runner.manejar_error(err, log, messagebox)
                     runner.avisar_cache(messagebox)
+                    # Un OPCIONAL invalido: «¿continuar sin el?» (ronda 11). Si si, se
+                    # re-corre con el ctx sin ese archivo; si no, ya vio el motivo.
+                    nuevo = runner.sin_opcional(err, ctx, inputs, messagebox, log)
+                    if nuevo:
+                        lanzar_corrida(nuevo)
+                    elif nuevo is None:
+                        runner.manejar_error(err, log, messagebox)
                     return
                 # El worker puede haber leido/guardado un caché (estamentos, dotacion).
                 runner.avisar_cache(messagebox)

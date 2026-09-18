@@ -44,8 +44,8 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 1. **Privacidad** (detalle en §8). Nunca datos de pacientes en el repo: RUT, nombre,
    fecha de nacimiento, dirección, teléfono. **Avisar** si por error se cargan. Un RUT
    de ejemplo es siempre `11111111-1` (hubo un RUT real 2 meses en el repo público).
-   Los exports reales viven solo en la carpeta de trabajo (OneDrive). Los 3 hooks de
-   pre-commit se instalan **en cada clon**.
+   Los exports reales viven solo en la carpeta de trabajo (OneDrive). Los hooks de
+   pre-commit se instalan **en cada clon** (`python tools/hooks_git.py --instalar`).
 2. **Fallar ruidoso, nunca callado y errado.** Un número plausible pero mal es el peor
    bug posible, porque se copia al REM. Mes sin datos → `ArchivoInvalido`, con la
    guarda sobre la FUENTE y no sobre la casilla (§3.1).
@@ -73,7 +73,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.17** (§9). **257 tests.**
+Versión **1.9.17** (§9). **283 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -95,7 +95,7 @@ tools/            utilitarios de desarrollo  -> tools/CLAUDE.md
 catalogos/        CIE-10 / ENO / GES que shippea el exe (§14)
 refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
-.claude/skills/   limpiar-refs · check-cp1252 · versionar
+.claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes
 legacy/           monolitos viejos (no se importan; referencia de equivalencia)
 tests/            pruebas automáticas
 docs/             planes y contexto por módulo
@@ -191,7 +191,9 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 - El repo vive **fuera** del OneDrive del trabajo; los exports con PII se quedan allá.
 - Rama `main`. Claude Code trabaja en worktrees: **el stash y los hooks son
   compartidos** entre todos los árboles (§10.1). Usar commits WIP, no stash.
-- Tres hooks, instalados **en cada clon** (§8.2).
+- Cuatro checks de pre-commit, instalados **en cada clon** (§8.2). Uno de ellos,
+  `check_fuentes`, exige un CONTRATO para todo lector de planillas del usuario (skill
+  `tests-fuentes`): un input nuevo se escribe **con** su contrato.
 
 ---
 

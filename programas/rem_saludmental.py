@@ -131,6 +131,71 @@ OVERRIDE_SUBTIPO = {
     ],
 }
 
+# -- Firma de CONTENIDO del formulario (CLAUDE.md regla 5) ----------------
+# Todo lo de arriba (y la tabla del P6 en poblacion.py) ubica las preguntas por su
+# NUMERO. Eso solo vale si el archivo ES el formulario 'Control de Salud Mental': un
+# cuestionario RAYEN (Goldberg, PSC) trae las mismas firmas IRIS/Admin, su '1.- ESTADO'
+# dice Ingreso/Egreso, y hasta la ronda 11 pasaba entero -- «4.- 3. ¿Ha sentido que está
+# jugando un papel útil…» se leia como Violencia y el A05 contaba ingresos con
+# patologia «Estado». Y si RAYEN RENUMERA el formulario, cada numero apunta a otra
+# pregunta sin que nada falle. Por eso cada numero que el codigo usa se contrasta con
+# lo que su encabezado DICE. Verificada contra los dos formatos reales
+# (refs_tablas/Formularios_RAYEN_csm_IRis.xlsx y Formulario_csm_reporte_Administrativo.xlsx;
+# lo vigila tests/test_autorem.py).
+FIRMA_FORMULARIO_SM = {
+    4: ["VIOLENCIA"], 6: ["TIPO", "VIOLENCIA"], 7: ["VIOLENCIA"], 9: ["ABUSO SEXUAL"],
+    11: ["SUICIDIO"], 12: ["TIPO", "SUICIDIO"], 18: ["DEPRESION"], 20: ["TIPO", "DEPRESION"],
+    21: ["DEPRESION", "PARTO"], 23: ["BIPOLAR"], 25: ["REFRACTARIA"], 27: ["PSICOSIS"],
+    29: ["RIESGO SUICIDA"], 31: ["PERJUDICIAL", "ALCOHOL"], 33: ["DEPENDIENTE", "ALCOHOL"],
+    35: ["PERJUDICIAL", "DROGAS"], 37: ["DEPENDIENTE", "DROGAS"], 39: ["DROGAS", "ALCOHOL"],
+    41: ["ANSIEDAD"], 43: ["TIPO", "ANSIEDAD"], 44: ["DEMENCIAS"], 45: ["ETAPA"],
+    47: ["PSICOSIS"], 49: ["ADAPTATIVO"], 51: ["ESQUIZOFRENIA"], 53: ["ESQUIZOFRENIA"],
+    55: ["ALIMENTARIA"], 57: ["HIPERCINETICOS"], 59: ["RETRASO MENTAL"], 61: ["PERSONALIDAD"],
+    63: ["GENERALIZADO", "DESARROLLO"], 65: ["NO INCLUIDOS"], 67: ["DEMENCIA"],
+    69: ["DISOCIAL"], 71: ["SEPARACION"], 73: ["COMPORTAMIENTO"], 75: ["EPILEPSIA"],
+    77: ["REHABILITACION"], 79: ["REHABILITACION"], 81: ["ACOMPANAMIENTO"], 83: ["AUTISMO"],
+    85: ["ASPERGER"], 87: ["RETT"], 89: ["DESINTEGRATIVO"], 91: ["GENERALIZADO", "DESARROLLO"],
+}
+# Y el ESTADO de cada diagnostico va pegado a su pregunta (encontrar_diagnostico y el
+# P6 leen el numero siguiente): esos tienen que decir ESTADO.
+ESTADOS_FORMULARIO_SM = (5, 10, 13, 19, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 46,
+                         48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78,
+                         80, 82, 84, 86, 88, 90, 92)
+
+
+def verificar_formulario_sm(headers, archivo=None):
+    """ArchivoInvalido si `headers` no es el encabezado del formulario 'Control de Salud
+    Mental' (numero de pregunta -> lo que dice). Una pregunta AUSENTE no falla (un
+    historico viejo puede no traer las nuevas); una que esta y dice OTRA cosa, si."""
+    n2h = {num_pregunta(h): norm(h) for h in headers if num_pregunta(h) is not None}
+    esperado = {n: [norm(t) for t in toks] for n, toks in FIRMA_FORMULARIO_SM.items()}
+    esperado.update({n: ["ESTADO"] for n in ESTADOS_FORMULARIO_SM})
+    presentes = [n for n in esperado if n in n2h]
+    malas = [n for n in presentes if not all(t in n2h[n] for t in esperado[n])]
+    donde = f"Archivo «{archivo}»:\n\n" if archivo else ""
+    # «No es este formulario» si calza MENOS DE LA MITAD de las preguntas de diagnostico
+    # presentes: otro formulario RAYEN coincide por casualidad en alguna (Otros Cronicos
+    # tambien trae '75.- ¿Padece de Epilepsia?') y en sus 'N.- ESTADO'.
+    dx = [n for n in presentes if n in FIRMA_FORMULARIO_SM]
+    if 2 * sum(n not in malas for n in dx) < len(dx) or not dx:
+        raise ArchivoInvalido(
+            "no_formulario_sm",
+            f"{donde}Este archivo no es el formulario 'Control de Salud Mental': sus "
+            "preguntas numeradas no son las de ese formulario (¿es un cuestionario, como "
+            "Goldberg o PSC, que van en el A03 · D.3? ¿u otro formulario de RAYEN?).\n\n"
+            "Descarga el formulario 'Control de Salud Mental' desde RAYEN/IRIS. Si es ese "
+            "y lo bajaste tal cual, RAYEN le cambió la numeración: avisa al desarrollador.")
+    if malas:
+        muestra = "; ".join(f"{n}.- esperaba {' '.join(esperado[n])}" for n in malas[:4])
+        raise ArchivoInvalido(
+            "formulario_cambiado",
+            f"{donde}El formulario 'Control de Salud Mental' no tiene sus preguntas donde "
+            f"la herramienta las espera ({len(malas)} de {len(presentes)} no calzan: "
+            f"{muestra}{' ...' if len(malas) > 4 else ''}).\n\n"
+            "O RAYEN cambió la numeración del formulario, o el archivo fue editado. Si lo "
+            "bajaste tal cual, avisa al desarrollador: los diagnósticos se leerían cruzados.")
+
+
 # -- Detección de columnas de identificación (RUT/edad/sexo, ambos formatos) --
 # El eje IRIS/Admin y la resolución de identidad viven en `programas.formatos`
 # (compartidos con A03/estamentos). El QUIRK de 'AÑO APLICACIÓN FORMULARIO' (que
@@ -157,7 +222,11 @@ COL_GENERO_TOKENS = ["GENERO"]   # Trans: regla rem_utils.trans_de (explícita +
 
 # -- Config técnica compartida --
 HOJA = None
-ANIO_COL_FALLBACK = 11                 # último recurso para la edad (layout IRIS)
+# (Hasta 1.9.17 habia un ANIO_COL_FALLBACK = 11: si no se encontraba la columna de edad
+# por nombre, se tomaba la columna 11 POR POSICION. Es la posicion del layout IRIS, y
+# ahi nunca hacia falta -- el encabezado de edad ES el ancla de la deteccion --; en el
+# Administrativo la columna 11 es 'Convenio'. Se armo antes de tener refs_tablas/, a
+# ciegas. Ver _preparar: ahora la edad se busca solo por NOMBRE, o falla.)
 MAX_FILAS_BUSQUEDA_HEADER = formatos.MAX_FILAS_HEADER
 
 # -- Layout de salida (compartido por egresos/ingresos) --
@@ -300,8 +369,6 @@ PERFIL_IRIS = {
     "id": "iris",
     "nombre": "IRIS · Formularios Clinicos Control de Salud Mental  (recomendado)",
     "ancla": formatos.ANCLA_IRIS,
-    "usar_blanco_en_a": True,
-    "n_hardcode": 16,
     "validar": validar_iris,
     "disclaimer": "",
 }
@@ -309,8 +376,6 @@ PERFIL_ADMIN = {
     "id": "administrativo",
     "nombre": "RAYEN · Reporte Administrativo",
     "ancla": formatos.ANCLA_ADMIN,
-    "usar_blanco_en_a": formatos.HEADER_ADMIN["usar_blanco_en_a"],   # col A con blancos -> no fiarse
-    "n_hardcode": formatos.HEADER_ADMIN["n_hardcode"],               # encabezado en fila 9 (n_hardcode+1)
     "validar": validar_admin,
     "disclaimer": _DISCLAIMER_ADMIN,
 }
@@ -345,9 +410,7 @@ def abrir_validado(entrada, perfil):
 def _preparar(ws, perfil, log):
     """Ubica encabezado (según el perfil) y detecta las columnas compartidas
     (RUT/edad/sexo/género + demografía). Devuelve un dict de contexto."""
-    header_idx, modo = encontrar_fila_encabezado(
-        ws, perfil["ancla"], perfil["usar_blanco_en_a"], perfil["n_hardcode"],
-        MAX_FILAS_BUSQUEDA_HEADER)
+    header_idx, modo = encontrar_fila_encabezado(ws, perfil["ancla"], MAX_FILAS_BUSQUEDA_HEADER)
     log(f"[corte] perfil={perfil['id']} modo={modo} | encabezado en fila {header_idx} "
         f"(la hoja original NO se modifica)")
     # Fail loud sobre la FUENTE (CLAUDE.md regla 2): un export con solo el encabezado
@@ -359,12 +422,20 @@ def _preparar(ws, perfil, log):
     ncols = ws.max_column
     headers = [ws.cell(row=header_idx, column=c).value for c in range(1, ncols + 1)]
     headers_norm = [norm(h) for h in headers]
+    verificar_formulario_sm(headers)   # por CONTENIDO: un cuestionario no pasa (regla 5)
     num2col = {num_pregunta(h): i for i, h in enumerate(headers) if num_pregunta(h) is not None}
 
     # RUT/edad/sexo: se aceptan los nombres de AMBOS formatos (robusto ante mala elección)
     rut_col, edad_col, sexo_col = formatos.resolver_identidad(headers_norm)
-    if edad_col is None or edad_col > ncols:
-        edad_col = ANIO_COL_FALLBACK if ANIO_COL_FALLBACK <= ncols else None
+    if edad_col is None:
+        # Fail loud (CLAUDE.md regla 2), nunca una columna por POSICION: el fallback
+        # viejo a la columna 11 leia 'Convenio' en el Administrativo. Sin edad, las
+        # bandas etarias del A05 saldrian vacias (o con numeros de otra columna).
+        raise ArchivoInvalido(
+            "sin_columnas",
+            "No encuentro la columna de EDAD del formulario ('AÑO APLICACIÓN FORMULARIO' "
+            "en IRIS, 'Edad de registro formulario' en el Administrativo).\n\n"
+            "Carga el export tal como sale de RAYEN/IRIS, sin renombrar ni borrar columnas.")
     log(f"[cols] RUT=col{rut_col} | Edad=col{edad_col} | Sexo=col{sexo_col}")
 
     demo_cols = {flag: (buscar_col(headers_norm, tokens=[norm(t) for t in src]), regla)
@@ -419,6 +490,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
     estado_idx = [c0 for c0 in range(ncols) if es_estado(headers[c0])]   # fijo: precomputado
     eventos = []
     filas_en_mes = 0        # formularios que caen en el mes pedido
+    filas_con_rut = 0       # formularios con RUT (los que se miran por fecha)
     filas_fecha_mala = 0    # formularios con RUT pero fecha ilegible (se excluyen)
     solo_fem_anulados = {}  # flag -> nº de formularios donde se marcó en un no-femenino
 
@@ -429,6 +501,7 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
         if mes_activo:
             if not str(rut or "").strip():
                 continue   # fila vacía de relleno: no cuenta
+            filas_con_rut += 1
             ym = mes_de_celda(fila[fecha_col - 1])
             if ym is None:
                 filas_fecha_mala += 1
@@ -487,6 +560,17 @@ def marcar_eventos(wb, ws, perfil, *, busquedas, tipo_label, orden_tipos, hoja_s
         if filas_fecha_mala:
             log(f"[mes] AVISO: {filas_fecha_mala} formulario(s) con fecha ilegible "
                 f"quedaron FUERA del filtro (revisa la columna FECHA FORMULARIO).")
+        if filas_con_rut and filas_fecha_mala == filas_con_rut:
+            # Ninguna fecha legible: NO es "mes equivocado", y el consejo de abajo
+            # ("elige Archivo completo") procesaria el año entero como si fuera el mes.
+            # Mismo criterio que rem_utils.filtrar_mes.
+            raise ArchivoInvalido(
+                "sin_fecha",
+                f"Ninguno de los {filas_con_rut} formulario(s) tiene una FECHA FORMULARIO "
+                f"legible, así que no se puede saber cuáles son de {mes[1]:02d}/{mes[0]}.\n\n"
+                "Revisa que sea el export correcto y que esté SIN modificar (una columna de "
+                "fecha reformateada a mano rompe la lectura). NO lo proceses como «Archivo "
+                "completo»: contaría todos los formularios del archivo como si fueran del mes.")
         if filas_en_mes == 0:
             raise ArchivoInvalido(
                 "mes_vacio",

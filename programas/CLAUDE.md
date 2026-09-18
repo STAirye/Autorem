@@ -13,8 +13,8 @@ Se carga al trabajar en `programas/`. Los `§N` son las anclas del [CLAUDE.md ra
 
 | Archivo | Rol |
 |---|---|
-| `rem_utils.py` | **Base genérica.** `norm`, `buscar_col`, `encontrar_fila_encabezado` (parametrizado), `ArchivoInvalido`, `VERSION`, `grid`, `rut_valido`/`dv_rut`, lectura pandas (`leer_xlsx`, robusto a la «dimension» rota **desde 1.9.17** — antes la respetaba y truncaba callado; **toda lectura `read_only` pasa por `abrir_xlsx_ro`**, nunca un `load_workbook(read_only=True)` pelado, que acota `iter_rows` a la `<dimension>` del archivo; `resolver_columnas`; `contiene_todos`/`contiene_alguno`), `marcar_demografia`, `cargar_maestro`/`maestro_rem_map`, **`filtrar_mes`** (§3.1) y **`rutas_libres`** + **`escribir_atomico`** (toda salida pasa por los dos: nunca se sobreescribe, sale `… (1).xlsx`, y se escribe a un temporal que se renombra al terminar). |
-| `formatos.py` | **Eje IRIS vs Administrativo.** Mecanismo compartido + firmas POR REPORTE (no un `detectar_formato` único): `detectar_eje`, `resolver_identidad`, `fila_encabezado_admin` / `HEADER_ADMIN`. **Fase 2 — clasificar la FUENTE:** `clasificar_fuente` / `aviso_fuente`, enganchados en `cargar_canonico` (cuello de botella del grupo pandas). Tres estados: `plena` · `parcial` (no es el A/D/A; le habla al usuario) · `cambiada` (es el A/D/A pero RAYEN movió columnas; le habla al dev). La firma es negativa: claves que solo trae IRIS (`SOLO_IRIS_ATENCIONES`). También `verificar_cruce`: error específico si se cargan cruzados el ADA y el grupal. |
+| `rem_utils.py` | **Base genérica.** `norm`, `buscar_col`, `encontrar_fila_encabezado` (solo por ancla; sin ancla, `ArchivoInvalido('sin_encabezado')`: desde la ronda 11 no hay fila de repuesto por posición), `ArchivoInvalido`, `VERSION`, `grid`, `rut_valido`/`dv_rut`, lectura pandas (`leer_xlsx`, robusto a la «dimension» rota **desde 1.9.17** — antes la respetaba y truncaba callado; **toda lectura `read_only` pasa por `abrir_xlsx_ro`**, nunca un `load_workbook(read_only=True)` pelado, que acota `iter_rows` a la `<dimension>` del archivo; `resolver_columnas`; `contiene_todos`/`contiene_alguno`), `marcar_demografia`, `cargar_maestro`/`maestro_rem_map`, **`filtrar_mes`** (§3.1) y **`rutas_libres`** + **`escribir_atomico`** (toda salida pasa por los dos: nunca se sobreescribe, sale `… (1).xlsx`, y se escribe a un temporal que se renombra al terminar). |
+| `formatos.py` | **Eje IRIS vs Administrativo.** Mecanismo compartido + firmas POR REPORTE (no un `detectar_formato` único): `detectar_eje`, `resolver_identidad`, `fila_encabezado_admin`. **Fase 2 — clasificar la FUENTE:** `clasificar_fuente` / `aviso_fuente`, enganchados en `cargar_canonico` (cuello de botella del grupo pandas). Tres estados: `plena` · `parcial` (no es el A/D/A; le habla al usuario) · `cambiada` (es el A/D/A pero RAYEN movió columnas; le habla al dev). La firma es negativa: claves que solo trae IRIS (`SOLO_IRIS_ATENCIONES`). También `verificar_cruce`: error específico si se cargan cruzados el ADA y el grupal. |
 | `rem_saludmental.py` | **Formulario «Control de Salud Mental».** Config clínica (§7), `PERFILES` IRIS/Admin sobre `formatos.py`, motor `marcar_eventos()`. |
 | `estamentos.py` | **Funcionario → Estamento** para el formato Admin (que no trae estamento), desde el reporte «Utilización de Cupos». Caché persistente `~/.autorem/estamentos.json` + merge con el reporte fresco (gana el fresco) + failsafe: resolver a mano o ignorar. |
 | `dotacion.py` | **Funcionarios EXTERNOS** (hoy la sala AIDIA). Gemelo de `estamentos`. Tri-estado `interno`/`externo`/`desconocido`: un desconocido **cuenta** al REM, pero se reporta siempre. `~/.autorem/dotacion.json` con `funcionarios` (clasificación global) y `omitidos` (por módulo). Plan: [docs/dotacion_externos_plan.md](../docs/dotacion_externos_plan.md). |
@@ -36,13 +36,16 @@ Por eso los filtros posteriores al mes (`Asiste=SI`, Control/Ingreso IRA/ERA) se
 aplican **después**, sobre lo que devuelve `filtrar_mes`.
 
 - **Enganchado en:** ADA del SM, grupal, atenciones del A23, NSP y el ADA del Trabajo
-  Perdido. Las opcionales **también fallan duro**: cargarlas fue decisión del usuario.
+  Perdido. Las opcionales **también fallan**: cargarlas fue decisión del usuario. Desde la
+  ronda 11 fallan como `rem_utils.OpcionalInvalido` (con `with opcional("<param>")`), y la
+  GUI pregunta «¿continuar sin él?» (`runner.sin_opcional`): si sí, re-corre sin ese
+  archivo y la LEEME lo dice (`OMITIDO`). Nunca seguir callado sin él.
 - **No se engancha a propósito en:** `om` del A23 (histórico multi-año) y en la
   **familia población**, donde el mes es un CORTE sobre un snapshot y no un filtro.
   Ahí `_verificar_cobertura_fechas` avisa sin bloquear, y los avisos van a la LEEME y
   al resumen de la página. **Sí bloquea** si una fuente queda VACÍA para el corte (todas
   sus filas posteriores al mes, o ninguna fecha legible): eso no es un histórico
-  incompleto, es un P6 entero en 0.
+  incompleto, es un P6 entero en 0. Por lo mismo bloquea si la **base** del P6 (Estado=Activo × Activo 12m × Ingresado) queda vacía: cada fuente tiene datos pero el cruce no (ESTADO con otro vocabulario, RUN en otro formato).
 
 ## §5 Formatos: IRIS vs Administrativo
 
@@ -51,7 +54,13 @@ El formato se **detecta por contenido** y lo confirma el usuario (§2 raíz).
 
 - **IRIS:** ancla `AÑO APLICACIÓN FORMULARIO` + columna `NÚMERO … IDENTIFICACIÓN`.
 - **Administrativo:** banner `Servicio de Salud` en A1 y/o `ADMIN_MARKERS`; encabezado
-  en fila 9 (`usar_blanco_en_a=False`).
+  en fila 9. El IRIS de formularios también trae banner (15 filas, encabezado en la 17):
+  el encabezado se ubica **solo por el ancla** en los dos formatos.
+- **Por contenido:** `rem_saludmental.verificar_formulario_sm` contrasta cada número de
+  pregunta que se usa con lo que su encabezado dice (`FIRMA_FORMULARIO_SM`). Un
+  cuestionario (Goldberg, PSC) u otro formulario RAYEN trae las mismas firmas de eje y
+  pasaba entero hasta la ronda 11: ahora es `no_formulario_sm`; un formulario SM
+  renumerado, `formulario_cambiado`. Lo usan el A05 y el histórico del P6.
 
 Si detecta el otro formato, `validar_iris` / `validar_admin` levantan `ArchivoInvalido`
 con mensaje cruzado.
@@ -72,6 +81,7 @@ Es el reporte que el lado Admin ofrece **en lugar** del A/D/A: 26 columnas contr
 | `ANOS_AT` | equivalente `AÑOS` | ⚠ en IRIS `AÑOS` es la edad a la descarga (la buena es `AÑOS ATENCIÓN`); en el Monitoreo ya es a la atención. Un test fija el orden |
 | `PROF` | equivalente `FUNCIONARIO` | — |
 | `ALERTAS` `PUEBLO` `NACION` `FNAC` `FORMCLIN` | **sin equivalente** | sin demografía |
+| forma de la atención | **varias filas** (una actividad cada una, el `N°` repetido, RUN solo en la 1ª); IRIS: **una fila** con todas en `ACTIVIDADES` | la cabecera se hereda **dentro del mismo ATENID** y los indicadores con AND entre actividades miran la atención entera (`a23._act_de_la_atencion`). Hasta la ronda 11: ffill global y AND fila por fila → 6 indicadores A23 en NO callados |
 
 **Veredicto:** A23 usable, salvo los 3 indicadores por ICD. SM: los conteos sirven, las
 columnas demográficas no. Si una clave gana equivalente admin, **hay que sacarla de
