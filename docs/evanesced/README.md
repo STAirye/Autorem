@@ -44,7 +44,7 @@ el instrumental.
 |---|---|
 | `finders/` | Los agentes finder (uno por ronda, con `compact` entre medio): el `review_context.md` que compartian, los arneses de repro por angulo (`alt/`, `b/`, `e/`, `dimtest/`) y los scripts de cada hallazgo |
 | `sesion-principal/` | La sesion que aplico los arreglos y anoto el ledger: repros, mediciones, mutantes y los scripts de edicion CRLF-safe del propio ledger |
-| `prompts/` | Los prompts de ronda, tal como se pegaron |
+| `prompts/` | Los prompts de ronda, tal como se pegaron, mas `prompt_merge_2.0.md` (el del merge a `main`) |
 
 Lo mas reutilizable, por si sirve de nuevo:
 
@@ -58,6 +58,11 @@ Lo mas reutilizable, por si sirve de nuevo:
 - `sesion-principal/r13/escanea_candidatos.py` / `escanea_xlsx.py` - el gate de PII del
   proyecto aplicado a un directorio cualquiera antes de meterlo al repo. **Ojo:**
   `scan_catalogo.escanear` devuelve una **3-tupla**.
+- `sesion-principal/r13/repro_mask_unida.py` - por que `auditar_atenciones` (main 1.9.16) hay
+  que adaptarlo a la forma canonica de `cargar_atenciones` y no al reves: una mascara
+  multi-token (`contiene_todos` con 2 tokens) que sobre la celda de actividades UNIDAS matchea
+  tokens de actividades DISTINTAS. Es la evidencia del hallazgo del merge (ver el §4 del
+  registro de la revision).
 - `finders/alt/harness.py` - arnes de contratos de fuentes, antes de que fuera
   `tests/contratos_fuentes.py`.
 
