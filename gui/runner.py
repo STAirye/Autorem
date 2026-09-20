@@ -37,8 +37,11 @@ import customtkinter as ctk
 import programas.rem_saludmental as sm
 from gui.widgets import Reloj, ANIO_MAX, ANIO_MIN
 
-_MSG_PERMISO = ("No pude escribir el resultado.\n\nSuele ser porque el archivo está "
-                "ABIERTO en Excel (o bloqueado por OneDrive).\n\nCiérralo y reintenta.")
+_MSG_PERMISO = (("No pude escribir el resultado.\n"
+                 "\n"
+                 "Suele ser porque el archivo está ABIERTO en Excel, o bloqueado por OneDrive/GoogleDrive/Dropbox/etc.\n"
+                 "\n"
+                 "Ciérralo, espera unos segundos, y reintenta."))
 
 # RAYEN/IRIS exportan en .xls, .csv, .html y .xlsx; la herramienta lee SOLO .xlsx.
 _MSG_NO_XLSX = (
@@ -179,10 +182,8 @@ def motivo_fuente(e):
     los dos tienen que estar diciendo lo MISMO del mismo archivo. Si una rama se
     agrega aca y no alla (o al reves), el color y el texto empiezan a contradecirse,
     que es justo lo que SS5.1 del plan prohibe."""
-    if isinstance(e, ImportError):
-        return "Falta una librería para leer Excel (el detalle, al procesar)."
     if isinstance(e, PermissionError):
-        return "No pude abrirlo: está abierto en Excel o bloqueado por OneDrive."
+        return "No pude abrirlo: está abierto en Excel o bloqueado por la sincronización en la nube."
     if es_error_formato(e):
         return "No es un .xlsx real (suele ser un .xls o un .html disfrazado)."
     if isinstance(e, sm.ArchivoInvalido):
@@ -197,8 +198,11 @@ def error_inesperado(e, log, messagebox):
         log("".join(traceback.format_exception(type(e), e, e.__traceback__)))
     messagebox.showerror(
         "Error inesperado",
-        f"Ocurrió un error no previsto:\n\n{type(e).__name__}: {e}\n\n"
-        "Copia el texto del registro y pásaselo a Simón.")
+        (f"Ocurrió un error no previsto:\n"
+         f"\n"
+         f"{type(e).__name__}: {e}\n"
+         f"\n"
+         f"Copia el texto del registro y pásaselo al Autor. (Contacto en Acerca de)"))
 
 
 def avisar_cache(messagebox):
@@ -218,20 +222,8 @@ def manejar_error(e, log, messagebox):
     """Despacha una excepcion de procesamiento a un messagebox claro (hilo
     GUI). Incluye ArchivoInvalido (p.ej. la guarda multi-hoja, o 'cruzados'
     desde 1.9.10) sin volcar traceback feo."""
-    if isinstance(e, ImportError):
-        # El nombre del modulo que falta sale de la excepcion: los modulos pandas y
-        # los openpyxl-only levantan ImportError igual, y hardcodear "pandas" mandaba
-        # a instalar la libreria equivocada.
-        # Los modulos que la levantan a mano (`raise ImportError("Falta 'openpyxl'...")`)
-        # ya traen la instruccion de pip en el texto y no tienen `.name`: ahi se muestra
-        # tal cual, sin inventar un nombre de paquete.
-        falta = getattr(e, "name", None)
-        messagebox.showerror(
-            "Falta una librería",
-            f"Este módulo necesita «{falta}»:\n\n{e}\n\nInstálala con:  pip install {falta}"
-            if falta else f"Falta una librería que este módulo necesita:\n\n{e}")
-    elif isinstance(e, PermissionError):
-        log("[PERMISO DENEGADO] archivo abierto en Excel / OneDrive")
+    if isinstance(e, PermissionError):
+        log("[PERMISO DENEGADO] archivo abierto en Excel / bloqueado por la nube")
         messagebox.showerror("Permiso denegado", _MSG_PERMISO)
     elif isinstance(e, sm.ArchivoInvalido):
         cat = getattr(e, "categoria", "")

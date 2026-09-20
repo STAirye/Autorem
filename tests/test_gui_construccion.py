@@ -993,7 +993,7 @@ def test_a05_detecta_el_formato_del_archivo_que_hay_AL_PROCESAR():
         shutil.copy(_fixture_admin(), ruta)
         dichos.clear()
         ctx = dict(ctx, archivo=get())
-        assert a05.preparar(ctx, pagina) is None and dichos == ["Falta el acuse"], (
+        assert a05.preparar(ctx, pagina) is None and dichos == ["Falta el tick de reconocimiento"], (
             f"no re-detecto el formato del archivo nuevo: {dichos}")
     finally:
         for f, v in previos.items():

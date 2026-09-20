@@ -68,10 +68,8 @@ COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
 # dos tienen que decir lo mismo o el mensaje de error miente.
 ANIO_MIN, ANIO_MAX = 2020, 2100
 
-_AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
-                        "sin abrirlos, editarlos ni re-guardarlos.\n"
-                        "     Un export modificado (cambio de formato, columnas, hojas) "
-                        "puede fallar en silencio o dar cifras erróneas.")
+_AVISO_SIN_MODIFICAR = ((" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: sin abrirlos, editarlos ni re-guardarlos, excepto los que se solicitan explicitamente.\n"
+                         "     Un export modificado (cambio de formato, columnas, hojas) puede dar cifras erróneas sin aviso."))
 
 
 def etiqueta_envolvente(parent, text, **kwargs):

@@ -198,7 +198,6 @@ def test_motivo_fuente_sigue_las_mismas_ramas_que_manejar_error():
     assert es_error_formato(disfrazado), "BadZipFile deberia ser problema de formato"
     assert "xlsx" in motivo_fuente(disfrazado)
     assert "Excel" in motivo_fuente(PermissionError(13, "in use"))
-    assert "librería" in motivo_fuente(ImportError("Falta 'openpyxl'"))
     # Cualquier otra cosa: se nombra el tipo, no se inventa una causa.
     assert "ValueError" in motivo_fuente(ValueError("cualquiera"))
 

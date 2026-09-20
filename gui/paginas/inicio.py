@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.15
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -40,12 +40,10 @@ from programas.rem_utils import VERSION
 from gui import widgets
 
 _DESCRIPCION = (
-    "autoREM tabula el REM (Registro Estadístico Mensual, MINSAL) a partir de los "
-    "exports crudos de RAYEN/IRIS: cargas el Excel, eliges el mes, y obtienes la "
-    "planilla lista para copiar al formulario oficial.\n"
-    "Nació en Salud Mental del CESFAM Dr. Luis Ferrada Urzúa (SSMC) y apunta a ser "
-    "universal — cualquier programa de salud, cualquier centro.\n"
-    "100% local: ningún archivo ni dato sale de este computador."
+    ("autoREM tabula el REM (Registro Estadístico Mensual) a partir de los exports directamente descargados de RAYEN Administrativo e IRIS: cargas las planillas de Excel, eliges el mes, y obtienes una planilla lista para copiar al formulario oficial.\n"
+     "Nació por iniciativa de referente de Salud Mental del CESFAM Dr. Luis Ferrada Urzúa y apunta a ser universal — cualquier programa de salud, cualquier centro.\n"
+     "100% local: ningún archivo ni dato sale de este computador. Toda informacion sensible de paciente (PII) es procesada por el programa, pero no se guarda memoria de ello ni sale del equipo.\n"
+     "Por diseño, el programa no realiza conexion con internet, por lo que cualquier actualizacion debe ser revisada a mano en el link en Acerca De.")
 )
 
 # Accesos directos a lo mas usado (ids de PANTALLA, ver gui/paginas/*.py). A05

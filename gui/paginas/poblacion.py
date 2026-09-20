@@ -39,22 +39,22 @@ fallo ahi (todavia en validacion, en particular Brecha_Medico) no tumbe el
 P6 si este ya salio bien, igual que en autorem.py."""
 
 instrucciones = (
-    "EN PRUEBAS — Fase 1+2 de SP·P6, todavía SIN validar contra un P6 llenado a\n"
-    "mano. Úsala para ir comparando, no para tabular en producción todavía.\n"
-    "Arma la tabla intermedia PSM_Poblacion (port del PowerBI 'Ferrada') y la grilla\n"
-    "P6·A.1 lista para copiar-pegar al SP_26.xlsm — respeta la máscara de celdas\n"
-    "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
-    "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
-    "pegar. También genera, aparte, el reporte de RESCATE DE INASISTENTES (§8: quién\n"
-    "dejó de asistir hace 6/13 meses, fallecidos del mes, posibles traslados y brecha\n"
-    "de control médico) — no tributa al REM, es para gestión.\n"
-    "Ver docs/SP_P6_poblacion_plan.md.\n"
-    "1.  Formulario 'Control de Salud Mental' (IRIS)  ->  HISTÓRICO COMPLETO: carga\n"
-    "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click).\n"
-    "2.  Atenciones/Diagnósticos/Actividades (ADA)  ->  13 meses (Activo 12m,\n"
-    "     Gestante, rescate a 13 meses); acepta varios archivos.\n"
-    "3.  Informe Inscritos y Adscritos (IRIS)  ->  snapshot actual, un archivo.\n"
-    "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy)."
+    ("EN PRUEBAS — Fase 1+2 de SP·P6, todavía SIN validar contra un P6 llenado a\n"
+     "mano. Úsala para ir comparando, no para tabular en producción todavía.\n"
+     "Arma la tabla intermedia PSM_Poblacion (port del PowerBI 'Ferrada') y la grilla\n"
+     "P6·A.1 lista para copiar-pegar al SP_26.xlsm — respeta la máscara de celdas\n"
+     "protegidas de la plantilla real, pliega las edades fuera de rango (no las\n"
+     "descarta) y deja en P6_Revisar todo lo que requiere decisión humana antes de\n"
+     "pegar. También genera, aparte, el reporte de RESCATE DE INASISTENTES (§8: quién\n"
+     "dejó de asistir hace 6/13 meses, fallecidos del mes, posibles traslados y brecha\n"
+     "de control médico) — no tributa al REM, es para gestión.\n"
+     "\n"
+     "1.  Formulario 'Control de Salud Mental' (IRIS)  ->  HISTÓRICO COMPLETO: carga\n"
+     "     TODOS los archivos que tengas (uno por año/descarga, ctrl-click). Cargar 2 años e idealmente 3 o mas.\n"
+     "2.  Atenciones/Diagnósticos/Actividades (IRIS)  ->  Al menos 13 meses (Activo 12m,\n"
+     "     Gestante, rescate a 13 meses); acepta varios archivos.\n"
+     "3.  Informe Inscritos y Adscritos (IRIS)  ->  snapshot actual, un archivo.\n"
+     "Los cálculos van hacia atrás desde el ÚLTIMO DÍA del mes reportado (no desde hoy).")
 )
 
 
