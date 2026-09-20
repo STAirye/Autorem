@@ -111,9 +111,8 @@ _EV_COLS = ["casilla", "sub", "run", "id", "estamento", "funcionario", "edad", "
 def cargar_grupal(entrada, log=print):
     """Export(s) de 'Atenciones Grupales' -> DataFrame canónico. Ruta o lista
     (el export puede venir por período). La fecha viene en TEXTO DD/MM/YYYY."""
-    d, col = cargar_canonico(entrada, ["ACTIVIDADES", "FECHA ATENCION"],
-                             lambda h: resolver_columnas(h, MAPA_GRUPAL),
-                             requeridas=("ACT", "FECHA", "ASISTE"), espera="grupal")
+    d, col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_GRUPAL),
+                             requeridas=("ACT", "FECHA", "ASISTE"), espera="grupal", log=log)
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención (grupal)")
     d["ACT_n"] = d["ACT"].map(norm)
     d["ASISTE_n"] = d["ASISTE"].map(norm)
@@ -447,6 +446,20 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     módulo NO abre ningún diálogo (eso es responsabilidad de la GUI, que corre en
     el hilo de Tk, no en este worker). Ver docs/dotacion_externos_plan.md."""
     from pathlib import Path
+    # Los OPCIONALES, PRIMERO (ronda 12): si uno no sirve, la GUI pregunta «¿seguir sin
+    # él?» y re-corre, así que la pregunta tiene que llegar ANTES del trabajo pesado (el
+    # ADA, el grupal y las tablas), no después. Se usan más abajo, donde toca.
+    tmap = None
+    if inscritos is not None:
+        # Invalido -> OpcionalInvalido: la GUI pregunta si seguir sin el (ronda 11; antes
+        # quedaba en una linea del log y TRANS en 0, sin llegar a la LEEME).
+        with opcional("inscritos"):
+            tmap = trans_map(inscritos)
+    multi = set()
+    if multiprofesional is not None:
+        with opcional("multiprofesional"):   # invalido: la GUI pregunta si seguir sin el
+            multi = atenid_multiprofesional(multiprofesional)
+
     tabla_dot = dotacion.cargar(log=log) if dotacion_tabla is None else dotacion_tabla
     d = cargar_atenciones(ada, log=log) if d is None else d
     d = marcar_demografia(d)
@@ -472,12 +485,9 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     ini3 = ini - pd.DateOffset(months=2)
     gset = gestante_runs(d, ini3, fin)
     d["dem_gestante"] = d["RUN"].isin(gset)
-    # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita).
-    if inscritos is not None:
-        # Invalido -> OpcionalInvalido: la GUI pregunta si seguir sin el (ronda 11; antes
-        # quedaba en una linea del log y TRANS en 0, sin llegar a la LEEME).
-        with opcional("inscritos"):
-            tmap = trans_map(inscritos)
+    # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita), ya
+    # cargado y validado arriba.
+    if tmap is not None:
         gen = d["RUN"].map(tmap)                       # M/F/X por RUN (NaN si no TRANS)
         d["dem_trans_m"] = gen.eq("M")
         d["dem_trans_f"] = gen.eq("F")
@@ -578,10 +588,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del mes.
     # Debe CUBRIR el mes reportado (bajarlo del año completo sirve). Si no coincide con
     # ninguna VDI del mes, probablemente es de otro período -> avisamos RUIDOSO (fail loud).
-    multi = set()
     if multiprofesional is not None:
-        with opcional("multiprofesional"):   # invalido: la GUI pregunta si seguir sin el
-            multi = atenid_multiprofesional(multiprofesional)
         log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
         a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
         if a26_ids and not (a26_ids & multi):

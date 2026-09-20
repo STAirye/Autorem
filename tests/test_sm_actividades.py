@@ -309,21 +309,33 @@ def test_gestante_flag():
 
 
 def test_trans_inscritos_modificado():
-    """Inscritos SIN columna GÉNERO (archivo modificado/otro reporte): trans_map
-    levanta ValueError. Ronda 11 (decision del autor): procesar ya NO sigue callado con
-    TRANS en 0 (quedaba solo en el log): levanta OpcionalInvalido('inscritos') y la GUI
-    pregunta si seguir sin el. Sin el archivo, corre normal con TRANS en 0."""
-    from programas.rem_utils import OpcionalInvalido
+    """Inscritos SIN columna GÉNERO (archivo modificado/otro reporte): trans_map levanta
+    ArchivoInvalido (ronda 12: era un ValueError pelado, y `opcional()` tenia que atrapar
+    ValueError para convertirlo -- o sea que cualquier bug de codigo dentro del bloque se
+    presentaba como «tu archivo opcional no sirve»). Ronda 11 (decision del autor):
+    procesar ya NO sigue callado con TRANS en 0 (quedaba solo en el log): levanta
+    OpcionalInvalido('inscritos') y la GUI pregunta si seguir sin el. Sin el archivo,
+    corre normal con TRANS en 0."""
+    from programas.rem_utils import ArchivoInvalido, OpcionalInvalido, opcional
     from programas.rem_utils import trans_map
     p = _TMP / "inscritos_malo.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(["NUMERO TIPO IDENTIFICACION", "SEXO"]); ws.append(["T", "Mujer"])  # sin GÉNERO
     wb.save(p)
     try:
-        trans_map(p); raised = False
+        trans_map(p); cat = None
+    except ArchivoInvalido as e:
+        cat = e.categoria
+    assert cat == "sin_columnas", cat
+    # Y `opcional` NO disfraza un bug de codigo de archivo invalido.
+    try:
+        with opcional("inscritos"):
+            raise ValueError("bug de codigo, no del archivo")
+        assert False, "el ValueError no llego"
+    except OpcionalInvalido:
+        assert False, "opcional() convirtio un ValueError de codigo en «archivo invalido»"
     except ValueError:
-        raised = True
-    assert raised
+        pass
     ada = _mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
                     "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}])
     try:
@@ -481,6 +493,41 @@ def test_sexo_o_edad_fuera_del_grid_se_avisa():
     E, _ = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Consulta De Salud Mental  ;",
                   "instr": "Médico", "sexo": "Mujer", "edad": 30}])
     assert not any("Ambos" in a[2] for a in E.attrs["avisos"])
+
+
+def test_los_opcionales_ilegibles_son_opcional_invalido_y_se_validan_primero():
+    """Ronda 12. Los tres opcionales del SM (Inscritos, Multiprofesional, Maestro) leian
+    con `leer_xlsx` a mano, asi que el clasico .html/.xls disfrazado de .xlsx (CLAUDE.md
+    SS13) salia como `BadZipFile`: `opcional()` no lo reconoce y la corrida ENTERA se
+    caia, en vez de ofrecer seguir sin el. Y se validan ANTES del trabajo pesado: la GUI
+    re-corre si el usuario dice que si."""
+    from programas.rem_utils import (OpcionalInvalido, trans_map, atenid_multiprofesional,
+                                     cargar_maestro, opcional)
+    falso = _TMP / "opcional_disfrazado.xlsx"
+    falso.write_text("<html><body><table><tr><td>x</td></tr></table></body></html>", encoding="utf-8")
+    for entrada, fn in (("inscritos", trans_map), ("multiprofesional", atenid_multiprofesional),
+                        ("maestro", cargar_maestro)):
+        try:
+            with opcional(entrada):
+                fn(falso)
+            assert False, f"{entrada}: debio levantar OpcionalInvalido"
+        except OpcionalInvalido as e:
+            assert e.entrada == entrada and e.categoria == "no_legible", (e.entrada, e.categoria)
+
+    # Y `procesar` los valida antes de leer el ADA (que es el archivo grande).
+    leidos = []
+    previo = sm.cargar_atenciones     # el nombre que USA el modulo, no el de rem_utils
+    sm.cargar_atenciones = lambda *a, **k: leidos.append(1) or previo(*a, **k)
+    try:
+        sm.procesar(_mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
+                              "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}]),
+                    inscritos=str(falso), mes=(2026, 7), log=_quiet,
+                    dotacion_tabla=_SIN_DOTACION)
+        assert False, "debio levantar OpcionalInvalido"
+    except OpcionalInvalido:
+        assert not leidos, "el ADA se leyo ANTES de validar el opcional"
+    finally:
+        sm.cargar_atenciones = previo
 
 
 def _main():

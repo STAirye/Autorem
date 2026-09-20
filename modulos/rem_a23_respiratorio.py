@@ -38,13 +38,12 @@ sale del funcionario: `_estamento_por_funcionario`).
 
 import pandas as pd
 
-from programas.rem_utils import (norm, leer_xlsx, cargar_atenciones, cargar_canonico,
+from programas.rem_utils import (norm, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, filtrar_mes,
                                  _mujer, _hombre,
-                                 grid as _grid, fecha_col, PUEBLO_VACIO, indice_col,
-                                 exigir_filas, ArchivoInvalido, Path, edad_anios,
-                                 opcional)
+                                 grid as _grid, fecha_col, PUEBLO_VACIO,
+                                 ArchivoInvalido, Path, edad_anios, opcional)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
 
@@ -76,25 +75,16 @@ _SALA_IRA = ["control sala (ira", "consulta sala (ira", "kinesioterapi"]
 # _masks_simples y A23·N VDI Hogar Libre de Humo) -> no duplicar.
 
 
-def _act_de_la_atencion(d):
-    """ACT_n de TODA la atención (mismo ATENID) en cada una de sus filas.
+def _masks_simples(d):
+    """dict indicador -> máscara BOOLEANA por fila = por ATENCIÓN.
 
     Los indicadores con AND entre actividades («autocuidado» Y «control sala», del DAX)
-    piden las dos en la MISMA atención. En IRIS una atención es UNA fila, con todas sus
-    actividades en la celda ACTIVIDADES. En el Monitoreo es VARIAS filas (una actividad
-    cada una, con el mismo 'N°'): comparando fila por fila el AND no se cumplía nunca y
-    seis indicadores salían NO callados (ronda 11). Una fila sin ATENID queda sola."""
-    if "ATENID" not in d.columns:
-        return d["ACT_n"]
-    clave = d["ATENID"].replace("", pd.NA).astype(object)
-    clave = clave.where(clave.notna(), "fila|" + d.index.astype(str))
-    return d.groupby(clave)["ACT_n"].transform(lambda s: " || ".join(dict.fromkeys(s)))
-
-
-def _masks_simples(d):
-    """dict indicador -> máscara BOOLEANA por fila (atención del mes). Las de actividad
-    miran la atención ENTERA (`_act_de_la_atencion`)."""
-    A, D, I, T = _act_de_la_atencion(d), d["DIAG_n"], d["INSTR_n"], d["TIPO_n"]
+    piden las dos en la MISMA atención, y eso funciona porque `cargar_atenciones` entrega
+    UNA fila por atención con todas sus actividades en `ACT` en los dos formatos. Hasta
+    1.9.17 el Monitoreo llegaba con una fila por actividad y esto lo arreglaba un
+    `_act_de_la_atencion` local (ronda 11): la forma se normaliza en la FUENTE desde la
+    ronda 12 (`rem_utils._una_fila_por_atencion`), así que acá no hay nada que agrupar."""
+    A, D, I, T = d["ACT_n"], d["DIAG_n"], d["INSTR_n"], d["TIPO_n"]
     return {
         "REMA23 Autocuidado":        _all(A, "autocuidado") & _all(A, "control sala"),
         "REMA23 Bronquitis Aguda":   _all(D, "J20"),
@@ -135,9 +125,31 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
     `entrada` = export de atenciones. `otros`/`estrat` (opcionales) = formulario
     'Otros y Respi' + 'Estratificación' -> agregan SALA bajo control + Sección G.
     `inasistentes` (opcional) = reporte NSP -> Sección H (citas Control/Ingreso
-    IRA/ERA no asistidas, por estamento × tramo etario)."""
-    d = cargar_atenciones(entrada, log=log)
+    IRA/ERA no asistidas, por estamento × tramo etario).
+
+    Los OPCIONALES se cargan y validan PRIMERO, antes del ADA: un opcional que no sirve
+    hace que la GUI pregunte «¿seguir sin él?» y RE-CORRA (§3.1 de programas/CLAUDE.md)."""
     ini, fin = _rango_mes(mes)
+    # Los OPCIONALES se cargan PRIMERO, antes del ADA y de todo el trabajo pesado
+    # (ronda 12). Si uno no sirve, la GUI pregunta «¿seguir sin él?» y re-corre: antes se
+    # cargaban donde se usan -- la Estratificación después del formulario, el NSP al final,
+    # con SALA y la Sección G ya calculadas --, así que la pregunta llegaba tras el minuto
+    # de corrida y el «Sí» repetía todo desde cero. No dependen de nada de acá.
+    est = pd.Series(dtype="object")
+    if estrat is not None:
+        with opcional("estrat"):   # opcional invalida: la GUI pregunta si seguir sin ella
+            est = cargar_estrat(estrat, log=log)
+        if otros is None:
+            log("[a23] la Estratificacion solo aporta a SALA bajo control, y SALA necesita "
+                "el formulario 'Otros Cronicos': sin el, este reporte no se usa.")
+    h = None
+    if inasistentes is not None:
+        # La Seccion H es independiente del ADA: se calcula entera aca (incluido su
+        # filtro de mes, que es donde falla un NSP de otro periodo).
+        with opcional("inasistentes"):   # opcional invalido: la GUI pregunta si seguir sin el
+            h = _seccion_h(cargar_inasistentes(inasistentes, log=log), ini, fin)
+
+    d = cargar_atenciones(entrada, log=log)
     # Sin fechas (export vacio o header-only) min/max dan NaT y el strftime revienta
     # criptico: se loguea igual y el ArchivoInvalido claro lo tira filtrar_mes, abajo.
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
@@ -248,10 +260,6 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
                     f"'Otros y Respi' arranca en {od['FECHA'].min():%Y-%m}, se necesita "
                     f"historial hasta {limite:%Y-%m}",
                     "Cargar el año del reporte Y el anterior (ideal 5, como el PowerBI)"))
-        est = pd.Series(dtype="object")
-        if estrat is not None:
-            with opcional("estrat"):   # opcional invalida: la GUI pregunta si seguir sin ella
-                est = cargar_estrat(estrat)
         sala, _ing = _sala(fer.index, fer["Edad"], d, od, est)
         for c in sala.columns:
             fer[c] = sala[c]
@@ -305,9 +313,8 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
             "Cargar 'Otros Cronicos' (obligatorio para SALA y Seccion G)"))
 
     # -- Sección H: inasistentes a citación agendada (reporte NSP, independiente) --
-    if inasistentes is not None:
-        with opcional("inasistentes"):   # opcional invalido: la GUI pregunta si seguir sin el
-            h = _seccion_h(cargar_inasistentes(inasistentes, log=log), ini, fin)
+    # Ya calculada arriba, con los demás opcionales; acá solo se cuelga de `fer`.
+    if h is not None:
         if h.attrs.get("sin_edad"):
             n = h.attrs["sin_edad"]
             log(f"[a23] Sección H: {n} inasistencia(s) sin AÑOS legible -> contadas en "
@@ -414,17 +421,14 @@ _OTROS_CONDICIONES = {
 def cargar_otros(entrada, log=print):
     """Formulario(s) Otros y Respi -> DataFrame canónico + FECHA. `entrada` puede ser
     una ruta o una lista (varios años: la Sección G / SALA necesitan el histórico)."""
-    # RUN/FECHA/INSTR requeridas: sin INSTRUMENTO, `_med` quedaba False para todos y
-    # SALA + Seccion G salian en 0 callados (solo cuentan formularios de medico).
-    cols = []   # resolucion POR ARCHIVO (un historico viejo puede no traer una pregunta)
-
-    def _resolver(h):
-        c = _resolver_otros(h)
-        cols.append(c)
-        return c
-    d, col = cargar_canonico(entrada, None, _resolver, requeridas=("RUN", "FECHA"))
-    for nombre, c in zip((Path(str(e)).name for e in
-                          (entrada if isinstance(entrada, (list, tuple)) else [entrada])), cols):
+    # RUN/FECHA requeridas (ubican el encabezado y son lo mínimo del formulario); el
+    # estamento se exige más abajo, porque puede venir por INSTRUMENTO (IRIS) o por
+    # Funcionario (Administrativo). `columnas_por_archivo` da la resolución POR ARCHIVO
+    # (un histórico viejo puede no traer una pregunta) -- antes se la llevaba un efecto
+    # secundario dentro del propio resolver, que ahora se llama una vez por fila candidata.
+    d, col = cargar_canonico(entrada, _resolver_otros, requeridas=("RUN", "FECHA"),
+                             no_vacias=("RUN",), log=log)
+    for nombre, c in d.attrs["columnas_por_archivo"]:
         if not (c.get("INSTR") or c.get("FUNC")):
             # Sin estamento ni funcionario no hay como saber que formularios son de
             # medico: SALA y la Seccion G en 0 callados.
@@ -433,20 +437,16 @@ def cargar_otros(entrada, log=print):
                 f"Archivo «{nombre}»:\n\nNo encuentro ni la columna INSTRUMENTO (IRIS) ni "
                 "'Funcionario' (Administrativo): no se puede saber qué formularios aplicó "
                 "un médico.\n\nCárgalo tal como sale de RAYEN, sin editar.")
-    if not d["RUN"].map(norm).ne("").any():
-        # Filas, pero ningun paciente: SALA y la Seccion G en 0 callados (ronda 11).
-        raise ArchivoInvalido(
-            "sin_datos",
-            f"El formulario 'Otros Cronicos' trae {len(d)} fila(s), pero ninguna con RUN "
-            "('NUMERO TIPO IDENTIFICACION' vacia en todas).\n\nRevisa que sea el export "
-            "completo, sin modificar.")
+    # (El RUN vacío en TODAS las filas de un archivo lo corta `cargar_canonico` con
+    # `no_vacias`, POR ARCHIVO: escrito acá sobre el concatenado, un año con el RUN en
+    # blanco cargado junto a otro bueno pasaba callado, y la Sección G contaba como
+    # inasistente a quien sí se había controlado -- ronda 12.)
     # Las preguntas de cada condicion son opcionales para el loader, y una que no
     # resuelve (RAYEN reformulo el encabezado: 'TIENE' por 'PADECE DE') deja esa
     # condicion en 0 en SALA y en la Seccion G, callada. Ninguna -> no es este
     # formulario; algunas -> aviso por archivo (lo agrega procesar a la LEEME).
     incompletas = {}
-    for nombre, c in zip((Path(str(e)).name for e in
-                          (entrada if isinstance(entrada, (list, tuple)) else [entrada])), cols):
+    for nombre, c in d.attrs["columnas_por_archivo"]:
         if not any(c.get(ks[0]) for ks in _OTROS_CONDICIONES.values()):
             raise ArchivoInvalido(
                 "sin_columnas",
@@ -516,44 +516,32 @@ def _estamento_por_funcionario(od, aten, log=print):
              "Cargar 'Utilizacion de Cupos' (bloque de estamentos) o usar el export IRIS")]
 
 
-def cargar_estrat(entrada):
-    """DataFrame de Estratificación: RUN (=RUT-DV) -> Diagnósticos (normalizado)."""
-    hdr, filas = leer_xlsx(entrada)
-    hn = [norm(h) for h in hdr]
-    i_rut, i_dv = indice_col(hn, "RUT"), indice_col(hn, "DV")
-    # Solo por su nombre. Hasta la ronda 11 habia un fallback a "CONDICIONES CRONICAS",
-    # armado sin el export a la vista: en el real (refs_tablas/Estratificacion_de_
-    # Riesgo_iris.xlsx) eso calza PRIMERO con 'Cantidad de Condiciones Crónicas', un
-    # CONTEO, y la SALA quedaba sin diagnosticos callada.
-    i_dg = indice_col(hn, "DETALLE", "DIAGNOSTICOS")
-    # Fail loud sobre la FUENTE (CLAUDE.md regla 2). Sin estas dos guardas, un reporte
-    # equivocado revienta con TypeError en f[None], y uno con solo el encabezado deja
-    # la gravedad/tipo de TODOS en "" via _gate: un 0 callado en la SALA.
-    if i_rut is None:
-        raise ArchivoInvalido(
-            "sin_columnas",
-            "No reconozco el reporte de Estratificacion: no encuentro la columna "
-            "RUT.\n\nCargalo tal como sale de RAYEN, sin editar.")
-    if i_dg is None:
-        # Sin diagnosticos el reporte carga y no aporta NADA a SALA, callado: el usuario
-        # lo cargo para mejorar la deteccion, asi que es fail loud (§3.1: las opcionales
-        # cargadas tambien fallan duro).
-        raise ArchivoInvalido(
-            "sin_columnas",
-            "No reconozco el reporte de Estratificacion: no encuentro la columna de "
-            "diagnósticos ('Detalle de Condiciones Crónicas (Diagnósticos)').\n\n"
-            "Cargalo tal como sale de RAYEN, sin editar.")
-    exigir_filas(filas, "el reporte de Estratificacion")
-    filas = [f for f in filas if f[i_rut] not in (None, "")]
-    if not filas:
-        # Filas, pero ninguna con RUT: el cruce con SALA daba 0 callado (ronda 11).
-        raise ArchivoInvalido(
-            "sin_datos",
-            "El reporte de Estratificacion trae filas, pero ninguna con RUT.\n\n"
-            "Revisa que sea el reporte completo, sin modificar.")
-    run = [f"{f[i_rut]}-{f[i_dv]}" if i_dv is not None else str(f[i_rut]) for f in filas]
-    dg = [norm(f[i_dg]) if i_dg is not None else "" for f in filas]
-    return pd.DataFrame({"RUN": run, "DIAG": dg}).drop_duplicates("RUN").set_index("RUN")["DIAG"]
+# Reporte de Estratificación de Riesgo (IRIS). El RUT viene partido (RUT + DV).
+# Solo por NOMBRE: hasta la ronda 11 había un fallback a "CONDICIONES CRONICAS", armado
+# sin el export a la vista, que en el real (refs_tablas/Estratificacion_de_Riesgo_iris.xlsx)
+# calza PRIMERO con 'Cantidad de Condiciones Crónicas' -- un CONTEO -- y dejaba la SALA sin
+# diagnósticos, callada.
+MAPA_ESTRAT = {
+    "RUT":  ("subs", ["RUT"]),
+    "DV":   ("subs", ["DV"]),
+    "DIAG": ("subs", ["DETALLE", "DIAGNOSTICOS"]),
+}
+
+
+def cargar_estrat(entrada, log=print):
+    """DataFrame de Estratificación: RUN (=RUT-DV) -> Diagnósticos (normalizado).
+
+    Por `cargar_canonico` desde la ronda 12: es un opcional, y leyéndolo con `leer_xlsx`
+    a mano un .xls/.html disfrazado salía como `BadZipFile` -- que `opcional()` no
+    reconoce, así que tumbaba la corrida entera en vez de preguntar «¿seguir sin él?».
+    De paso hereda la guarda de hoja única, la de 0 filas y la de RUT vacío en todas las
+    filas (`no_vacias`), que antes estaban escritas acá a mano."""
+    d, _col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_ESTRAT),
+                              requeridas=("RUT", "DIAG"), no_vacias=("RUT",), log=log)
+    d = d[d["RUT"].map(norm).ne("")]
+    run = [f"{r}-{dv}" if norm(dv) != "" else str(r) for r, dv in zip(d["RUT"], d["DV"])]
+    return (pd.DataFrame({"RUN": run, "DIAG": d["DIAG"].map(norm).values})
+            .drop_duplicates("RUN").set_index("RUN")["DIAG"])
 
 
 def _gate(idx, runs, vals):
@@ -706,8 +694,8 @@ def cargar_inasistentes(entrada, log=print):
     # Todo lo que la Seccion H usa es requerido: sin TIPO o INSTRUMENTO la H daba 0
     # callada (otro reporte de citas cargado por error), y sin AÑOS todas las
     # inasistencias caian en '20 y mas' (NaN < 20 es False).
-    d, _col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_NSP),
-                              requeridas=("FECHA", "TIPO", "INSTR", "ANOS"))
+    d, _col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_NSP),
+                              requeridas=("FECHA", "TIPO", "INSTR", "ANOS"), log=log)
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA HORA CITA (NSP)")
     d["ANOS"] = d["ANOS"].map(edad_anios)   # numero (IRIS) o '55 años 3 meses' (Admin)
     d["TIPO_n"] = d["TIPO"].map(norm)

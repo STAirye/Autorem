@@ -1,4 +1,4 @@
-# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-18)
+# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-19)
 
 Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`, ~3200 líneas).
 Sin PII. Borrar este archivo cuando la revisión esté cerrada y mergeada.
@@ -26,7 +26,7 @@ Este archivo es la única memoria. Por eso:
    (pusheado a `origin/gui-2.0` solo para no tener 5k líneas sin copia remota; **no es
    un release**: la versión sigue en **1.9.17** y la entrada del CHANGELOG sigue
    abierta — no reportar eso como hallazgo). Las rondas 5 y 6 están en otro respaldo,
-   **`f42308d`**; la 7, la 8 y la 9 en **`299e7d4`**; la 10 y la 11 están sin commit encima. **283 tests verdes.**
+   **`f42308d`**; la 7, la 8 y la 9 en **`299e7d4`**; la 10 y la 11 en **`c8aef4e`**; la 12 está sin commit encima. **296 tests verdes.**
 
 **Foco original pedido** (sigue vigente para lo que falte): el **bug recurrente de
 c38a8cc** — un export con 0 filas de datos que pasa el loader y revienta abajo con un
@@ -35,13 +35,13 @@ FUENTE. Ya visto en 1.9.12 (A23, NaT) y en c38a8cc (Inscritos). §1.A lo cierra 
 todos los loaders conocidos; si aparece uno nuevo, va ahí. La variante **«trae filas,
 pero quedan 0 TRAS un filtro»** (corte, programa, fecha ilegible, Asiste) está en §1.J;
 la auditoría ESTÁTICA de cruces entre fuentes, casilleros y columnas opcionales, en §1.K;
-cada referencia y fallback contra el export REAL, en §1.L.
+cada referencia y fallback contra el export REAL, en §1.L; y la ALTITUD de cada arreglo (¿está donde vive la causa, o emparcha al consumidor?), en §1.M.
 
 ---
 
 ## §1 — YA CORREGIDO. No volver a reportar
 
-108 hallazgos en 11 rondas con resultado (la 0 entregó cero). Todo verificado con
+119 hallazgos en 12 rondas con resultado (la 0 entregó cero). Todo verificado con
 tests; ver §3.
 
 ### §1.A · Bug recurrente «0 filas» — cerrado en TODOS los loaders conocidos
@@ -50,7 +50,9 @@ Dos primitivas, una por mundo. **Regla para módulos nuevos:** si el loader es p
 pasa por `cargar_canonico` y ya está cubierto; si abre el worksheet a mano, tiene que
 llamar `exigir_filas_ws`.
 
-- `rem_utils.exigir_filas(filas, fuente)` — mundo `leer_xlsx` (listas de filas).
+- `rem_utils.exigir_filas(filas, fuente)` — mundo `leer_xlsx` (listas de filas). En el
+  grupo pandas la llama `cargar_canonico`, que además exige POR ARCHIVO las columnas
+  `requeridas` (y con ellas ubica el encabezado) y las `no_vacias` (ronda 12, §1.M.1).
 - `rem_utils.exigir_filas_ws(ws, header_idx, fuente)` — mundo openpyxl-worksheet. **NUEVO
   en esta revisión.**
 
@@ -718,6 +720,103 @@ mano). **Guardarraíles nuevos:** `test_refs_tablas.py` (toda referencia version
 + todo literal de actividad calza con el Maestro, leído por AST). 15/15 mutantes, más
 12/12 de la segunda parte.
 
+### §1.M · Altitud: cada arreglo a la altura donde vive la causa (ronda 12)
+
+Ángulo: ¿cada arreglo de las rondas 1-11 está puesto donde está la causa, o emparcha al
+consumidor y deja la clase abierta para el resto? Once hallazgos, los once corregidos,
+**11/11 mutantes cazados** (`r12/mut12.py` del scratchpad). Lo que NO se hizo, por decisión
+del autor: llevar los arreglos de `programas/`+`modulos/` a `main` (ver §4, hallazgo #4;
+se cierra con el merge de la 2.0).
+
+1. **`cargar_canonico(..., no_vacias=)`** — la guarda «columna clave presente pero VACÍA en
+   todas las filas» (§1.L.7) estaba escrita a mano en SEIS loaders (`cargar_atenciones`,
+   `cargar_otros`, `cargar_estrat`, `trans_map`, `atenid_multiprofesional`,
+   `cargar_inscritos`), dos de ellos con `ValueError`, y en `cargar_otros`/`cargar_atenciones`
+   sobre el DataFrame **ya concatenado**: un año con el RUN entero en blanco cargado junto a
+   uno bueno pasaba callado, sus formularios quedaban sin paciente y la **Sección G contaba
+   como inasistente a quien SÍ se controló** (1 en vez de 0); en el A23 las atenciones de ese
+   archivo se juntaban bajo un paciente `nan`. Ahora es un parámetro del cuello de botella,
+   POR ARCHIVO y nombrándolo. Arnés: **`C4b`** (clave vacía en 1 de 2 archivos) + campo
+   `multiarchivo` en `Contrato`, en los 6 contratos que aceptan listas.
+2. **`rem_utils._una_fila_por_atencion`** — la forma PADRE-HIJO del Monitoreo se
+   normalizaba a medias: ffill de la cabecera en el loader (§1.L.3) y el AND entre
+   actividades en UN consumidor (`a23._act_de_la_atencion`, §1.L.4). Los demás seguían
+   viendo una fila por actividad: el **Trabajo Perdido** marcaba «saco roto» una actividad
+   cuya hermana de la misma atención SÍ tributaba (0 desde IRIS, 1 desde el Monitoreo, con
+   los mismos datos) y su tabla dice «atenciones»; `dotacion.evidencia` inflaba
+   `n_atenciones`. Ahora `cargar_atenciones` entrega **una fila por atención en los dos
+   formatos** (ACT/DIAG unidas con el separador de IRIS) y `_act_de_la_atencion` se borró.
+   De paso: **ATENID pasa a `requeridas`** (sin ella el `drop_duplicates` del SM dejaba UNA
+   fila por casilla) y un ATEN ID repetido entre pacientes distintos es `modificado` — no
+   identifica una atención, y juntar esas filas mezclaba dos personas.
+3. **`opcional()` solo convierte `ArchivoInvalido`** y los cuatro opcionales que leían con
+   `leer_xlsx` a mano (`trans_map`, `atenid_multiprofesional`, `cargar_estrat`,
+   `cargar_maestro` .xlsx) pasan por `cargar_canonico`. Eran dos fallas de una misma causa:
+   el filtro por TIPO de excepción era **estrecho** (un .xls/.html disfrazado levantaba
+   `BadZipFile` → la corrida entera se caía en vez de preguntar «¿seguir sin él?», que era
+   la decisión del autor de §1.L.14; solo el NSP, que sí pasaba por el cuello de botella,
+   preguntaba) y **ancho** (atrapaba cualquier `ValueError`, así que un bug de código dentro
+   del bloque — que en el A23 abarca el procesamiento de la Sección H — se le mostraba al
+   usuario como «tu archivo opcional no sirve», y el «Sí» descartaba un archivo bueno con la
+   LEEME culpándolo). `_guard_maestro` levanta `ArchivoInvalido`; el `_OPCIONAL` del arnés se
+   fue.
+4. **Los opcionales se cargan PRIMERO** (`a23.procesar`, `smact.procesar`). El mecanismo de
+   §1.L.14 RE-CORRE el módulo, y la Estratificación se cargaba después del formulario y el
+   NSP al final, con SALA y la Sección G ya calculadas: la pregunta llegaba tras el minuto
+   de corrida y el «Sí» repetía todo. Ahora fallan antes de leer el ADA.
+5. **`tpmod.procesar(..., dfm=)`** — gemelo del `d=` del ADA. `sm.correr` abría el Maestro
+   cargado a mano para validarlo ANTES de escribir nada (bien: el TP tiene su propio `try`
+   que lo habría dejado en un «no se generó»), **botaba el resultado**, y el TP lo volvía a
+   abrir: 8,6 MB y ~12,5 s cada vez, medidos. Además el aviso `OMITIDO` iba solo a la LEEME
+   del SM, no a la del TP, que es el reporte que usa el Maestro.
+6. **`a05.detectar_ahora()` re-detecta SIEMPRE** (y `preparar` lo llama siempre). La
+   categoría **y el error** se cacheaban con la RUTA como clave, y bajo el mismo nombre el
+   contenido cambia todo el tiempo: RAYEN baja todo como `Formulario_Rayen.xlsx` (regla 5) y
+   OneDrive entrega el `.xlsx` a medio bajar (§13). (a) El archivo elegido a medio
+   sincronizar dejaba cacheado un «no es un .xlsx» que se repetía en CADA Procesar aunque ya
+   estuviera completo — incluso tras el «Guardar como .xlsx» que el propio mensaje pide, si
+   conserva el nombre; (b) un IRIS reemplazado por el Administrativo se procesaba con el
+   perfil viejo, sin pedir el acuse y reventando en el worker con «Cambia el selector de
+   formato» — el mensaje que CLAUDE.md §12 da por inalcanzable desde la 2.0. Leer el
+   encabezado cuesta ~60 filas; la detección en hilo queda solo para el banner.
+7. **Los opcionales de UN archivo dejan de ser `multi`** (Estratificación en A23; Inscritos,
+   Multiprofesional y Maestro en SM). Declarados múltiples —herencia de la 1.x— se podían
+   elegir varios con ctrl-click (la fila decía «2: a.xlsx, b.xlsx», y las instrucciones de
+   los inputs de al lado invitan al ctrl-click) y `correr` usaba `[0]`: el resto se
+   descartaba callado, sin salir ni en `fuentes` de la LEEME. Y `_resolver_ctx` no validaba
+   la ruta de un opcional: mal tecleada, reventaba al abrirla, a mitad de corrida
+   (`FileNotFoundError` → «Error inesperado»).
+8. **Una cabecera de sidebar por programa.** Población declaraba el programa «Salud Mental —
+   Población» y `app._cabecera_sidebar` lo volvía a juntar con «Salud Mental» por PREFIJO.
+   El estado de validación ya es un dato de la PANTALLA (`estado: beta` → badge [BETA]), y
+   la unión dependía de que los dos quedaran PEGADOS en `ORDEN_PROGRAMAS`: un programa nuevo
+   que empezara con «Salud Mental» dibujaba una SEGUNDA cabecera «SALUD MENTAL» (verificado).
+   Misma clase que §1.C-bis/ter. Se fue el programa aparte, el helper y sus dos comentarios.
+9. **El router muestra/esconde** (`grid` / `grid_remove`) en vez de apilar las páginas en la
+   misma celda y traer una al frente. La tapada seguía **mapeada**, y el Tab del teclado
+   recorre lo mapeado: desde la página visible se llegaba a las cajas de texto de las OTRAS
+   (3 de 5 paradas, medido) y lo tecleado no aparecía en ninguna parte. Sin pila, además,
+   no hay `lift()`-vs-`tkraise` que explicar (el muro de comentario se fue con él).
+10. **El encabezado del grupo pandas sale de las columnas REQUERIDAS**
+    (`encabezado_por_columnas`), que es el ancla que cada loader ya declaraba. Era «la 1ª
+    fila con más de 3 celdas llenas» — un conteo, y los banners del Monitoreo ya traen una
+    fila de 3: una columna más y el encabezado pasaba a ser una fila de filtros, o sea un
+    export válido rechazado. `indice_encabezado` devuelve `None` en vez de caer a la fila 0
+    (el mismo fallback posicional callado que la ronda 11 sacó de `encontrar_fila_encabezado`),
+    y `leer_xlsx` levanta `sin_encabezado`. Se fue el parámetro `ancla` de `cargar_canonico`.
+11. **Envoltorios que solo reenviaban**, vacíos desde que la ronda 11 borró los fallbacks
+    posicionales: `formatos.fila_encabezado_admin` y los `_fila_encabezado` del A03 y de
+    estamentos (la única diferencia entre formatos es qué ancla se pasa → `formatos.ANCLA`),
+    más el `modo` que devolvía `encontrar_fila_encabezado` (constante `"ancla"`, y se logueaba).
+    Y `MAPA_INSCRITOS` se mudó a `rem_utils`: el mismo export lo leen `cargar_inscritos` y
+    `trans_map`, que resolvía las mismas columnas por su cuenta.
+
+**Fixtures que eran el bug** (no el test): el ADA de `test_a23` no traía ATEN ID; el de
+`test_sp_p6` le ponía `"A"` a TODAS las filas y el de `test_trabajo_perdido` derivaba el id
+de las 3 primeras letras de la actividad, así que colisionaba entre pacientes — con la forma
+canónica eso ya no es un detalle cosmético, y por eso la guarda del ítem 2 existe. El toy del
+arnés tenía 3 columnas (no lo tomaba como encabezado el criterio de >3 celdas).
+
 ### §1.E · Estructura y versionado
 
 - **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
@@ -758,11 +857,11 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
 
 ## §3 — Verificación (estado actual)
 
-- **283 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
+- **296 tests verdes** (eran 183 al abrir la revisión, 190 tras la ronda 2, 197 tras la 3,
   206 tras la 4, 215 tras la 5, 237 tras la 6, 241 tras la 7, 245 tras la 8, 257 tras la 9,
-  268 tras la 10, 271 con los contratos, 278 tras la 11 y 283 con las decisiones del
-  autor). `check_version` OK (1.9.17, 283 tests),
-  `check_cp1252` OK (64 archivos), `check_fuentes --todo` OK (18 contratos). En la
+  268 tras la 10, 271 con los contratos, 278 tras la 11, 283 con las decisiones del
+  autor y 296 tras la 12). `check_version` OK (1.9.17, 296 tests),
+  `check_cp1252` OK, `check_fuentes --todo` OK (18 contratos, ahora con el chequeo C4b). En la
   corrida completa de pytest sigue saliendo a veces el `tk.tcl` intermitente de
   `test_gui_construccion` (pasa solo; lo investiga una sesión aparte).
 - Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
@@ -851,7 +950,11 @@ no callado); el A03 Admin ya cruza por nombre contra Cupos y funciona.
 valores (ESTADO del formulario, «Activo» del Inscritos, el nombre en la columna
 FORMULARIO de los cuestionarios IRIS, el separador de actividades en la celda
 ACTIVIDADES del IRIS). Una fila inventada con el vocabulario real (sin PII) por export lo
-cubriría; no se ha decidido.
+cubriría; no se ha decidido. Del separador cuelga ahora una decisión cosmética:
+`rem_utils.SEP_ACTIVIDADES` (`"; "`) es con lo que se juntan las actividades del Monitoreo
+al darle la forma de IRIS (§1.M.2). No cambia ningún conteo -- todo se busca por subcadena
+con `contiene_*` --, pero si el IRIS real usa otro separador, ese es el valor que hay que
+corregir para que el detalle se lea igual en los dos formatos.
 
 - Ojo al diseñar el chequeo de posición: los formularios RAYEN SÍ dependen del orden
   RELATIVO (el ESTADO va pegado a su pregunta: `encontrar_diagnostico`, `estado_tras`).
@@ -862,8 +965,6 @@ cubriría; no se ha decidido.
 Los agentes en paralelo murieron antes de entregar; lo hecho a mano fue más acotado que
 el `max` planeado. Sin cubrir de forma sistemática:
 
-- **Simplificación / altitud** sobre las ~3200 líneas del diff (el reuso se corrió en la
-  ronda 8, §1.I; antes solo se había sacado el código muerto obvio, §1.E).
 - **Eficiencia**: nadie miró si la GUI 2.0 relee archivos o rehace trabajo (el caso de
   la familia población, §1.E, se encontró de casualidad).
 - **Convenciones**: headers de versión de cada `.py` de `gui/` vs su último cambio real
@@ -901,10 +1002,18 @@ el `max` planeado. Sin cubrir de forma sistemática:
      ve y el exe congelado muere con `ModuleNotFoundError: gui.app` al abrirlo — con el
      `.spec` ya «arreglado». Al hacer el paso 11: import a NIVEL DE MÓDULO, o sumar
      `'gui.app'` a `hiddenimports`.
-- **Hallazgo #4 — `main` necesita los fixes de §1.A igual:** `cargar_canonico`,
-  `exigir_filas_ws`, `leer_xlsx`, `cargar_maestro`, `trans_map`, `cargar_estrat` y los
-  de `poblacion.py` viven en `programas/` y `modulos/`, **no en la GUI**. Hoy el arreglo
-  existe solo en `gui-2.0` y `main` sigue roto.
+- **Hallazgo #4 — `main` necesita los fixes de `programas/`+`modulos/` igual:** empezó
+  por los de §1.A (`cargar_canonico`, `exigir_filas_ws`, `leer_xlsx`, `cargar_maestro`,
+  `trans_map`, `cargar_estrat`, los de `poblacion.py`) y creció con cada ronda: §1.J, §1.K,
+  §1.L y §1.M suman **+1483/-268 líneas** en capas compartidas, varias de ellas números
+  plausibles-pero-mal que el exe de `main` sigue produciendo hoy — Activo 12m ciego a 3 de
+  las 7 actividades SM, el RUN heredado de otra atención en IRIS, un cuestionario contado
+  como formulario SM en el A05, 6 indicadores del A23 en NO con el Monitoreo. El plan
+  (§13) dice que un bug de módulo encontrado durante la migración **se anota y se arregla
+  en `main`**, no en la rama. **Decisión del autor (ronda 12): NO se porta ahora**, se
+  cierra con el release de la 2.0 (un solo merge). Consecuencia aceptada: hasta entonces
+  el exe en producción calcula con los bugs, y el merge del paso 11 mezcla GUI con lógica
+  de módulos en un diff grande.
 - **CHANGELOG al merge:** 1.9.16 de `main` + 1.9.17 de la rama. Renumerar si `main`
   avanzó.
 - **`maestro_slim.csv.gz` entró a `catalogos/` sin los controles de ese vecindario**
@@ -993,7 +1102,8 @@ listados en §4.
 | 9 | **Bug recurrente, EMPÍRICO (R1)**: cada `correr` de página (SM, TP, dotación, Población, A23, A05) contra exports que traen filas pero quedan vacíos TRAS un filtro (corte, máscara de programa, fecha ilegible, Asiste, fecha de nacimiento), clasificando OK / crash críptico / 0 callado | 8 ✅ + 9 ✅ de una 2a pasada sin tope (3 fixtures de test eran el bug) | §1.J |
 | 10 | **Bug recurrente, ESTÁTICO (R2)**: lectura de cada loader y filtro alcanzable desde las páginas (A05, A03, A23, SM, TP, Población, Rescate, dotación), con foco en cruces entre fuentes, casilleros que fijan el tipo y columnas opcionales; cada candidato confirmado con un repro | 8 ✅ (9 ítems; 3 fixtures eran el bug) + 7 ✅ de la 2a pasada sin tope (la edad del A05 por posición + 6) | §1.K |
 | 11 | **Cada referencia y fallback contra el export REAL, interactiva**: todo mapa de columnas, número de pregunta, ancla y literal de actividad contra `refs_tablas/` y el Maestro; el autor bajó los exports que faltaban y re-bajó los editados a mano; `limpiar_refs` revisado (lo pidió el autor) | 11 ✅ (1 fixture era el caso) + 3 decisiones del autor, implementadas (§1.L.12-14) | §1.L · §4 «Abierto tras la ronda 11» |
-| 12 | _(siguiente: simplificación/altitud, eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
+| 12 | **Altitud**: ¿cada arreglo de las rondas 1-11 está a la altura de su causa, o emparcha al consumidor y deja la clase abierta? Cada guarda repetida a mano, la forma de la atención del Monitoreo, el filtro por tipo de excepción de los opcionales, la detección cacheada del A05, el sidebar por prefijo, el router por pila, el encabezado por conteo de celdas y los envoltorios vacíos. Con repros y mediciones | 11 ✅ (1 no se hace acá: los fixes de `programas/` a `main`, §4) | §1.M |
+| 13 | _(siguiente: eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es

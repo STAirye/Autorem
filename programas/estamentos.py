@@ -49,7 +49,7 @@ from pathlib import Path
 
 from programas.rem_utils import (
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl,
-    ArchivoInvalido, norm, buscar_col, exigir_filas_ws,
+    ArchivoInvalido, norm, buscar_col, exigir_filas_ws, encontrar_fila_encabezado,
     leer_cache_json, guardar_cache_json,
 )
 from programas import formatos
@@ -57,14 +57,10 @@ from programas import formatos
 # -- Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) --
 # Header en fila 9, de DOS pisos (celdas combinadas; banner Comuna/Establecimiento/Mes/
 # Año/'Utilización de Cupos' arriba; ver refs_tablas/Utilizacion_cupos_admin.xlsx).
-# Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento). Se
-# ubica con `formatos.fila_encabezado_admin`, con su PROPIA ancla.
+# Solo nos importan 2 columnas: Profesional (nombre) e Instrumento (=estamento). El
+# encabezado se ubica con `rem_utils.encontrar_fila_encabezado` y su PROPIA ancla.
 ANCLA = ["PROFESIONAL", "INSTRUMENTO"]
 MAX_FILAS_HEADER = 40
-
-
-def _fila_encabezado(ws):
-    return formatos.fila_encabezado_admin(ws, ancla=ANCLA, max_filas=MAX_FILAS_HEADER)
 
 
 def detectar(ws):
@@ -97,7 +93,7 @@ def cargar_estamentos(entrada, log=print):
             "encontré las columnas 'Profesional' e 'Instrumento'.\n"
             "Bájalo del Administrativo (Utilización de Cupos), copia la tabla a "
             "un Excel y guárdalo como .xlsx.")
-    hidx, _ = _fila_encabezado(ws)
+    hidx = encontrar_fila_encabezado(ws, ANCLA, MAX_FILAS_HEADER)
     hn = [norm(ws.cell(row=hidx, column=c).value) for c in range(1, ws.max_column + 1)]
     prof_c = buscar_col(hn, exacto="PROFESIONAL") or buscar_col(hn, tokens=["PROFESIONAL"])
     inst_c = buscar_col(hn, exacto="INSTRUMENTO") or buscar_col(hn, tokens=["INSTRUMENTO"])

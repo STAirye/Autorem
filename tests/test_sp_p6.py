@@ -149,8 +149,12 @@ def _mk_ada(filas):
     ws = wb.active
     ws.append(_ADA_HDR)
     filas = filas or [{"rut": "00000000-0", "fecha": date(2020, 1, 1), "act": "Consulta general"}]
-    for f in filas:
-        ws.append([f["rut"], f.get("id", "A"), f["fecha"].strftime("%d/%m/%Y"), f.get("act", ""),
+    # 'id' = ATEN ID, UNO por atención: por defecto uno distinto por fila (en IRIS cada
+    # fila es una atención). Repetirlo entre pacientes distintos es imposible en el
+    # export real, y desde la ronda 12 `cargar_atenciones` lo rechaza: junta las filas de
+    # una misma atención, así que un id repetido mezclaría a dos personas en una.
+    for i, f in enumerate(filas):
+        ws.append([f["rut"], f.get("id", f"A{i}"), f["fecha"].strftime("%d/%m/%Y"), f.get("act", ""),
                   f.get("diag", ""), f.get("instr", "Medico"), f.get("tipo", "Consulta"),
                   f.get("sexo", "Mujer"), f.get("sector", "Norte")])
     wb.save(p)

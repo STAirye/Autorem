@@ -278,7 +278,7 @@ def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
                 lambda s, fn: (atomicos.append(Path(s).name), atomico(s, fn))[1]),
                (smact, "procesar", lambda *_a, **_k: E),
                (smact, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
-               (tpmod, "procesar", lambda *_a, **_k: []),
+               (tpmod, "procesar", lambda *_a, **_k: pd.DataFrame()),
                (ru, "cargar_maestro", lambda *_a, **_k: None),   # el Maestro de mentira
                (tpmod, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
                (screening, "procesar_unificado", a03_falla),
@@ -288,8 +288,8 @@ def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
         setattr(m, n, v)
     try:
         ctx = {"mes": (2026, 8), "carpeta": carpeta, "solo_a03": False,
-               "ada": [Path("ada.xlsx")], "grupal": [], "inscritos": [],
-               "multiprofesional": [], "maestro": [Path("maestro.csv")],
+               "ada": [Path("ada.xlsx")], "grupal": [], "inscritos": None,
+               "multiprofesional": None, "maestro": Path("maestro.csv"),
                "d": None, "tabla_dot": None,
                "a03": {"incluir": True, "est_ruta": "", "instrumentos": {"PSC": "psc.xlsx"}}}
         res = sm.correr(ctx, log=lambda *_a: None)
@@ -384,15 +384,17 @@ def test_un_opcional_invalido_pregunta_si_seguir_sin_el():
         def askyesno(self, titulo, texto): self.preguntas.append(texto); return self.resp
 
     inputs = a23.PANTALLA["inputs"]
+    # La Estratificacion es un input de UN archivo (`multi: False` desde la ronda 12):
+    # `sin_opcional` lo deja en None, no en [].
     ctx = {"mes": (2026, 8), "carpeta": Path(tempfile.mkdtemp(prefix="autorem_opc_")),
            "atenciones": [Path("a.xlsx")], "otros_cronicos": [Path("o.xlsx")],
-           "estratificacion": [Path("e.xlsx")], "nsp": []}
+           "estratificacion": Path("e.xlsx"), "nsp": []}
     err = OpcionalInvalido("estrat", ArchivoInvalido("sin_columnas", "no encuentro RUT"))
     q = lambda *_a: None   # noqa: E731
 
     si = _Msg(True)
     nuevo = runner.sin_opcional(err, ctx, inputs, si, q)
-    assert nuevo["estratificacion"] == [] and ctx["estratificacion"], "no quito el archivo (o toco el ctx original)"
+    assert nuevo["estratificacion"] is None and ctx["estratificacion"], "no quito el archivo (o toco el ctx original)"
     assert nuevo["descartados"][0][0].startswith("Estratificación") and "RUT" in si.preguntas[0]
     assert runner.sin_opcional(err, ctx, inputs, _Msg(False), q) is False      # dijo que no
     assert runner.sin_opcional(ArchivoInvalido("x", "y"), ctx, inputs, si, q) is None   # no es opcional

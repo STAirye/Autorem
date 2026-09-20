@@ -66,7 +66,7 @@ def correr(ctx, log):
     from programas.rem_utils import rutas_libres, escribir_atomico
     from gui.runner import avisos_descartados
     y, m = ctx["mes"]
-    estrat = ctx["estratificacion"][0] if ctx["estratificacion"] else None
+    estrat = ctx["estratificacion"]   # UN archivo (snapshot), no una lista
     nsp = ctx["nsp"] or None   # Sección H acepta VARIOS años -> la lista entera, no solo el primero
     fer = a23.procesar(ctx["atenciones"], otros=ctx["otros_cronicos"], estrat=estrat,
                        inasistentes=nsp, mes=(y, m), log=log)
@@ -106,7 +106,11 @@ PANTALLA = {
          "titulo_dialogo": "Formulario Otros Crónicos — selecciona VARIOS años (año del reporte + anterior, ideal 5)"},
         # `entrada` = el parametro de a23.procesar: con eso la app sabe que archivo
         # omitir si el modulo dice que este opcional no sirve (runner.sin_opcional).
-        {"key": "estratificacion", "etiqueta": "Estratificación (opcional):", "multi": True,
+        # `multi: False` porque la Estratificacion es UN snapshot: declarada multiple
+        # (como la heredo de la 1.x) el usuario podia elegir dos con ctrl-click -- la
+        # fila decia "2: a.xlsx, b.xlsx" -- y `correr` usaba solo la primera, callado
+        # (ronda 12).
+        {"key": "estratificacion", "etiqueta": "Estratificación (opcional):", "multi": False,
          "obligatorio": False, "entrada": "estrat", "titulo_dialogo": "Estratificación de Riesgo — opcional"},
         {"key": "nsp", "etiqueta": "Inasistentes NSP (opc):", "multi": True, "obligatorio": False,
          "entrada": "inasistentes",

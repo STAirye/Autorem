@@ -61,7 +61,7 @@ import numpy as np
 import pandas as pd
 
 from programas.rem_utils import (
-    norm, fecha_col, cargar_atenciones, cargar_canonico,
+    norm, fecha_col, cargar_atenciones, cargar_canonico, MAPA_INSCRITOS,
     resolver_columnas, contiene_alguno, gestante_runs, PUEBLO_VACIO,
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl, ArchivoInvalido, verificar_hoja_unica,
     buscar_col, num_pregunta, encontrar_fila_encabezado, _rango_mes,
@@ -212,30 +212,18 @@ COLUMNAS_SALIDA = COL_IDENTIDAD + COL_ACTIVIDAD + _col_dx()
 # ======================================================================
 # Input 1 — Informe Inscritos y Adscritos (snapshot, IRIS)
 # ======================================================================
-MAPA_INSCRITOS = {
-    "RUN":          ("exact", "NUMERO TIPO IDENTIFICACION"),
-    "TIPOID":       ("exact", "TIPO IDENTIFICACION"),
-    "SEXO":         ("exact", "SEXO"),
-    "GENERO":       ("exact", "GENERO"),
-    "FNAC":         ("exact", "FECHA DE NACIMIENTO"),
-    "EDADANOS":     ("exact", "EDAD AÑOS"),
-    "SITUACION":    ("exact", "SITUACION"),
-    "ESTADO":       ("exact", "ESTADO"),
-    "FPASIV":       ("exact", "FECHA PASIVACION"),
-    "MPASIV":       ("exact", "MOTIVO PASIVACION"),
-    "SECTOR":       ("exact", "SECTOR"),
-    "ALERTAS":      ("subs", ["ALERTAS", "ADMINISTRATIVAS"]),
-    "PUEBLO":       ("exact", "PUEBLO INDIG"),
-    "NACIONALIDAD": ("exact", "NACIONALIDAD"),
-}
+# `MAPA_INSCRITOS` vive en rem_utils desde la ronda 12: el mismo export lo lee
+# `rem_utils.trans_map` (flag TRANS del SM), que resolvía las mismas columnas por su
+# cuenta -- dos mapas para una planilla es una guarda que hay que escribir dos veces.
 
 
 def cargar_inscritos(entrada, log=print):
     """'Informe Inscritos y Adscritos' (IRIS, snapshot) -> DataFrame, 1 fila por
     RUN. Es la base de la tabla Ferrada: TODA la población, sin filtrar (el filtro
     Activo/Ingresado lo aplica quien consuma la tabla)."""
-    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
-                            requeridas=("RUN", "SEXO", "ESTADO", "SITUACION"))
+    d, col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
+                             requeridas=("RUN", "SEXO", "ESTADO", "SITUACION"),
+                             no_vacias=("RUN",))
     n_filas = len(d)
     d["RUN"] = d["RUN"].astype(str).str.strip()
     sin_run = d["RUN"].isin(("", "None", "nan"))
@@ -263,9 +251,10 @@ def cargar_inscritos(entrada, log=print):
         # Fail loud sobre la FUENTE (CLAUDE.md regla 2), no sobre una casilla mas
         # abajo: con 0 filas, las columnas de mas adelante (ALERTAS, etc.) quedan
         # con dtype float64 en vez de object y revientan con un AttributeError
-        # criptico en .str.contains(). El export SOLO-encabezado ya lo corta
-        # cargar_canonico (ronda 1); aca llega el que SI trae filas pero ninguna sirve
-        # (todas sin RUN, o todas 'RUN Responsable') -> decir ESO, no "archivo vacio".
+        # criptico en .str.contains(). El export SOLO-encabezado lo corta cargar_canonico
+        # (ronda 1) y el que trae el RUN vacio en TODAS las filas tambien, por archivo
+        # (`no_vacias`, ronda 12); aca queda el caso propio de este loader: filas con RUN
+        # pero todas 'RUN Responsable' (o una mezcla que no deja a nadie).
         raise ArchivoInvalido(
             "sin_datos",
             f"El 'Informe Inscritos y Adscritos' trae {n_filas} fila(s), pero ninguna con "
@@ -304,7 +293,7 @@ def _leer_formulario_1(entrada, log):
             f"Archivo «{nombre}»:\n\nEl histórico de 'Control de Salud Mental' debe "
             "venir en formato IRIS (no el Reporte Administrativo): trae columnas que "
             "el Administrativo no tiene y que este módulo necesita.")
-    header_idx, _modo = encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
+    header_idx = encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
     filas = list(ws.iter_rows(values_only=True))
     wb.close()
     headers = list(filas[header_idx - 1])

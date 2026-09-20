@@ -473,6 +473,39 @@ def test_la_salida_por_defecto_de_poblacion_va_junto_al_inscritos():
         f"({snap}) -- el ancla_salida no se esta respetando")
 
 
+def test_un_opcional_con_la_ruta_mal_tecleada_se_avisa_al_apretar_procesar():
+    """Ronda 12: un input OPCIONAL de un archivo no validaba que la ruta existiera (solo
+    los obligatorios), asi que una ruta mal tecleada reventaba al ABRIRLA -- a mitad de
+    corrida y con un FileNotFoundError crudo, o sea «Error inesperado». Vacio sigue siendo
+    legitimo."""
+    if SIN_DISPLAY:
+        return
+    import tkinter.messagebox as mb
+    from gui.app import _resolver_ctx
+    from gui.registro import cargar_registro
+
+    pantalla = next(p for p in cargar_registro() if p["id"] == "a23_respiratorio")
+    aten = _TMP / "aten_opc.xlsx"
+    aten.write_bytes(_fixture_iris().read_bytes())
+    dichos = []
+    previos = {f: getattr(mb, f) for f in ("showerror", "showwarning")}
+    for f in previos:
+        setattr(mb, f, lambda t, m, **k: dichos.append(t))
+    try:
+        def getters(estrat):
+            return {"atenciones": lambda: [str(aten)], "otros_cronicos": lambda: [str(aten)],
+                    "estratificacion": lambda: estrat, "nsp": lambda: []}
+        ctx = _resolver_ctx(pantalla, getters(""), lambda: (2026, 8), lambda: str(_TMP))
+        assert ctx is not None and ctx["estratificacion"] is None, "un opcional vacio es legitimo"
+        dichos.clear()
+        ctx = _resolver_ctx(pantalla, getters(str(_TMP / "no_existe.xlsx")),
+                            lambda: (2026, 8), lambda: str(_TMP))
+        assert ctx is None and dichos == ["No encontrado"], dichos
+    finally:
+        for f, v in previos.items():
+            setattr(mb, f, v)
+
+
 def test_a05_acepta_la_ruta_pegada_con_comillas():
     """'Copiar como ruta de acceso' del Explorador (shift + click derecho) pega la ruta
     ENTRE COMILLAS, y es LA forma de pegar una ruta en Windows. `valida_ruta` las
@@ -897,6 +930,151 @@ def test_las_etiquetas_envolventes_caben_en_su_caja_con_el_dpi_escalado():
     finally:
         _cerrar(app)
         ctk.set_widget_scaling(previa)
+
+
+def _fixture_admin():
+    """Export ADMINISTRATIVO minimo (encabezado en la fila 9, banner arriba)."""
+    p = _TMP / "admin_min.xlsx"
+    if p.exists():
+        return p
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio de Salud", "SSMC"])
+    for _ in range(7):
+        ws.append(["Filtro", "x"])
+    ws.append(["RUT", "Edad de registro formulario", "Sexo", "Fecha Formulario",
+               "18.- ¿ Tiene  Depresión ?", "19.- Estado", "20.- Tipo de depresión"])
+    ws.append(["11111111-1", "45 años", "Mujer", "2026/08/05", "SI", "Egreso Alta",
+               "Depresión Moderada"])
+    wb.save(p)
+    return p
+
+
+def test_a05_detecta_el_formato_del_archivo_que_hay_AL_PROCESAR():
+    """Ronda 12: la categoria (y el ERROR) de la deteccion se cacheaban con la RUTA como
+    clave, y bajo el mismo nombre el contenido cambia todo el tiempo -- RAYEN baja todo
+    como `Formulario_Rayen.xlsx` (regla 5) y un .xlsx recien sincronizado se lee a medio
+    bajar (SS13). (a) Un archivo elegido a medio sincronizar dejaba cacheado un «no es un
+    .xlsx» que se repetia en CADA Procesar aunque ya estuviera completo; (b) un IRIS
+    reemplazado por el Administrativo con el mismo nombre se procesaba con el perfil
+    viejo, sin pedir el acuse y reventando en el worker con «Cambia el selector de
+    formato», que en la 2.0 no existe."""
+    if SIN_DISPLAY:
+        return
+    import shutil
+    import tkinter.messagebox as mb
+    from gui.paginas import a05
+
+    app = _app()
+    dichos = []
+    previos = {f: getattr(mb, f) for f in ("showerror", "showwarning", "showinfo")}
+    for f in previos:
+        setattr(mb, f, lambda t, m, **k: dichos.append(t))
+    try:
+        ruta = _TMP / "Formulario_Rayen.xlsx"        # el nombre UNICO de RAYEN
+        frame = ctk.CTkFrame(app)
+        pagina = type("P", (), {"datos": {}, "root": app,
+                                "log": staticmethod(lambda *_a, **_k: None)})()
+        get = a05.bloque_archivo_formato(frame, pagina)
+        entry = _buscar_entry(frame)
+        entry.insert(0, str(ruta))
+
+        # (a) a medio sincronizar al elegirlo, completo al procesar
+        shutil.copy(_fixture_disfrazado(), ruta)
+        assert get()["detectar_ahora"]()[1] is not None, "el fixture no reproduce el error"
+        shutil.copy(_fixture_iris(), ruta)
+        ctx = {"archivo": get(), "periodo": {"modo": "todo"},
+               "tareas": [t["id"] for t in __import__("autorem").TAREAS],
+               "carpeta": str(_TMP)}
+        dichos.clear()
+        assert a05.preparar(ctx, pagina) is not None, (
+            f"sigue con el error cacheado del archivo a medio bajar: {dichos}")
+
+        # (b) mismo nombre, ahora es el Administrativo: se detecta, y pide el acuse
+        shutil.copy(_fixture_admin(), ruta)
+        dichos.clear()
+        ctx = dict(ctx, archivo=get())
+        assert a05.preparar(ctx, pagina) is None and dichos == ["Falta el acuse"], (
+            f"no re-detecto el formato del archivo nuevo: {dichos}")
+    finally:
+        for f, v in previos.items():
+            setattr(mb, f, v)
+        _cerrar(app)
+
+
+def test_cambiar_de_pagina_esconde_la_anterior_y_el_tab_no_se_va_a_otra():
+    """Ronda 12: el router apilaba todas las paginas en la misma celda y traia una al
+    frente, asi que la tapada seguia MAPEADA -- y el Tab del teclado recorre lo que esta
+    mapeado: desde la pagina visible se llegaba a las cajas de texto de las OTRAS y lo
+    tecleado no aparecia en ninguna parte. Ahora se muestra una y se esconde el resto."""
+    if SIN_DISPLAY:
+        return
+    import tkinter as tk
+
+    app = _app()
+    try:
+        app.mostrar("a23_respiratorio"); _bombear(app, 3)
+        app.mostrar("sm_actividades"); _bombear(app, 3)
+        oculta, visible = app._frames["a23_respiratorio"], app._frames["sm_actividades"]
+        assert not oculta._parent_frame.winfo_ismapped(), "la pagina anterior sigue mapeada"
+        assert visible._parent_frame.winfo_ismapped(), "la pagina elegida no se ve"
+
+        def entries(f):
+            out = []
+
+            def walk(w):
+                for h in w.winfo_children():
+                    if isinstance(h, tk.Entry):
+                        out.append(h)
+                    walk(h)
+            walk(f._parent_frame)
+            return out
+
+        e0 = entries(visible)[0]
+        w, en_oculta = e0, 0
+        for _ in range(60):
+            w = w.tk_focusNext()
+            if w is None or w == e0:
+                break
+            if str(w).startswith(str(oculta._parent_frame)):
+                en_oculta += 1
+        assert en_oculta == 0, f"el Tab llega a {en_oculta} campo(s) de la pagina oculta"
+
+        # y volver a una pagina ya construida la muestra de verdad (el bug del tkraise)
+        app.mostrar("a23_respiratorio"); _bombear(app, 3)
+        assert oculta._parent_frame.winfo_ismapped() and not visible._parent_frame.winfo_ismapped()
+    finally:
+        _cerrar(app)
+
+
+def test_cada_programa_es_UN_grupo_del_sidebar():
+    """Ronda 12: poblacion declaraba el programa "Salud Mental -- Poblacion" y el shell lo
+    volvia a juntar con "Salud Mental" por PREFIJO. El estado de validacion ya es un dato
+    (`estado: beta`), y la union dependia de que los dos quedaran pegados en
+    ORDEN_PROGRAMAS: un programa nuevo que empezara con "Salud Mental" dibujaba una
+    SEGUNDA cabecera "SALUD MENTAL"."""
+    if SIN_DISPLAY:
+        return
+    from gui.app import App
+    from gui.registro import cargar_registro
+
+    real = cargar_registro()
+    nueva = dict(real[0], id="sm_infanto", titulo="Infanto", programa="Salud Mental Infanto")
+    for registro in (real, real + [nueva]):
+        app = App(registro=registro)
+        app.withdraw()
+        try:
+            cabeceras = []
+
+            def walk(w):
+                for h in w.winfo_children():
+                    if isinstance(h, ctk.CTkButton) and h.cget("text").startswith(("-  ", "+  ")):
+                        cabeceras.append(h.cget("text")[3:])
+                    walk(h)
+            walk(app)
+            assert len(cabeceras) == len(set(cabeceras)), f"cabecera repetida: {cabeceras}"
+            assert len(cabeceras) == len({p["programa"] for p in registro}), cabeceras
+        finally:
+            _cerrar(app)
 
 
 def _main():

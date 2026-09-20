@@ -15,7 +15,7 @@ planillas tiene un **contrato** y el pre-commit lo corre.
 
 | Pieza | Qué hace |
 |---|---|
-| `tests/contratos_fuentes.py` | El **arnés** (chequeos C0–C6 + X) y el **registro** `CONTRATOS`. |
+| `tests/contratos_fuentes.py` | El **arnés** (chequeos C0–C6, C4b y X) y el **registro** `CONTRATOS`. |
 | `tools/check_fuentes.py` | Pre-commit. Corre **solo** los contratos de las funciones que el commit toca (`cubre`). **Bloquea** si el commit agrega o cambia un **lector** sin contrato. `--todo`: todos, más la lista de lectores que todavía no tienen contrato. |
 | `tests/test_contratos_fuentes.py` | En la suite: corre todos + un meta-test que prueba que el arnés sí caza cada forma del bug. |
 
@@ -59,6 +59,7 @@ Contrato(
     fila={"NUMERO TIPO IDENTIFICACION": RUT, "FECHA ATENCION": "05/08/2026", ...},
     criticas=(...),   # columnas SIN las que no hay resultado: renombrar = ArchivoInvalido
     clave=(...),      # la que identifica la fila: vacía en todas = ArchivoInvalido
+    multiarchivo=True,   # si `llamar` acepta una LISTA (histórico multi-año) -> corre C4b
     fechas=(...),     # todas ilegibles = ArchivoInvalido (si la guarda vive acá)
     extra=(("todo de otro programa", [fila_otro_programa]),),   # filtros del módulo
 )
@@ -79,12 +80,20 @@ Contrato(
 | C1 solo encabezado | 0 filas pasa de largo, o revienta críptico (c38a8cc, 1.9.12) |
 | C3 sin `<col>` | una columna crítica que falta **no** falla: hay un fallback (por posición o por default) |
 | C4 clave vacía | «tiene filas pero ninguna sirve» pasa de largo (el RUN `"None"` del Inscritos) |
+| C4b clave vacía en 1 de 2 archivos | la guarda está sobre el DataFrame **concatenado**: el archivo malo pasa escondido detrás del bueno (ronda 12) |
 | C5 fechas ilegibles | NaT callado, o un mensaje que manda a otro lado (el A05 decía «elige Archivo completo») |
 | C6 columna extra al inicio | el resultado cambia al correr todo una posición: **índice fijo** (la col 11 del A05 leía «Convenio») |
 | X `extra` | un filtro del módulo deja todo vacío y sigue |
 
-`errores=` amplía qué cuenta como «fallo claro» (algunos opcionales levantan
-`ValueError` a propósito y el módulo lo vuelve aviso). Justifícalo en un comentario.
+`errores=` amplía qué cuenta como «fallo claro», y hoy **ningún contrato lo necesita**:
+todo lector levanta `ArchivoInvalido` (incluidos los opcionales, para que `opcional()` los
+pueda convertir en la pregunta «¿seguir sin él?» — ronda 12). Si lo agregas, justifícalo en
+un comentario.
+
+Dónde va la guarda en el grupo pandas: `cargar_canonico` ya hace C1 (`exigir_filas`), C3 y
+C4/C4b POR ARCHIVO — las columnas que el loader declara en `requeridas` (con las que además
+ubica el encabezado) y en `no_vacias`. Un loader nuevo que pase por ahí no escribe ninguna
+de esas guardas a mano: declara las claves.
 
 ### 4. Si falla: arreglar la FUENTE, no el contrato
 - La guarda va donde se lee o se filtra, con `ArchivoInvalido` y un mensaje que diga

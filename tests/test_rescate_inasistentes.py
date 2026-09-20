@@ -310,8 +310,13 @@ def test_inscritos_con_filas_pero_ningun_run_usable_lo_dice():
     solo-encabezado), asi que solo lo alcanza un Inscritos CON filas y ninguna usable.
     Su mensaje decia "no trae ninguna fila de datos" -> ahora dice por que. Y las filas
     sin RUN ya no sobreviven como la persona 'None' (astype(str))."""
+    # Con el RUN vacio en TODAS las filas, la guarda es la de `cargar_canonico`
+    # (`no_vacias`, ronda 12): mas temprana y POR ARCHIVO, nombrandolo. Con filas que SI
+    # traen RUN pero ninguna usable, la de este loader, que dice por que.
     for filas, clave in (([{"rut": "11111111-1", "tipoid": "RUN Responsable"}], "1 'RUN Responsable'"),
-                         ([{"rut": None}, {"rut": ""}], "2 sin RUN")):
+                         ([{"rut": "11111111-1", "tipoid": "RUN Responsable"}, {"rut": ""}],
+                          "1 sin RUN"),
+                         ([{"rut": None}, {"rut": ""}], "inscritos.xlsx")):
         try:
             pob.cargar_inscritos(_mk_inscritos(filas), log=_quiet)
             assert False, f"{clave}: debio levantar ArchivoInvalido"

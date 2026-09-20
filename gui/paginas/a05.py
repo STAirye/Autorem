@@ -131,12 +131,24 @@ def bloque_archivo_formato(frame, pagina):
                        lambda cat, err: _aplicar(cat, ruta, err))
 
     def detectar_ahora():
-        """Detecta AQUI MISMO (hilo GUI, bloqueando) la ruta que este en la caja, si
-        todavia no hay categoria para ELLA. La llama `preparar` justo antes de
-        procesar: cubre la ruta tecleada/pegada/precargada, que no dispara
-        `on_elegido`. Devuelve (categoria, error) -- ver `get()`."""
+        """Detecta AQUI MISMO (hilo GUI, bloqueando) la ruta que este en la caja, SIEMPRE.
+        La llama `preparar` justo antes de procesar. Devuelve (categoria, error) -- ver
+        `get()`.
+
+        SIEMPRE y no «solo si no hay categoria para esa ruta» (ronda 12): la categoria
+        (y el ERROR) se cacheaban con la RUTA como clave, o sea con el nombre del
+        archivo, y el contenido cambia bajo el mismo nombre todo el tiempo -- RAYEN baja
+        todo como `Formulario_Rayen.xlsx` (CLAUDE.md regla 5) y un .xlsx recien
+        sincronizado por OneDrive se lee a medio bajar (SS13). Dos consecuencias reales:
+        el archivo elegido a medio sincronizar dejaba cacheado un «no es un .xlsx» que
+        se repetia en CADA Procesar aunque ya estuviera completo (incluso despues del
+        «Guardar como .xlsx» que el propio mensaje pide, si conserva el nombre), y un
+        IRIS reemplazado por el Administrativo con el mismo nombre se procesaba con el
+        perfil viejo: sin pedir el acuse, y reventando en el worker con «Cambia el
+        selector de formato», que en la 2.0 no existe. Leer el encabezado cuesta ~60
+        filas; la deteccion en hilo al elegir el archivo es solo para el banner."""
         ruta = _ruta_caja()
-        if ruta and estado["ruta"] != ruta:
+        if ruta:
             try:
                 _aplicar(_leer_categoria(ruta), ruta)
             except Exception as e:   # noqa: BLE001  (se despacha en `preparar`)
@@ -224,12 +236,13 @@ def preparar(ctx, pagina):
     if entrada is None:
         return None
 
-    # Ruta tecleada/pegada/precargada: no paso por "Examinar", asi que no hay
-    # categoria todavia. Se detecta aca (hilo GUI) en vez de decirle al usuario
-    # "formato no reconocido" sobre un archivo que puede estar perfecto.
-    categoria, error = archivo["categoria"], archivo["error"]
-    if categoria is None and error is None:
-        categoria, error = archivo["detectar_ahora"]()
+    # El formato se detecta ACA, sobre el archivo que hay en el disco AHORA (hilo GUI,
+    # ~60 filas): la deteccion al elegir el archivo es un preview para el banner, y su
+    # resultado -- veredicto o error -- puede ser de otro contenido con el mismo nombre
+    # (ver `detectar_ahora`). Tambien cubre la ruta tecleada/pegada/precargada, que no
+    # pasa por "Examinar": sin esto salia "Formato no reconocido" sobre un archivo
+    # perfecto.
+    categoria, error = archivo["detectar_ahora"]()
     if error is not None:
         # NO "Formato no reconocido": el archivo puede estar impecable y ser un .xls
         # disfrazado de .xlsx (el clasico de RAYEN, CLAUDE.md SS13), o estar abierto en

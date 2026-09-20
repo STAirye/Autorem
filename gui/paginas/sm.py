@@ -85,7 +85,11 @@ def _header_rapido(ruta, max_scan=40):
     Grupal no se acusaba nunca."""
     from programas.rem_utils import primeras_filas, indice_encabezado
     filas = primeras_filas(ruta, max_scan)
-    return list(filas[indice_encabezado(filas, max_scan=max_scan)]) if filas else []
+    # Sin fila con pinta de encabezado, `indice_encabezado` devuelve None (antes caia a
+    # la fila 0, el banner): el preview no acusa nada, que es lo que corresponde -- el
+    # dialogo con el motivo lo da la corrida.
+    hi = indice_encabezado(filas, max_scan=max_scan) if filas else None
+    return list(filas[hi]) if hi is not None else []
 
 
 def _chequeo_cruce(frame, pagina, espera):
@@ -248,16 +252,20 @@ def correr(ctx, log):
 
     if not ctx["solo_a03"]:
         salida, salida_tp = salidas["sm"], salidas["tp"]
-        inscritos = ctx["inscritos"][0] if ctx["inscritos"] else None
-        multiprofesional = ctx["multiprofesional"][0] if ctx["multiprofesional"] else None
-        maestro = ctx["maestro"][0] if ctx["maestro"] else slim_por_defecto()
+        inscritos = ctx["inscritos"]
+        multiprofesional = ctx["multiprofesional"]
+        maestro = ctx["maestro"] or slim_por_defecto()
+        dfm = None
         if ctx["maestro"]:
             # Un Maestro cargado a mano que no sirve se detecta ANTES de escribir nada: la
             # app pregunta si seguir sin el (con el slim embebido). El Trabajo Perdido
             # tiene su propio try, que lo habria dejado en un «no se generó».
+            # Se GUARDA lo cargado y se le pasa al TP (`dfm=`): son 8,6 MB y ~12 s de
+            # parseo, y hasta la ronda 12 se botaba el resultado para que el TP lo
+            # volviera a leer.
             from programas.rem_utils import cargar_maestro, opcional
             with opcional("maestro"):
-                cargar_maestro(maestro)
+                dfm = cargar_maestro(maestro)
 
         E = smact.procesar(ctx["ada"], grupal=ctx["grupal"], inscritos=inscritos,
                            multiprofesional=multiprofesional, mes=(y, m), log=log,
@@ -277,7 +285,11 @@ def correr(ctx, log):
         # no debe tumbar el SM, que ya se guardo arriba.
         try:
             import modulos.rem_sm_trabajo_perdido as tpmod
-            Etp = tpmod.procesar(ctx["ada"], maestro=maestro, mes=(y, m), log=log, d=ctx["d"])
+            Etp = tpmod.procesar(ctx["ada"], maestro=maestro, mes=(y, m), log=log,
+                                 d=ctx["d"], dfm=dfm)
+            # Los opcionales omitidos van tambien a la LEEME del TP: el Maestro que se
+            # descarto es justo el que ESTE reporte iba a usar (ronda 12).
+            Etp.attrs.setdefault("avisos", []).extend(runner.avisos_descartados(ctx))
             escribir_atomico(salida_tp, lambda p: tpmod.escribir(Etp, p))
             res["n_tp"] = len(Etp)
             log(f"OK Trabajo perdido: {len(Etp)} atenciones a saco roto -> {salida_tp.name}")
@@ -386,11 +398,14 @@ PANTALLA = {
          "motivo_obligatorio": "De ahí salen A06 psicosocial grupal, A19a grupal y A27.",
          "titulo_dialogo": "Reporte de Atenciones Grupales",
          "on_elegido": lambda frame, pagina: _chequeo_cruce(frame, pagina, "grupal")},
-        {"key": "inscritos", "etiqueta": "Inscritos (opcional, TRANS):", "multi": True,
+        # Los tres opcionales son de UN archivo (`multi: False`, ronda 12): declarados
+        # multiples -- como venian de la 1.x -- se podian elegir varios con ctrl-click y
+        # `correr` usaba solo el primero, sin decir nada.
+        {"key": "inscritos", "etiqueta": "Inscritos (opcional, TRANS):", "multi": False,
          "obligatorio": False, "titulo_dialogo": "Informe Inscritos y Adscritos - para el flag TRANS"},
-        {"key": "multiprofesional", "etiqueta": "Multiprofesional (opc, A26):", "multi": True,
+        {"key": "multiprofesional", "etiqueta": "Multiprofesional (opc, A26):", "multi": False,
          "obligatorio": False, "titulo_dialogo": "Monitoreo Multiprofesional - composición de VDI en A26"},
-        {"key": "maestro", "etiqueta": "Maestro (opc, saco roto):", "multi": True,
+        {"key": "maestro", "etiqueta": "Maestro (opc, saco roto):", "multi": False,
          "obligatorio": False,
          "titulo_dialogo": "Maestro de Actividades - catálogo RAYEN para clasificar el trabajo perdido"},
     ],

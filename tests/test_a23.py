@@ -24,18 +24,22 @@ import modulos.rem_a23_respiratorio as a23   # noqa: E402
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_a23_"))
 
-_HDR = ["NUMERO TIPO IDENTIFICACION", "FECHA ATENCION", "ACTIVIDADES", "DIAGNOSTICOS",
-        "INSTRUMENTO", "TIPO ATENCION", "SEXO", "SECTOR", "NACIONALIDAD",
+_HDR = ["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
+        "DIAGNOSTICOS", "INSTRUMENTO", "TIPO ATENCION", "SEXO", "SECTOR", "NACIONALIDAD",
         "PUEBLO ORIGINARIO", "FECHA DE NACIMIENTO", "NOMBRES", "APELLIDO PATERNO",
         "APELLIDO MATERNO", "AÑOS"]
 
 
 def _mk(rows):
-    """rows = lista de dicts parciales (claves = subset de _HDR)."""
+    """rows = lista de dicts parciales (claves = subset de _HDR). Sin 'ATEN ID' explícito,
+    cada fila es su propia atención (el ADA IRIS trae una fila por atención): la columna
+    es REQUERIDA desde 1.9.17+ronda 12 porque es la unidad de conteo."""
     p = _TMP / "aten.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active
     ws.append(_HDR)
-    for r in rows:
+    for i, r in enumerate(rows):
+        r = dict(r)
+        r.setdefault("ATEN ID", str(9000 + i))
         ws.append([r.get(h, "") for h in _HDR])
     wb.save(p)
     return p
@@ -107,8 +111,8 @@ _OKEY = {"RUN": 0, "FECHA": 1, "INSTR": 2, "SEXO": 3, "FNAC": 4,
          "EPOC_p": 14, "EPOC_tipo": 15, "EPOC_est": 16, "EPOC_ctrl": 17, "CDV": 18}
 
 
-def _mk_otros(rows):
-    p = _TMP / "otros.xlsx"
+def _mk_otros(rows, nombre="otros.xlsx"):
+    p = _TMP / nombre
     wb = openpyxl.Workbook(); ws = wb.active; ws.append(_OHDR)
     for r in rows:
         line = [""] * len(_OHDR)
@@ -464,18 +468,21 @@ def test_estratificacion_sin_columna_de_diagnosticos_falla():
 
 
 def test_atencion_multifila_y_run_heredado_solo_dentro_de_la_atencion():
-    """Ronda 11, contra los encabezados REALES (refs_tablas): (a) en el Monitoreo una
-    atencion son VARIAS filas con el mismo 'N°', y los indicadores con AND entre
-    actividades («autocuidado» Y «control sala») comparaban fila por fila -> NO callado;
-    (b) el RUN se rellenaba con un ffill global: en IRIS una fila sin RUN heredaba el
-    paciente de la fila de ARRIBA, de otra atencion."""
+    """Ronda 11 + 12, contra los encabezados REALES (refs_tablas): en el Monitoreo una
+    atencion son VARIAS filas con el mismo 'N°' (una actividad cada una, cabecera solo en
+    la 1ª) y en IRIS es UNA fila con todas sus actividades. `cargar_atenciones` entrega
+    la forma de IRIS en los dos casos (ronda 12): una fila por atencion, con las
+    actividades juntas. Antes (a) los indicadores con AND entre actividades comparaban
+    fila por fila -> NO callado, arreglado con un helper LOCAL del A23, y (b) el RUN se
+    rellenaba con un ffill global: en IRIS una fila sin RUN heredaba el paciente de la
+    fila de ARRIBA, de otra atencion."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from contratos_fuentes import Contrato, escribir, plantilla
     from programas.rem_utils import cargar_atenciones, dv_rut
 
-    def _fx(ref, filas):
+    def _fx(ref, filas, sufijo=""):
         b, h, p = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
-        return escribir(_TMP / f"multi_{ref}", b, h, filas, p)
+        return escribir(_TMP / f"multi_{sufijo}{ref}", b, h, filas, p)
     otro = "10000013-" + dv_rut("10000013")
     mon = cargar_atenciones(_fx("Monitoreo_de_Actividades_anonimizado.xlsx", [
         {"N°": 1, "RUN": "11111111-1", "FECHA CONSULTA": "05/08/2026", "AÑOS": 40,
@@ -488,7 +495,10 @@ def test_atencion_multifila_y_run_heredado_solo_dentro_de_la_atencion():
          "DIAGNÓSTICO": "ASMA", "INSTRUMENTO": "KINESIOLOGO(A)", "TIPO DE ATENCIÓN": "CONTROL",
          "FUNCIONARIO": "KINE Z"},
     ]), log=_quiet)
-    assert list(mon["RUN"]) == ["11111111-1", "11111111-1", otro], list(mon["RUN"])
+    # 3 filas, 2 atenciones: la del 'N° 1' queda en UNA con sus dos actividades.
+    assert list(mon["RUN"]) == ["11111111-1", otro], list(mon["RUN"])
+    assert mon["ACT_n"].iloc[0].count("AUTOCUIDADO") == 1 and "CONTROL SALA" in mon["ACT_n"].iloc[0]
+    assert mon["INSTR"].iloc[0] == "MEDICO"     # cabecera heredada a la fila hija
     auto = a23._masks_simples(mon)["REMA23 Autocuidado"]
     assert set(mon.loc[auto, "RUN"]) == {"11111111-1"}, set(mon.loc[auto, "RUN"])  # la 2 no
 
@@ -503,6 +513,40 @@ def test_atencion_multifila_y_run_heredado_solo_dentro_de_la_atencion():
     ]), log=_quiet)
     assert iris["RUN"].iloc[1] != "11111111-1", "la 902 heredo el RUN de la 901 (otra atencion)"
     assert bool(a23._masks_simples(iris)["REMA23 Autocuidado"].iloc[0])
+
+
+def test_el_trabajo_perdido_cuenta_igual_la_misma_atencion_en_los_dos_formatos():
+    """Ronda 12. La forma PADRE-HIJO del Monitoreo se normalizaba a medias: el ffill de
+    la cabecera vivia en el loader y el AND entre actividades en UN consumidor (el A23),
+    asi que el resto seguia viendo una fila por actividad. Una atencion con una actividad
+    que TRIBUTA («consulta de salud mental») y otra que no: desde IRIS, 0 a saco roto;
+    desde el Monitoreo, 1 -- los mismos datos, dos numeros, y su tabla dice
+    «atenciones»."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    from programas.rem_utils import cargar_atenciones, _rango_mes
+    import modulos.rem_sm_trabajo_perdido as tp
+
+    def _fx(ref, filas):
+        b, h, p = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+        return escribir(_TMP / f"tp_{ref}", b, h, filas, p)
+    tributa, perdida = "CONSULTA DE SALUD MENTAL", "CONSEJERIA INDIVIDUAL EN SALUD MENTAL"
+    iris = _fx("ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx", [
+        {"NUMERO TIPO IDENTIFICACION": "11111111-1", "ATEN ID": "901",
+         "FECHA ATENCION": "05/08/2026", "ACTIVIDADES": f"{tributa}; {perdida}",
+         "DIAGNOSTICOS": "F32.1", "INSTRUMENTO": "MEDICO", "TIPO ATENCION": "CONSULTA",
+         "PROFESIONAL ATENCION": "DR X"}])
+    mon = _fx("Monitoreo_de_Actividades_anonimizado.xlsx", [
+        {"N°": 1, "RUN": "11111111-1", "FECHA CONSULTA": "05/08/2026", "AÑOS": 40,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": tributa, "DIAGNÓSTICO": "DEPRESION",
+         "INSTRUMENTO": "MEDICO", "TIPO DE ATENCIÓN": "CONSULTA", "FUNCIONARIO": "DR X"},
+        {"N°": 1, "ACTIVIDAD Y/O PROCEDIMIENTO": perdida}])
+    ini, fin = _rango_mes((2026, 8))
+    n = {}
+    for etiqueta, ruta in (("iris", iris), ("monitoreo", mon)):
+        d = cargar_atenciones(ruta, log=_quiet)
+        n[etiqueta] = len(tp.analizar(d, ini, fin, log=_quiet))
+    assert n["iris"] == n["monitoreo"] == 0, n
 
 
 def test_otros_cronicos_administrativo_saca_el_estamento_del_funcionario():
@@ -566,6 +610,88 @@ def test_estratificacion_o_nsp_invalidos_son_opcional_invalido():
             assert False, f"{entrada}: debio levantar OpcionalInvalido"
         except OpcionalInvalido as e:
             assert e.entrada == entrada, (entrada, e.entrada)
+
+
+def test_un_archivo_con_el_run_vacio_no_pasa_escondido_entre_varios():
+    """Ronda 12. La guarda de «la columna clave vacia en TODAS las filas» estaba escrita a
+    mano en seis loaders, y en `cargar_otros`/`cargar_atenciones` sobre el DataFrame ya
+    CONCATENADO: un año con el RUN entero en blanco, cargado junto a uno bueno, pasaba sin
+    decir nada. Sus formularios quedaban sin paciente y la Seccion G contaba como
+    inasistente a quien SI se habia controlado (1 en vez de 0). Ahora es POR ARCHIVO, en
+    `cargar_canonico`, y nombra el archivo."""
+    import pandas as pd
+    from programas.rem_utils import ArchivoInvalido
+    base = {"INSTR": "Médico", "ASMA_p": "Si", "ASMA_est": "Seguimiento"}
+    o25 = _mk_otros([dict(base, RUN="A", FECHA=date(2025, 3, 1), ASMA_prox=date(2025, 4, 1))],
+                    nombre="otros_2025.xlsx")
+    for run, esperado in (("A", 0), ("", 1)):
+        o26 = _mk_otros([dict(base, RUN=run, FECHA=date(2026, 6, 1), ASMA_prox=date(2026, 12, 1))],
+                        nombre=f"otros_2026_{bool(run)}.xlsx")
+        if run:
+            od, _ = a23.cargar_otros([o25, o26], log=_quiet)
+            g, _flags = a23._seccion_g(od, pd.Timestamp(2026, 8, 31))
+            assert g["Asma"]["Total"] == esperado, g["Asma"]
+        else:
+            try:
+                a23.cargar_otros([o25, o26], log=_quiet)
+                assert False, "el archivo con el RUN vacio en todas las filas paso callado"
+            except ArchivoInvalido as e:
+                assert e.categoria == "sin_datos" and "otros_2026" in str(e), str(e)
+
+
+def test_un_aten_id_repetido_entre_pacientes_no_junta_a_dos_personas():
+    """Ronda 12: al juntar las filas de una misma atencion, el ATEN ID tiene que
+    identificar UNA atencion -- o sea UN paciente. Si el mismo id aparece con RUN
+    distintos no es un id de atencion, y juntarlas mezclaria a dos personas en una,
+    callado. Fail loud (regla 2)."""
+    from programas.rem_utils import ArchivoInvalido, cargar_atenciones
+    ada = _mk([
+        {"NUMERO TIPO IDENTIFICACION": "A", "ATEN ID": "MISMO", "FECHA ATENCION": date(2026, 7, 10),
+         "DIAGNOSTICOS": "J06.9 IRA alta", "INSTRUMENTO": "Médico"},
+        {"NUMERO TIPO IDENTIFICACION": "B", "ATEN ID": "MISMO", "FECHA ATENCION": date(2026, 7, 11),
+         "DIAGNOSTICOS": "J06.9 IRA alta", "INSTRUMENTO": "Médico"},
+    ])
+    try:
+        cargar_atenciones(ada, log=_quiet)
+        assert False, "junto dos pacientes bajo el mismo ATEN ID"
+    except ArchivoInvalido as e:
+        assert e.categoria == "modificado", e.categoria
+
+
+def test_los_opcionales_se_validan_antes_de_leer_el_ada():
+    """Ronda 12: un opcional invalido hace que la GUI pregunte «¿seguir sin el?» y
+    re-corra, asi que la pregunta tiene que llegar ANTES del trabajo pesado. La
+    Estratificacion se cargaba despues del formulario y el NSP al final, con SALA y la
+    Seccion G ya calculadas: el usuario esperaba la corrida entera, contestaba, y se
+    repetia todo."""
+    from programas.rem_utils import OpcionalInvalido
+    malo = _mk_estrat(["RUT", "DV", "COMUNA"], [[11111111, "1", "Maipu"]])   # sin diagnosticos
+    leidos = []
+    previo = a23.cargar_atenciones    # el nombre que USA el modulo, no el de rem_utils
+    a23.cargar_atenciones = lambda *a, **k: leidos.append(1) or previo(*a, **k)
+    try:
+        a23.procesar(_mk([_RESP]), otros=None, estrat=malo, mes=(2026, 7), log=_quiet)
+        assert False, "debio levantar OpcionalInvalido"
+    except OpcionalInvalido as e:
+        assert e.entrada == "estrat", e.entrada
+        assert not leidos, "el ADA se leyo ANTES de validar el opcional"
+    finally:
+        a23.cargar_atenciones = previo
+
+
+def test_un_opcional_ilegible_tambien_es_opcional_invalido():
+    """Ronda 12: el clasico .html/.xls disfrazado de .xlsx (CLAUDE.md SS13) cargado como
+    Estratificacion levantaba `BadZipFile` -- que `opcional()` no reconoce --, asi que
+    tumbaba la corrida entera con «No es un .xlsx» en vez de ofrecer seguir sin el. Pasa
+    por `cargar_canonico`, que lo convierte en ArchivoInvalido('no_legible')."""
+    from programas.rem_utils import OpcionalInvalido
+    falso = _TMP / "estrat_disfrazada.xlsx"
+    falso.write_text("<html><body><table><tr><td>x</td></tr></table></body></html>", encoding="utf-8")
+    try:
+        a23.procesar(_mk([_RESP]), otros=None, estrat=falso, mes=(2026, 7), log=_quiet)
+        assert False, "debio levantar OpcionalInvalido"
+    except OpcionalInvalido as e:
+        assert e.entrada == "estrat" and e.categoria == "no_legible", (e.entrada, e.categoria)
 
 
 def _main():

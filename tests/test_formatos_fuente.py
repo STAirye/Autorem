@@ -39,6 +39,9 @@ ADA_IRIS = RAIZ / "refs_tablas" / "ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx"
 MONITOREO = RAIZ / "refs_tablas" / "Monitoreo_de_Actividades_anonimizado.xlsx"
 
 TODAS = formatos.SOLO_IRIS_ATENCIONES
+# Las `requeridas` del ADA: `cargar_canonico` las usa para UBICAR el encabezado (desde la
+# ronda 12 no hay un `ancla` aparte) y para exigir que el archivo las traiga.
+_REQ = ("RUN", "ATENID", "FECHA", "ACT", "DIAG", "INSTR", "TIPO")
 
 
 def _col(presentes):
@@ -132,8 +135,8 @@ def test_el_ada_iris_real_clasifica_como_plena():
 
 @pytest.mark.skipif(not ADA_IRIS.exists(), reason="falta el export IRIS de ejemplo")
 def test_cargar_canonico_deja_el_veredicto_en_attrs(tmp_path):
-    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
-                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"),
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES), _REQ,
                               solo_iris=formatos.SOLO_IRIS_ATENCIONES,
                               log=lambda *a, **k: None)
     assert d.attrs["fuente"][0] == formatos.FUENTE_PLENA
@@ -215,8 +218,8 @@ def test_el_correlativo_se_namespacea_por_archivo(tmp_path):
             ws.append([i, "11111111-1", "01/01/2026", "act", "dx", "Medico", "Esp"])
         p = tmp_path / n; wb.save(p); paths.append(p)
 
-    d, _col = cargar_canonico(list(paths), None,
-                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+    d, _col = cargar_canonico(list(paths),
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES), _REQ,
                               log=lambda *a, **k: None)
     assert d["ATENID"].nunique() == 4, "dos atenciones distintas se fusionaron"
     assert all("|" in v for v in d["ATENID"])
@@ -235,16 +238,16 @@ def test_el_aten_id_de_iris_NO_se_namespacea(tmp_path):
         ws.append([9001, "11111111-1", "01/01/2026", "act", "dx", "Medico", "Esp"])
         p = tmp_path / n; wb.save(p); paths.append(p)
 
-    d, _col = cargar_canonico(list(paths), None,
-                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+    d, _col = cargar_canonico(list(paths),
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES), _REQ,
                               log=lambda *a, **k: None)
     assert d["ATENID"].nunique() == 1, "el ATEN ID global no debe namespacearse"
 
 
 def test_sin_solo_iris_no_clasifica_nada(tmp_path):
     """Compatibilidad: los cargadores que no pasan `solo_iris` siguen igual."""
-    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
-                              lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+    d, _col = cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"),
+                              lambda h: resolver_columnas(h, MAPA_ATENCIONES), _REQ,
                               log=lambda *a, **k: None)
     assert "fuente" not in d.attrs
 
@@ -256,8 +259,8 @@ def test_fuente_parcial_se_loguea_ruidosa(tmp_path):
     # `h[0]` y no "RUN" a secas: la unica clave que resuelve tiene que apuntar a una
     # columna que EXISTA en el header (antes esto pasaba de casualidad, porque con el
     # export header-only no habia ninguna fila que indexar).
-    cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"), None,
-                    lambda h: {k: None for k in TODAS} | {"RUN": h[0]},
+    cargar_canonico(_con_una_fila(ADA_IRIS, tmp_path / "ada.xlsx"),
+                    lambda h: {k: None for k in TODAS} | {"RUN": h[0]}, ("RUN",),
                     solo_iris=TODAS, log=lambda m: dicho.append(str(m)))
     assert any("PARCIAL" in m for m in dicho)
 
@@ -511,3 +514,39 @@ def test_fuente_multi_archivo_no_depende_del_orden(tmp_path):
     d = cargar_atenciones([iris, iris2], log=lambda *_: None)
     assert d.attrs["fuente"][0] == formatos.FUENTE_PLENA
     assert d.attrs["fuente_mezcla"] is None
+
+
+# -- El encabezado se ubica por las columnas REQUERIDAS (ronda 12) ---------------
+
+@pytest.mark.skipif(not ADA_IRIS.exists(), reason="falta el export IRIS de ejemplo")
+def test_el_encabezado_sale_de_las_requeridas_no_de_contar_celdas(tmp_path):
+    """Hasta 1.9.17 el encabezado del grupo pandas era «la 1a fila con >3 celdas llenas»,
+    un CONTEO: los banners de RAYEN ya traen filas de 3 celdas (Monitoreo), asi que una
+    columna mas en el banner y el encabezado pasaba a ser una fila de filtros -> un export
+    valido rechazado con 'sin_columnas'. Ahora es la 1a fila que resuelve TODAS las
+    requeridas, que es el ancla que el loader ya declaraba."""
+    import openpyxl
+    from programas.rem_utils import cargar_atenciones
+    ruta = tmp_path / "ada_banner_ancho.xlsx"
+    wb = openpyxl.load_workbook(_con_una_fila(ADA_IRIS, tmp_path / "base.xlsx"))
+    ws = wb.active
+    ws.insert_rows(1)
+    for i, v in enumerate(["Desde", "01/08/2026", "Hasta", "31/08/2026", "Centro"], start=1):
+        ws.cell(row=1, column=i, value=v)      # banner de 5 celdas llenas
+    wb.save(ruta)
+    d = cargar_atenciones(ruta, log=lambda *_a, **_k: None)
+    assert len(d) == 1 and "RUN" in d.columns
+
+
+def test_sin_fila_de_encabezado_es_sin_columnas(tmp_path):
+    """Y si NINGUNA fila resuelve las requeridas, el error dice cuales faltan (no se toma
+    la fila 0 como encabezado, que era el fallback posicional callado de antes)."""
+    import openpyxl
+    from programas.rem_utils import cargar_atenciones
+    ruta = tmp_path / "sin_encabezado.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["banner", "x"]); ws.append(["11111111-1", "901", "05/08/2026", "CONTROL"])
+    wb.save(ruta)
+    with pytest.raises(ArchivoInvalido) as e:
+        cargar_atenciones(ruta, log=lambda *_a, **_k: None)
+    assert e.value.categoria == "sin_columnas" and "RUN" in str(e.value)

@@ -63,8 +63,12 @@ def _sin_clave(ruta):
 
 
 def _toy(llamar, **kw):
-    return cf.Contrato(id="toy", cubre=(), llamar=llamar, encabezado=("A", "RUN", "FECHA"),
-                       fila={"A": "a", "RUN": cf.RUT, "FECHA": "01/08/2026"},
+    # 4 columnas y no 3: `rem_utils.indice_encabezado` toma como encabezado la 1ª fila con
+    # MAS de 3 celdas llenas, y desde la ronda 12 ya no cae a la fila 0 cuando no encuentra
+    # ninguna (levanta 'sin_encabezado'), asi que un toy de 3 columnas no se leeria.
+    return cf.Contrato(id="toy", cubre=(), llamar=llamar,
+                       encabezado=("A", "RUN", "FECHA", "SEXO"),
+                       fila={"A": "a", "RUN": cf.RUT, "FECHA": "01/08/2026", "SEXO": "Mujer"},
                        criticas=("RUN",), clave=("RUN",), **kw)
 
 

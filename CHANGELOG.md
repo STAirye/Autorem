@@ -215,6 +215,71 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
       NSP, Inscritos para TRANS, Multiprofesional, Maestro cargado a mano). Si sí, se
       re-corre sin él y la hoja LEEME lo marca `OMITIDO`. Antes TRANS y el
       Multiprofesional inválidos quedaban solo en el log.
+- **GUI 2.0, ronda 12: altitud — cada arreglo, a la altura donde vive la causa**
+  (`docs/review_gui-2.0_pendiente.md` §1.M). Once arreglos de las rondas anteriores
+  estaban puestos un nivel más abajo de donde correspondía: emparchaban al consumidor y
+  dejaban la misma clase abierta para el resto.
+  - **La guarda de «columna clave vacía en TODAS las filas» estaba escrita a mano en seis
+    loaders, y en dos de ellos sobre el DataFrame ya CONCATENADO.** Un año con el RUN
+    entero en blanco, cargado junto a uno bueno, pasaba sin decir nada: sus formularios
+    quedaban sin paciente y la **Sección G contaba como inasistente a quien SÍ se había
+    controlado** (y en el A23 las atenciones de ese archivo se juntaban bajo un paciente
+    fantasma). Ahora es un parámetro del cuello de botella (`cargar_canonico(...,
+    no_vacias=)`), POR ARCHIVO y nombrándolo, y el arnés de contratos lo ataca también
+    con dos archivos (`C4b`).
+  - **La forma PADRE-HIJO del Monitoreo se normalizaba a medias.** El relleno de la
+    cabecera vivía en el loader y el AND entre actividades en UN consumidor (el A23), así
+    que los demás seguían viendo una fila por actividad: el **Trabajo Perdido marcaba
+    «saco roto» una actividad cuya hermana de la misma atención SÍ tributaba** (0 desde
+    IRIS, 1 desde el Monitoreo, con los mismos datos) y contaba actividades donde su tabla
+    dice «atenciones»; la evidencia del diálogo de dotación inflaba `n_atenciones`. Ahora
+    `cargar_atenciones` entrega **una fila por atención en los dos formatos**, y ATEN ID
+    es requerida (sin ella el `drop_duplicates` del SM dejaba UNA fila por casilla). Si el
+    mismo ATEN ID aparece con pacientes distintos, falla: no identifica una atención.
+  - **Los cuatro opcionales que no pasaban por `cargar_canonico`** (Inscritos para TRANS,
+    Multiprofesional, Estratificación y el Maestro `.xlsx`) señalaban «este archivo no
+    sirve» con `ValueError` y no envolvían el archivo ilegible, así que el clásico
+    .html/.xls disfrazado de `.xlsx` **tumbaba la corrida entera** en vez de preguntar
+    «¿seguir sin él?» — y `opcional()` tenía que atrapar `ValueError`, con lo que
+    cualquier bug de código dentro del bloque se le presentaba al usuario como «tu archivo
+    opcional no sirve». Los cuatro pasan por el cuello de botella, levantan
+    `ArchivoInvalido` y `opcional()` solo convierte eso.
+  - **Los opcionales se cargan PRIMERO** (A23 y SM). La pregunta «¿seguir sin él?» llegaba
+    después de la corrida completa (el NSP se leía al final, con SALA y la Sección G ya
+    calculadas) y el «Sí» repetía todo desde cero.
+  - **El Maestro cargado a mano se abría DOS veces** (8,6 MB, ~12 s cada una): la página lo
+    validaba y botaba el resultado para que el Trabajo Perdido lo volviera a leer. Ahora
+    `tpmod.procesar(..., dfm=)`, gemelo del `d=` del ADA, y el aviso `OMITIDO` llega
+    también a la LEEME del TP, que es el reporte que usa el Maestro.
+  - **El A05 confiaba en una detección de formato cacheada por NOMBRE de archivo**, y bajo
+    el mismo nombre el contenido cambia todo el tiempo (RAYEN baja todo como
+    `Formulario_Rayen.xlsx`; OneDrive entrega el `.xlsx` a medio bajar): un archivo elegido
+    a medio sincronizar dejaba cacheado un «no es un .xlsx» que **se repetía en cada
+    Procesar** aunque ya estuviera completo, y un IRIS reemplazado por el Administrativo
+    se procesaba con el perfil viejo, sin pedir el acuse y reventando con «Cambia el
+    selector de formato», que en la 2.0 no existe. Ahora se detecta al apretar Procesar.
+  - **Los opcionales de un archivo estaban declarados como múltiples** (Estratificación,
+    Inscritos, Multiprofesional, Maestro): se podían elegir varios con ctrl-click, la fila
+    decía «2: a.xlsx, b.xlsx» y solo se usaba el primero, callado. Y un opcional con la
+    ruta mal tecleada no se validaba: reventaba al abrirlo, a mitad de corrida.
+  - **El sidebar volvía a juntar «Salud Mental» y «Salud Mental — Población» por
+    PREFIJO.** El estado de validación ya es un dato (`estado: beta`), y la unión dependía
+    de que los dos quedaran pegados en `ORDEN_PROGRAMAS`: un programa nuevo que empezara
+    con «Salud Mental» dibujaba una segunda cabecera «SALUD MENTAL».
+  - **El router apilaba todas las páginas y traía una al frente**, así que la tapada
+    seguía mapeada y el **Tab del teclado se iba a las cajas de texto de otra página**.
+    Ahora se muestra una y se esconde el resto (`grid` / `grid_remove`).
+  - **El encabezado del grupo pandas se ubicaba contando celdas llenas** («la 1ª fila con
+    más de 3»), y los banners de RAYEN ya traen filas de 3: una columna más en el banner
+    del Monitoreo y el encabezado pasaba a ser una fila de filtros. Ahora es la 1ª fila
+    que resuelve las columnas REQUERIDAS, que es el ancla que cada loader ya declaraba, y
+    `indice_encabezado` dejó de caer callado a la fila 0.
+  - Y quedaron sin uso tres envoltorios que solo reenviaban (`fila_encabezado_admin` y los
+    `_fila_encabezado` del A03 y de estamentos) más el `modo` que devolvía
+    `encontrar_fila_encabezado`, constante desde que la ronda 11 borró los fallbacks
+    posicionales: la única diferencia entre formatos es qué ancla se pasa
+    (`formatos.ANCLA`). El mapa de columnas del Inscritos (`MAPA_INSCRITOS`) es uno solo y
+    vive en `rem_utils`, junto al del ADA.
 - **GUI 2.0, bug recurrente: auditoría ESTÁTICA de cada loader y filtro**
   (`docs/review_gui-2.0_pendiente.md` §1.K, ronda 10). Lo que la ronda empírica no
   alcanzó: cruces entre fuentes, casilleros que fijan el tipo y columnas opcionales.
@@ -507,7 +572,13 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   del P6, el A05 sin fechas legibles, la Estratificación sin diagnósticos, Cupos sin
   estamentos y los avisos en los resúmenes de A23/SM (el de SM, corriendo `correr`); 3 fixtures de población/A23 eran el caso cazado (nadie en la base, nadie
   en SALA) y llevan ahora un ingreso real. Más 3 de los contratos de fuentes (271) y 7
-  de la ronda 11 (278; 283 con las decisiones del autor), con 15 + 12 mutantes cazados: la firma de contenido del
+  de la ronda 11 (278; 283 con las decisiones del autor) y 13 de la ronda 12 (**296**,
+  con 11 mutantes cazados: la forma canónica de la atención y el TP contando igual en los
+  dos formatos, el ATEN ID repetido entre pacientes, el archivo con el RUN vacío escondido
+  entre varios, el opcional ilegible y el que se valida antes de leer el ADA, el `dfm=` del
+  Maestro, la re-detección del A05 al procesar, el Tab que se iba a la página oculta, una
+  cabecera por programa, el opcional con la ruta mal tecleada y el encabezado por columnas
+  requeridas), con 15 + 12 mutantes cazados antes: la firma de contenido del
   formulario SM (un Goldberg, un PSC y el Otros Crónicos reales en el casillero SM; un
   formulario renumerado), la atención multifila del Monitoreo y el RUN heredado solo
   dentro de su atención, la Estratificación con «Cantidad de Condiciones Crónicas» y sin

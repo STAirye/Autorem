@@ -110,17 +110,6 @@ PAGINAS_ESPECIALES = (
 )
 
 
-def _cabecera_sidebar(programa):
-    """Encabezado VISUAL del sidebar para `programa` -- feedback del autor
-    (sep-2026): "Salud Mental" y "Salud Mental -- Poblacion" son un solo
-    programa de salud en dos estados de VALIDACION (CLAUDE.md SS9, matriz de
-    programas), no dos secciones del sidebar. `registro.ORDEN_PROGRAMAS` los
-    sigue trackeando aparte (asi el roadmap distingue "SM estable" de
-    "SM-poblacion en validacion"); esto solo cambia como se AGRUPAN al
-    dibujar, nunca el dato de la PANTALLA."""
-    return "Salud Mental" if programa.startswith("Salud Mental") else programa
-
-
 def _grupo_colapsable(barra, titulo):
     """Cabecera de programa CLICKEABLE que colapsa/expande su contenido
     (feedback del autor, sep-2026). Devuelve el frame `contenido` donde el
@@ -232,7 +221,17 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
                 ctx[inp["key"]] = p
             else:
                 limpia = runner.limpiar_ruta(valor)   # comillas de 'Copiar como ruta'
-                ctx[inp["key"]] = Path(limpia) if limpia else None
+                if limpia:
+                    # Un opcional VACIO es legitimo; uno con una ruta mal tecleada, no:
+                    # sin esto reventaba al abrirlo, a mitad de corrida y con un
+                    # FileNotFoundError crudo («Error inesperado»). Mismo criterio que la
+                    # ruta de Cupos en sm.preparar (SS1.I.2).
+                    p = runner.valida_ruta(limpia, messagebox)
+                    if p is None:
+                        return None
+                    ctx[inp["key"]] = p
+                else:
+                    ctx[inp["key"]] = None
 
     if get_mes:
         # valida_mes y no solo `is None`: el Spinbox acota sus flechas, no lo tecleado
@@ -281,8 +280,8 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
 
 class App(ctk.CTk):
     """Ventana principal: sidebar agrupado por programa + area de contenido
-    que intercambia frames por `tkraise` (SS4 del plan: construccion PEREZOSA,
-    una pagina se arma recien la primera vez que se visita).
+    que muestra/esconde frames (SS4 del plan: construccion PEREZOSA, una
+    pagina se arma recien la primera vez que se visita; ver `mostrar`).
 
     `registro=None` -> se descubre via `gui.registro.cargar_registro()`
     (comportamiento real). Pasar una lista propia sirve para probar el shell
@@ -346,19 +345,16 @@ class App(ctk.CTk):
                 boton_especial(pid, titulo)
         separador(pady=(6, 0))
 
-        # Cabecera VISUAL, no `pantalla["programa"]` (feedback del autor,
-        # sep-2026): "Salud Mental" y "Salud Mental -- Poblacion" son un
-        # solo programa de salud en dos estados de VALIDACION (CLAUDE.md
-        # SS9, matriz de programas) -- una sola seccion en el sidebar, sin
-        # tocar `registro.ORDEN_PROGRAMAS` (que los sigue trackeando
-        # aparte, y de donde sale el orden real de iteracion aca abajo).
-        cabecera_actual = None
-        contenido = None
+        # Un grupo por `programa`, sin excepciones (ronda 12): la pagina de poblacion
+        # declaraba el programa "Salud Mental -- Poblacion" y aca habia un
+        # `_cabecera_sidebar` que lo volvia a juntar con "Salud Mental" por prefijo. El
+        # estado de VALIDACION ya es un dato de la PANTALLA (`estado: beta` -> badge
+        # [BETA]), asi que el programa aparte solo agregaba una excepcion frágil: la
+        # union dependia de que los dos quedaran PEGADOS en `ORDEN_PROGRAMAS`, y un
+        # programa nuevo que empezara con "Salud Mental" dibujaba una SEGUNDA cabecera
+        # "SALUD MENTAL" (la misma clase de bug que SS1.C-bis/ter del registro).
         for programa in programas_en_orden(self.registro):
-            cabecera = _cabecera_sidebar(programa)
-            if cabecera != cabecera_actual:
-                cabecera_actual = cabecera
-                contenido = _grupo_colapsable(barra, cabecera)
+            contenido = _grupo_colapsable(barra, programa)
             for pantalla in self.registro:
                 if pantalla["programa"] != programa:
                     continue
@@ -414,26 +410,23 @@ class App(ctk.CTk):
         ctk.set_appearance_mode(nuevo)
 
     def mostrar(self, pantalla_id):
-        """Router: construye la pagina la PRIMERA vez (perezoso) y la trae al
-        frente. Volver a una pagina ya visitada conserva sus rutas elegidas y
-        el log de la corrida anterior (no se destruye nada). Las PAGINAS
-        ESPECIALES (Inicio/Acerca de, ver modulo) no estan en `self.registro`
-        -- se resuelven aparte, contra `PAGINAS_ESPECIALES`.
+        """Router: construye la pagina la PRIMERA vez (perezoso) y la muestra. Volver a
+        una pagina ya visitada conserva sus rutas elegidas y el log de la corrida
+        anterior (no se destruye nada). Las PAGINAS ESPECIALES (Inicio/Acerca de, ver
+        modulo) no estan en `self.registro` -- se resuelven aparte, contra
+        `PAGINAS_ESPECIALES`.
 
-        `.lift()`, NO `.tkraise()` (bug encontrado a mano, sep-2026): una
-        pagina es un CTkScrollableFrame, y ESE widget sobreescribe
-        `grid()`/`pack()`/`place()`/`lift()` para operar sobre
-        `self._parent_frame` (el contenedor real del scroll+canvas) -- pero
-        NO sobreescribe `tkraise` (alias de `lift` fijado en la clase base
-        `tkinter.Misc`, asi que sigue apuntando al `lift` ORIGINAL). Llamar
-        `.tkraise()` reordena el frame de CONTENIDO interno de la pagina
-        (invisible, vive dentro de su propio canvas), no el `_parent_frame`
-        que de verdad esta gridado en `self.contenedor` -- asi que NO
-        cambia que pagina se ve. Efecto: la PRIMERA visita a cada pagina se
-        veia bien (recien gridada, Tk la deja arriba de la pila por
-        defecto), pero volver a una pagina YA construida quedaba pegada en
-        la ultima (verificado con `winfo_children()`, que SI refleja el
-        orden de la pila, antes/despues de cada llamada)."""
+        Se MUESTRA y se ESCONDE (`grid` / `grid_remove`), en vez de apilar todas las
+        paginas en la misma celda y traer una al frente (ronda 12). Con el apilado, la
+        pagina tapada seguia MAPEADA: el Tab del teclado recorre lo que esta mapeado, asi
+        que desde la pagina visible se llegaba a las cajas de texto de las OTRAS (3 de 5
+        paradas en un caso real) y lo tecleado no aparecia en ninguna parte. Y traerla al
+        frente pedia `.lift()` y no `.tkraise()`, porque `CTkScrollableFrame` sobreescribe
+        `grid`/`pack`/`place`/`lift`/`grid_remove` para operar sobre su `_parent_frame`
+        (el contenedor real del scroll+canvas) pero NO `tkraise` (alias de `lift` fijado
+        en `tkinter.Misc`): `.tkraise()` reordenaba el frame interno de la pagina, que
+        vive dentro de su propio canvas, y no cambiaba nada de lo que se ve. Sin pila no
+        hay orden que equivocar."""
         if pantalla_id not in self._frames:
             especial = next((c for pid, _t, c, _pos in PAGINAS_ESPECIALES
                              if pid == pantalla_id), None)
@@ -445,7 +438,11 @@ class App(ctk.CTk):
             else:
                 pantalla = next(p for p in self.registro if p["id"] == pantalla_id)
                 self._frames[pantalla_id] = self._construir_pagina(pantalla)
-        self._frames[pantalla_id].lift()
+        for pid, frame in self._frames.items():
+            if pid == pantalla_id:
+                frame.grid(row=0, column=0, sticky="nsew")
+            else:
+                frame.grid_remove()
         for pid, btn in self._botones_sidebar.items():
             btn.configure(fg_color=("gray75", "gray25") if pid == pantalla_id else "transparent")
 

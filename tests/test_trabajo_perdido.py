@@ -58,8 +58,16 @@ def _mk_maestro(pares, nombre="maestro.xlsx"):
     return p
 
 
+_N_AT = [0]
+
+
 def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026"):
-    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha, id=f"AT{run}{act[:3]}",
+    """Una ATENCION del ADA. El 'id' (ATEN ID) es distinto en cada llamada: en IRIS cada
+    fila es una atencion, y desde la ronda 12 `cargar_atenciones` junta las filas que
+    comparten ATEN ID (el `AT{run}{act[:3]}` de antes colisionaba entre actividades que
+    empezaban igual, y las 3 atenciones del test se volvian una)."""
+    _N_AT[0] += 1
+    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha, id=f"AT{_N_AT[0]}",
                 dg="x", tipo="Espontánea", sexo="Femenino", edad="30 años")
 
 
@@ -228,6 +236,26 @@ def test_maestro_que_no_reconoce_nada_del_mes_se_avisa():
     E = tp.procesar(ada, maestro=_mk_maestro([("Taller de salud mental comunitaria", "")]),
                     mes=(2026, 7), log=_quiet)
     assert not any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
+
+
+def test_acepta_el_maestro_ya_cargado_y_no_lo_relee():
+    """Ronda 12: la GUI tiene que abrir el Maestro cargado a mano ANTES de escribir nada
+    (para poder preguntar «¿seguir sin el?» si no sirve), y botaba el resultado para que el
+    TP lo volviera a leer: 8,6 MB y ~12 s de parseo, dos veces por corrida. `dfm=` es el
+    gemelo del `d=` del ADA."""
+    import programas.rem_utils as ru
+    ada = _mk_ada([_a("AG_Alta programa salud mental", "JUAN")])
+    dfm = ru.cargar_maestro(_mk_maestro(_MAESTRO))
+    veces = []
+    previo = ru.cargar_maestro
+    ru.cargar_maestro = lambda *a, **k: veces.append(1) or previo(*a, **k)
+    try:
+        E = tp.procesar(ada, maestro="maestro_ya_cargado.xlsx", mes=(2026, 7), log=_quiet,
+                        dfm=dfm)
+    finally:
+        ru.cargar_maestro = previo
+    assert not veces, "releyo el Maestro habiendolo recibido en dfm"
+    assert len(E) == 1 and E.iloc[0]["num_rem"].upper() == "REM-GESTION", E.attrs
 
 
 def _main():

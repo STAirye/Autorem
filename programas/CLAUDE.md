@@ -13,8 +13,8 @@ Se carga al trabajar en `programas/`. Los `§N` son las anclas del [CLAUDE.md ra
 
 | Archivo | Rol |
 |---|---|
-| `rem_utils.py` | **Base genérica.** `norm`, `buscar_col`, `encontrar_fila_encabezado` (solo por ancla; sin ancla, `ArchivoInvalido('sin_encabezado')`: desde la ronda 11 no hay fila de repuesto por posición), `ArchivoInvalido`, `VERSION`, `grid`, `rut_valido`/`dv_rut`, lectura pandas (`leer_xlsx`, robusto a la «dimension» rota **desde 1.9.17** — antes la respetaba y truncaba callado; **toda lectura `read_only` pasa por `abrir_xlsx_ro`**, nunca un `load_workbook(read_only=True)` pelado, que acota `iter_rows` a la `<dimension>` del archivo; `resolver_columnas`; `contiene_todos`/`contiene_alguno`), `marcar_demografia`, `cargar_maestro`/`maestro_rem_map`, **`filtrar_mes`** (§3.1) y **`rutas_libres`** + **`escribir_atomico`** (toda salida pasa por los dos: nunca se sobreescribe, sale `… (1).xlsx`, y se escribe a un temporal que se renombra al terminar). |
-| `formatos.py` | **Eje IRIS vs Administrativo.** Mecanismo compartido + firmas POR REPORTE (no un `detectar_formato` único): `detectar_eje`, `resolver_identidad`, `fila_encabezado_admin`. **Fase 2 — clasificar la FUENTE:** `clasificar_fuente` / `aviso_fuente`, enganchados en `cargar_canonico` (cuello de botella del grupo pandas). Tres estados: `plena` · `parcial` (no es el A/D/A; le habla al usuario) · `cambiada` (es el A/D/A pero RAYEN movió columnas; le habla al dev). La firma es negativa: claves que solo trae IRIS (`SOLO_IRIS_ATENCIONES`). También `verificar_cruce`: error específico si se cargan cruzados el ADA y el grupal. |
+| `rem_utils.py` | **Base genérica.** `norm`, `buscar_col`, `encontrar_fila_encabezado` (mundo openpyxl: solo por ancla; sin ancla, `ArchivoInvalido('sin_encabezado')` — desde la ronda 11 no hay fila de repuesto por posición, y devuelve la fila pelada: el `modo` era constante y se fue en la 12), `ArchivoInvalido`, `VERSION`, `grid`, `rut_valido`/`dv_rut`, lectura pandas (`filas_xlsx`/`leer_xlsx`, robustos a la «dimension» rota **desde 1.9.17** — antes la respetaba y truncaba callado; **toda lectura `read_only` pasa por `abrir_xlsx_ro`**, nunca un `load_workbook(read_only=True)` pelado, que acota `iter_rows` a la `<dimension>` del archivo; `resolver_columnas`; `contiene_todos`/`contiene_alguno`), los mapas de columnas COMPARTIDOS (`MAPA_ATENCIONES`, `MAPA_INSCRITOS`, `MAPA_MAESTRO`, `MAPA_MULTIPROF`), `marcar_demografia`, `cargar_maestro`/`maestro_rem_map`, **`filtrar_mes`** (§3.1) y **`rutas_libres`** + **`escribir_atomico`** (toda salida pasa por los dos: nunca se sobreescribe, sale `… (1).xlsx`, y se escribe a un temporal que se renombra al terminar). |
+| `formatos.py` | **Eje IRIS vs Administrativo.** Mecanismo compartido + firmas POR REPORTE (no un `detectar_formato` único): `detectar_eje`, `resolver_identidad`, `ANCLA[eje]` (lo único que cambia al ubicar el encabezado; el `fila_encabezado_admin` que solo reenviaba se fue en la ronda 12). **Fase 2 — clasificar la FUENTE:** `clasificar_fuente` / `aviso_fuente`, enganchados en `cargar_canonico` (cuello de botella del grupo pandas). Tres estados: `plena` · `parcial` (no es el A/D/A; le habla al usuario) · `cambiada` (es el A/D/A pero RAYEN movió columnas; le habla al dev). La firma es negativa: claves que solo trae IRIS (`SOLO_IRIS_ATENCIONES`). También `verificar_cruce`: error específico si se cargan cruzados el ADA y el grupal. |
 | `rem_saludmental.py` | **Formulario «Control de Salud Mental».** Config clínica (§7), `PERFILES` IRIS/Admin sobre `formatos.py`, motor `marcar_eventos()`. |
 | `estamentos.py` | **Funcionario → Estamento** para el formato Admin (que no trae estamento), desde el reporte «Utilización de Cupos». Caché persistente `~/.autorem/estamentos.json` + merge con el reporte fresco (gana el fresco) + failsafe: resolver a mano o ignorar. |
 | `dotacion.py` | **Funcionarios EXTERNOS** (hoy la sala AIDIA). Gemelo de `estamentos`. Tri-estado `interno`/`externo`/`desconocido`: un desconocido **cuenta** al REM, pero se reporta siempre. `~/.autorem/dotacion.json` con `funcionarios` (clasificación global) y `omitidos` (por módulo). Plan: [docs/dotacion_externos_plan.md](../docs/dotacion_externos_plan.md). |
@@ -35,11 +35,24 @@ pandas.
 Por eso los filtros posteriores al mes (`Asiste=SI`, Control/Ingreso IRA/ERA) se
 aplican **después**, sobre lo que devuelve `filtrar_mes`.
 
+Antes del mes, `cargar_canonico` corta **POR ARCHIVO** y nombrándolo (los reportes
+acumulativos se cargan de a varios años): 0 filas de datos (`exigir_filas`), columnas
+requeridas ausentes (`sin_columnas`, que es también cómo ubica el encabezado) y **columna
+clave presente pero vacía en todas las filas** (`no_vacias`, ronda 12: da el mismo 0
+callado que la ausente, y escrita a mano sobre el DataFrame concatenado dejaba pasar el
+archivo malo escondido detrás de uno bueno).
+
 - **Enganchado en:** ADA del SM, grupal, atenciones del A23, NSP y el ADA del Trabajo
   Perdido. Las opcionales **también fallan**: cargarlas fue decisión del usuario. Desde la
   ronda 11 fallan como `rem_utils.OpcionalInvalido` (con `with opcional("<param>")`), y la
   GUI pregunta «¿continuar sin él?» (`runner.sin_opcional`): si sí, re-corre sin ese
   archivo y la LEEME lo dice (`OMITIDO`). Nunca seguir callado sin él.
+  Dos reglas de la ronda 12, porque la GUI RE-CORRE: los opcionales se cargan
+  **PRIMERO** en `procesar` (la pregunta tiene que llegar antes del trabajo pesado, no
+  después del minuto de corrida) y `opcional()` convierte **solo ArchivoInvalido** —
+  atrapar `ValueError` disfrazaba un bug de código de «tu archivo no sirve», y por eso
+  todo loader de un opcional pasa por `cargar_canonico`, que además envuelve el archivo
+  ilegible (el .xls/.html disfrazado tumbaba la corrida en vez de preguntar).
 - **No se engancha a propósito en:** `om` del A23 (histórico multi-año) y en la
   **familia población**, donde el mes es un CORTE sobre un snapshot y no un filtro.
   Ahí `_verificar_cobertura_fechas` avisa sin bloquear, y los avisos van a la LEEME y
@@ -55,7 +68,11 @@ El formato se **detecta por contenido** y lo confirma el usuario (§2 raíz).
 - **IRIS:** ancla `AÑO APLICACIÓN FORMULARIO` + columna `NÚMERO … IDENTIFICACIÓN`.
 - **Administrativo:** banner `Servicio de Salud` en A1 y/o `ADMIN_MARKERS`; encabezado
   en fila 9. El IRIS de formularios también trae banner (15 filas, encabezado en la 17):
-  el encabezado se ubica **solo por el ancla** en los dos formatos.
+  el encabezado se ubica **solo por el ancla** en los dos formatos (`formatos.ANCLA`).
+  En el grupo **pandas** el ancla es otra: `cargar_canonico` toma como encabezado la 1ª
+  fila que resuelve TODAS las columnas `requeridas` del loader (`encabezado_por_columnas`).
+  Hasta la ronda 12 era «la 1ª fila con más de 3 celdas llenas» — un conteo, y los banners
+  de RAYEN ya traen filas de 3.
 - **Por contenido:** `rem_saludmental.verificar_formulario_sm` contrasta cada número de
   pregunta que se usa con lo que su encabezado dice (`FIRMA_FORMULARIO_SM`). Un
   cuestionario (Goldberg, PSC) u otro formulario RAYEN trae las mismas firmas de eje y
@@ -81,7 +98,7 @@ Es el reporte que el lado Admin ofrece **en lugar** del A/D/A: 26 columnas contr
 | `ANOS_AT` | equivalente `AÑOS` | ⚠ en IRIS `AÑOS` es la edad a la descarga (la buena es `AÑOS ATENCIÓN`); en el Monitoreo ya es a la atención. Un test fija el orden |
 | `PROF` | equivalente `FUNCIONARIO` | — |
 | `ALERTAS` `PUEBLO` `NACION` `FNAC` `FORMCLIN` | **sin equivalente** | sin demografía |
-| forma de la atención | **varias filas** (una actividad cada una, el `N°` repetido, RUN solo en la 1ª); IRIS: **una fila** con todas en `ACTIVIDADES` | la cabecera se hereda **dentro del mismo ATENID** y los indicadores con AND entre actividades miran la atención entera (`a23._act_de_la_atencion`). Hasta la ronda 11: ffill global y AND fila por fila → 6 indicadores A23 en NO callados |
+| forma de la atención | **varias filas** (una actividad cada una, el `N°` repetido, RUN solo en la 1ª); IRIS: **una fila** con todas en `ACTIVIDADES` | **se normaliza en la FUENTE** (`rem_utils._una_fila_por_atencion`): `cargar_atenciones` entrega UNA fila por atención en los dos formatos, con las actividades juntas, así que todo consumidor cuenta igual. Hasta la ronda 11: ffill global y AND fila por fila → 6 indicadores A23 en NO callados; hasta la 12 estaba a medias (ffill acá + `a23._act_de_la_atencion` en UN consumidor) y el Trabajo Perdido marcaba «saco roto» una actividad cuya hermana sí tributaba. Un ATEN ID con dos pacientes = `modificado` |
 
 **Veredicto:** A23 usable, salvo los 3 indicadores por ICD. SM: los conteos sirven, las
 columnas demográficas no. Si una clave gana equivalente admin, **hay que sacarla de

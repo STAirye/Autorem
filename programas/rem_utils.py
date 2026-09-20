@@ -83,13 +83,22 @@ class OpcionalInvalido(ArchivoInvalido):
 
 @contextlib.contextmanager
 def opcional(entrada):
-    """`with opcional("inscritos"): tmap = trans_map(ruta)` -> un ArchivoInvalido o
-    ValueError del bloque sale como OpcionalInvalido(entrada)."""
+    """`with opcional("inscritos"): tmap = trans_map(ruta)` -> un ArchivoInvalido del
+    bloque sale como OpcionalInvalido(entrada).
+
+    SOLO ArchivoInvalido (ronda 12). Hasta 1.9.17 tambien atrapaba ValueError, porque
+    `trans_map`, `atenid_multiprofesional` y `_guard_maestro` señalaban "este archivo no
+    sirve" con un ValueError pelado. Ahora esos tres pasan por `cargar_canonico` y
+    levantan ArchivoInvalido como todos los demas, asi que seguir atrapando ValueError
+    solo servia para disfrazar un BUG de codigo (un ValueError de pandas dentro del
+    bloque, que en el A23 abarca tambien el procesamiento de la Seccion H) como "tu
+    archivo opcional no sirve, ¿seguimos sin el?": el usuario contestaba que si y
+    perdia una desagregacion por un bug nuestro, con la LEEME culpando a su archivo."""
     try:
         yield
     except OpcionalInvalido:
         raise
-    except (ArchivoInvalido, ValueError) as e:
+    except ArchivoInvalido as e:
         raise OpcionalInvalido(entrada, e) from e
 
 
@@ -152,19 +161,23 @@ def num_pregunta(header):
 def encontrar_fila_encabezado(ws, ancla, max_filas=60):
     """Ubica la fila del encabezado real saltando el banner y los filtros que RAYEN pone
     arriba: la 1ª fila que contiene TODOS los tokens de `ancla` (match por substring).
-    Sin ancla -> ArchivoInvalido('sin_encabezado'). Devuelve (fila_encabezado_1based, modo).
+    Sin ancla -> ArchivoInvalido('sin_encabezado'). Devuelve la fila (1-based).
 
     Hasta la ronda 11 (sep-2026) habia dos fallbacks POSICIONALES detras del ancla: «la
     fila siguiente a la 1ª con la columna A vacia» y un numero fijo de fila (16 en IRIS,
     8 en el Administrativo), para el export al que le borraron el encabezado. Los dos
     devolvian una fila de DATOS como encabezado y seguian: se armaron antes de tener
-    refs_tablas/ y, con la deteccion por contenido, ya no tenian caso."""
+    refs_tablas/ y, con la deteccion por contenido, ya no tenian caso. (Devolvia tambien
+    un `modo` que decia CUAL de los tres habia acertado; sin fallbacks era la constante
+    'ancla', y se saco en la ronda 12 junto con los envoltorios `fila_encabezado_admin`
+    y los `_fila_encabezado` del A03 y de estamentos: la unica diferencia entre formatos
+    es QUE ancla se pasa, y eso ya lo dice `formatos.ANCLA`.)"""
     tope = min(ws.max_row, max_filas)
     ancla_n = [norm(t) for t in ancla]
     for r in range(1, tope + 1):
         vals = [norm(c.value) for c in ws[r]]
         if all(any(tok in v for v in vals) for tok in ancla_n):
-            return r, "ancla"
+            return r
     raise ArchivoInvalido(
         "sin_encabezado",
         f"No encuentro la fila de encabezado del export (busqué una fila con: "
@@ -215,24 +228,26 @@ def primeras_filas(entrada, n):
 
 
 def indice_encabezado(filas, ancla=None, max_scan=40):
-    """Indice de la fila de encabezado dentro de `filas` (0 si ninguna calza).
+    """Indice de la fila de encabezado dentro de `filas`, o None si ninguna calza.
     `ancla` = nombres de columna que deben estar TODOS en esa fila; sin ancla, la 1ª
     fila con >3 celdas llenas. Fuente UNICA del criterio: la usan `leer_xlsx` y el
-    preview de cruce del SM, que antes lo copiaba a mano."""
+    preview de cruce del SM, que antes lo copiaba a mano.
+
+    Devolvia 0 (la 1ª fila, o sea el banner) cuando ninguna calzaba -- un fallback
+    POSICIONAL callado, de la misma familia que los que la ronda 11 saco de
+    `encontrar_fila_encabezado`. Ahora devuelve None y decide quien llama (ronda 12)."""
     if ancla:
         want = {norm(a) for a in ancla}
-        return next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), 0)
+        return next((i for i, r in enumerate(filas[:max_scan]) if want <= {norm(v) for v in r}), None)
     return next((i for i, r in enumerate(filas[:max_scan])
-                 if sum(v not in (None, "") for v in r) > 3), 0)
+                 if sum(v not in (None, "") for v in r) > 3), None)
 
 
-def leer_xlsx(entrada, ancla=None, max_scan=40):
-    """Lee un .xlsx con openpyxl y devuelve (headers, filas_de_datos). ROBUSTO a
-    la 'dimension' rota o ausente de los exports copy-paste / de BD: lee con
-    `abrir_xlsx_ro`, que la descarta (hasta 1.9.17 NO lo era: la respetaba y
-    truncaba en silencio -- ver ahi). `ancla` = nombres de columna que deben
-    estar TODOS en la fila de encabezado; si es None, toma la 1ª fila con >3
-    celdas llenas."""
+def filas_xlsx(entrada):
+    """TODAS las filas (tuplas de valores) de la hoja activa de un .xlsx. ROBUSTO a la
+    'dimension' rota o ausente de los exports copy-paste / de BD: lee con
+    `abrir_xlsx_ro`, que la descarta (hasta 1.9.17 NO lo era: la respetaba y truncaba en
+    silencio -- ver alla). Hoja sin NINGUNA fila -> ArchivoInvalido."""
     wb = abrir_xlsx_ro(entrada)
     try:
         filas = filas_hoja(wb.active)
@@ -243,8 +258,56 @@ def leer_xlsx(entrada, ancla=None, max_scan=40):
             "sin_datos",
             "La hoja del archivo esta completamente vacia (ni siquiera trae el "
             "encabezado).\n\nVuelve a descargar el export desde RAYEN/IRIS.")
+    return filas
+
+
+def leer_xlsx(entrada, ancla=None, max_scan=40):
+    """Lee un .xlsx y devuelve (headers, filas_de_datos). `ancla` = nombres de columna
+    que deben estar TODOS en la fila de encabezado; si es None, toma la 1ª fila con >3
+    celdas llenas. Sin fila de encabezado -> ArchivoInvalido('sin_encabezado').
+
+    Los lectores del grupo pandas NO pasan por aca: `cargar_canonico` ubica el
+    encabezado por las columnas que el propio loader declara REQUERIDAS
+    (`encabezado_por_columnas`), que es un ancla de verdad y no un conteo de celdas."""
+    filas = filas_xlsx(entrada)
     hi = indice_encabezado(filas, ancla, max_scan)
+    if hi is None:
+        raise ArchivoInvalido(
+            "sin_encabezado",
+            "No encuentro la fila de encabezado (nombres de columna) en las primeras "
+            f"{max_scan} filas del archivo"
+            + (f", buscando: {', '.join(ancla)}" if ancla else "") + ".\n\n"
+            "¿Le borraste o editaste el encabezado? Carga el archivo tal como sale de "
+            "RAYEN/IRIS, con su banner y su fila de nombres de columna.")
     return list(filas[hi]), filas[hi + 1:]
+
+
+def encabezado_por_columnas(filas, resolver, requeridas, max_scan=40):
+    """Ubica el encabezado por las columnas que el loader NECESITA: la 1ª fila en que
+    `resolver(fila)` resuelve TODAS las claves `requeridas`. Devuelve
+    (indice, {canon: columna}, faltan): con `indice` None no hubo ninguna, y `faltan`
+    son las claves que le faltaban a la fila que MAS resolvio (la candidata a ser el
+    encabezado con una columna renombrada), para poder decirlo en el error.
+
+    POR QUE (ronda 12): el criterio viejo era «la 1ª fila con >3 celdas llenas», o sea
+    un conteo, y los banners de RAYEN ya traen filas de 3 celdas -- una sola columna mas
+    en el banner del Monitoreo y el encabezado pasaba a ser una fila de filtros. El ancla
+    real es lo que el loader declara en `requeridas`, y no hace falta declararla dos
+    veces. Solo se le pasa el resolver a las filas con al menos tantas celdas llenas como
+    claves requeridas (el encabezado las tiene por definicion): asi el costo sigue siendo
+    una llamada o dos por archivo, no 40."""
+    minimo = max(2, len(requeridas))
+    mejor = (None, None, list(requeridas))
+    for i, r in enumerate(filas[:max_scan]):
+        if sum(v not in (None, "") for v in r) < minimo:
+            continue
+        col = resolver(list(r))
+        faltan = [k for k in requeridas if not col.get(k)]
+        if not faltan:
+            return i, col, []
+        if len(faltan) < len(mejor[2]):
+            mejor = (i, col, faltan)
+    return None, mejor[1], mejor[2]
 
 
 def exigir_filas(filas, fuente):
@@ -377,13 +440,25 @@ MAPA_ATENCIONES = {
 }
 
 
-def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
+def cargar_canonico(entrada, resolver, requeridas, no_vacias=(), solo_iris=None,
                     log=print, espera=None):
     """Lee UNO o VARIOS .xlsx (los reportes acumulativos necesitan varios años) y
     arma el DataFrame canónico concatenado. `resolver(headers) -> {canon: columna}`.
-    `requeridas` = claves canónicas que DEBEN resolverse en CADA archivo; si a alguno
-    le faltan, levanta ArchivoInvalido NOMBRANDO ese archivo (los módulos multi-archivo
-    así saben CUÁL falló). Devuelve (df, col_del_primero).
+    `requeridas` = claves canónicas que DEBEN resolverse en CADA archivo; ubican el
+    ENCABEZADO (`encabezado_por_columnas`) y, si a algún archivo le faltan, levanta
+    ArchivoInvalido NOMBRANDO ese archivo (los módulos multi-archivo así saben CUÁL
+    falló). Devuelve (df, col_del_primero); `df.attrs['columnas_por_archivo']` trae
+    [(nombre, {canon: columna}), ...] para quien necesite la resolución POR ARCHIVO
+    (el 'Otros Crónicos' la usa para sus avisos; antes se la llevaba con un efecto
+    secundario dentro del propio `resolver`, que ahora se llama varias veces).
+
+    `no_vacias` = claves que, además de resolverse, tienen que traer ALGÚN valor en
+    CADA archivo. Una columna clave presente pero VACÍA en todas las filas es el mismo
+    bug que la columna ausente y da el mismo 0 callado (ronda 11, §1.L.7): la guarda
+    estaba escrita a mano en seis loaders, y en dos de ellos sobre el DataFrame ya
+    CONCATENADO -- así que un archivo con el RUN entero en blanco, cargado junto a uno
+    bueno, pasaba sin decir nada y sus filas se perdían (o se juntaban bajo un paciente
+    fantasma). Acá es POR ARCHIVO, como `exigir_filas` (ronda 12).
 
     `solo_iris` = claves que SOLO trae el export IRIS pleno (ej.
     `formatos.SOLO_IRIS_ATENCIONES`). Si se pasan, clasifica la FUENTE y deja el
@@ -406,7 +481,7 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
         nombre = Path(str(e)).name
         try:
             verificar_hoja_unica(e)      # rechaza exports modificados (datos en >1 hoja)
-            hdr, filas = leer_xlsx(e, ancla=ancla)
+            todas = filas_xlsx(e)
         except ArchivoInvalido as ai:    # p.ej. 'modificado' -> agrega el nombre del archivo
             raise ArchivoInvalido(ai.categoria, f"Archivo «{nombre}»:\n\n{ai}") from ai
         except Exception as ex:          # openpyxl/zip/etc. -> no es un .xlsx legible
@@ -414,33 +489,46 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
                 "no_legible",
                 f"No pude leer el archivo:\n«{nombre}»\n\n{ex}\n\n"
                 "¿Es un .xlsx válido (no .xls/.csv/.html) y sin modificar?") from ex
+        # El encabezado se ubica por las columnas REQUERIDAS, no por un conteo de celdas
+        # llenas (ver `encabezado_por_columnas`): el mismo chequeo resuelve donde empieza
+        # la tabla y si el archivo trae lo que el loader necesita.
+        hi, col, faltan = encabezado_por_columnas(todas, resolver, requeridas)
+        hdr = list(todas[hi if hi is not None else 0])
+        if hi is None:
+            # Antes del mensaje generico: si el archivo es claramente el OTRO
+            # reporte del par ADA/grupal, decirlo. Solo se consulta cuando ya
+            # falla -> cero riesgo de falso positivo sobre un archivo valido.
+            if espera:
+                from programas import formatos
+                formatos.verificar_cruce(hdr, espera, nombre)
+            raise ArchivoInvalido(
+                "sin_columnas",
+                f"No reconozco el archivo:\n«{nombre}»\n\n"
+                f"No encuentro las columnas: {', '.join(faltan)}.\n\n"
+                "¿Está SIN la fila de encabezado (nombres de columna) o modificado? "
+                "Cárgalo tal como sale de RAYEN/IRIS, sin editar.")
+        filas = todas[hi + 1:]
         # Fail loud sobre la FUENTE (CLAUDE.md regla 2) y POR ARCHIVO: con 0 filas
         # las columnas quedan float64 y .str.contains() revienta abajo con un error
         # criptico (o el conteo sale 0 en silencio). Unico cuello de botella del grupo
         # pandas -> cubre ADA, grupal, Inscritos, NSP y 'Otros y Respi'.
         exigir_filas(filas, f"el archivo «{nombre}»")
-        col = resolver(hdr)
-        if requeridas:
-            faltan = [k for k in requeridas if not col.get(k)]
-            if faltan:
-                # Antes del mensaje generico: si el archivo es claramente el OTRO
-                # reporte del par ADA/grupal, decirlo. Solo se consulta cuando ya
-                # falla -> cero riesgo de falso positivo sobre un archivo valido.
-                if espera:
-                    from programas import formatos
-                    formatos.verificar_cruce(hdr, espera, nombre)
-                raise ArchivoInvalido(
-                    "sin_columnas",
-                    f"No reconozco el archivo:\n«{nombre}»\n\n"
-                    f"No encuentro las columnas: {', '.join(faltan)}.\n\n"
-                    "¿Está SIN la fila de encabezado (nombres de columna) o modificado? "
-                    "Cárgalo tal como sale de RAYEN/IRIS, sin editar.")
         col0 = col0 or col
         cols_por_archivo.append((nombre, col))
         idx = {c: i for i, c in enumerate(hdr)}
         parte = pd.DataFrame(
             {k: [f[idx[c]] if c is not None and idx[c] < len(f) else None for f in filas]
              for k, c in col.items()})
+        # Columna clave PRESENTE pero vacia en todas las filas = el mismo 0 callado que
+        # la columna ausente, y POR ARCHIVO (ver el docstring).
+        vacias = [k for k in no_vacias if not parte[k].map(norm).ne("").any()]
+        if vacias:
+            raise ArchivoInvalido(
+                "sin_datos",
+                f"Archivo «{nombre}»:\n\nTrae {len(filas)} fila(s), pero la(s) "
+                f"columna(s) {', '.join(f'«{col.get(k) or k}»' for k in vacias)} vienen VACÍAS en "
+                "todas ellas, así que no se puede atribuir ninguna fila.\n\n"
+                "Revisa que sea el export completo, sin modificar.")
         # ATENID por CORRELATIVO ('N°' del Monitoreo) reinicia en 1 en cada export:
         # concatenar dos archivos fusionaria atenciones distintas bajo el mismo id y
         # el conteo por-atencion SUBCONTARIA en silencio. Se namespacea con el nombre
@@ -450,6 +538,7 @@ def cargar_canonico(entrada, ancla, resolver, requeridas=None, solo_iris=None,
             parte["ATENID"] = nombre + "|" + parte["ATENID"].astype(str)
         partes.append(parte)
     d = pd.concat(partes, ignore_index=True) if len(partes) > 1 else partes[0]
+    d.attrs["columnas_por_archivo"] = cols_por_archivo
     if solo_iris:
         from programas import formatos
         gravedad = {formatos.FUENTE_PLENA: 0, formatos.FUENTE_CAMBIADA: 1,
@@ -499,39 +588,96 @@ def fecha_col(serie, log=print, etiqueta="fecha"):
     return parsed
 
 
-def cargar_atenciones(entrada, log=print):
-    """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico +
-    textos normalizados (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
+# Separador con que el A/D/A de IRIS junta en UNA celda las actividades de una misma
+# atención. Al colapsar el Monitoreo se usa el mismo, para que la celda ACTIVIDADES
+# tenga la misma forma en los dos formatos.
+SEP_ACTIVIDADES = "; "
+
+# Columnas de CABECERA de la atención (las que el Monitoreo trae solo en su fila padre).
+# Lo que NO está acá es por-actividad: ACT y DIAG (se unen) y ATENID (es la clave).
+CAB_ATENCION = ["RUN", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACION",
+                "EMIG", "ALERTAS", "FORMCLIN", "PUEBLO", "FNAC", "NOMBRES", "APAT",
+                "AMAT", "ANOS", "ANOS_AT"]
+
+
+def _una_fila_por_atencion(d, log=print):
+    """Forma CANÓNICA de las atenciones: UNA fila por atención, con todas sus
+    actividades (y diagnósticos) en una celda, como las entrega el A/D/A de IRIS.
+
+    El Monitoreo admin usa estructura PADRE-HIJO: una atención abierta en varias filas,
+    una actividad cada una, con la cabecera solo en la 1ª y el 'N°' repetido en las hijas
+    (§5.1 de programas/CLAUDE.md). Eso no es una diferencia de CONTENIDO sino de FORMA, y
+    es de la FUENTE: normalizarla acá es lo que hace que los dos formatos den el MISMO
+    número, en todos los consumidores y en los que vengan.
+
+    Hasta 1.9.17 estaba resuelta a medias (ronda 12): la cabecera se rellenaba acá con un
+    ffill dentro del ATENID, y el resto quedaba a cargo de UN consumidor
+    (`a23._act_de_la_atencion`, para los indicadores con AND entre actividades). Los demás
+    seguían viendo una fila por actividad: el Trabajo Perdido marcaba «saco roto» una
+    actividad cuya hermana de la misma atención SÍ tributaba (0 desde IRIS, 1 desde el
+    Monitoreo, con los mismos datos) y contaba actividades donde su tabla dice
+    «atenciones»; y la evidencia del diálogo de dotación inflaba `n_atenciones`."""
     import pandas as pd
+    aten = d["ATENID"].map(norm)
+    dup = aten.ne("") & aten.duplicated(keep=False)
+    if not dup.any():
+        return d      # IRIS, o un Monitoreo sin atenciones de 2+ actividades: ya está
+    # Las filas sin ATENID (o con uno único) NO se pueden agrupar: cada una es su grupo.
+    solas = pd.Series([f"\x00fila{i}" for i in range(len(d))], index=d.index)
+    clave = aten.where(dup, solas)
+    # Antes de juntar nada: el ATENID tiene que identificar UNA atención, o sea UN
+    # paciente. Si el mismo id aparece con RUN distintos no es un id de atención, y
+    # juntar esas filas mezclaría a dos personas en una -- callado. Fail loud (regla 2).
+    run = d["RUN"].map(norm)
+    con_run = run.ne("")
+    por_grupo = run[con_run].groupby(clave[con_run]).nunique()
+    mezclados = por_grupo[por_grupo > 1]
+    if len(mezclados):
+        raise ArchivoInvalido(
+            "modificado",
+            f"El export de atenciones trae {len(mezclados)} identificador(es) de atención "
+            "(ATEN ID / N°) repetidos entre pacientes DISTINTOS, así que ese número no "
+            "identifica una atención y no se puede contar por atención.\n\n"
+            "¿El archivo fue modificado, o no es el reporte de Atenciones? Vuelve a "
+            "descargarlo desde RAYEN/IRIS y cárgalo tal cual.")
+
+    def _juntar(s):      # ACT / DIAG: todas las de la atención, sin repetir
+        vals = [str(v).strip() for v in s if norm(v) != ""]
+        return SEP_ACTIVIDADES.join(dict.fromkeys(vals)) if vals else None
+
+    def _primero(s):     # cabecera: el 1er valor no vacío del grupo (= el de la fila padre)
+        vals = [v for v in s if norm(v) != ""]
+        return vals[0] if vals else (s.iloc[0] if len(s) else None)
+
+    agg = {c: (_juntar if c in ("ACT", "DIAG") else _primero) for c in d.columns}
+    attrs = dict(d.attrs)   # groupby().agg() no conserva attrs (fuente, columnas_por_archivo)
+    out = d.groupby(clave, sort=False).agg(agg).reset_index(drop=True)
+    out.attrs.update(attrs)
+    log(f"[atenciones] {len(d)} filas -> {len(out)} atenciones (el Monitoreo abre cada "
+        "atencion en una fila por actividad; se juntan para contar igual que IRIS)")
+    return out
+
+
+def cargar_atenciones(entrada, log=print):
+    """Export(s) de ATENCIONES (IRIS ó Monitoreo admin) -> DataFrame canónico, UNA FILA
+    POR ATENCIÓN en los dos formatos (`_una_fila_por_atencion`), + textos normalizados
+    (act/diag/instr/tipo) + FECHA parseada. Ruta o lista."""
     from programas.formatos import SOLO_IRIS_ATENCIONES
-    d, col = cargar_canonico(entrada, None, lambda h: resolver_columnas(h, MAPA_ATENCIONES),
-                             requeridas=("RUN", "FECHA", "ACT", "DIAG", "INSTR", "TIPO"),
+    # ATENID es requerida: es la unidad de conteo del ADA (el SM dedup por ella, el TP
+    # cuenta atenciones, y el Monitoreo se colapsa por ella). Sin la columna, `id` queda
+    # None en todas las filas y el `drop_duplicates` del SM dejaba UNA fila por casilla.
+    d, col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_ATENCIONES),
+                             requeridas=("RUN", "ATENID", "FECHA", "ACT", "DIAG",
+                                         "INSTR", "TIPO"),
+                             no_vacias=("RUN", "ATENID"),
                              solo_iris=SOLO_IRIS_ATENCIONES, log=log, espera="ada")
-    # Monitoreo admin: estructura PADRE-HIJO — una atención se abre en varias filas
-    # de actividad, con RUN y datos de cabecera SOLO en la 1ª (el 'N°' SÍ se repite en
-    # las hijas, confirmado por el autor). Se rellena la cabecera a las filas HIJAS
-    # (RUN vacío) DENTRO DE SU MISMA ATENCIÓN (ATENID). Hasta la ronda 11 el relleno era
-    # un ffill global que no miraba ni el formato ni la atención: en IRIS una fila sin
-    # RUN heredaba el RUN del paciente de la fila anterior, de OTRA atención.
-    cab = ["RUN", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACION",
-           "EMIG", "ALERTAS", "FORMCLIN", "PUEBLO", "FNAC", "NOMBRES", "APAT",
-           "AMAT", "ANOS", "ANOS_AT"]
-    child = d["RUN"].replace("", pd.NA).isna()
-    if child.any():
-        dd = d[cab].replace("", pd.NA)
-        aten = d["ATENID"].replace("", pd.NA)
-        d[cab] = dd.where(~child, dd.groupby(aten).ffill())
-        huerfanas = int(d["RUN"].isna().sum())
-        if huerfanas == len(d):
-            # Fail loud sobre la FUENTE: filas, pero ninguna de ningun paciente.
-            raise ArchivoInvalido(
-                "sin_datos",
-                f"El export de atenciones trae {len(d)} fila(s), pero ninguna con RUN "
-                "(la columna del RUN viene vacia en todas).\n\nRevisa que sea el export "
-                "completo, sin modificar.")
-        if huerfanas:
-            log(f"[atenciones] {huerfanas} fila(s) sin RUN y sin una fila de su misma "
-                "atencion de la cual heredarlo: no se atribuyen a ningun paciente.")
+    d = _una_fila_por_atencion(d, log)
+    # Atención sin RUN en NINGUNA de sus filas: no se puede atribuir a un paciente. (Que
+    # TODAS vengan sin RUN lo corta `cargar_canonico` con `no_vacias`, por archivo.)
+    huerfanas = int(d["RUN"].map(norm).eq("").sum())
+    if huerfanas:
+        log(f"[atenciones] {huerfanas} atencion(es) sin RUN en ninguna de sus filas: no "
+            "se atribuyen a ningun paciente.")
     d["FECHA"] = fecha_col(d["FECHA"], log, "FECHA atención")
     for k in ("ACT", "DIAG", "INSTR", "TIPO"):
         d[k + "_n"] = d[k].map(norm)
@@ -567,6 +713,28 @@ def exigir_estamento(d):
             "RAYEN/IRIS y cargalo tal cual.")
 
 
+# -- Informe Inscritos y Adscritos (IRIS: padrón del centro, snapshot) ----
+# Compartido: lo leen `trans_map` (flag TRANS del SM) y `poblacion.cargar_inscritos`
+# (base de la tabla Ferrada). Vivía en poblacion.py y trans_map resolvía las mismas
+# columnas por su cuenta (ronda 12).
+MAPA_INSCRITOS = {
+    "RUN":          [("exact", "NUMERO TIPO IDENTIFICACION"), ("exact", "RUN")],
+    "TIPOID":       ("exact", "TIPO IDENTIFICACION"),
+    "SEXO":         ("exact", "SEXO"),
+    "GENERO":       ("exact", "GENERO"),
+    "FNAC":         ("exact", "FECHA DE NACIMIENTO"),
+    "EDADANOS":     ("exact", "EDAD AÑOS"),
+    "SITUACION":    ("exact", "SITUACION"),
+    "ESTADO":       ("exact", "ESTADO"),
+    "FPASIV":       ("exact", "FECHA PASIVACION"),
+    "MPASIV":       ("exact", "MOTIVO PASIVACION"),
+    "SECTOR":       ("exact", "SECTOR"),
+    "ALERTAS":      ("subs", ["ALERTAS", "ADMINISTRATIVAS"]),
+    "PUEBLO":       ("exact", "PUEBLO INDIG"),
+    "NACIONALIDAD": ("exact", "NACIONALIDAD"),
+}
+
+
 # -- Maestro de Actividades (catálogo RAYEN: actividad <-> estamento <-> casilla REM) --
 # Referencia transversal (no solo SM): mapea cada actividad a su NUM REM oficial. Una
 # fila por (actividad × instrumento). Banner en fila 1 -> ancla en la fila de headers.
@@ -591,17 +759,18 @@ def cargar_maestro(entrada):
     ent = str(entrada).lower()
     if ent.endswith((".csv", ".gz", ".csv.gz")):
         raw = pd.read_csv(entrada, dtype=str, keep_default_na=False)   # compresión inferida
-        hdr = list(raw.columns)
-        col = resolver_columnas(hdr, MAPA_MAESTRO)
+        col = resolver_columnas(list(raw.columns), MAPA_MAESTRO)
         _guard_maestro(col)
         d = pd.DataFrame({k: (raw[c] if c is not None else "") for k, c in col.items()})
     else:
-        hdr, filas = leer_xlsx(entrada, ancla=["ACTIVIDAD", "INSTRUMENTO ASOCIADO", "NUM REM"])
-        col = resolver_columnas(hdr, MAPA_MAESTRO)
-        _guard_maestro(col)
-        idx = {c: i for i, c in enumerate(hdr)}
-        d = pd.DataFrame({k: [f[idx[c]] if c is not None and idx[c] < len(f) else None
-                              for f in filas] for k, c in col.items()})
+        # Por `cargar_canonico` como cualquier otra planilla del usuario (ronda 12): así
+        # hereda el encabezado por columnas requeridas, la guarda de 0 filas, la de hoja
+        # única y -- lo que importaba -- el «no es un .xlsx legible» como ArchivoInvalido.
+        # Leyéndolo con `leer_xlsx` a mano, un .xls/.html disfrazado salía como
+        # `BadZipFile`, que `rem_utils.opcional` no reconoce: el Maestro cargado a mano es
+        # un input OPCIONAL, y la GUI tiene que poder preguntar «¿seguir sin él?».
+        d, _col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_MAESTRO),
+                                  requeridas=("ACT", "NUMREM"), no_vacias=("ACT",))
     d = d[d["ACT"].map(lambda x: x not in (None, ""))].copy()
     if len(d) == 0:
         raise ArchivoInvalido("sin_datos", "El Maestro de Actividades no trae ninguna fila "
@@ -612,9 +781,14 @@ def cargar_maestro(entrada):
 
 
 def _guard_maestro(col):
+    """Guarda del Maestro SLIM (el .xlsx pasa por `cargar_canonico`, que ya la hace).
+    ArchivoInvalido y no ValueError (ronda 12): es un archivo que no sirve, y el Maestro
+    se carga como OPCIONAL -- `opcional()` solo convierte ArchivoInvalido."""
     if not col["ACT"] or not col["NUMREM"]:
-        raise ValueError("No reconozco el Maestro de Actividades (faltan 'ACTIVIDAD' "
-                         "y/o 'NUM REM'). ¿Es el archivo correcto?")
+        raise ArchivoInvalido(
+            "sin_columnas",
+            "No reconozco el Maestro de Actividades (faltan 'ACTIVIDAD' y/o 'NUM REM'). "
+            "¿Es el archivo correcto?")
 
 
 # -- Grilla de agregación edad×sexo (tablas REM copy-paste; SM · A23 · A03) --
@@ -896,48 +1070,42 @@ def trans_map(entrada):
     La direccion (M/F) alimenta el split TRANS Masculino/Femenina del template.
     Archivo ENORME (toda la poblacion del CESFAM) -> se carga solo si el usuario lo
     aporta. SEXO es obligatorio igual que GENERO: sin el, la via implicita se
-    perderia en silencio."""
-    hdr, filas = leer_xlsx(entrada)
-    hn = [norm(h) for h in hdr]
-    i_run = indice_col(hn, "NUMERO", "IDENTIFICACION")
-    if i_run is None:
-        i_run = indice_col(hn, "RUN")
-    i_gen = indice_col(hn, "GENERO")
-    i_sex = indice_col(hn, "SEXO")
-    faltan = [c for c, i in [("RUN", i_run), ("GÉNERO", i_gen), ("SEXO", i_sex)] if i is None]
-    if faltan:   # archivo modificado o reporte equivocado
-        raise ValueError(f"el 'Informe Inscritos' no trae la(s) columna(s) {' y '.join(faltan)}. "
-                         "¿Está modificado o es otro reporte? Descárgalo de nuevo SIN tocar.")
-    exigir_filas(filas, "el 'Informe Inscritos y Adscritos'")
-    filas = [f for f in filas if i_run < len(f) and str(f[i_run] or "").strip()]
-    if not filas:   # filas, pero ninguna persona: TRANS en 0 con cara de dato (ronda 11)
-        raise ValueError("el 'Informe Inscritos' no trae ningun RUN (la columna viene vacia "
-                         "en todas las filas). ¿Está modificado? Descárgalo de nuevo SIN tocar.")
+    perderia en silencio.
+
+    Por `cargar_canonico` y con `MAPA_INSCRITOS` (ronda 12): es el MISMO export que lee
+    `poblacion.cargar_inscritos`, y tenia su propia resolucion de columnas a mano, sus
+    propias guardas y sus propios ValueError -- o sea que cada guarda nueva habia que
+    acordarse de escribirla dos veces, y un .xls disfrazado no llegaba como
+    ArchivoInvalido (la GUI no podia preguntar «¿seguir sin el?»)."""
+    d, _col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_INSCRITOS),
+                              requeridas=("RUN", "SEXO", "GENERO"), no_vacias=("RUN",))
     out = {}
-    for f in filas:
-        t = trans_de(f[i_sex] if i_sex < len(f) else "", f[i_gen] if i_gen < len(f) else "")
+    for run, sexo, genero in zip(d["RUN"], d["SEXO"], d["GENERO"]):
+        if norm(run) == "":
+            continue
+        t = trans_de(sexo, genero)
         if t:
-            out[str(f[i_run]).strip()] = t
+            out[str(run).strip()] = t
     return out
+
+
+# Reporte 'Monitoreo Multiprofesional' (IRIS): composición de las VDI del A26.
+MAPA_MULTIPROF = {
+    "ATENID": [("subs", ["ATEN", "ID"]), ("subs", ["ATENCION", "ID"])],
+    "MULTI1": ("subs", ["MULTIPROFESIONAL", "1"]),   # no vacía = hubo 2º profesional
+}
 
 
 def atenid_multiprofesional(entrada):
     """Set de ATEN ID MULTIPROFESIONALES (2+ profesionales), del reporte 'Monitoreo
     Multiprofesional': la columna 'Multiprofesional-1' no vacía = tuvo >=1 profesional
     adicional. Sirve para marcar composición (Un Profesional vs Dos o Más). Opcional:
-    sin este reporte, todo se asume mono-profesional."""
-    hdr, filas = leer_xlsx(entrada)
-    hn = [norm(h) for h in hdr]
-    i_aten, i_m1 = indice_col(hn, "ATEN", "ID"), indice_col(hn, "MULTIPROFESIONAL", "1")
-    if i_aten is None or i_m1 is None:
-        raise ValueError("el 'Monitoreo Multiprofesional' no trae ATEN ID / "
-                         "Multiprofesional-1. ¿Modificado o reporte equivocado?")
-    exigir_filas(filas, "el 'Monitoreo Multiprofesional'")
-    filas = [f for f in filas if i_aten < len(f) and str(f[i_aten] or "").strip()]
-    if not filas:   # sin ATEN ID no cruza con nada: A26 todo 'Un Profesional' (ronda 11)
-        raise ValueError("el 'Monitoreo Multiprofesional' no trae ningun ATEN ID (la columna "
-                         "viene vacia en todas las filas). ¿Modificado o reporte equivocado?")
-    return {str(f[i_aten]).strip() for f in filas if i_m1 < len(f) and norm(f[i_m1])}
+    sin este reporte, todo se asume mono-profesional. Por `cargar_canonico` desde la
+    ronda 12 (ver `trans_map`)."""
+    d, _col = cargar_canonico(entrada, lambda h: resolver_columnas(h, MAPA_MULTIPROF),
+                              requeridas=("ATENID", "MULTI1"), no_vacias=("ATENID",))
+    return {str(a).strip() for a, m in zip(d["ATENID"], d["MULTI1"])
+            if norm(a) != "" and norm(m) != ""}
 
 
 def gestante_runs(d, ini, fin):

@@ -21,9 +21,11 @@ gui/paginas/poblacion.py - SP.P6 A.1 + Rescate de Inasistentes: paso 9 del plan.
 Portada de autorem.py._tab_beta sin tocar la logica (docs/GUI_2.0_plan.md SS4,
 CLAUDE.md SS12): la pestaña "BETA" desaparece como programa -- BETA es un
 ESTADO de una pantalla (badge en el sidebar, `estado: "beta"`), no un programa
-de salud, y esta pantalla pasa a vivir en su propio grupo del sidebar
-("Salud Mental -- Poblacion", CLAUDE.md SS9 matriz de programas) hasta que la
-familia poblacion salga de validacion (modulos/CLAUDE.md SS2.1).
+de salud. Su programa es "Salud Mental", el mismo que A05 y Actividades: en la
+matriz de CLAUDE.md SS9 la familia poblacion figura aparte porque esta EN
+VALIDACION (modulos/CLAUDE.md SS2.1), y eso es justo lo que dice `estado`. Tuvo
+un grupo propio en el sidebar ("Salud Mental -- Poblacion") y `gui/app.py` lo
+volvia a juntar por prefijo: una excepcion que se fue en la ronda 12.
 
 Los 3 inputs + mes + carpeta caben en el contrato ESTANDAR (a diferencia de
 A05): "mes" siempre es un CORTE puntual (nunca "archivo completo", a
@@ -122,7 +124,7 @@ def resumen(res):
 
 PANTALLA = {
     "id": "sp_p6_poblacion",
-    "programa": "Salud Mental — Población",
+    "programa": "Salud Mental",
     "titulo": "Población en control",
     "estado": "beta",
     "instrucciones": instrucciones,

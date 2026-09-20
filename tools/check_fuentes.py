@@ -51,11 +51,12 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 CARPETAS = ("programas", "modulos", "gui")
 LECTORES = {"cargar_canonico", "leer_xlsx", "load_workbook", "abrir_xlsx_ro", "read_excel",
-            "read_csv", "primeras_filas", "filas_hoja"}
+            "read_csv", "primeras_filas", "filas_hoja", "filas_xlsx"}
 # Primitivas compartidas por TODOS los lectores: tocar una corre todos los contratos.
 TRANSVERSALES = {f"programas/rem_utils.py::{f}" for f in (
-    "abrir_xlsx_ro", "filas_hoja", "leer_xlsx", "primeras_filas", "verificar_hoja_unica",
-    "indice_encabezado", "cargar_canonico", "exigir_filas", "exigir_filas_ws",
+    "abrir_xlsx_ro", "filas_hoja", "filas_xlsx", "leer_xlsx", "primeras_filas",
+    "verificar_hoja_unica", "indice_encabezado", "encabezado_por_columnas",
+    "cargar_canonico", "_una_fila_por_atencion", "exigir_filas", "exigir_filas_ws",
     "resolver_columnas", "fecha_col", "filtrar_mes")}
 # Lectores que NO leen un export del usuario, con su motivo (no llevan contrato).
 EXENTOS = {

@@ -42,7 +42,6 @@ import pkgutil
 # registradas simplemente no aparece.
 ORDEN_PROGRAMAS = (
     "Salud Mental",
-    "Salud Mental — Población",
     "Respiratorio",
     "Dependencia / Domiciliaria",
     "Cardiovascular",

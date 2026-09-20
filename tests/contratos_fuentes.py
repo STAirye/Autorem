@@ -13,6 +13,8 @@ la ataca con las formas del bug recurrente de c38a8cc (revision gui-2.0, rondas 
   C1  solo el encabezado (0 filas)                   -> ArchivoInvalido, no AttributeError/0
   C3  una columna critica renombrada                 -> ArchivoInvalido, nunca un fallback
   C4  filas, pero la columna clave vacia en todas    -> ArchivoInvalido ("vacio TRAS filtrar")
+  C4b lo mismo, en UNO de DOS archivos cargados      -> ArchivoInvalido (la guarda es POR
+                                                        ARCHIVO, no sobre el concatenado)
   C5  todas las fechas ilegibles                     -> ArchivoInvalido, no NaT callado
   C6  una columna EXTRA al inicio (todo corrido 1)  -> el MISMO resultado (caza el fallback
                                                         POR POSICION, como la col 11 del A05)
@@ -63,6 +65,7 @@ class Contrato:
     banner: tuple = ()      # sin `ref`: filas sobre el encabezado
     criticas: tuple = ()    # C3: renombrar cada una tiene que fallar
     clave: tuple = ()       # C4: vacias en todas las filas tiene que fallar
+    multiarchivo: bool = False   # C4b: `llamar` acepta una LISTA de rutas (histórico)
     fechas: tuple = ()      # C5: ilegibles en todas las filas tiene que fallar
     extra: tuple = ()       # X: (etiqueta, [filas]) que tienen que fallar
     errores: tuple = (ArchivoInvalido,)   # excepciones que cuentan como "fallo claro"
@@ -133,9 +136,10 @@ def no_vacia(x):
 
 # -- Arnes ----------------------------------------------------------------
 def _debe_fallar(c, ruta):
-    """(estado, detalle): OK si levanta uno de `c.errores`."""
+    """(estado, detalle): OK si levanta uno de `c.errores`. `ruta` puede ser una LISTA
+    (C4b), para los contratos que aceptan varios archivos."""
     try:
-        c.llamar(str(ruta))
+        c.llamar([str(r) for r in ruta] if isinstance(ruta, list) else str(ruta))
     except c.errores as e:
         return "OK", f"{type(e).__name__}({getattr(e, 'categoria', '')})"
     except Exception as e:   # noqa: BLE001
@@ -179,6 +183,14 @@ def chequear(c):
         f4 = dict(c.fila, **{k: "" for k in c.clave})
         res.append((f"C4 {'/'.join(c.clave)} vacia",
                     *_debe_fallar(c, escribir(carpeta / "c4.xlsx", banner, hdr, [f4, f4], pisos))))
+        if c.multiarchivo:
+            # La guarda tiene que ser POR ARCHIVO: escrita sobre el DataFrame ya
+            # concatenado, el archivo malo pasaba escondido detras del bueno y sus filas
+            # se perdian calladas (ronda 12).
+            bueno = escribir(carpeta / "c4b_ok.xlsx", banner, hdr, [c.fila], pisos)
+            malo = escribir(carpeta / "c4b_malo.xlsx", banner, hdr, [f4, f4], pisos)
+            res.append((f"C4b {'/'.join(c.clave)} vacia en 1 de 2 archivos",
+                        *_debe_fallar(c, [bueno, malo])))
     if c.fechas:
         f5 = dict(c.fila, **{k: "no es fecha" for k in c.fechas})
         res.append((f"C5 {'/'.join(c.fechas)} ilegible",
@@ -330,10 +342,8 @@ def _ru():
 
 
 _ATENCIONES = ("programas/rem_utils.py::cargar_atenciones", "programas/rem_utils.py::cargar_canonico",
-               "modulos/rem_a23_respiratorio.py::_act_de_la_atencion")
-# Los opcionales del SM levantan ValueError a proposito: el modulo lo vuelve un log/aviso
-# y sigue sin esa desagregacion (TRANS, composicion A26). Cuenta como fallo CLARO.
-_OPCIONAL = (ArchivoInvalido, ValueError)
+               "programas/rem_utils.py::_una_fila_por_atencion",
+               "programas/rem_utils.py::encabezado_por_columnas")
 
 
 _A05 = ("programas/rem_saludmental.py::abrir_validado", "programas/rem_saludmental.py::_preparar",
@@ -352,6 +362,7 @@ CONTRATOS = [
               "SITUACION": "Inscrito", "ESTADO": "Activo", "SECTOR": "Norte"},
         criticas=("NUMERO TIPO IDENTIFICACION", "SEXO", "ESTADO", "SITUACION"),
         clave=("NUMERO TIPO IDENTIFICACION",),
+        multiarchivo=True,
     ),
     Contrato(
         id="poblacion.cargar_formulario_sm",
@@ -364,6 +375,7 @@ CONTRATOS = [
               "18.- ¿ TIENE  DEPRESIÓN ?": "SI", "19.- ESTADO": "INGRESO"},
         criticas=("NUMERO TIPO IDENTIFICACION", "FECHA FORMULARIO", "INSTRUMENTO"),
         clave=("NUMERO TIPO IDENTIFICACION",),
+        multiarchivo=True,
         # C5: las fechas ilegibles las corta construir_poblacion (_verificar_cobertura_
         # fechas), no el loader; ahi tienen su test (test_sp_p6).
     ),
@@ -422,6 +434,7 @@ CONTRATOS = [
         criticas=("NUMERO TIPO IDENTIFICACION", "FECHA ATENCION", "INSTRUMENTO"),
         clave=("NUMERO TIPO IDENTIFICACION",),
         fechas=("FECHA ATENCION",),
+        multiarchivo=True,
     ),
     Contrato(
         id="a23.cargar_estrat",
@@ -467,6 +480,7 @@ CONTRATOS = [
         criticas=("RUT", "Fecha Formulario", "Funcionario"),
         clave=("RUT",),
         fechas=("Fecha Formulario",),
+        multiarchivo=True,
         valida=lambda od: bool(od["_med"].all()),   # el estamento salio del funcionario
     ),
     Contrato(
@@ -494,6 +508,7 @@ CONTRATOS = [
                   "INSTRUMENTO", "TIPO ATENCION"),
         clave=("NUMERO TIPO IDENTIFICACION",),
         fechas=("FECHA ATENCION",),
+        multiarchivo=True,
     ),
     Contrato(
         id="rem_utils.cargar_atenciones (Monitoreo)",
@@ -508,6 +523,7 @@ CONTRATOS = [
                   "INSTRUMENTO", "TIPO DE ATENCIÓN"),
         clave=("RUN",),
         fechas=("FECHA CONSULTA",),
+        multiarchivo=True,
     ),
     Contrato(
         id="rem_utils.trans_map",
@@ -517,7 +533,6 @@ CONTRATOS = [
         fila={"NUMERO TIPO IDENTIFICACION": RUT, "SEXO": "Mujer", "GENERO": "Masculino"},
         criticas=("NUMERO TIPO IDENTIFICACION", "SEXO", "GENERO"),
         clave=("NUMERO TIPO IDENTIFICACION",),
-        errores=_OPCIONAL,
     ),
     Contrato(
         id="rem_utils.atenid_multiprofesional",
@@ -528,7 +543,6 @@ CONTRATOS = [
               "Multiprofesional-1": "LUIS SOTO"},
         criticas=("ATEN ID", "Multiprofesional-1"),
         clave=("ATEN ID",),
-        errores=_OPCIONAL,
     ),
     Contrato(
         id="rem_utils.cargar_maestro",
@@ -544,7 +558,6 @@ CONTRATOS = [
               "NUM REM": "REM-A06", "NUM SECCION": "A"},
         criticas=("ACTIVIDAD", "NUM REM"),
         clave=("ACTIVIDAD",),
-        errores=_OPCIONAL,   # _guard_maestro: ValueError, el TP cae a la heuristica y lo avisa
     ),
     Contrato(
         id="estamentos.cargar_estamentos",

@@ -39,20 +39,29 @@ Nota de lenguaje: acá "perfil"/"eje" = formato del export. NO confundir con los
 "perfiles" de usuario de RAYEN (permisos de la plataforma), que no tienen relación.
 
 Qué es compartido y qué es por-reporte:
-  - COMPARTIDO: vocabulario del eje (banner/markers/tokens de identidad), la lógica
-    `detectar_eje`, la resolución RUT/edad/sexo (`resolver_identidad`) y la ubicación
-    del encabezado ADMIN por su ancla (`fila_encabezado_admin`).
+  - COMPARTIDO: vocabulario del eje (banner/markers/tokens de identidad y el ANCLA del
+    encabezado de cada formato), la lógica `detectar_eje` y la resolución RUT/edad/sexo
+    (`resolver_identidad`).
   - POR-REPORTE: las anclas/markers que identifican ESE reporte. Los dos formatos
     traen banner arriba (el IRIS de formularios, 15 filas) y el encabezado se ubica
     SOLO por el ancla: nunca por un número de fila.
+
+Para ubicar el encabezado se llama directo a `rem_utils.encontrar_fila_encabezado` con
+`ANCLA[eje]`. Había un `fila_encabezado_admin` (y un `_fila_encabezado` propio en el A03
+y en estamentos) que solo reenviaban: quedaron como envoltorios vacíos cuando la ronda 11
+borró los fallbacks posicionales, porque la única diferencia entre formatos es QUÉ ancla
+se pasa (ronda 12).
 """
 
-from programas.rem_utils import (norm, buscar_col, encontrar_fila_encabezado,
-                                 ArchivoInvalido)
+from programas.rem_utils import norm, buscar_col, ArchivoInvalido
 
 # -- Vocabulario del eje (firmas RAYEN estándar del formulario clínico) --
 ANCLA_IRIS   = ["AÑO", "APLICACION", "FORMULARIO"]      # encabezado IRIS
 ANCLA_ADMIN  = ["EDAD", "REGISTRO", "FORMULARIO"]       # encabezado Administrativo (fila 9)
+# Ancla del encabezado POR EJE: lo único que cambia entre formatos al ubicarlo
+# (`rem_utils.encontrar_fila_encabezado(ws, ANCLA[eje])`). Un reporte con su propia
+# ancla (estamentos, 'Utilización de Cupos') la pasa él.
+ANCLA = {"iris": ANCLA_IRIS, "administrativo": ANCLA_ADMIN}
 ADMIN_BANNER = "SERVICIO DE SALUD"                      # A1 del Administrativo
 ADMIN_MARKERS = ["NUMERO DE FICHAS", "EDAD DE REGISTRO FORMULARIO", "FECHA FORMULARIO"]
 MAX_FILAS_HEADER = 60                                   # tope del barrido de firmas
@@ -216,13 +225,6 @@ def aviso_fuente(estado, ausentes, consecuencia, casilla="Fuente de datos", arch
             f"Parece el IRIS pero le faltan columnas que antes traia: {faltan}. "
             f"O RAYEN cambio el export, o el archivo fue editado. {consecuencia}{mezcla}",
             "Avisar al dev: hay que actualizar MAPA_ATENCIONES / SOLO_IRIS_ATENCIONES")
-
-
-def fila_encabezado_admin(ws, ancla=ANCLA_ADMIN, max_filas=MAX_FILAS_HEADER):
-    """Ubica el encabezado en un export ADMINISTRATIVO por su ancla. `ancla` por si el
-    reporte tiene su propia (ej. 'Utilización de Cupos' usa Profesional/Instrumento).
-    Devuelve (fila_idx, modo); sin ancla, ArchivoInvalido."""
-    return encontrar_fila_encabezado(ws, ancla, max_filas)
 
 
 # -- Cruce de reportes: el ADA en la casilla del grupal, o al revés -----

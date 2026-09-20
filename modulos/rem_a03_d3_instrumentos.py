@@ -136,12 +136,10 @@ _ORDEN_DETECCION = ["PSC-Y", "GHQ-12", "PSC"]
 NOMBRE_HOJA_SALIDA = "A03_D3_Instrumentos"
 
 
-# -- Localización de encabezado / detección de instrumento -------------
-def _fila_encabezado(ws, formato):
-    """Ubica el header por el ancla de cada formato (los dos traen banner arriba)."""
-    if formato == "administrativo":
-        return formatos.fila_encabezado_admin(ws)
-    return encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
+# -- Detección de instrumento ------------------------------------------
+# (El encabezado lo ubica `encontrar_fila_encabezado(ws, formatos.ANCLA[formato])`: los
+# dos formatos traen banner arriba y solo cambia el ancla. Había un `_fila_encabezado`
+# que elegía entre dos llamadas equivalentes; se fue en la ronda 12.)
 
 
 def detectar_instrumento(ws, formato, header_idx, headers_norm):
@@ -188,7 +186,8 @@ def abrir_validado(entrada):
             "desconocido",
             "No reconozco este archivo como un export RAYEN (ni IRIS ni "
             "Administrativo). Descárgalo de nuevo sin modificarlo.")
-    header_idx, _ = _fila_encabezado(ws, formato)
+    header_idx = encontrar_fila_encabezado(ws, formatos.ANCLA[formato],
+                                           formatos.MAX_FILAS_HEADER)
     headers_norm = [norm(ws.cell(row=header_idx, column=c).value)
                     for c in range(1, ws.max_column + 1)]
     if not (buscar_col(headers_norm, tokens=["PUNTAJE"]) and

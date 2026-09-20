@@ -410,8 +410,8 @@ def abrir_validado(entrada, perfil):
 def _preparar(ws, perfil, log):
     """Ubica encabezado (según el perfil) y detecta las columnas compartidas
     (RUT/edad/sexo/género + demografía). Devuelve un dict de contexto."""
-    header_idx, modo = encontrar_fila_encabezado(ws, perfil["ancla"], MAX_FILAS_BUSQUEDA_HEADER)
-    log(f"[corte] perfil={perfil['id']} modo={modo} | encabezado en fila {header_idx} "
+    header_idx = encontrar_fila_encabezado(ws, perfil["ancla"], MAX_FILAS_BUSQUEDA_HEADER)
+    log(f"[corte] perfil={perfil['id']} | encabezado en fila {header_idx} "
         f"(la hoja original NO se modifica)")
     # Fail loud sobre la FUENTE (CLAUDE.md regla 2): un export con solo el encabezado
     # daria 0 eventos con cara de resultado legitimo (un mes sin ingresos SI existe,

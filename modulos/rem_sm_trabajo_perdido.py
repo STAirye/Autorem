@@ -259,16 +259,19 @@ def _por_funcionario(E):
     return pd.DataFrame(filas).sort_values("N a saco roto", ascending=False, ignore_index=True)
 
 
-def procesar(ada, maestro=None, mes=None, log=print, d=None):
+def procesar(ada, maestro=None, mes=None, log=print, d=None, dfm=None):
     """Standalone: carga el ADA (+ Maestro opcional) y analiza. `ada` = ruta o lista.
     `maestro` = 'Maestro de Actividades' (opcional; sin él, todo por heurística).
     `mes` = (año, mes) o None (mes anterior). `d` = ADA ya cargado (para leer el ADA
-    UNA sola vez cuando lo comparte con el módulo de actividades)."""
+    UNA sola vez cuando lo comparte con el módulo de actividades), y `dfm` = el Maestro
+    ya cargado, su gemelo: el Maestro completo de RAYEN son 8,6 MB y ~12 s de parseo, y
+    la GUI ya lo tiene que abrir ANTES de escribir nada para poder preguntar «¿seguir sin
+    él?» si no sirve (ronda 12: lo abría, botaba el resultado, y acá se abría de nuevo)."""
     from pathlib import Path
     d = cargar_atenciones(ada, log=log) if d is None else d
     rem_map = None
     if maestro is not None:
-        dfm = cargar_maestro(maestro)
+        dfm = cargar_maestro(maestro) if dfm is None else dfm
         rem_map = maestro_rem_map(dfm)
         log(f"[tp] Maestro: {len(rem_map)} actividades clasificadas por RAYEN")
     ini, fin = _rango_mes(mes)
