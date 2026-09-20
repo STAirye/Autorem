@@ -143,11 +143,11 @@ def _cargar_manual(nombre, root, refrescar):
         return
     messagebox.showinfo(
         "Cargado",
-        f"'{nombre}': {len(d)} fila(s) leídas de {Path(ruta).name}.\n\n"
-        "Vale SOLO para esta sesión — se pierde al cerrar autoREM (persistirlo entre "
-        "sesiones es trabajo de main, no de esta rama, ver CLAUDE.md §12).\n\n"
-        "Ojo: ningún módulo REM consulta todavía los catálogos DEIS (pendiente en "
-        "CLAUDE.md §12), así que por ahora esto no cambia ningún resultado.")
+        (f"'{nombre}': {len(d)} fila(s) leídas de {Path(ruta).name}.\n"
+         f"\n"
+         f"Vale SOLO para esta sesión — se pierde al cerrar autoREM.\n"
+         f"\n"
+         f"Ojo: ningún módulo REM consulta todavía los catálogos DEIS, así que por ahora esto no cambia ningún resultado."))
     refrescar()
 
 
@@ -190,8 +190,7 @@ def _bloque_catalogos(frame, root):
             return
         if not fuentes:
             widgets.etiqueta_envolvente(
-                contenido, "No encuentro catalogos/FUENTES.json — revisa que el "
-                "empaquetado incluya la carpeta catalogos/ (CLAUDE.md §11)."
+                contenido, "No encuentro catalogos/FUENTES.json — revisa que el empaquetado incluya la carpeta catalogos."
             ).pack(fill="x")
             return
         for nombre, meta in fuentes.items():
@@ -221,11 +220,11 @@ def _bloque_catalogos(frame, root):
             from tkinter import messagebox
             ok = messagebox.askyesno(
                 "Modo avanzado",
-                "Esto te deja cargar un .xlsx distinto para un catálogo DEIS (cie10 / "
-                "eno / ges).\n\nHazlo SOLO si sabes exactamente qué edición estás "
-                "cargando: hoy ningún módulo REM consulta estos catálogos todavía, "
-                "pero cuando eso se conecte (CLAUDE.md §12), el catálogo cargado es el "
-                "que se usa.\n\n¿Continuar?")
+                ("Esto te deja cargar un .xlsx distinto para un catálogo DEIS (cie10 / eno / ges).\n"
+                 "\n"
+                 "Hazlo SOLO si sabes exactamente qué edición estás cargando: hoy ningún módulo REM consulta estos catálogos todavía, pero cuando eso se conecte, el catálogo cargado es el que se usa.\n"
+                 "\n"
+                 "¿Continuar?"))
             if not ok:
                 var_avanzado.set(False)
                 return
@@ -262,19 +261,12 @@ def _fila_maestro(caja):
 
 
 _PREFERENCIAS_TXT = (
-    "autoREM recuerda entre meses quién es EXTERNO a tu dotación y la tabla de estamentos "
-    "(«Utilización de Cupos»), en la carpeta de arriba. Si te vuelve a preguntar todo cada "
-    "mes, o te avisa que no pudo leer o guardar:\n"
-    "1.  Cierra las otras ventanas de autoREM: dos abiertas a la vez pueden pisarse.\n"
-    "2.  Mira la línea «Carpeta» de arriba: si dice que NO se puede escribir, en un PC "
-    "institucional suele ser una restricción de TI sobre tu perfil. Pídeles permiso de "
-    "escritura en esa carpeta.\n"
-    "3.  Si al iniciar sesión Windows dijo «Iniciaste sesión con un perfil temporal», todo "
-    "lo que se guarde se pierde al cerrar sesión, sin ningún error. Avísale a TI.\n"
-    "4.  Un archivo «…corrupto-FECHA.json» en la carpeta es una copia dañada que autoREM "
-    "apartó para no perderla ni leerla mal. Puedes borrarlo.\n"
-    "Mientras tanto cada corrida sale bien, pero OJO: si te vuelve a preguntar por gente que "
-    "ya habías marcado como externa, márcala de nuevo -- sin tick cuenta como interna.")
+    ("autoREM recuerda entre meses quién es EXTERNO a tu dotación y la tabla de estamentos («Utilización de Cupos»), en la carpeta de arriba. Si te vuelve a preguntar todo cada mes, o te avisa que no pudo leer o guardar:\n"
+     "1.  Cierra las otras ventanas de autoREM: dos abiertas a la vez generan error de escritura.\n"
+     "2.  Mira la línea «Carpeta» de arriba: si dice que NO se puede escribir, no tienes permisos para guardar. En un PC institucional suele ser una restricción de Informática sobre tu perfil. Pídeles permiso de escritura en esa carpeta, o corre el programa desde una carpeta que puedas guardar.\n"
+     "3.  Si al iniciar sesión Windows dijo «Iniciaste sesión con un perfil temporal», todo lo que se guarde se pierde al cerrar sesión, sin ningún error. Puedes correr el programa desde un disco extraíble (pendrive).\n"
+     "4.  Un archivo «…corrupto-FECHA.json» en la carpeta es una copia dañada que autoREM apartó para no perderla ni leerla mal. Puedes borrarlo.\n"
+     "Mientras tanto cada corrida sale bien, pero OJO: si te vuelve a preguntar por gente que ya habías marcado como externa, márcala de nuevo -- sin tick cuenta como interna."))
 
 
 def _resumen_cache(nombre, ruta, contar):
@@ -350,10 +342,8 @@ def construir(frame, app):
     caja_creditos.pack(fill="x", pady=(0, 8))
     widgets.etiqueta_envolvente(
         caja_creditos,
-        "Simón Tobar — médico APS, CESFAM Dr. Luis Ferrada Urzúa (SSMC).\n"
-        "El código de esta herramienta se escribió con asistencia de modelos de IA "
-        "(Claude, Anthropic); el autor revisó, modificó e integró cada archivo "
-        "(detalle en el encabezado de cada uno).\n"
-        f"Código de fuente: {REPO_URL}\n"
-        f"Contacto / reportar un problema: {REPO_URL}"
+        (f"Simón Tobar Vergara — Médico General, Universidad de Chile. Programa propio, desarrollado mientras trabajaba en CESFAM Dr. Luis Ferrada Urzúa (SSMC).\n"
+         f"El código de esta herramienta se escribió con asistencia de modelos de IA (Claude, Anthropic); el autor revisó, modificó e integró cada archivo (detalle en el encabezado de cada uno).\n"
+         f"Código de fuente: {REPO_URL}\n"
+         f"Contacto / reportar un problema: {REPO_URL}")
     ).pack(fill="x", padx=8, pady=(2, 8))

@@ -483,6 +483,7 @@ def test_un_opcional_con_la_ruta_mal_tecleada_se_avisa_al_apretar_procesar():
     import tkinter.messagebox as mb
     from gui.app import _resolver_ctx
     from gui.registro import cargar_registro
+    from gui import runner
 
     pantalla = next(p for p in cargar_registro() if p["id"] == "a23_respiratorio")
     aten = _TMP / "aten_opc.xlsx"
@@ -500,7 +501,7 @@ def test_un_opcional_con_la_ruta_mal_tecleada_se_avisa_al_apretar_procesar():
         dichos.clear()
         ctx = _resolver_ctx(pantalla, getters(str(_TMP / "no_existe.xlsx")),
                             lambda: (2026, 8), lambda: str(_TMP))
-        assert ctx is None and dichos == ["No encontrado"], dichos
+        assert ctx is None and dichos == [runner.TITULO_NO_ENCONTRADO], dichos
     finally:
         for f, v in previos.items():
             setattr(mb, f, v)
@@ -993,7 +994,7 @@ def test_a05_detecta_el_formato_del_archivo_que_hay_AL_PROCESAR():
         shutil.copy(_fixture_admin(), ruta)
         dichos.clear()
         ctx = dict(ctx, archivo=get())
-        assert a05.preparar(ctx, pagina) is None and dichos == ["Falta el acuse"], (
+        assert a05.preparar(ctx, pagina) is None and dichos == [a05.TITULO_FALTA_ACUSE], (
             f"no re-detecto el formato del archivo nuevo: {dichos}")
     finally:
         for f, v in previos.items():

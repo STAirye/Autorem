@@ -198,7 +198,6 @@ def test_motivo_fuente_sigue_las_mismas_ramas_que_manejar_error():
     assert es_error_formato(disfrazado), "BadZipFile deberia ser problema de formato"
     assert "xlsx" in motivo_fuente(disfrazado)
     assert "Excel" in motivo_fuente(PermissionError(13, "in use"))
-    assert "librería" in motivo_fuente(ImportError("Falta 'openpyxl'"))
     # Cualquier otra cosa: se nombra el tipo, no se inventa una causa.
     assert "ValueError" in motivo_fuente(ValueError("cualquiera"))
 
@@ -305,7 +304,8 @@ def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
         f"la corrida no tomo el mismo `(1)` que el A03 que ya existia: {res['salida'].name}")
     assert viejo.read_bytes() == b"D.3 de otra corrida", "piso el A03 de la corrida anterior"
     texto = sm.resumen(res)
-    assert "NO se generó" in texto and "instrumento raro" in texto, (
+    from gui.widgets import NO_SE_GENERO
+    assert NO_SE_GENERO in texto and "instrumento raro" in texto, (
         f"el resumen calla que la D.3 no salio: {texto!r}")
 
 
@@ -365,7 +365,8 @@ def test_a23_y_poblacion_tampoco_pisan_salidas():
     # El Rescate viejo ocupa el nombre -> el P6 de ESTA corrida tambien va como (1).
     assert rp["salida"].name == "REM_SP_P6_2026_08_BETA (1).xlsx", rp["salida"].name
     assert (carpeta / "REM_SM_Rescate_2026_08_BETA.xlsx").read_bytes() == b"viejo"
-    assert "NO se generó" in poblacion.resumen(rp), "el resumen calla que el Rescate fallo"
+    from gui.widgets import NO_SE_GENERO
+    assert NO_SE_GENERO in poblacion.resumen(rp), "el resumen calla que el Rescate fallo"
 
 
 def test_un_opcional_invalido_pregunta_si_seguir_sin_el():

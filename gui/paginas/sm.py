@@ -55,21 +55,24 @@ import customtkinter as ctk
 from gui import widgets, dialogos, runner
 
 instrucciones = (
-    "Tabula las ACTIVIDADES de Salud Mental (estadística, sin juicio clínico) -> tablas\n"
-    "listas para copiar-pegar al template SA_26. Cubre A04·A24, A06·A.1 (controles +\n"
-    "psicosocial grupal), A19a·A.3 (consejerías familiares SM/demencia), A26 (VDI SM),\n"
-    "A27 (educación prev. SM) y A32·F (acciones/controles remotos SM).\n"
-    "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  ->  casi todas las casillas.\n"
-    "2.  Atenciones Grupales  ->  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
-    "3.  Inscritos y Adscritos (opcional, ENORME)  ->  solo para el flag TRANS (género).\n"
-    "4.  Maestro de Actividades (opcional)  ->  clasifica el reporte extra de TRABAJO PERDIDO:\n"
-    "     actividades con 'mental'/'demencia' que NO tributan al REM + qué funcionario las registra.\n"
-    "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
-    "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
-    "Para el flag GESTANTE se usa una ventana de 3 MESES -> carga el ADA de los últimos 3 meses.\n"
-    "\n"
-    "¿Solo necesitas los cuestionarios A03·D.3? Marca la casilla de más abajo y NO cargues\n"
-    "ni ADA ni Grupal: corre solo esa tabla (reemplaza a la vieja pestaña A03 standalone)."
+    ("Tabula las ACTIVIDADES de Salud Mental (estadística). La salida son  tablas\n"
+     "listas para copiar-pegar al template SA_26. \n"
+     "Cubre A04·A24 (consultas medicas SM), A06·A.1 (controles +\n"
+     "grupal), A19a·A.3 (consejerías), A26 (VDI SM),\n"
+     "A27 (educación SM) y A32·F (acciones/controles remotos SM).\n"
+     "Requerimientos: \n"
+     "1.  Atenciones / Diagnósticos / Actividades (ADA, IRIS)  ->  casi todas las casillas.\n"
+     "2.  Atenciones Grupales (IRIS) ->  A06 psicosocial grupal, A19a grupal y A27 (educación).\n"
+     "3.  Inscritos y Adscritos (IRIS, ARCHIVO PESADO)  ->  para el flag TRANS (género). (como es informacion sensible de paciente, el programa NO puede guardar memoria de esto)\n"
+     "4.  Maestro de Actividades (opcional)  ->  clasifica el reporte extra de TRABAJO PERDIDO:\n"
+     "     actividades realizadas con 'mental'/'demencia' que NO tributan al REM + qué funcionario las registra.\n"
+     "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
+     "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
+     "Para el flag GESTANTE se necesita una ventana de 3 MESES -> carga el ADA de al menos los últimos 3 meses. Si se carga menos, quedara incompleto.\n"
+     "\n"
+     "¿Solo necesitas los cuestionarios A03·D.3? Marca la casilla de más abajo y NO cargues\n"
+     "ni ADA ni Grupal: corre solo esa tabla.\n"
+     "@claude no estan las instruciones de como sacar esos cuestionarios: Son formualrios como el control de salud mental, cada uno con su nombre que creo lo dejamos hardcodeado en alguna parte. Hay que agregarlo en un estilo muy similar al de las instrucciones de como obtener el control de salud mental.")
 )
 
 
@@ -277,10 +280,7 @@ def correr(ctx, log):
         res["salida"] = salida
 
         if not maestro:
-            log("[tp] Maestro de Actividades NO encontrado (ni cargado a mano, ni "
-                "embebido en el .exe): el Trabajo Perdido usa SOLO la heurística "
-                "(mask_tributa_ada), menos preciso. Para embeberlo, reconstruye el .exe "
-                "con --add-data del maestro_slim.csv.gz (CLAUDE.md SS11) o déjalo junto al .exe.")
+            log("[tp] Maestro de Actividades NO encontrado (ni cargado a mano, ni embebido en el .exe): el Trabajo Perdido usa SOLO la heurística (mask_tributa_ada), menos preciso. Para agregarlo, reconstruye el .exe con --add-data del maestro_slim.csv.gz o déjalo junto al .exe.")
         # Try propio: un fallo aca (p.ej. Monitoreo admin sin 'PROFESIONAL ATENCION')
         # no debe tumbar el SM, que ya se guardo arriba.
         try:
@@ -371,11 +371,11 @@ def resumen(res):
     rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
     tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco roto." if res["n_tp"] is not None else ""
     if res.get("fallo_tp"):
-        tptxt = f"\nTrabajo perdido: NO se generó ({res['fallo_tp']})."
+        tptxt = f"\nTrabajo perdido: {widgets.NO_SE_GENERO} ({res['fallo_tp']})."
     a03txt = (f"\nA03·D.3: {res['n_a03']} aplicaciones{_por_instrumento(res)}."
               if res["n_a03"] is not None else "")
     if res.get("fallo_a03"):
-        a03txt = (f"\nA03·D.3: NO se generó ({res['fallo_a03']}). Ningún archivo "
+        a03txt = (f"\nA03·D.3: {widgets.NO_SE_GENERO} ({res['fallo_a03']}). Ningún archivo "
                   f"REM_A03_D3 de esta carpeta es de esta corrida.")
     avisos = list(E.attrs.get("avisos") or []) + list(res.get("avisos_a03") or [])
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"

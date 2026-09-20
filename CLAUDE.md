@@ -22,6 +22,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 | 2.1 · 3 · 6 · 7 | familia población, pipeline A05, demografía, decisiones SM | [modulos/CLAUDE.md](modulos/CLAUDE.md) |
 | 3.1 · 5 · 5.1 · 14 | filtro de mes, formatos IRIS/Admin, Monitoreo, catálogos DEIS | [programas/CLAUDE.md](programas/CLAUDE.md) |
 | 8 · 10.1 · 11 | privacidad en detalle + hooks, worktrees, build del `.exe` | [tools/CLAUDE.md](tools/CLAUDE.md) |
+| — | convenciones de tests (no comparar texto plano de la GUI) | [tests/CLAUDE.md](tests/CLAUDE.md) |
 | 4 | historia v1.2–1.6 | [CHANGELOG.md](CHANGELOG.md) |
 
 > 🔎 **¿Vas a REVISAR la rama `gui-2.0` (code-review)?** Lee primero
@@ -119,7 +120,7 @@ refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
 .claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes
 legacy/           monolitos viejos (no se importan; referencia de equivalencia)
-tests/            pruebas automáticas
+tests/            pruebas automáticas        -> tests/CLAUDE.md
 docs/             planes y contexto por módulo
   evanesced/        scripts de repro de ramas/worktrees ya cerrados (§0 regla 7)
 ```

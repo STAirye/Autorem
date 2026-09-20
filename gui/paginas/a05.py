@@ -47,13 +47,13 @@ from programas.rem_utils import mes_anterior
 from gui import widgets, runner
 
 instrucciones = (
-    "1.  Descarga el Excel del formulario «Control de Salud Mental»:\n"
-    "     A) IRIS: Formularios RAYEN -> Control de Salud Mental -> todos los metacampos, Situación TODOS, Estado AMBOS.\n"
-    "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
-    "2.  Elige el archivo: el formato (IRIS / Administrativo) se detecta solo.\n"
-    "3.  Elige el PERÍODO: archivo completo, o un mes puntual (por FECHA FORMULARIO).\n"
-    "4.  Marca la(s) TAREA(s) y «Procesar» -> «…_procesado.xlsx» con una hoja por tarea.\n"
-    "     Tu archivo original NO se modifica."
+    ("1.  Descarga el Excel del formulario «Control de Salud Mental»:\n"
+     "     A) IRIS: Formularios RAYEN -> Elije rango de Fecha -> Control de Salud Mental -> Todos los metacampos, Situación TODOS, Estado AMBOS.\n"
+     "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
+     "2.  Elige el archivo: el formato (IRIS / Administrativo) se detecta solo.\n"
+     "3.  Elige el PERÍODO: archivo completo, o un mes puntual (por FECHA FORMULARIO).\n"
+     "4.  Marca la(s) TAREA(s) y «Procesar» -> «…_procesado.xlsx» con una hoja por tarea.\n"
+     "     Tu archivo original NO se modifica.")
 )
 
 
@@ -256,7 +256,7 @@ def preparar(ctx, pagina):
         return None
     if categoria == "administrativo" and not archivo["acuse"]:
         messagebox.showwarning(
-            "Falta el acuse", "Marca la casilla que confirma que entiendes que las "
+            TITULO_FALTA_ACUSE, "Marca la casilla que confirma que entiendes que las "
             "columnas demográficas saldrán vacías (formato Administrativo).")
         return None
 
@@ -295,6 +295,9 @@ def correr(ctx, log):
 def resumen(res):
     from autorem import _resumen_texto
     return _resumen_texto(res["resultados"], res["salida"])
+
+
+TITULO_FALTA_ACUSE = "Falta el tick de reconocimiento"   # los tests lo comparan
 
 
 PANTALLA = {

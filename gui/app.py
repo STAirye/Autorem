@@ -398,9 +398,9 @@ class App(ctk.CTk):
         nunca un resultado roto con nombre de resultado."""
         if self._corridas and not messagebox.askyesno(
                 "Hay una corrida en curso",
-                "autoREM todavía está procesando. Si cierras ahora, la corrida se corta "
-                "y su resultado NO se guarda (a lo más queda un «….escribiendo.xlsx» a "
-                "medio escribir, que puedes borrar).\n\n¿Cerrar igual?",
+                ("autoREM todavía está procesando. Si cierras ahora, su resultado NO se guarda (queda un «….escribiendo.xlsx» a medio escribir).\n"
+                 "\n"
+                 "¿Cerrar igual?"),
                 icon="warning", default="no"):
             return
         self.destroy()
@@ -621,9 +621,7 @@ class App(ctk.CTk):
                         banner = datos.get("banner_fuente")
                         if banner is not None:
                             banner.ocultar()
-                        log("[fuente] cambiaste un archivo mientras corría: no pinto el "
-                            "veredicto de fuente, describiría archivos que ya no son los "
-                            "elegidos. El resultado SÍ es de los archivos con que partió.")
+                        log("[fuente] se cambio un archivo mientras corría: no es valido. Aunque el resultado SÍ es de los archivos con que partió, Recomiendo correr nuevamente.")
                     elif pantalla.get("al_completar"):
                         # Hilo GUI, simetrico de `preparar` pero DESPUES del worker
                         # (SS5.1 del plan): p.ej. actualizar un BannerFuente con

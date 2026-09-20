@@ -46,8 +46,7 @@ from programas import dotacion
 
 # UNA linea en cada caja que usa un caché (Dotacion, Estamentos): el detalle vive en
 # «Acerca de» para no llenar la pagina con un caso borde.
-REF_PREFERENCIAS = ("¿No se guardan tus preferencias? Mira «Acerca de», sección "
-                    "«Preferencias guardadas».")
+REF_PREFERENCIAS = ("¿No se guardan tus preferencias y selecciones? Mira «Acerca de», sección «Preferencias guardadas».")
 
 
 # -- Estamentos (reutilizable por cualquier flujo en formato Administrativo) --
@@ -59,19 +58,17 @@ def bloque_estamentos(parent):
     caja = caja_titulada(parent, "Estamentos (para formato Administrativo)")
     caja.pack(fill="x", pady=(2, 6))
     etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
-        "¿Por qué? El reporte Administrativo NO indica el estamento de quien atendió, "
-        "solo el nombre.\nLa tabla del equipo QUEDA GUARDADA (caché en ~/.autorem): "
-        "cárgala una vez y los meses siguientes se autocompleta sola.\nVuelve a cargar "
-        "'Utilización de Cupos' solo cuando cambie el equipo (se fusiona con lo guardado).\n"
+        ("¿Por qué? El reporte Administrativo NO indica el estamento, solo el nombre.\n"
+         "La tabla del equipo QUEDA GUARDADA: cárgala una vez y los meses siguientes se autocompleta sola.\n"
+         "Vuelve a cargar «Utilización de Cupos» solo si llega nuevo personal al equipo (se fusiona con lo guardado). \n"
+         "")
         + REF_PREFERENCIAS)
         ).pack(fill="x", padx=8, pady=(4, 0))
     etiqueta_envolvente(caja, text=(
-        "En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes "
-        "Estadísticos -> Otros -> Utilización de Cupos,\ncon fecha de un día en que hubo "
-        "atenciones de TODO tu equipo. Copia el reporte completo, pásalo a Excel y "
-        "cárgalo aquí.  (Opcional si ya lo cargaste antes.)")).pack(fill="x", padx=8, pady=(4, 4))
+        ("En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes Estadísticos -> Otros -> Utilización de Cupos,\n"
+         "con fecha de un día en que hubo atenciones de TODO tu equipo. Copia el reporte completo, pegalo en Excel como xlsx y cárgalo aquí.  (Opcional si ya lo cargaste antes.)"))).pack(fill="x", padx=8, pady=(4, 4))
     var = tk.StringVar()
-    fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
+    fila_archivo(caja, var, "Elige el reporte «Utilización de Cupos»")
 
     def get_ruta():
         from gui.runner import limpiar_ruta
@@ -203,7 +200,7 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
     # es Tk y tiene que correr en este hilo (mandarlo a un worker revienta). Lo
     # que si se puede es que no PAREZCA colgada -- cursor de espera + repintar
     # el log antes de arrancar.
-    log("[dotacion] cargando el ADA (la ventana queda quieta unos segundos)...")
+    log("[dotacion] cargando el ADA (la ventana se pega mientras trabaja, unos segundos)...")
     try:
         root.configure(cursor="watch")
         # update_idletasks y NO update(): `update()` despacha TODOS los eventos
@@ -218,7 +215,7 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
     try:
         d = cargar_atenciones(ada, log=log)
         ini, fin = _rango_mes(mes)
-        dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)")
+        dm = filtrar_mes(d, ini, fin, "el ADA (ATENCIONES/DIAGNOSTICOS/ACTIVIDADES)")
     except Exception as e:   # noqa: BLE001
         from gui.runner import manejar_error
         manejar_error(e, log, messagebox)
@@ -268,11 +265,12 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
     caja = caja_titulada(parent, "Dotación (separar funcionarios externos)")
     caja.pack(fill="x", pady=(2, 6))
     etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
-        "¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que "
-        "NO son de tu dotación (p.ej. la sala AIDIA); no deben tributar a este REM (doble "
-        "conteo).\nLa PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes "
-        "aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo "
-        "por los nombres nuevos.\nLa tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).\n"
+        ("¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que NO son de tu dotación (programas externos); no deben tributar a este REM (doble conteo).\n"
+         "La PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo por los nombres nuevos.\n"
+         "La tabla queda GUARDADA en tus preferencias de autoREM.\n"
+         "Si en tu centro existen funcionarios externos que si contribuyen a tu REM interno, no los marques.\n"
+         "Si existen funcionarios que tributan a rem externos e internos a la vez, este programa no tiene como distinguirlos actualmente.\n"
+         "")
         + REF_PREFERENCIAS)
         ).pack(fill="x", padx=8, pady=(4, 4))
 
@@ -361,8 +359,7 @@ def dialogo_dotacion(root, tabla, modulo, filas, con_evidencia=True,
         return
     top = _modal(root, titulo, "720x560")
     ctk.CTkLabel(top, justify="left", text=(
-        f"{len(filas)} funcionario(s). Marca el tick de quienes NO son de tu dotación "
-        "(externos). Sin tick = interno.")).pack(anchor="w", padx=12, pady=12)
+        f"{len(filas)} funcionario(s). Marca el tick de quienes NO son de tu dotación (A quienes quieres EXCLUIR). Sin tick = interno.")).pack(anchor="w", padx=12, pady=12)
 
     inner = ctk.CTkScrollableFrame(top)
     inner.pack(fill="both", expand=True, padx=12)

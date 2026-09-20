@@ -45,6 +45,9 @@ import customtkinter as ctk
 # Mismo tono oscuro que "parcial"/"cambiada" de _PALETA_FUENTE (mas abajo):
 # un solo lenguaje visual de "aviso" en toda la GUI, no dos paletas de avisos
 # midiendo contraste por separado.
+# Los resumenes de las paginas la usan cuando una salida secundaria falla, y los tests
+# la comparan: una sola definicion para que cambiar el texto no rompa nada callado.
+NO_SE_GENERO = "NO se generó"
 COLOR_AVISO = ("#a05a00", "#F0C070")      # 3.83:1 / 8.41:1 contra el fondo de pagina
 COLOR_ATENUADO = ("#888888", "#aaaaaa")   # texto secundario ("(vacio = ...)", "Opcionales")
 # 'top_fg_color' del tema de CTk: un paso mas oscuro/claro que el fondo por
@@ -68,10 +71,8 @@ COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
 # dos tienen que decir lo mismo o el mensaje de error miente.
 ANIO_MIN, ANIO_MAX = 2020, 2100
 
-_AVISO_SIN_MODIFICAR = (" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: "
-                        "sin abrirlos, editarlos ni re-guardarlos.\n"
-                        "     Un export modificado (cambio de formato, columnas, hojas) "
-                        "puede fallar en silencio o dar cifras erróneas.")
+_AVISO_SIN_MODIFICAR = ((" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: sin abrirlos, editarlos ni re-guardarlos, excepto los que se solicitan explicitamente.\n"
+                         "     Un export modificado (cambio de formato, columnas, hojas) puede dar cifras erróneas sin aviso."))
 
 
 def etiqueta_envolvente(parent, text, **kwargs):
