@@ -60,3 +60,16 @@ Lo mas reutilizable, por si sirve de nuevo:
   `scan_catalogo.escanear` devuelve una **3-tupla**.
 - `finders/alt/harness.py` - arnes de contratos de fuentes, antes de que fuera
   `tests/contratos_fuentes.py`.
+
+### `gui-2.0_textos/`
+
+La revision de textos user-facing de la GUI 2.0 (sep-2026), hecha por el autor. El
+resultado esta en el codigo y en el commit `722ecbe`; esto es la herramienta.
+
+- `textos.py` - `extraer` recorre por AST los strings de `gui/` (titulos, botones,
+  dialogos, resumenes, logs) y escribe dos archivos gemelos, `original.txt` y
+  `editable.txt`, para editar uno en un diff lado a lado; `aplicar` vuelca al codigo solo
+  los bloques que cambiaron (CRLF-safe, empareja por posicion, respeta los `{placeholders}`
+  de las f-strings). **Ojo:** archivado como quedo, con `RAIZ` = la carpeta padre de donde
+  vivia (`textos_review/` en la raiz del worktree); hay que ajustar `RAIZ`/`AQUI` para
+  correrlo desde aca. Solo cubre `gui/`, no los textos de `programas/` ni `modulos/`.
