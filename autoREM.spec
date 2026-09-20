@@ -24,7 +24,21 @@
 # Mientras estuvo ignorado se desincronizo sin que nadie lo cachara: quedo
 # apuntando a 'refs tablas/' despues del rename a 'refs_tablas/'.
 
+import os
+import sys
+
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+# La raiz del repo TIENE que estar en sys.path para armar este bundle. `pyinstaller
+# autoREM.spec` (el comando del README) NO la pone; `python -m PyInstaller` SI, y por eso
+# la diferencia no se ve hasta que alguien usa el comando documentado. Sin ella,
+# `collect_submodules('gui.paginas')` de abajo devuelve [] **EN SILENCIO**: el build
+# termina OK, el exe pesa lo mismo menos 126 KB, y recien al abrirlo muere con
+# «gui/paginas/ no expuso ninguna PANTALLA». Paso de verdad al soltar la 2.0.0.
+_RAIZ = os.path.abspath(SPECPATH)
+if _RAIZ not in sys.path:
+    sys.path.insert(0, _RAIZ)
+
 
 # customtkinter shippea sus temas y fuentes como DATA (assets/themes/*.json,
 # assets/fonts/): sin esto el exe revienta al importar ctk. El hook oficial no
@@ -39,10 +53,19 @@ _CTK_DATAS = collect_data_files('customtkinter')
 # que FrozenImporter.iter_modules() tambien las encuentra. Una pagina nueva en
 # gui/paginas/ entra sola: no hay que tocar este archivo.
 _PAGINAS = collect_submodules('gui.paginas')
+# Fail loud (CLAUDE.md regla 2): un build que "funciona" y pare un exe roto es peor que
+# uno que no compila. `collect_submodules` devuelve [] sin quejarse si no puede importar
+# el paquete, asi que la unica forma de que no pase de nuevo es chequearlo aca.
+if not [m for m in _PAGINAS if m != 'gui.paginas']:
+    raise SystemExit(
+        "autoREM.spec: collect_submodules('gui.paginas') no encontro NINGUNA pagina. "
+        "El exe saldria sin sidebar y moriria al abrirse. Corre el build desde la "
+        "raiz del repo (la carpeta que tiene autorem.py), y revisa que ahí funcione "
+        "'python -c \"import gui.paginas\"'.")
 
 a = Analysis(
     ['autorem.py'],
-    pathex=[],
+    pathex=[_RAIZ],
     binaries=[],
     datas=[
         ('catalogos', 'catalogos'),                          # incluye maestro_slim.csv.gz para la GUI 2.0

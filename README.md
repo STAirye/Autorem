@@ -211,6 +211,10 @@ pyinstaller --clean autoREM.spec
 # -> dist/autoREM.exe
 ```
 
+> **Correlo desde la raíz del repo** (la carpeta con `autorem.py`): el `.spec` arma el
+> bundle importando `gui.paginas`, y desde otra carpeta el exe sale sin ninguna pantalla.
+> Desde la 2.0.1 el build se aborta solo si eso pasa, en vez de parir un exe roto.
+
 Correr desde la raíz del repo, en Windows. El `autoREM.spec` versionado es la forma
 oficial: ya lleva los datos que PyInstaller no sigue solo porque no son `import`.
 - El **Maestro de Actividades**: sin él, el Trabajo Perdido corre en heurística y lo

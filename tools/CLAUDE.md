@@ -113,6 +113,14 @@ pyinstaller --clean autoREM.spec
 # -> dist/autoREM.exe
 ```
 
+- **Un build que «funciona» y pare un exe roto: la trampa de la 2.0.0.**
+  `collect_submodules('gui.paginas')` necesita poder **importar** el paquete, y el
+  script `pyinstaller` **no pone la raíz del repo en `sys.path`** (`python -m
+  PyInstaller` sí). Sin ella devolvía `[]` **en silencio**: el build terminaba OK, el
+  exe pesaba 126 KB menos y recién al abrirlo moría con «gui/paginas/ no expuso ninguna
+  PANTALLA». Desde la **2.0.1** el `.spec` se agrega a sí mismo a `sys.path` (`SPECPATH`)
+  y **aborta el build** si no encuentra ninguna página. Moraleja para validar un
+  empaquetado: **compilar con el comando que está documentado**, no con uno equivalente.
 - **`autoREM.spec` está versionado** (única excepción al `*.spec` del `.gitignore`):
   lleva a mano los `--add-data` (el `maestro_slim.csv.gz` y la carpeta `catalogos/`,
   con su `FUENTES.json`) y el `hiddenimports` de `programas.catalogos`. Los datos no son

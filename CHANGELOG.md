@@ -10,6 +10,35 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.1] — 2026-09-20 · hotfix de empaquetado
+
+### Corregido
+- **El `.exe` de la 2.0.0 nacía sin ninguna página** («Hydra», la 4ª cabeza del cero
+  callado). `autoREM.spec` llama a `collect_submodules('gui.paginas')`, que necesita
+  poder **importar** el paquete; y el comando documentado en el README,
+  `pyinstaller --clean autoREM.spec`, **no pone la raíz del repo en `sys.path`**
+  (el script de consola no lo hace; `python -m PyInstaller` sí). Sin eso
+  `collect_submodules` devuelve **`[]` sin quejarse**: el build termina OK, el exe pesa
+  126 KB menos, y recién al abrirlo muere con `RuntimeError: gui/paginas/ no expuso
+  ninguna PANTALLA`. Medido:
+
+  ```
+  con la raiz en sys.path -> ['gui.paginas', 'gui.paginas.a05', ... 6 paginas]
+  sin la raiz en sys.path -> []
+  ```
+
+  Dos arreglos, porque uno solo deja la trampa viva:
+  1. El `.spec` se pone **a sí mismo** en `sys.path` (`SPECPATH`), así da igual cómo se
+     invoque a PyInstaller; y `pathex` apunta ahí.
+  2. **Fail loud:** si `collect_submodules` vuelve vacío, el `.spec` aborta el build con
+     `SystemExit` explicando qué pasó. Un build que «funciona» y pare un exe roto es
+     peor que uno que no compila (CLAUDE.md regla 2).
+
+  **Por qué no lo cazó la validación de la 2.0.0:** se compiló con
+  `python -m PyInstaller autoREM.spec`, que no es el comando del README — y es
+  justamente el único que esconde el problema. El guardarraíl de `gui/registro.py` sí
+  hizo su trabajo: el error nombró `collect_submodules('gui.paginas')` y el `.spec`.
+
 ## [2.0.0] — 2026-09-20
 
 **La GUI 2.0 pasa a ser LA GUI.** Es el merge de la rama `gui-2.0` a `main`: el paso 11
