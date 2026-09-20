@@ -1,7 +1,8 @@
 # Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-20)
 
-Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`; en `f94a0ec` el diff va
-en 80 archivos y ~12.200 líneas nuevas, contra las ~3200 con que arrancó la revisión).
+Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`; en `3b8cbd4` el diff va
+en 193 archivos y ~18.600 líneas nuevas, contra las ~3200 con que arrancó la revisión — los
+~6.200 del último salto son el archivo de `docs/evanesced/`, no código).
 Sin PII.
 
 > **Este archivo NO se borra al mergear** (orden del autor, 20-sep-2026: un documento de
@@ -981,6 +982,10 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
   `check_cp1252` OK, `check_fuentes --todo` OK (18 contratos, ahora con el chequeo C4b). En la
   corrida completa de pytest sigue saliendo a veces el `tk.tcl` intermitente de
   `test_gui_construccion` (pasa solo; lo investiga una sesión aparte).
+- **Tras el merge de la revisión de textos** (`02106fb`, 20-sep) la suite sigue en **296**
+  `def test_` y los 3 checks en verde. Ese merge tocó 13 archivos de `gui/` y 2 de `tests/`:
+  los tests que comparaban un texto a mano pasaron a importar la constante del módulo que lo
+  muestra (convención nueva en `tests/CLAUDE.md`), así que el conteo no cambió.
 - **La ronda 13 no agregó tests** (sus 4 arreglos son documentación, un import muerto y
   dos docstrings: nada que mutar), pero re-corrió todo: `pytest -q` 298 passed, la suite
   archivo por archivo 16/16 sin fallas, los 3 checks en verde y los 37 módulos de
@@ -1094,6 +1099,12 @@ sistemática:
   cargando Inscritos/Formulario/ADA dos veces (§1.E) y el A05 leyendo el export completo
   dos veces por corrida (§1.E-bis). La ronda 12 midió la detección cacheada del A05
   (§1.M), pero como parte del ángulo de altitud, no como un barrido de eficiencia.
+**La Eficiencia (y el reuso) se corre DESPUÉS del merge, contra el codebase COMPLETO** —
+decisión del autor, 20-sep-2026: no tiene sentido medir «¿se relee un archivo, se rehace
+trabajo?» sobre una rama que va a fundirse con `main`, cuando la mitad del camino caliente
+vive en `programas/` y `modulos/`. O sea que no es la ronda 14 de ESTA revisión: es la
+primera pasada de la siguiente, ya sobre `main`.
+
 **Ojo:** la **Eficiencia** es lo único que sigue sin barrerse. El ángulo de
 **Convenciones** lo cubrió la ronda 13 (auditoría de los 37 `.py` versionados: header vs
 último cambio real), y lo que encontró son los 3 headers del «Checklist del paso 11» de más
@@ -1126,27 +1137,37 @@ mueve algo. Están acá para que el commit del paso 11 los tenga como lista.
    lo prueba, y anotar «verificado en la ronda 13». Si se mergea así, quien ejecute el paso
    11 o re-porta trabajo hecho, o le pierde la confianza a la única compuerta escrita del
    merge.
-2. **Tres headers de versión apuntan a un release de `main` ANTERIOR a su contenido** —
+2. **Dos headers de versión apuntan a un release de `main` ANTERIOR a su contenido** —
    misma clase que la colisión de §1.E, que ya se pagó para `rem_utils.VERSION`:
-   `gui/paginas/inicio.py` dice 1.9.15 y es un archivo NUEVO de la rama;
    `tools/check_version.py` dice 1.9.10 (en `main` está en 1.9.6) y trae el `"gui"` de
    `DIRS_VERSIONADOS`, que ningún 1.9.10 shippeó; `tools/slim_maestro.py` dice 1.9.15 con el
-   cambio de ruta a `catalogos/`. Los tres a 1.9.17 (o a la versión del merge). **Por qué no
-   salta el hook:** el chequeo 3 de `check_version` solo mira `staged_py()`, así que un
-   header queda viejo para siempre a menos que alguien vuelva a tocar el archivo — vale
-   sumarle un modo `--auditar` que compare cada `.py` versionado contra la versión vigente
-   cuando lo cambió su último commit, y colgarlo de la skill `versionar`, no del hook.
-3. **`gui/` no existe en el mapa del repo.** El `CLAUDE.md` raíz no la nombra en NINGUNA
-   parte: ni en el árbol de §2, ni en el reparto compartido/modular, ni en la cadena de
-   imports (`rem_utils <- formatos <- capas <- módulos <- autorem`, y `gui/` importa las
-   tres) — y es el único paquete de código sin su propio `CLAUDE.md`, con `"gui"` ya en
-   `DIRS_VERSIONADOS` y en `CARPETAS` de `check_fuentes`. Lo único que la documenta es un
-   PLAN, que declara trabajo futuro: su §11 todavía dice «Hoy la GUI **no tiene cobertura**»
-   con 38 tests de GUI escritos. Al mergear: fila `gui/ -> gui/CLAUDE.md` en el árbol, `gui/`
-   en el reparto y en la cadena de imports, corregir la fila de `catalogos/` (ahora también
-   guarda el `maestro_slim.csv.gz`), y escribir `gui/CLAUDE.md` con el CONTRATO de la carpeta
-   (`PANTALLA`, el descubrimiento por `pkgutil`, `runner` como única frontera con el worker,
-   qué NO va en una página), apuntando al plan para el resto.
+   cambio de ruta a `catalogos/`. Los dos a 1.9.17 (o a la versión del merge).
+   *(Eran tres: `gui/paginas/inicio.py` se arregló solo, porque la revisión de textos del
+   20-sep lo tocó y el hook —que sí mira lo staged— le exigió la versión vigente. Buena
+   ilustración del punto de abajo.)* **Por qué no salta el hook:** el chequeo 3 de
+   `check_version` solo mira `staged_py()`, así que un header queda viejo para siempre a
+   menos que alguien vuelva a tocar el archivo — vale sumarle un modo `--auditar` que
+   compare cada `.py` versionado contra la versión vigente cuando lo cambió su último
+   commit, y colgarlo de la skill `versionar`, no del hook.
+3. ~~**`gui/` no existe en el mapa del repo.**~~ **HECHO (20-sep-2026)**, a pedido del
+   autor: era lo último nuevo antes de empezar el merge. No era solo una fila faltante en el
+   árbol — `gui/` era el único paquete de código sin su `CLAUDE.md`, y el 20-sep `tests/`
+   estrenó el suyo, así que quedaba solo. Se hizo [gui/CLAUDE.md](../gui/CLAUDE.md), y el raíz
+   lo nombra ahora en el índice, en el árbol de §2, en el reparto compartido/modular y en la
+   cadena de imports; la fila de `catalogos/` dice que también guarda el `maestro_slim.csv.gz`.
+
+   **El `gui/CLAUDE.md` NO repite el contrato `PANTALLA`:** ese ya está completo en el
+   docstring de `gui/app.py`, y duplicarlo era garantizar que las dos copias divergieran.
+   Lleva lo que una sesión fría no puede sacar leyendo un archivo: la tabla de archivos, el
+   checklist de página nueva, las trampas **con su símbolo greppable** (`after()` desde el
+   hilo, el `update()` de `CTkToplevel`, la posición como DATO —mordió 4 veces—, el router que
+   muestra/esconde, la detección sin cachear por ruta, `multi: False`, los opcionales
+   primero), la tabla de «qué NO se re-implementa» que dejó la ronda 8, y lo que queda para el
+   paso 11.
+
+   Queda una cosa del plan, para el commit del merge: `docs/GUI_2.0_plan.md` §11 dice «Hoy la
+   GUI **no tiene cobertura**» con **51** tests de GUI ya escritos (`def test_`: 26 en
+   `test_gui_registro.py` + 25 en `test_gui_construccion.py`).
 
 ### Abierto tras la ronda 13 — años discontinuos en la familia población (a `main`)
 
@@ -1263,10 +1284,39 @@ archivo y por eso quedaba afuera.
 
   No hay fuga demostrada (el slim recorta a 5 columnas de catálogo, sin PII de paciente).
   Lo que se perdió es **el portón**, no un dato.
-- **⚠ REVISAR A MANO TODO EL TEXTO QUE VE EL USUARIO — pega del AUTOR, no de un agente.**
-  Es un code-review que solo puede hacer quien conoce RAYEN/IRIS y el REM: un agente
-  puede verificar que el string exista y esté bien escrito, no que la instrucción sea
-  **cierta**. Y una instrucción equivocada es el mismo bug que la regla 2 persigue: si
+- **⚠ TEXTO QUE VE EL USUARIO — `gui/` HECHO (20-sep-2026, el autor); `programas/` y
+  `modulos/` SIGUEN PENDIENTES.**
+
+  La pasada del autor sobre `gui/` está en `722ecbe` + `6ea9985`, mergeada en `02106fb`
+  desde `claudio/gui-2-0-text-review-c85d1c`; la herramienta quedó archivada en
+  [docs/evanesced/gui-2.0_textos/textos.py](evanesced/gui-2.0_textos/textos.py) (extrae por
+  AST los strings de `gui/` a dos archivos gemelos para editarlos en un diff lado a lado, y
+  vuelca al código solo los bloques que cambiaron).
+
+  **Alcance exacto, y leerlo bien importa:** la herramienta extrajo **283 textos** de los
+  **11 `.py` de `gui/`** (todos menos `__init__.py`) — cada string y cada f-string que
+  parezca texto, salvo docstrings, claves de dict y kwargs de layout. El autor los revisó
+  **TODOS, uno por uno**. Un texto que la herramienta mostró y **no** se tocó está
+  **APROBADO**, no sin revisar: no volver a proponerlo. Eso cubre las 8 primeras filas de
+  la tabla de abajo, o sea todo lo que vive en `gui/`.
+
+  Lo que NO alcanzó a ver, porque la herramienta solo recorre `gui/`: las **dos últimas
+  filas** — los mensajes de `ArchivoInvalido` de `programas/` y `modulos/` (los que más se
+  leen) y la hoja LEEME de `programas/cobertura.py` —, más los `log(` de `modulos/` de la
+  octava fila. Esos siguen sin revisar, y para hacerlo hay que ampliar `ARCHIVOS` en
+  `textos.py`.
+
+  **Lo que dejó de aprendizaje, y es una convención nueva:** la revisión **rompió un test**
+  que comparaba un texto de la interfaz a mano. De ahí salió
+  [tests/CLAUDE.md](../tests/CLAUDE.md) («No compares texto plano que ve el usuario»): si un
+  test necesita el texto, éste vive UNA vez como constante del módulo que lo muestra y el
+  test la importa (`a05.TITULO_FALTA_ACUSE`, `runner.TITULO_NO_ENCONTRADO`,
+  `widgets.NO_SE_GENERO`); mejor aún, se afirma el HECHO y no el texto. Con eso, `tests/`
+  pasó a tener su propio `CLAUDE.md` — y **`gui/` es ahora el único paquete de código sin
+  uno** (ver el «Checklist del paso 11», punto 3).
+
+  Por qué sigue siendo pega del autor y no de un agente: un agente puede verificar que el
+  string exista y esté bien escrito, no que la instrucción sea **cierta**. Y una instrucción equivocada es el mismo bug que la regla 2 persigue: si
   el texto manda a descargar el reporte equivocado, el usuario tabula un número
   plausible-pero-mal sin que nada falle. La GUI 2.0 reescribió o movió casi todos estos
   textos, así que ninguno viene «ya revisado» de la 1.x. Las superficies, para que la
@@ -1322,7 +1372,8 @@ listados en §4.
 | 11 | **Cada referencia y fallback contra el export REAL, interactiva**: todo mapa de columnas, número de pregunta, ancla y literal de actividad contra `refs_tablas/` y el Maestro; el autor bajó los exports que faltaban y re-bajó los editados a mano; `limpiar_refs` revisado (lo pidió el autor) | 11 ✅ (1 fixture era el caso) + 3 decisiones del autor, implementadas (§1.L.12-14) | §1.L · §4 «Abierto tras la ronda 11» |
 | 12 | **Altitud**: ¿cada arreglo de las rondas 1-11 está a la altura de su causa, o emparcha al consumidor y deja la clase abierta? Cada guarda repetida a mano, la forma de la atención del Monitoreo, el filtro por tipo de excepción de los opcionales, la detección cacheada del A05, el sidebar por prefijo, el router por pila, el encabezado por conteo de celdas y los envoltorios vacíos. Con repros y mediciones | 11 ✅ (1 no se hace acá: los fixes de `programas/` a `main`, §4) | §1.M |
 | 13 | **Coherencia estructural tras 12 rondas de parches** — el rango `fd1b0cc^..HEAD` (74 archivos, +9718/-1007) leído como CUERPO y no por ángulo: imports y referencias muertas entre rondas, helpers duplicados, la mudanza de `maestro_slim` a `catalogos/` en todos sus lectores/doc/spec/gitignore, **headers de versión** de cada `.py` tocado vs su último cambio real (cierra el ángulo de convenciones), anclas `§N` citadas desde código y docs, tablas de estado de los 4 `CLAUDE.md`, reglas duras y cobertura de contratos. Casi todo por comando: los 3 checks, `pytest`, la suite archivo por archivo, import de los 37 módulos, barridos AST de imports/atributos/constantes | 8: **4 ✅** + 3 ⏸ al paso 11 + 1 ⏸ a `main` (años discontinuos) | §1.N · §2 · §4 (checklist del paso 11 · años discontinuos) |
-| 14 | _(siguiente: EFICIENCIA —el único ángulo sin barrer: ¿la GUI 2.0 relee archivos o rehace trabajo?—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
+| 13b | **TEXTO USER-FACING de `gui/`, a mano, el AUTOR** (mismo tipo de pasada que la 3b): los ~8 grupos de strings de `gui/` —instrucciones de cada página, modales, títulos de `ArchivoInvalido`, motivos de los obligatorios, etiquetas, líneas de log— leídos y reescritos con una herramienta de extracción por AST + diff lado a lado (`docs/evanesced/gui-2.0_textos/textos.py`). Rompió un test que comparaba texto de interfaz a mano -> convención nueva | textos reescritos + `tests/CLAUDE.md` + 3 constantes de texto | §4 (el ítem ⚠ de textos, `gui/` cerrado) |
+| 14 | _**Después del merge, y sobre el codebase COMPLETO** (decisión del autor): EFICIENCIA y REUSO — el único ángulo sin barrer. Ya no es una ronda de esta revisión: el camino caliente vive en `programas/` y `modulos/`, así que medirlo sobre la rama sola mide la mitad. Pendientes que no son para un agente: la prueba a mano del caché en el PC del trabajo (§4) y otra pasada a ojo del autor_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es

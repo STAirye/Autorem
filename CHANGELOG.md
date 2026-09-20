@@ -505,6 +505,27 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 - (Renumerado: esta rama había tomado 1.9.16, que `main` ya usó.)
 
 ### Cambiado
+- **Revisión a mano de TODO el texto user-facing de `gui/`** (el autor, 20-sep-2026;
+  `722ecbe` + `6ea9985`, mergeados en `02106fb`): instrucciones de cada página, modales,
+  títulos de `ArchivoInvalido`, motivos de los obligatorios, etiquetas de input y líneas de
+  log. Es un review que solo puede hacer quien conoce RAYEN/IRIS y el REM: un agente
+  verifica que el string exista y esté bien escrito, no que la instrucción sea **cierta**, y
+  un texto que manda a descargar el reporte equivocado produce un número plausible-pero-mal
+  sin que nada falle (regla 2). La herramienta —extracción por AST a dos archivos gemelos
+  para editarlos en un diff lado a lado, y volcado al código de solo los bloques que
+  cambiaron— quedó archivada en `docs/evanesced/gui-2.0_textos/textos.py`. **Alcance: 283
+  textos de los 11 `.py` de `gui/`, revisados uno por uno** — un texto que la herramienta
+  mostró y NO se tocó está aprobado, no sin revisar. Lo que la herramienta no recorre y sigue
+  pendiente: los mensajes de `ArchivoInvalido` de `programas/` y `modulos/`, los `log(` de
+  `modulos/` y la hoja LEEME de `cobertura.py` (`docs/review_gui-2.0_pendiente.md` §4).
+- **`tests/CLAUDE.md`** (nuevo) y tres constantes de texto: la revisión de arriba **rompió un
+  test** que comparaba a mano un texto de la interfaz. Un test así no avisa de ningún bug
+  —falla por una coma— y encarece cambiar lo que el usuario lee. Convención: si el test
+  necesita el texto, éste vive UNA vez como constante del módulo que lo muestra
+  (`a05.TITULO_FALTA_ACUSE`, `runner.TITULO_NO_ENCONTRADO`, `widgets.NO_SE_GENERO`) y el test
+  la importa; mejor aún, se afirma el HECHO (que se llamó al diálogo, que no se escribió el
+  archivo) y no el texto. La constante se crea cuando un test la necesita, no para cada
+  string de la GUI.
 - **Las salidas NUNCA se sobreescriben** (decisión del autor, sep-2026): si un nombre ya
   existe, la corrida entera sale como `… (1).xlsx`, `… (2).xlsx`, con el MISMO número en
   todos sus archivos (`rem_utils.rutas_libres`), así el sufijo dice qué archivos salieron
@@ -535,6 +556,17 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   queda bajo «Acerca de»: es un control de la ventana, no una página.
 
 ### Documentación
+- **`gui/CLAUDE.md`** (nuevo): lo último antes de empezar el merge. `gui/` era el único
+  paquete de código sin el suyo, y el `CLAUDE.md` raíz no nombraba la carpeta en NINGUNA
+  parte — ni en el árbol de §2, ni en el reparto compartido/modular, ni en la cadena de
+  imports —, con `"gui"` ya en `DIRS_VERSIONADOS` y en `CARPETAS` de `check_fuentes`. **No
+  repite el contrato `PANTALLA`**, que ya está completo en el docstring de `gui/app.py`:
+  lleva lo que una sesión fría no saca leyendo un archivo — tabla de archivos, checklist de
+  página nueva, las trampas con su símbolo greppable (`after()` desde el hilo, el `update()`
+  de `CTkToplevel` en Windows, la posición como DATO —mordió 4 veces—, el router que
+  muestra/esconde en vez de apilar, detección sin cachear por ruta, `multi: False`, los
+  opcionales primero), la tabla de «qué NO se re-implementa» que dejó la ronda de reuso, y lo
+  que queda para el paso 11. El raíz ahora la nombra en los cuatro lugares.
 - **Regla dura nueva (CLAUDE.md §0 regla 7): ningún documento de trabajo intermedio se
   borra** — planes, registros de revisión, contextos de una rama chica. Son la
   documentación del *por qué*, y una sesión fría (`compact` entre medio) no tiene otra

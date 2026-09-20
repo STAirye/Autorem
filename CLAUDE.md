@@ -22,6 +22,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 | 2.1 · 3 · 6 · 7 | familia población, pipeline A05, demografía, decisiones SM | [modulos/CLAUDE.md](modulos/CLAUDE.md) |
 | 3.1 · 5 · 5.1 · 14 | filtro de mes, formatos IRIS/Admin, Monitoreo, catálogos DEIS | [programas/CLAUDE.md](programas/CLAUDE.md) |
 | 8 · 10.1 · 11 | privacidad en detalle + hooks, worktrees, build del `.exe` | [tools/CLAUDE.md](tools/CLAUDE.md) |
+| — | GUI 2.0: contrato de pantalla, trampas de Tk/hilos, reuso | [gui/CLAUDE.md](gui/CLAUDE.md) |
 | — | convenciones de tests (no comparar texto plano de la GUI) | [tests/CLAUDE.md](tests/CLAUDE.md) |
 | 4 | historia v1.2–1.6 | [CHANGELOG.md](CHANGELOG.md) |
 
@@ -105,9 +106,12 @@ Versión **1.9.17** (§9). **296 tests.**
   formulario de Salud Mental (`rem_saludmental`).
 - **Modular — `modulos/`:** un reporte por archivo. A05 N/O · A03 D.3 · A23 · SM
   Actividades · SM Trabajo Perdido · SP·P6 y SM Rescate (estos dos **en validación**).
-- **Dispatcher — `autorem.py`:** GUI de pestañas + CLI.
+- **Interfaz — `gui/`:** la **GUI 2.0** (`customtkinter`), declarativa: una pantalla por
+  archivo en `gui/paginas/`, descubiertas por introspección. Shell y router en `app.py`,
+  frontera con el hilo worker en `runner.py` -> [gui/CLAUDE.md](gui/CLAUDE.md).
+- **Dispatcher — `autorem.py`:** GUI de pestañas (1.x, la que corre el `.exe`) + CLI.
 
-Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autorem`. Imports
+Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autorem` / `gui`. Imports
 **absolutos** rooteados en la raíz (`from programas.rem_utils import …`).
 
 ```
@@ -115,7 +119,8 @@ autorem.py        entry point / dispatcher (único código en la raíz)
 programas/        capas compartidas         -> programas/CLAUDE.md
 modulos/          un reporte REM por archivo -> modulos/CLAUDE.md
 tools/            utilitarios de desarrollo  -> tools/CLAUDE.md
-catalogos/        CIE-10 / ENO / GES que shippea el exe (§14)
+gui/              GUI 2.0 (customtkinter)     -> gui/CLAUDE.md
+catalogos/        CIE-10 / ENO / GES + maestro_slim, que shippea el exe (§14)
 refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
 .claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes
