@@ -14,15 +14,15 @@
 #   programas.catalogos.maestro_slim  -> _MEIPASS / "catalogos" / "maestro_slim.csv.gz"
 #
 # El Maestro slim vive en `catalogos/` (catalogo actividad<->estamento<->REM,
-# como cie10/eno/ges): las DOS GUI lo piden a `catalogos.maestro_slim`, que busca
-# en las mismas carpetas que los otros catalogos. Una sola copia en el bundle.
+# como cie10/eno/ges): la GUI lo pide a `catalogos.maestro_slim`, que busca en
+# las mismas carpetas que los otros catalogos. Una sola copia en el bundle.
 #
 # Si falta el maestro slim, el Trabajo Perdido cae a heuristica (avisa en el log).
 # Si faltan los catalogos, `catalogos.cargar()` levanta FileNotFoundError.
 #
-# Este archivo esta en .gitignore (`*.spec`), asi que NINGUNA revision del repo
-# lo va a cachar si se desincroniza. Ya paso una vez: quedo apuntando a
-# 'refs tablas/' despues del rename a 'refs_tablas/'.
+# Este archivo SI se versiona (excepcion explicita al `*.spec` del .gitignore).
+# Mientras estuvo ignorado se desincronizo sin que nadie lo cachara: quedo
+# apuntando a 'refs tablas/' despues del rename a 'refs_tablas/'.
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
@@ -31,6 +31,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 # siempre esta, asi que se recolecta explicito.
 _CTK_DATAS = collect_data_files('customtkinter')
 
+# `gui.app` y `gui.registro` entran por el import estatico de autorem.py (2.0.0:
+# `from gui import app as gui_app`, a NIVEL DE MODULO justamente por esto).
 # gui/paginas/*.py se descubren en RUNTIME con pkgutil.iter_modules (gui/registro.py):
 # NADIE las importa por nombre, asi que el analisis estatico de PyInstaller no las ve
 # y el exe quedaba con el sidebar VACIO. collect_submodules las mete al bundle, con lo

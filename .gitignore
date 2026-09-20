@@ -11,6 +11,10 @@
 *.csv
 *.tsv
 *.gz
+# La GUI 1.x congelada (plan GUI 2.0 §8) SI se versiona: es codigo propio, ya
+# estuvo en claro en todo el historial, y va comprimido para que ninguna
+# herramienta del repo lo escanee. Ver legacy/README.md.
+!legacy/*.py.gz
 # Si algún día necesitas versionar una muestra ANONIMIZADA, hazle un force-add
 # explícito: git add -f muestra_anonimizada.xlsx
 
@@ -54,6 +58,9 @@ SENSITIVE_PII/
 # programas/poblacion.py. Ojo: el export CRUDO de este reporte es de lo mas sensible
 # del proyecto (nombre, RUT, direccion, telefonos, email) -> el crudo NUNCA al repo.
 !refs_tablas/Informe_Inscritos__Adscritos_heads.xlsx
+# Informe Actividades Profesionales (solo IRIS): recortado a banner + header con
+# tools/limpiar_refs.py. El crudo trae nombres y RUT de funcionarios -> nunca al repo.
+!refs_tablas/Informe_Actividades_Profesionales_heads.xlsx
 # Ronda 11 (sep-2026): los reportes que los contratos tenian con encabezado SINTETICO.
 # Recortados con tools/limpiar_refs.py a BANNER + ENCABEZADO (el banner se conserva: al
 # usuario se le pide no borrarlo) y escaneados sin hallazgos (0 RUT, 0 correos, 0

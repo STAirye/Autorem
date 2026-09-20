@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -52,7 +52,7 @@ from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_can
                                  atenid_multiprofesional, _rango_mes, filtrar_mes, opcional,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col,
-                                 ArchivoInvalido, aviso_fuera_de_grid)
+                                 ArchivoInvalido, aviso_fuera_de_grid, por_actividad)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 from programas import dotacion          # separación interno/externo (docs/dotacion_externos_plan.md)
 from programas import cobertura         # categorías de aviso (PENDIENTE/OMITIDO) para la hoja LEEME
@@ -240,32 +240,53 @@ def mask_tributa_ada(A):
     return m
 
 
+# -- Máscaras del A32, POR ACTIVIDAD -------------------------------------------
+# Sus tokens parten el nombre de UNA actividad («Controles DE Salud Mental POR llamadas
+# telefónicas»), así que van dentro de `por_actividad`: sobre la celda canónica, que trae
+# todas las actividades de la atención, el AND se satisface con un token de cada una.
+# Ver el comentario en `_ada_eventos` y el docstring de rem_utils.por_actividad.
+def _remotas(s):        # A32F1
+    return _all(s, "acciones remotas de salud mental")
+
+
+def _llamada(s):        # «por llamada telefónica», nunca la videollamada
+    return _all(s, "llamada") & ~_all(s, "videollamada")
+
+
+def _ctrl_remoto(s):
+    """A32F2. OJO con el «de»: las actividades reales de RAYEN son «Controles DE Salud
+    Mental por llamadas telefónicas» y «... por videollamadas». El patrón viejo era la
+    subcadena CONTIGUA «controles salud mental por», que no matchea ninguna de las 4 del
+    Maestro -> A32-F2 daba 0 SIEMPRE, y el 0 se leía como «ese mes no hubo». Son dos
+    subcadenas en AND, que capturan las 4 y nada más."""
+    return _all(s, "controles", "salud mental por")
+
+
 def _ada_eventos(dm):
     """Eventos del ADA (mes filtrado). Conteo por ATEN ID: dedup (casilla,sub,id)."""
     if dm.empty:
         return _empty_ev()
     A, I = dm["ACT_n"], dm["INSTR_n"]
-    remotas = _all(A, "acciones remotas de salud mental")
-    # A32-F2. OJO con el "de": las actividades reales de RAYEN son "Controles DE Salud
-    # Mental por llamadas telefonicas" y "Controles de salud mental por videollamadas".
-    # El patron viejo era la subcadena contigua "controles salud mental por", que NO
-    # matchea ninguna de las 4 variantes del Maestro -> A32-F2 daba 0 SIEMPRE, y el 0
-    # se leia como "ese mes no hubo" (asi quedo anotado en CLAUDE.md). Numero plausible,
-    # callado y errado: el caso clasico que este proyecto persigue. Ahora son dos
-    # subcadenas en AND, que capturan las 4 y nada mas (verificado contra el Maestro).
-    ctrl_rem = _all(A, "controles", "salud mental por")
-    llam = _all(A, "llamada") & ~_all(A, "videollamada")
+    # Las cinco del A32 van `por_actividad` (ver arriba): sus tokens parten el nombre de
+    # UNA actividad, y sobre la celda canónica el AND los tomaba de actividades DISTINTAS.
+    # Las dos direcciones, medidas (2.0.0):
+    #   falso POSITIVO: «Controles de pie diabético; Consulta de salud mental por
+    #     psicólogo; Consulta de morbilidad por llamada telefónica» -> A32F2 = True, sin
+    #     que exista ningún control remoto de SM.
+    #   falso NEGATIVO: «Controles de Salud Mental por llamadas telefónicas; Acciones
+    #     remotas de salud mental por videollamada» -> A32F2-Llamadas = False, porque el
+    #     ~videollamada de `_llamada` lee la palabra en la actividad HERMANA.
     specs = [
         ("A04", "", (I == "MEDICO") & _all(A, "consulta de salud mental")),
         ("A06", "", _all(A, "controles salud mental")),
         ("A19a", "97", _all(A, "prioridad - con integrante con problema de salud mental")),
         ("A19a", "99", _all(A, "prioridad - con integrante con demencia")),
         ("A26", "", _all(A, "visita domiciliaria integral familia con integrante con problema de salud mental")),
-        ("A32F1", "Llamadas Telefónicas", remotas & llam),
-        ("A32F1", "Videollamadas", remotas & _all(A, "videollamada")),
-        ("A32F1", "Mensajería de Texto", remotas & _all(A, "mensaj")),
-        ("A32F2", "Llamadas Telefónicas", ctrl_rem & llam),
-        ("A32F2", "Videollamadas", ctrl_rem & _all(A, "videollamada")),
+        ("A32F1", "Llamadas Telefónicas", por_actividad(A, lambda s: _remotas(s) & _llamada(s))),
+        ("A32F1", "Videollamadas", por_actividad(A, lambda s: _remotas(s) & _all(s, "videollamada"))),
+        ("A32F1", "Mensajería de Texto", por_actividad(A, lambda s: _remotas(s) & _all(s, "mensaj"))),
+        ("A32F2", "Llamadas Telefónicas", por_actividad(A, lambda s: _ctrl_remoto(s) & _llamada(s))),
+        ("A32F2", "Videollamadas", por_actividad(A, lambda s: _ctrl_remoto(s) & _all(s, "videollamada"))),
     ]
     partes = [_ev(dm, m, c, s, "ATENID", "ANOS_AT", "INSTR", "ADA", "PROF") for c, s, m in specs]
     partes = [p for p in partes if p is not None]

@@ -515,6 +515,44 @@ def test_atencion_multifila_y_run_heredado_solo_dentro_de_la_atencion():
     assert bool(a23._masks_simples(iris)["REMA23 Autocuidado"].iloc[0])
 
 
+def test_monitoreo_mixto_no_fusiona_las_atenciones_de_una_sola_actividad():
+    """Merge de la GUI 2.0 (1.9.17). `_una_fila_por_atencion` agrupa por una clave, y a
+    las filas que NO se agrupan (atencion de UNA actividad) les daba un centinela de
+    texto: '\x00fila{i}'. Ese string trae un byte NUL, y el groupby de pandas hashea
+    hasta el NUL (medido en 2.3.3): TODAS las filas sueltas caian en el MISMO grupo y se
+    fusionaban en una sola atencion, con las actividades de todos los pacientes juntas.
+
+    Solo mordia en un export MIXTO -- alguna atencion de 2+ actividades y el resto de
+    una --, que es la forma del Monitoreo admin real: sin ninguna atencion multilinea la
+    funcion sale antes (`if not dup.any()`), y por eso los tests de dos filas no lo
+    veian. La clave ahora es NUMERICA, asi que no hay centinela que inventar."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    from programas.rem_utils import cargar_atenciones, dv_rut
+    ref = "Monitoreo_de_Actividades_anonimizado.xlsx"
+    b, h, pl = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+    def _p(n):
+        return f"1000001{n}-" + dv_rut(f"1000001{n}")
+    filas = [
+        # atencion 1: DOS actividades -> es la que hace entrar a la funcion
+        {"N°": 1, "RUN": _p(1), "FECHA CONSULTA": "05/08/2026", "AÑOS": 40,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": "CONTROL SALA (IRA, ERA O MIXTA)",
+         "DIAGNÓSTICO": "ASMA", "INSTRUMENTO": "MEDICO",
+         "TIPO DE ATENCIÓN": "CONTROL", "FUNCIONARIO": "DR X"},
+        {"N°": 1, "ACTIVIDAD Y/O PROCEDIMIENTO": "EDUCACION INDIVIDUAL EN SALA - "
+                                                      "AUTOCUIDADO SEGUN PATOLOGIA"},
+    ]
+    # y TRES atenciones de una sola actividad, de pacientes distintos
+    for i in (2, 3, 4):
+        filas.append({"N°": i, "RUN": _p(i), "FECHA CONSULTA": "0%d/08/2026" % i,
+                      "AÑOS": 30 + i, "ACTIVIDAD Y/O PROCEDIMIENTO": "KINESIOTERAPIA RESPIRATORIA",
+                      "DIAGNÓSTICO": "ASMA", "INSTRUMENTO": "KINESIOLOGO(A)",
+                      "TIPO DE ATENCIÓN": "CONTROL", "FUNCIONARIO": "KINE Z"})
+    d = cargar_atenciones(escribir(_TMP / ("nul_" + ref), b, h, filas, pl), log=_quiet)
+    assert len(d) == 4, f"5 filas -> 4 atenciones, no {len(d)}"
+    assert sorted(d["RUN"]) == sorted(_p(i) for i in (1, 2, 3, 4)), list(d["RUN"])
+
+
 def test_el_trabajo_perdido_cuenta_igual_la_misma_atencion_en_los_dos_formatos():
     """Ronda 12. La forma PADRE-HIJO del Monitoreo se normalizaba a medias: el ffill de
     la cabecera vivia en el loader y el AND entre actividades en UN consumidor (el A23),

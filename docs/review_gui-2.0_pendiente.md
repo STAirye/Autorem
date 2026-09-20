@@ -1,3 +1,18 @@
+> **LISTO Y MERGEADO** — 2026-09-20, dejo de usarse en la **2.0.0**.
+> Las 13 rondas estan cerradas y su trabajo esta en `main`. **No se borra** (CLAUDE.md
+> §0 regla 7, y orden explicita del autor): lo citan `CHANGELOG.md`, `CLAUDE.md` y la
+> skill `tests-fuentes`. §1 (ya corregido, greppable por simbolo) y §2 (descartado con
+> motivo) son **historia cerrada**: reportar algo de ahi es pagar dos veces el mismo
+> hallazgo. Lo que sigue ABIERTO es el §4 — mirar la ventana a ojo, compilar el `.exe`,
+> los años discontinuos de la familia poblacion, y la pasada de textos de `programas/`
+> y `modulos/` —, y esta espejado en el §12 de `CLAUDE.md`.
+>
+> El conflicto semantico del Trabajo Perdido que anunciaba el §4 **ocurrio**, y ademas
+> destapo dos bugs mas de la misma familia (A32·F1/F2 y el centinela con byte NUL de
+> `_una_fila_por_atencion`). Los tres estan en el CHANGELOG de la 2.0.0, con su test.
+
+---
+
 # Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-20)
 
 Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`; en `3b8cbd4` el diff va
@@ -1215,6 +1230,60 @@ Sección G con `od["FECHA"].min() > limite`, también solo el extremo. Al arregl
 dos. Emparentado con §1.K.8, que cerró el caso del año **cargado pero solo-encabezado** (ahí
 hay archivo, así que dispara la guarda por archivo); el año que **no se carga** no tiene
 archivo y por eso quedaba afuera.
+
+### HECHO — el merge (2.0.0, 20-sep-2026). Lo que encontró de más
+
+El merge se ejecutó con el prompt de abajo. Los 7 conflictos se resolvieron, la tabla de
+port del plan §9.1 quedó entera en «sí», la GUI 1.x se congeló y `autorem.py` pasó de
+1571 a ~250 líneas. El detalle completo está en el CHANGELOG de la **2.0.0**; acá solo lo
+que **el prompt no anticipaba**, porque es lo que una sesión fría no puede deducir:
+
+1. **El falso positivo de `contiene_todos` NO era solo del Trabajo Perdido.** La misma
+   mascara multi-token estaba en `rem_sm_actividades._ada_eventos`, en **A32·F1 y A32·F2,
+   que SÍ tributan al REM**, y en las dos direcciones (medido, repro archivado en
+   `evanesced/gui-2.0_merge/repro_a32f2.py`): falso POSITIVO con tres actividades ajenas,
+   y falso NEGATIVO cuando una actividad hermana trae «videollamada» y apaga el `~` de su
+   hermana. Salió `rem_utils.por_actividad`, con la regla escrita: si los tokens describen
+   UNA actividad va `por_actividad`; si describen actividades DISTINTAS (los indicadores
+   del A23) la celda unida es justo lo que se quiere.
+2. **El centinela de grupo de `_una_fila_por_atencion` llevaba un byte NUL** (`'\x00fila{i}'`),
+   y el groupby de pandas hashea el str HASTA el NUL: **todas** las atenciones de una sola
+   actividad caían en el mismo grupo y se fusionaban en una, con pacientes distintos
+   mezclados. Solo mordía en un export MIXTO, que es la forma del Monitoreo admin real —
+   sin ninguna multilínea la función sale antes, y por eso los tests de dos filas no lo
+   veían. Es el bug más grave de la tanda y lo introdujo la ronda 12.
+3. **El `.gitignore` SÍ atrapaba la GUI congelada.** El plan §8 decía «un `.py.gz` no
+   matchea»; `*.gz` está ignorado en bloque desde siempre. Necesitó su whitelist.
+4. **`tools/check_fuentes.py` no necesitó caso nuevo**: los loaders del TP son los
+   compartidos (`cargar_atenciones` en los dos formatos, `cargar_maestro`), y los dos ya
+   tenían contrato. El caso mixto se amarró como test normal, no como contrato: el arnés
+   de contratos escribe UNA fila por fixture, y este bug necesita cinco.
+5. **`FORMCLIN` con `_primero`** (punto 4 del prompt): no hace falta confirmar nada contra
+   el Monitoreo, porque el Monitoreo **no trae FORMULARIOS CLINICOS** (programas/CLAUDE.md
+   §5.1: «sin equivalente») — por eso `Ctrl_sin_Formulario` sale NO CALCULADO ahí. En IRIS
+   cada atención es una fila, así que `_primero` toma el único valor que hay. Amarrado en
+   el test de los dos formatos.
+6. **Números antes/después del TP con el export REAL: NO se pudieron tomar.** Los exports
+   con PII viven solo en la carpeta de trabajo (OneDrive), fuera del repo y fuera de esta
+   sesión. Lo que SÍ se hizo, y es lo que el prompt pedía como chequeo 2: el test de que
+   **IRIS y el Monitoreo dan la misma fila** para la misma atención. **Queda para el
+   autor:** correr el TP con el export de agosto antes y después, y comparar
+   `Ctrl_sin_Formulario` y `Sin_Consejeria` fila por fila. Si bajan, es el falso positivo
+   del punto 1 y el número nuevo es el correcto.
+
+7. **El `.exe` SE COMPILÓ y arranca** (paso 13, primera vez contra un build real):
+   `python -m PyInstaller autoREM.spec` — 76 MB, sin errores; el único warning es el
+   `tbb12.dll` de numba, preexistente y ajeno. Verificado en el bundle: `gui.app`,
+   `gui.registro`, las **6 páginas** (`a05` · `a23` · `sm` · `poblacion` · `inicio` ·
+   `about`), 126 archivos de datos de customtkinter y `catalogos/` con el
+   `maestro_slim.csv.gz`. Abierto: sobrevive 30 s y su ventana se titula **«autoREM
+   2.0.0»**, que es `gui/app.py:292` — o sea el exe congelado levanta la 2.0, no la 1.x,
+   y **no** muere con el `ModuleNotFoundError` que el `--windowed` habría escondido.
+   **Sigue pendiente lo que un agente no puede hacer:** mirar la ventana con ojos
+   humanos (que el banner y el acuse del A05 queden donde se espera, la caja de
+   cuestionarios del SM, el tema claro/oscuro), y confirmar con una salida real que la
+   LEEME aparece, que el TP no dice «heurística» en el log y que el botón de catálogos
+   del About no dice que falta el escáner.
 
 ### El merge: conflicto SEMÁNTICO del Trabajo Perdido + esquema de versiones
 

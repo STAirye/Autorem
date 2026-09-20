@@ -8,6 +8,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 Version: 1.9.10 (plan; la implementación bumpea, ver §9)
 -->
 
+> **LISTO Y MERGEADO** — 2026-09-20, la GUI 2.0 se mergeo a `main` en la **2.0.0**.
+> Se conserva como registro del *por qué* de cada decision de diseño (lo citan
+> `CHANGELOG.md`, `CLAUDE.md` y `gui/CLAUDE.md`). Lo unico que queda vivo del plan es
+> el **paso 13** (§12): mirar la ventana con ojos humanos y compilar el `.exe`; esta
+> anotado en el §12 de `CLAUDE.md`. El contrato `PANTALLA` vigente NO esta aca — vive
+> en el docstring de `gui/app.py`, y las trampas de la carpeta en `gui/CLAUDE.md`.
+
+---
+
 # Plan — GUI 2.0 (customtkinter)
 
 Documento **autocontenido**: escrito para una sesión fría que solo lee este archivo
@@ -639,12 +648,13 @@ abajo**: es trabajo que la GUI 2.0 tiene que portar. Sin la tabla, un botón agr
 
 | Cambio de GUI en `main` | Versión | Portado a la rama |
 |---|---|---|
-| Dotación: cuadro, 2 botones, 3 diálogos (§2, §3.3) | 1.9.8 / 1.9.9 | pendiente |
-| `_manejar_error`: título propio para `cruzados` | 1.9.10 | pendiente |
-| *(anotar aquí lo que venga)* | | |
+| Dotación: cuadro, 2 botones, 3 diálogos (§2, §3.3) | 1.9.8 / 1.9.9 | **sí** — `gui/dialogos.py`: `bloque_dotacion` · `dotacion_ada` · `dialogo_dotacion` · `revisar_dotacion`, más `valores_iniciales` / `decisiones_cambiadas` (la lógica pura que §11 pedía extraer). Rondas 3 y 7; re-verificado en la 13 |
+| `_manejar_error`: título propio para `cruzados` | 1.9.10 | **sí** — `runner._TITULO_INVALIDO["cruzados"]`, y el docstring de `runner` cita «la rama 'cruzados' de 1.9.10». Re-verificado en la ronda 13 |
+| *(la tabla se cierra acá: `main` no volvió a tocar la GUI)* | | |
 
-**Antes del paso 11**, esta tabla tiene que estar entera en "sí". Es la condición para
-borrar la GUI vieja.
+**Antes del paso 11**, esta tabla tenía que estar entera en "sí": es la condición para
+borrar la GUI vieja. **Se cumplió** — las dos filas quedaron verificadas antes del
+merge de la 2.0.0.
 
 ---
 
@@ -665,11 +675,16 @@ mismo problema que ya mordió con `maestro_slim.csv.gz` y con `catalogos/`
 
 ## 11. Tests
 
-Hoy la GUI **no tiene cobertura**: de los 170 tests (re-verificado el 15-sep), lo único que toca `autorem` es
-`tests/test_autorem.py:297`, que llama a `_correr_tareas` (headless). La migración es
-un cambio grande sin red — la validación es a ojo.
+> **CUMPLIDO en la 2.0.0.** Al merge hay **51 tests de GUI**: 26 en
+> `tests/test_gui_registro.py` (el contrato) + 25 en `tests/test_gui_construccion.py`,
+> que **arma la ventana de verdad** y bombea eventos — es el que cazó el `after()` desde
+> el hilo. Lo de abajo queda como el porqué de su diseño.
 
-Lo que sí se puede testear, y hay que agregar: **`tests/test_gui_registro.py`**, del
+Cuando esto se escribió la GUI **no tenía cobertura**: de los 170 tests de entonces, lo único que tocaba `autorem` era
+`tests/test_autorem.py:297`, que llama a `_correr_tareas` (headless). La migración era
+un cambio grande sin red — la validación, a ojo.
+
+Lo que sí se puede testear, y se agregó: **`tests/test_gui_registro.py`**, del
 mismo tipo anti-olvido que `tests/test_cobertura.py`. Descubre por introspección las
 páginas de `gui/paginas/` y falla si alguna:
 

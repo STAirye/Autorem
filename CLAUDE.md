@@ -22,15 +22,16 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 | 2.1 · 3 · 6 · 7 | familia población, pipeline A05, demografía, decisiones SM | [modulos/CLAUDE.md](modulos/CLAUDE.md) |
 | 3.1 · 5 · 5.1 · 14 | filtro de mes, formatos IRIS/Admin, Monitoreo, catálogos DEIS | [programas/CLAUDE.md](programas/CLAUDE.md) |
 | 8 · 10.1 · 11 | privacidad en detalle + hooks, worktrees, build del `.exe` | [tools/CLAUDE.md](tools/CLAUDE.md) |
-| — | GUI 2.0: contrato de pantalla, trampas de Tk/hilos, reuso | [gui/CLAUDE.md](gui/CLAUDE.md) |
+| — | GUI: contrato de pantalla, trampas de Tk/hilos, reuso | [gui/CLAUDE.md](gui/CLAUDE.md) |
 | — | convenciones de tests (no comparar texto plano de la GUI) | [tests/CLAUDE.md](tests/CLAUDE.md) |
 | 4 | historia v1.2–1.6 | [CHANGELOG.md](CHANGELOG.md) |
 
-> 🔎 **¿Vas a REVISAR la rama `gui-2.0` (code-review)?** Lee primero
-> [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md): la revisión va
-> por rondas con `compact` entre medio, y ahí está el registro de lo **ya corregido**
-> (§1, greppable por símbolo) y lo **descartado con motivo** (§2). Reportar algo que ya
-> está ahí es pagar dos veces el mismo hallazgo. Al terminar tu ronda, **anota lo tuyo**.
+> 🔎 **¿Vas a tocar la GUI, o revisarla?** El registro de las 13 rondas de
+> code-review de la 2.0 está en
+> [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md), CERRADO y
+> mergeado: §1 es lo **ya corregido** (greppable por símbolo) y §2 lo **descartado con
+> motivo**. Reportar algo que ya está ahí es pagar dos veces el mismo hallazgo. Lo que
+> sigue abierto vive en §4 de ese archivo y en el §12 de acá.
 
 ---
 
@@ -89,7 +90,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 ## 1. Dependencias
 
 - **Runtime:** `openpyxl` + `pandas`. `tkinter` viene con el Python de Windows.
-  **GUI 2.0** (rama `gui-2.0`, en curso): `customtkinter`.
+  La GUI (2.0, desde sep-2026): `customtkinter`.
 - **Build:** `PyInstaller` (§11). Todo se empaqueta en el `.exe`, así que sumar deps
   no cuesta: prima **minimizar líneas de código**.
 
@@ -97,7 +98,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **1.9.17** (§9). **296 tests.**
+Versión **2.0.0** (§9). **304 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -106,10 +107,12 @@ Versión **1.9.17** (§9). **296 tests.**
   formulario de Salud Mental (`rem_saludmental`).
 - **Modular — `modulos/`:** un reporte por archivo. A05 N/O · A03 D.3 · A23 · SM
   Actividades · SM Trabajo Perdido · SP·P6 y SM Rescate (estos dos **en validación**).
-- **Interfaz — `gui/`:** la **GUI 2.0** (`customtkinter`), declarativa: una pantalla por
+- **Interfaz — `gui/`:** la **GUI** (2.0, `customtkinter`), declarativa: una pantalla por
   archivo en `gui/paginas/`, descubiertas por introspección. Shell y router en `app.py`,
-  frontera con el hilo worker en `runner.py` -> [gui/CLAUDE.md](gui/CLAUDE.md).
-- **Dispatcher — `autorem.py`:** GUI de pestañas (1.x, la que corre el `.exe`) + CLI.
+  frontera con el hilo worker en `runner.py` -> [gui/CLAUDE.md](gui/CLAUDE.md). Es la
+  que corre el `.exe` desde la **2.0.0**; la 1.x quedó congelada en `legacy/`.
+- **Dispatcher — `autorem.py`:** ya no dibuja nada. Registro de tareas del A05,
+  orquestación compartida (`_correr_tareas`) y el CLI **congelado** (§12).
 
 Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autorem` / `gui`. Imports
 **absolutos** rooteados en la raíz (`from programas.rem_utils import …`).
@@ -119,12 +122,12 @@ autorem.py        entry point / dispatcher (único código en la raíz)
 programas/        capas compartidas         -> programas/CLAUDE.md
 modulos/          un reporte REM por archivo -> modulos/CLAUDE.md
 tools/            utilitarios de desarrollo  -> tools/CLAUDE.md
-gui/              GUI 2.0 (customtkinter)     -> gui/CLAUDE.md
+gui/              la GUI (customtkinter)      -> gui/CLAUDE.md
 catalogos/        CIE-10 / ENO / GES + maestro_slim, que shippea el exe (§14)
 refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
 .claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes
-legacy/           monolitos viejos (no se importan; referencia de equivalencia)
+legacy/           monolitos viejos + la GUI 1.x congelada (.py.gz; no se importan)
 tests/            pruebas automáticas        -> tests/CLAUDE.md
 docs/             planes y contexto por módulo
   evanesced/        scripts de repro de ramas/worktrees ya cerrados (§0 regla 7)
@@ -136,8 +139,8 @@ incluye (`a05_o_egresos`).
 
 **Arquitectura (2 ejes ortogonales):**
 - **Formato** `iris` | `administrativo`: **se detecta automáticamente por contenido y
-  lo verifica el usuario**. En la GUI 1.x todavía es un selector que la detección
-  valida (y bloquea si no calza); la GUI 2.0 lo reemplaza por detección + confirmación.
+  lo verifica el usuario**. El selector de la 1.x ya no existe (2.0.0): sobraba, porque
+  no le podía ganar a la detección -- solo aportaba una forma de equivocarse.
   Aplica a **todos** los reportes RAYEN con dos formatos, no solo al formulario SM (§5).
 - **Tarea** (`autorem.TAREAS`): agnóstica al formato. Las tareas del mismo archivo
   corren juntas → un `…_procesado.xlsx` con una hoja por tarea.
@@ -145,7 +148,7 @@ incluye (`a05_o_egresos`).
 **Arranque:** sin args → GUI · arrastrar un `.xlsx` sobre el exe → GUI con la ruta
 precargada · `--cli entrada.xlsx [--formato] [--tarea] [--mes AAAA-MM]` → **el CLI es
 solo del A05**. El resto de los módulos es solo GUI, y no hay plan de CLI para todos.
-El CLI queda **CONGELADO** al pasar a la GUI 2.0 (§12): no se le portan los cambios.
+El CLI quedó **CONGELADO** en la 2.0.0 (§12): no se le portan los cambios.
 
 **Salidas y caché:**
 - La carpeta de salida por defecto es **la de los archivos de entrada**, no el cwd
@@ -173,8 +176,8 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 
 `X.Y.Z` versiona **el software** (un binario, un `rem_utils.VERSION`):
 - **X** = cambio grande de arquitectura / incompatible, **o plantillas REM de un año
-  nuevo** (SA y SP cambian cada año; actualizarlas es pega del dev). Planeado: **2.0.0**
-  = GUI 2.0 · **3.0.0** = plantillas REM 2027.
+  nuevo** (SA y SP cambian cada año; actualizarlas es pega del dev). Hecho: **2.0.0**
+  = GUI 2.0 (sep-2026). Planeado: **3.0.0** = plantillas REM 2027.
 - **Y** = módulo o reporte nuevo (de cualquier programa de salud).
 - **Z** = corrección. Reinicia a 0 al subir Y.
 
@@ -183,7 +186,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **1.9.17**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.0**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -231,18 +234,21 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 (Lo hecho está en el [CHANGELOG](CHANGELOG.md).)
 
 **En curso**
-- **GUI 2.0** (rama `gui-2.0`, [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md)):
-  customtkinter, pestañas agrupadas por programa, About, la pestaña A03 standalone
-  desaparece (queda solo dentro de Actividades), y el selector IRIS/Admin se reemplaza
-  por detección + confirmación. El selector sobra porque ya no le puede ganar a la
-  detección, que bloquea si no calzan: solo aporta una forma de equivocarse.
-  **El CLI se CONGELA en la 2.0** (decisión del autor, sep-2026): queda como está,
-  sin seguir el rediseño de la GUI. Quizás vuelva a funcionar más adelante,
-  probablemente no. Consecuencia conocida y aceptada: los mensajes cruzados de
-  `validar_iris`/`validar_admin` dicen «Cambia el selector de formato», y ese selector
-  ya no existe en la 2.0 — solo se alcanzan por el `--perfil` del CLI y por el
-  notebook 1.x, las dos superficies congeladas. No se reescriben por ahora; si el CLI
-  revive, el texto se revisa junto con él.
+- **Cerrar la 2.0 a ojo:** mirar la ventana con ojos humanos (`python -m gui.app`) y
+  **compilar el `.exe`** (`pyinstaller autoREM.spec`) para probar los arreglos de
+  empaquetado contra un build real -- es el paso 13 del plan, y la primera vez que
+  se pueden probar: hasta la 2.0.0 la GUI 2.0 no entraba al bundle. Checklist en
+  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §4.
+- **Ronda de EFICIENCIA y REUSO sobre el codebase completo** (decisión del autor,
+  sep-2026): la primera revisión de la era 2.0, sobre `main`. No era parte de la
+  revisión de la rama.
+- **El CLI queda CONGELADO** (decisión del autor, sep-2026): no sigue el rediseño
+  de la GUI. Quizás vuelva a funcionar más adelante, probablemente no. Consecuencia
+  conocida y aceptada: los mensajes cruzados de `validar_iris`/`validar_admin` dicen
+  «Cambia el selector de formato», y ese selector ya no existe; y el uso del `--cli`
+  manda el A03 «a la pestaña Screening», que tampoco existe. Solo se alcanzan desde
+  el CLI y el notebook 1.x, las dos superficies congeladas. Si el CLI revive, los
+  textos se revisan junto con él.
 - **Validar la familia población** (§2.1): la brecha `Ingresado` del P6 y el rescate
   contra datos reales.
 
@@ -254,18 +260,44 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarlo. **P y A no calzan banda
   por banda** porque tienen algunos diagnósticos distintos, casillas protegidas
   distintas en los rangos etarios y demografía ordenada distinto.
+- **Auditoría de actividades habilitadas** (utilidad no-REM, destino GUI ·
+  Utilidades): qué actividades mínimas del `SA_26` le faltan activadas a cada
+  funcionario ACTIVO, para jefatura. Crosswalk SA → RAYEN validado en la GUI. Primer
+  corte: SM. [docs/actividades_profesionales_plan.md](docs/actividades_profesionales_plan.md).
 - **A03 D.3 v2:** conteos por rango etario extraídos del `SA_26`.
 - **Otras Causas:** popup con los RUT + dropdown abandono/clínica.
 - **Dotación fase 2:** bloques apilados REM/externos por sección (validación en pausa
   hasta recibir la lista de externos).
 
 **Correcciones y mejoras**
-- **Demografía del grupal** cruzando con el ADA por RUN. Evaluar primero si el grupal
-  trae RUN: si lo trae, es un merge barato.
-- **GUI 2.0 — cerrar la revisión de la rama:** mirar la ventana con ojos humanos y
-  compilar el `.exe` para probar los arreglos de empaquetado. Ver
-  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §4.
-- **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
+- **Demografía del grupal.** El grupal sí trae RUN. Fuente por
+  RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
+  población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
+  dos: un «sin dato» contado como NO subcuenta callado. La cobertura va a la LEEME.
+- **Rendimiento de lectura** (sin urgencia): medir primero dónde se va el tiempo
+  (lectura del `.xlsx` vs cálculos). Si es la lectura, probar `python-calamine`
+  (`engine="calamine"`) contra la «dimension rota» de RAYEN. Cortar un mismo `.xlsx`
+  y leer las partes en paralelo no rinde, porque no hay acceso aleatorio por fila.
+- **La PRIMERA visita a cada página tarda segundos** (reportado por el autor al probar
+  el exe de la 2.0.0, y él lo atribuyó a customtkinter). **No es ctk:** `app.mostrar()`
+  construye la página la primera vez que se entra (`if pantalla_id not in self._frames`)
+  y después solo hace `grid`/`grid_remove`. Medido:
+
+  | Página | 1a visita | 2a | 3a |
+  |---|---|---|---|
+  | `sm_actividades` | **6943 ms** | 177 ms | 16 ms |
+  | `a23_respiratorio` | 1814 ms | 184 ms | 32 ms |
+  | `a05` | 1449 ms | 129 ms | 19 ms |
+  | `sp_p6_poblacion` | 1063 ms | 141 ms | 15 ms |
+  | `inicio` | 89 ms | 29 ms | 18 ms |
+
+  O sea el costo es **de construcción, y se paga una sola vez por página**. Opciones:
+  construirlas todas al arranque (mueve la espera a un solo lugar, donde se puede
+  mostrar progreso), o construir las que faltan en el hilo de la GUI con el sidebar ya
+  pintado. Medir antes qué se lleva los 7 s del SM: es la página con `extras`,
+  `preparar` y la caja de cuestionarios. Arnés en
+  [docs/evanesced/gui-2.0_merge/medir_cambio_pagina.py](docs/evanesced/gui-2.0_merge/medir_cambio_pagina.py).
+- **Catálogos en la GUI** (fecha visible + actualización manual en modo
   avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
   lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.
 - **Generalizar a otros centros:** un config en vez de constantes locales

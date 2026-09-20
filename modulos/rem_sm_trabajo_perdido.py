@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -91,13 +91,17 @@ Recicla el módulo de actividades (mismo ADA): `cargar_atenciones`, `_rango_mes`
 heurística `mask_tributa_ada`. No es un fork: reporte aparte que comparte código.
 
 Salida `escribir()`: TP_Resumen + Por_Actividad (qué strings son basura, con su NUM
-REM) + Por_Funcionario (a quién avisar) + TP_Detalle (auditable).
+REM) + Por_Funcionario (a quién avisar) + TP_Detalle (auditable). Más dos auditorías
+POR ATENCIÓN de atenciones que SÍ tributan pero quedaron a medias (`auditar_atenciones`):
+Ctrl_sin_Formulario (Control SM sin formulario «Control de Salud Mental»; solo IRIS) y
+Sin_Consejeria (Control/Consulta/VDI SM sin consejería SM A19a en la misma atención).
 """
 
 import pandas as pd
 
 from programas.rem_utils import (norm, cargar_atenciones, cargar_maestro, maestro_rem_map,
-                                 _rango_mes, filtrar_mes)
+                                 _rango_mes, filtrar_mes, contiene_todos, contiene_alguno,
+                                 por_actividad, clave_atencion)
 from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
@@ -119,6 +123,83 @@ _SIN_MAESTRO = "(sin maestro)"
 _NO_EN_MAESTRO = "(nueva / no en maestro)"
 
 _DET_COLS = ["fecha", "profesional", "estamento", "actividad", "num_rem", "run"]
+
+# -- Auditorías POR ATENCIÓN ---------------------------------------------------------
+# Estas SÍ tributan (no son saco roto), pero están registradas a medias.
+#   1. Ctrl_sin_Formulario: actividad Control SM (presencial o remoto A32F2) sin el
+#      formulario clínico «Control de Salud Mental» en la atención.
+#   2. Sin_Consejeria: Control / Consulta / VDI de SM sin consejería SM (A19a 97/99)
+#      en la misma atención.
+# Sobre la forma canónica de `cargar_atenciones` (1.9.17) cada FILA ya es una atención,
+# con todas sus actividades unidas por SEP_ACTIVIDADES: no hay groupby que hacer, son
+# máscaras por fila. Lo que SÍ hay que cuidar es la máscara de VARIOS tokens, que va
+# `por_actividad` -- ver su docstring en rem_utils, y el test de los dos formatos.
+# FORMULARIOS CLINICOS viene como 'FORM A 8  ;  Control de Salud Mental': se parte por
+# ';' y se compara EXACTO. Nunca substring: 'mental' capta el «Minimental».
+FORM_CONTROL_SM = "Control de Salud Mental"
+CONSEJERIA_SM = ("prioridad - con integrante con problema de salud mental",   # A19a 97
+                 "prioridad - con integrante con demencia")                   # A19a 99
+_DET_AT_COLS = ["fecha", "profesional", "estamento", "run", "aten_id", "actividades"]
+
+
+def _mask_control_sm(A):
+    # A06 + A32F2 (remotos: el nombre real lleva «de» en medio, ver rem_sm_actividades).
+    # Los dos tokens del A32F2 parten el nombre de UNA actividad -> `por_actividad`, o
+    # «Controles de pie diabético; Consulta de salud mental por psicólogo» dispara sin
+    # que ninguna de las dos sea un Control de Salud Mental.
+    return (contiene_todos(A, "controles salud mental")
+            | por_actividad(A, lambda s: contiene_todos(s, "controles", "salud mental por")))
+
+
+def _tiene_form(celda, form=FORM_CONTROL_SM):
+    return any(norm(p) == norm(form) for p in str(celda or "").split(";"))
+
+
+def _atenciones_sin(dm, marca, falta):
+    """Las atenciones de `marca` a las que les falta `falta` (máscaras por fila: cada
+    fila ES una atención). Trae todas sus actividades, para que sea auditable."""
+    cols = _DET_AT_COLS + ["formularios"]
+    sub = dm[marca & ~falta]
+    if not len(sub):
+        return pd.DataFrame(columns=cols)
+    col = lambda k: sub[k] if k in sub.columns else pd.Series("", index=sub.index)
+    out = pd.DataFrame({
+        "aten_id": sub["ATENID"].map(clave_atencion), "fecha": sub["FECHA"],
+        "profesional": col("PROF").map(lambda x: norm(x) or "(SIN PROFESIONAL)"),
+        "estamento": col("INSTR").astype(str), "run": sub["RUN"].astype(str),
+        "actividades": sub["ACT"].astype(str),
+        "formularios": col("FORMCLIN").fillna("").astype(str),
+    })
+    return out[cols].sort_values(["profesional", "fecha"], ignore_index=True)
+
+
+def auditar_atenciones(d, dm, log=print):
+    """Las dos auditorías por ATENCIÓN sobre el ADA del mes `dm` (forma canónica: una
+    fila = una atención, en los dos formatos). Devuelve ({hoja: DataFrame}, [filas
+    resumen], [avisos]). Sin FORMULARIOS CLINICOS (Monitoreo admin) la 1 NO se calcula:
+    se avisa, nunca un 0 callado."""
+    A = dm["ACT_n"]
+    control = _mask_control_sm(A)
+    sm = (control | contiene_todos(A, "consulta de salud mental")
+          | contiene_todos(A, "visita domiciliaria integral familia con integrante con "
+                              "problema de salud mental"))
+    tablas, filas, avisos = {}, [], []
+    if "FORMCLIN" in d.attrs.get("fuente", ("", []))[1]:
+        avisos.append(("Control SM sin formulario", "NO CALCULADO",
+                       "el export no trae FORMULARIOS CLINICOS (solo lo trae el A/D/A de IRIS)",
+                       "Cargar el A/D/A de IRIS para esta auditoria"))
+        log("[tp] Control SM sin formulario: NO calculado (falta FORMULARIOS CLINICOS; "
+            "solo IRIS)")
+    else:
+        t = _atenciones_sin(dm, control, dm["FORMCLIN"].map(_tiene_form))
+        tablas["Ctrl_sin_Formulario"] = t
+        filas.append(("Atenciones con Control SM sin formulario Control de Salud Mental", len(t)))
+        log(f"[tp] {len(t)} atencion(es) con Control SM SIN formulario «{FORM_CONTROL_SM}»")
+    t = _atenciones_sin(dm, sm, contiene_alguno(A, CONSEJERIA_SM))
+    tablas["Sin_Consejeria"] = t.drop(columns="formularios")
+    filas.append(("Atenciones con Control/Consulta/VDI SM sin consejeria SM", len(t)))
+    log(f"[tp] {len(t)} atencion(es) con Control/Consulta/VDI SM SIN consejeria SM")
+    return tablas, filas, avisos
 
 
 def _mask_any(A, terminos):
@@ -165,13 +246,15 @@ def analizar(d, ini, fin, rem_map=None, log=print):
         "run": rep["RUN"].astype(str).values,
     })
 
+    t_at, f_at, av_at = auditar_atenciones(d, dm, log=log)
     E.attrs["tablas"] = {
-        "TP_Resumen": _tabla_resumen(E, ini, rem_map is not None),
+        "TP_Resumen": _tabla_resumen(E, ini, rem_map is not None, f_at),
         "Por_Actividad": _por_actividad(E),
         "Por_Funcionario": _por_funcionario(E),
+        **t_at,
     }
     E.attrs["mes"] = (ini.year, ini.month)
-    E.attrs["avisos"] = []
+    E.attrs["avisos"] = av_at
     if rem_map and len(dm) and not en_maestro.any():
         # Un Maestro cargado que no reconoce NI UNA actividad del mes es otro catalogo
         # (o uno muy viejo): todo cae a la heuristica igual que sin Maestro, pero el
@@ -208,7 +291,7 @@ def _top(sub, col):
     return (str(vc.index[0]), int(vc.iloc[0]))
 
 
-def _tabla_resumen(E, ini, con_maestro):
+def _tabla_resumen(E, ini, con_maestro, extra=()):
     filas = [
         ("Atenciones SM a saco roto (no tributan)", len(E)),
         ("  · funcionarios involucrados", E["profesional"].nunique() if len(E) else 0),
@@ -218,6 +301,7 @@ def _tabla_resumen(E, ini, con_maestro):
     if con_maestro and len(E):     # desglose por a-dónde-sí-iba (NUM REM del Maestro)
         for rem, n in E["num_rem"].value_counts().items():
             filas.append((f"  · a {rem}", int(n)))
+    filas += list(extra)
     df = pd.DataFrame(filas, columns=["Indicador", "Valor"])
     df.attrs["mes"] = f"{ini:%Y-%m}"
     return df

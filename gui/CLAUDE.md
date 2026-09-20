@@ -8,15 +8,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # gui/ — GUI 2.0 (customtkinter)
 
 Se carga al trabajar en `gui/`. Los `§N` son las anclas del [CLAUDE.md raíz](../CLAUDE.md).
-Plan: [docs/GUI_2.0_plan.md](../docs/GUI_2.0_plan.md). Registro de la revisión de la rama:
-[docs/review_gui-2.0_pendiente.md](../docs/review_gui-2.0_pendiente.md).
+El plan de diseño ([docs/GUI_2.0_plan.md](../docs/GUI_2.0_plan.md)) y el registro de las 13
+rondas de revisión ([docs/review_gui-2.0_pendiente.md](../docs/review_gui-2.0_pendiente.md))
+están **cerrados y mergeados** en la 2.0.0: se leen para entender el *por qué*, no como
+tareas pendientes.
 
 **El contrato `PANTALLA` está documentado en el docstring de `gui/app.py`** — no se repite
 acá. Este archivo es lo que ese docstring no dice: qué trampa ya mordió, y dónde.
 
-**Cómo se corre:** `python -m gui.app`. `autorem.py` sigue lanzando la GUI 1.x y es el único
-entry point del `.exe`; las dos conviven hasta el **paso 11** del plan (§12). No se toca
-`autorem.py` antes de eso.
+**Cómo se corre:** `python -m gui.app` para trabajar, o el `.exe` / `python autorem.py`,
+que desde la **2.0.0** lanza esto (`autorem.main()` -> `gui.app.lanzar(ruta_inicial)`).
+`autorem.py` ya no dibuja nada: le quedan el registro de tareas del A05, la orquestación
+compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
+`legacy/autorem_gui_tk_1.9.18.py.gz`.
 
 ## Archivos
 
@@ -124,17 +128,18 @@ Convención al escribir estos tests: **no comparar texto plano que ve el usuario
 constante del módulo que lo muestra (`a05.TITULO_FALTA_ACUSE`, `runner.TITULO_NO_ENCONTRADO`,
 `widgets.NO_SE_GENERO`) y el test la importa.
 
-## Pendiente al paso 11 (el merge)
+## Lo que cerró el merge (2.0.0) — y lo único que quedó
 
-- **`autorem.py` todavía corre la GUI 1.x.** Al enchufar la 2.0, pasarle el `ruta_inicial` de
-  `main()` a `gui.app.lanzar(ruta_inicial)` — el canal ya existe.
-- **El `import` de `gui.app` tiene que ir a NIVEL DE MÓDULO**, o sumar `'gui.app'` a
-  `hiddenimports`: todos los imports de `autorem.py` son locales a la función, y PyInstaller
-  no los ve → el exe congelado muere con `ModuleNotFoundError` con el `.spec` ya «arreglado».
-  `gui/paginas/*` ya entra por `collect_submodules('gui.paginas')` en `autoREM.spec` (se
-  descubren en runtime con `pkgutil`, así que el análisis estático no las veía).
-- **`runner.py` duplica helpers de `autorem.py` y ya divergieron** (hallazgo #14): se
-  resuelve con el merge, no antes.
+- **`autorem.py` lanza la 2.0**, con el `import` de `gui.app` a **NIVEL DE MÓDULO**: todos
+  los demás imports de ese archivo son locales a su función, y PyInstaller solo ve los
+  estáticos -> con el import adentro de `main()`, el exe congelado moría con
+  `ModuleNotFoundError: gui.app`, con el `.spec` ya «arreglado». `gui/paginas/*` entra
+  aparte, por `collect_submodules('gui.paginas')` en `autoREM.spec`.
+- **Hallazgo #14 cerrado:** `runner.py` duplicaba nueve helpers de `autorem.py` y ya habían
+  divergido. Queda UNA copia, la de `gui/`.
+- **Sigue pendiente, y es lo único:** mirar la ventana **con ojos humanos** y **compilar el
+  `.exe`** (paso 13 del plan). Hasta la 2.0.0 la GUI no entraba al bundle, así que los
+  arreglos de empaquetado quedaron razonados pero sin build que los probara.
 - Los mensajes de `validar_iris`/`validar_admin` dicen «Cambia el selector de formato», y ese
-  selector no existe en la 2.0. Solo se alcanzan desde el CLI y el notebook 1.x, las dos
-  superficies **congeladas** (§12); se revisan si el CLI revive.
+  selector ya no existe. Solo se alcanzan desde el CLI y el notebook 1.x, las dos superficies
+  **congeladas** (§12); se revisan si el CLI revive.

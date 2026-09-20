@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.0
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,7 +43,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "1.9.17"
+VERSION = "2.0.0"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -606,6 +606,16 @@ CAB_ATENCION = ["RUN", "FECHA", "INSTR", "PROF", "TIPO", "SEXO", "SECTOR", "NACI
                 "AMAT", "ANOS", "ANOS_AT"]
 
 
+def clave_atencion(v):
+    """ATEN ID / N° -> clave de TEXTO estable, y la etiqueta que se le muestra al
+    usuario. El ATEN ID de IRIS es NUMÉRICO (Excel lo muestra '683.016.530,00') y
+    openpyxl lo entrega como int o como float según la celda: sin esto, `norm` daría
+    '683016530' y '683016530.0' y la MISMA atención se partiría en dos. Vacío -> ''."""
+    if isinstance(v, float) and v == v and v.is_integer():
+        v = int(v)
+    return norm(v)
+
+
 def _una_fila_por_atencion(d, log=print):
     """Forma CANÓNICA de las atenciones: UNA fila por atención, con todas sus
     actividades (y diagnósticos) en una celda, como las entrega el A/D/A de IRIS.
@@ -624,13 +634,23 @@ def _una_fila_por_atencion(d, log=print):
     Monitoreo, con los mismos datos) y contaba actividades donde su tabla dice
     «atenciones»; y la evidencia del diálogo de dotación inflaba `n_atenciones`."""
     import pandas as pd
-    aten = d["ATENID"].map(norm)
+    aten = d["ATENID"].map(clave_atencion)
     dup = aten.ne("") & aten.duplicated(keep=False)
     if not dup.any():
         return d      # IRIS, o un Monitoreo sin atenciones de 2+ actividades: ya está
     # Las filas sin ATENID (o con uno único) NO se pueden agrupar: cada una es su grupo.
-    solas = pd.Series([f"\x00fila{i}" for i in range(len(d))], index=d.index)
-    clave = aten.where(dup, solas)
+    # La clave es NUMÉRICA a propósito. Con un centinela de TEXTO hay que inventar un
+    # string que no pueda chocar con un ATEN ID real, y el que se usó ('\x00fila{i}')
+    # traía un byte NUL: el groupby de pandas hashea el str HASTA el NUL, así que las
+    # filas sueltas caían TODAS en el mismo grupo y se fusionaban en una sola atención
+    # -- callado, y solo en un export MIXTO (alguna atención de 2+ actividades y el
+    # resto de una), que es justo la forma del Monitoreo admin real. Medido en pandas
+    # 2.3.3: groupby(['\x00a','\x00b','\x00c']) -> UN grupo. Con enteros no hay
+    # centinela que inventar: `factorize` da -1 a lo que no agrupa, y ahí va un id
+    # negativo distinto por fila.
+    grupo = pd.Series(pd.factorize(aten.where(dup))[0], index=d.index)
+    solas = pd.Series(range(-1, -len(d) - 1, -1), index=d.index)
+    clave = grupo.where(grupo >= 0, solas)
     # Antes de juntar nada: el ATENID tiene que identificar UNA atención, o sea UN
     # paciente. Si el mismo id aparece con RUN distintos no es un id de atención, y
     # juntar esas filas mezclaría a dos personas en una -- callado. Fail loud (regla 2).
@@ -1145,6 +1165,28 @@ def contiene_alguno(serie, subs):
         c = serie.str.contains(norm(x), regex=False, na=False)
         m = c if m is None else (m | c)
     return m
+
+
+def por_actividad(A, mascara):
+    """Aplica `mascara(serie_norm) -> Series[bool]` a CADA actividad de la celda
+    canónica (partida por `SEP_ACTIVIDADES`) y devuelve el OR por atención.
+
+    Desde `_una_fila_por_atencion` (1.9.17) la celda ACT trae TODAS las actividades de
+    la atención unidas. Para un indicador que es un AND entre actividades DISTINTAS
+    («autocuidado» + «control SALA» del A23) eso es justo lo que se quiere, y la celda
+    unida lo da gratis. Pero una máscara cuyos tokens parten el nombre de UNA SOLA
+    actividad («controles» + «salud mental por», que es «Controles DE Salud Mental POR
+    llamadas telefónicas») se satisface con un token de cada actividad y dispara sin
+    que esa actividad exista: falso positivo callado. Y al revés: un `~` sobre la celda
+    unida («llamada» y NO «videollamada») se apaga porque una actividad HERMANA trae la
+    palabra -> falso negativo. Las dos cosas mueven una casilla del REM.
+
+    Regla: si los tokens describen UNA actividad, la máscara va acá dentro."""
+    import pandas as pd
+    if not len(A):
+        return pd.Series([], dtype=bool, index=A.index)
+    partes = A.astype(str).str.split(";").explode().str.strip()
+    return mascara(partes).groupby(level=0).any().reindex(A.index, fill_value=False)
 
 
 # -- Salidas -----------------------------------------------------------

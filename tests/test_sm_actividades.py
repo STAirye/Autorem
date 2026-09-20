@@ -583,6 +583,32 @@ def test_a32f2_nombres_reales_de_rayen():
     assert tot > 0
 
 
+def test_a32_no_se_arma_con_tokens_de_actividades_distintas():
+    """Merge de la GUI 2.0 (1.9.17). Las mascaras del A32 son VARIOS tokens del nombre
+    de UNA actividad ("Controles DE Salud Mental POR llamadas telefonicas"), y desde la
+    ronda 12 la celda ACT trae TODAS las actividades de la atencion unidas: el AND los
+    tomaba de actividades DISTINTAS. Las dos direcciones mueven una casilla del REM, y
+    por eso las mascaras van `por_actividad` (ver rem_utils).
+
+      atencion 1 - falso POSITIVO: "controles" de una actividad y "salud mental por" de
+        otra armaban un A32F2 sin que exista ningun control remoto de SM.
+      atencion 2 - falso NEGATIVO: el A32F2-Llamadas real se apagaba porque el
+        ~videollamada de la mascara leia la palabra en la actividad HERMANA.
+    """
+    E, _ = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "instr": "Psicólogo(a)", "edad": 30,
+         "act": "Controles de pie diabético  ;  Consulta de salud mental por psicólogo  ;  "
+                "Consulta de morbilidad por llamada telefónica  ;"},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 4), "instr": "Psicólogo(a)", "edad": 20,
+         "act": "Controles de Salud Mental por llamadas telefónicas  ;  "
+                "Acciones remotas de salud mental - Videollamadas  ;"},
+    ])
+    a32 = E[E["casilla"].isin(("A32F1", "A32F2"))]
+    assert set(a32["run"]) == {"B"}, "la atencion A no tiene ninguna actividad A32"
+    assert set(zip(a32["casilla"], a32["sub"])) == {
+        ("A32F2", "Llamadas Telefónicas"), ("A32F1", "Videollamadas")},         sorted(set(zip(a32["casilla"], a32["sub"])))
+
+
 def test_a32f2_tributa_no_es_trabajo_perdido():
     """`mask_tributa_ada` es la fuente unica de 'que tributa': si no las reconoce,
     las F2 vuelven a caer como trabajo perdido aunque la casilla ya las cuente."""

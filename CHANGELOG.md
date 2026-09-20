@@ -10,6 +10,109 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.0] — 2026-09-20
+
+**La GUI 2.0 pasa a ser LA GUI.** Es el merge de la rama `gui-2.0` a `main`: el paso 11
+del plan ([docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §12). `X` por CLAUDE.md §9 —
+cambio grande de arquitectura de la interfaz.
+
+### Cambiado
+- **`autorem.py` ya no dibuja nada.** Pasa de 1571 a ~250 líneas: quedan el registro
+  de tareas del A05, la orquestación compartida `_correr_tareas` / `_resumen_texto`
+  (la usan la GUI y el CLI) y el **CLI**, que sigue CONGELADO (§12). `main()` lanza
+  `gui.app.lanzar(ruta_inicial)`.
+  - El `import` de `gui.app` va a **nivel de módulo** a propósito. Todos los demás
+    imports de `autorem.py` son locales a su función, y PyInstaller solo ve los
+    estáticos: con el import adentro de `main()`, el exe congelado moría con
+    `ModuleNotFoundError: gui.app` **con el `.spec` ya «arreglado»**.
+  - Con eso se cierra el **hallazgo #14** de la revisión: `gui/runner.py` duplicaba
+    nueve helpers de `autorem.py` (`_valida_ruta`, `_manejar_error`, `_Reloj`,
+    `_correr_con_reloj`, `_dir_salida_default`…) y ya habían divergido. Queda una sola
+    copia, la que usa la GUI 2.0.
+- **La GUI 1.x queda congelada** en `legacy/autorem_gui_tk_1.9.18.py.gz` (plan §8),
+  con su `legacy/README.md`: comprimida para que ninguna herramienta del repo la
+  escanee, y no se descomprime «para arreglarla». **Necesitó whitelist en el
+  `.gitignore`**: el plan daba por hecho que un `.py.gz` no matcheaba, y `*.gz` está
+  ignorado en bloque desde siempre.
+- La pestaña **A03 standalone desaparece**: el A03·D.3 vive solo dentro de SM
+  Actividades. El **selector IRIS/Administrativo** se reemplazó por detección +
+  confirmación (plan §5).
+
+### Corregido
+Tres números mal, los tres de la misma familia: la forma canónica de las atenciones
+(`_una_fila_por_atencion`, ronda 12) cambió el significado de la celda `ACTIVIDADES`
+y hay código que la seguía leyendo como si fuera UNA actividad.
+
+- **Máscaras multi-token evaluadas sobre la celda unida** (`rem_utils.por_actividad`,
+  nuevo). Una máscara cuyos tokens parten el nombre de **una sola** actividad
+  («controles» + «salud mental por» = «Controles DE Salud Mental POR llamadas
+  telefónicas») se satisfacía con un token de cada actividad de la atención. Afectaba
+  a **A32·F1 y A32·F2, que SÍ tributan al REM**, en las dos direcciones:
+  - falso POSITIVO: `Controles de pie diabético; Consulta de salud mental por
+    psicólogo; Consulta de morbilidad por llamada telefónica` daba A32·F2, sin que
+    existiera ningún control remoto de SM;
+  - falso NEGATIVO: `Controles de Salud Mental por llamadas telefónicas; Acciones
+    remotas de salud mental por videollamada` perdía su A32·F2-Llamadas, porque el
+    `~videollamada` leía la palabra en la actividad HERMANA.
+
+    El mismo defecto estaba en `_mask_control_sm` del Trabajo Perdido, donde metía
+    atenciones inventadas en la auditoría `Ctrl_sin_Formulario`. La regla, ahora
+    escrita: si los tokens describen UNA actividad, la máscara va `por_actividad`; si
+    describen actividades DISTINTAS (los indicadores del A23), la celda unida es
+    justamente lo que se quiere.
+- **El centinela de grupo de `_una_fila_por_atencion` llevaba un byte NUL**
+  (`'\x00fila{i}'`), y el `groupby` de pandas hashea el string HASTA el NUL (medido en
+  2.3.3): **todas** las atenciones de una sola actividad caían en el MISMO grupo y se
+  fusionaban en una, con las actividades de pacientes distintos juntas. Solo mordía en
+  un export MIXTO — alguna atención de 2+ actividades y el resto de una —, que es la
+  forma del **Monitoreo admin real**; sin ninguna multilínea la función sale antes, y
+  por eso los tests de dos filas no lo veían. La clave del grupo ahora es NUMÉRICA:
+  no hay centinela que inventar.
+- **El ATEN ID numérico de IRIS** (`683016530` / `683016530.0` según la celda) partía
+  una atención en dos al agrupar. La normalización que 1.9.16 había hecho dentro del
+  Trabajo Perdido sube a la forma canónica, donde vive la identidad de la atención:
+  `rem_utils.clave_atencion`.
+
+### Cambiado (Trabajo Perdido)
+- **`auditar_atenciones` (1.9.16) se adapta a la forma canónica**, no al revés
+  (decisión del autor): sobre el frame canónico cada fila YA es una atención, así que
+  `_aten_id`, el `groupby("id").any()` y el `groupby("aten_id").agg(...)` del detalle
+  se reducen a máscaras por fila y una proyección. Mismo movimiento que §1.M.2 de la
+  revisión, que borró `a23._act_de_la_atencion` por la misma razón. El detalle de
+  actividades usa `SEP_ACTIVIDADES` y no el `" | "` propio que traía.
+
+### Agregado (tests)
+- **Los dos formatos dan lo mismo**: `test_las_auditorias_dan_lo_mismo_desde_iris_que_desde_el_monitoreo`
+  — la misma atención escrita como IRIS y como Monitoreo tiene que dar la misma fila.
+  Es el test que habría cazado solo el choque de este merge.
+- `test_control_sm_no_se_arma_con_tokens_de_dos_actividades`,
+  `test_a32_no_se_arma_con_tokens_de_actividades_distintas` (las dos direcciones) y
+  `test_monitoreo_mixto_no_fusiona_las_atenciones_de_una_sola_actividad`. Los tres se
+  verificaron contra el código viejo: los tres fallan sin su arreglo.
+
+### Documentación
+- `CLAUDE.md` §2, §9 y §12 (la GUI 2.0 sale de «en curso»); `modulos/CLAUDE.md`;
+  `docs/GUI_2.0_plan.md` §9.1 (la tabla-compuerta de port entera en «sí») y §11 (decía
+  «la GUI no tiene cobertura» con 51 tests de GUI escritos).
+- El registro de la revisión, `docs/review_gui-2.0_pendiente.md`, **se conserva** con
+  su header de cierre (regla 7): lo citan el CHANGELOG 11 veces, `CLAUDE.md` y la
+  skill `tests-fuentes`.
+- `tools/check_version.py` (decía 1.9.10) y `tools/slim_maestro.py` (1.9.15) suben a
+  la versión del merge: sus headers apuntaban a un release ANTERIOR a su contenido.
+
+## [1.9.18] — 2026-09-20
+
+Los tres commits que `main` sumó después de la 1.9.16 y que no tenían entrada.
+Es la última versión que shippeó la GUI 1.x.
+
+### Agregado
+- **Plan de la auditoría de actividades habilitadas por funcionario** (SA -> RAYEN):
+  [docs/actividades_profesionales_plan.md](docs/actividades_profesionales_plan.md),
+  más su fila en el roadmap de `CLAUDE.md`.
+- **`refs_tablas/Informe_Actividades_Profesionales_heads.xlsx`** (solo IRIS),
+  recortado a banner + encabezado y con su whitelist por archivo. El crudo trae
+  nombres y RUT de funcionarios: nunca al repo.
+
 ## [1.9.17] — 2026-09-17
 
 ### Corregido
@@ -722,6 +825,22 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   contra los `refs_tablas/*.xlsx` reales del repo, que son solo header (§2 raíz) —
   0 filas de datos, exactamente el caso que dispara esto. No es parte de la
   migración de GUI: es un bug preexistente en la capa compartida `programas/`.
+## [1.9.16] — 2026-09-16
+
+### Agregado
+- **Saco roto: dos auditorías por ATEN ID** de atenciones que sí tributan, pero con
+  el registro incompleto. Salen rutificadas, con estamento y funcionario, cada una en
+  su hoja y con su línea en `TP_Resumen`.
+  - **`Ctrl_sin_Formulario`:** atenciones con actividad Control SM (el remoto A32·F2
+    cuenta; «Acciones remotas» no) que no traen el formulario «Control de Salud
+    Mental» en `FORMULARIOS CLINICOS`. La celda se parte por `;` y cada formulario se
+    compara **exacto**: una subcadena `mental` captaba el «Minimental». Sin esa
+    columna (Monitoreo admin) no se calcula y queda el aviso NO CALCULADO en la
+    LEEME, en vez de un 0 callado.
+  - **`Sin_Consejeria`:** atenciones con Control, Consulta o VDI de SM sin consejería
+    SM (A19a 97/99) **en la misma atención**.
+  - El ATEN ID de IRIS llega numérico (`683.016.530,00` en Excel) y se normaliza a
+    texto, para que el `int` y el `float` no separen una misma atención.
 
 ## [1.9.15] — 2026-09-15
 

@@ -26,9 +26,9 @@ _TMP = Path(tempfile.mkdtemp(prefix="autorem_tp_"))
 
 _ADA_HDR = ["NUMERO TIPO IDENTIFICACION", "ATEN ID", "FECHA ATENCION", "ACTIVIDADES",
             "DIAGNOSTICOS", "INSTRUMENTO", "PROFESIONAL ATENCION", "TIPO ATENCION",
-            "SEXO", "AÑOS ATENCION"]
+            "SEXO", "AÑOS ATENCION", "FORMULARIOS CLINICOS"]
 _ADA_K = {"run": 0, "id": 1, "fecha": 2, "act": 3, "dg": 4, "instr": 5,
-          "prof": 6, "tipo": 7, "sexo": 8, "edad": 9}
+          "prof": 6, "tipo": 7, "sexo": 8, "edad": 9, "form": 10}
 
 _MAESTRO_HDR = ["ACTIVIDAD", "INSTRUMENTO ASOCIADO", "NUM REM", "NUM SECCION", "REM"]
 
@@ -40,7 +40,8 @@ def _mk_ada(rows, nombre="ada.xlsx"):
     for r in rows:
         line = [""] * len(_ADA_HDR)
         for k, v in r.items():
-            line[_ADA_K[k]] = v
+            if _ADA_K[k] < len(_ADA_HDR):     # header recortado = columna ausente
+                line[_ADA_K[k]] = v
         ws.append(line)
     wb.save(p)
     return p
@@ -61,13 +62,15 @@ def _mk_maestro(pares, nombre="maestro.xlsx"):
 _N_AT = [0]
 
 
-def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026"):
-    """Una ATENCION del ADA. El 'id' (ATEN ID) es distinto en cada llamada: en IRIS cada
-    fila es una atencion, y desde la ronda 12 `cargar_atenciones` junta las filas que
-    comparten ATEN ID (el `AT{run}{act[:3]}` de antes colisionaba entre actividades que
-    empezaban igual, y las 3 atenciones del test se volvian una)."""
+def _a(act, prof, run="1-1", instr="Psicólogo(a)", fecha="10/07/2026", id=None, form=""):
+    """Una ATENCION del ADA. Sin `id` explicito, uno DISTINTO en cada llamada: en IRIS
+    cada fila es una atencion, y desde la ronda 12 `cargar_atenciones` junta las filas
+    que comparten ATEN ID (el `AT{run}{act[:3]}` de antes colisionaba entre actividades
+    que empezaban igual, y las 3 atenciones del test se volvian una). Pasar el mismo
+    `id` a dos filas es como se escribe una atencion de VARIAS actividades."""
     _N_AT[0] += 1
-    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha, id=f"AT{_N_AT[0]}",
+    return dict(act=act, prof=prof, run=run, instr=instr, fecha=fecha,
+                id=f"AT{_N_AT[0]}" if id is None else id, form=form,
                 dg="x", tipo="Espontánea", sexo="Femenino", edad="30 años")
 
 
@@ -188,6 +191,57 @@ def test_solo_del_mes():
     assert len(E) == 1, "solo la atención de julio cuenta"
 
 
+# -- Auditorías por ATEN ID: control sin formulario / SM sin consejería --
+_FORM_OK = "COLUMBIA-ESCALA DE SEVERIDAD SUICIDA (C-SSRS) 8  ;  Control de Salud Mental"
+_CONS = "Prioridad - con integrante con problema de salud mental"
+
+
+def test_control_sin_formulario():
+    E = _run([_a("Controles Salud Mental", "ANA", id="A1", form=_FORM_OK),         # ok
+              _a("Controles Salud Mental", "JUAN", run="2-7", id="A2",
+                 form="MINIMENTAL ABREVIADO ; Otro formulario"),                   # minimental NO
+              _a("Controles de Salud Mental por videollamadas", "LUCIA", id="A3"),  # remoto cuenta
+              _a("Acciones remotas de salud mental por llamada", "PEDRO", id="A4"),  # no cuenta
+              _a("Consulta De Salud Mental", "ANA", id="A5")])                     # no es control
+    t = E.attrs["tablas"]["Ctrl_sin_Formulario"]
+    assert sorted(t["aten_id"]) == ["A2", "A3"], list(t["aten_id"])
+    assert set(t.columns) >= {"run", "profesional", "estamento"}
+
+
+def test_sin_formulario_clinico_no_calcula_y_avisa():
+    # El test base sin la columna FORMULARIOS CLINICOS = Monitoreo admin: no un 0 callado.
+    global _ADA_HDR
+    viejo = _ADA_HDR
+    _ADA_HDR = viejo[:-1]
+    try:
+        E = _run([_a("Controles Salud Mental", "ANA")])
+    finally:
+        _ADA_HDR = viejo
+    assert "Ctrl_sin_Formulario" not in E.attrs["tablas"]
+    assert any(a[1] == "NO CALCULADO" for a in E.attrs["avisos"]), E.attrs["avisos"]
+
+
+def test_sm_sin_consejeria_por_atencion():
+    _vdi = "Visita domiciliaria integral familia con integrante con problema de salud mental"
+    E = _run([_a("Controles Salud Mental", "ANA", id="B1", form=_FORM_OK),
+              _a(_CONS, "ANA", id="B1", form=_FORM_OK),                   # misma atencion -> ok
+              _a("Consulta De Salud Mental", "JUAN", id="B2"),              # sin consejeria
+              _a(_vdi, "SOFIA", id="B3"),                                   # sin consejeria
+              _a(_CONS, "SOFIA", id="B4"),                                  # consejeria en OTRA atencion
+              _a("Curacion simple", "PEDRO", id="B5")])                     # no SM
+    t = E.attrs["tablas"]["Sin_Consejeria"]
+    assert sorted(t["aten_id"]) == ["B2", "B3"], list(t["aten_id"])
+
+
+def test_aten_id_numerico_como_iris():
+    # IRIS trae el ATEN ID como número (683.016.530,00 en Excel), float en una fila.
+    E = _run([_a("Controles Salud Mental", "ANA", id=683016530.0, form=_FORM_OK),
+              _a(_CONS, "ANA", id=683016530),                              # misma atencion
+              _a("Consulta De Salud Mental", "JUAN", id=689438471.0)])
+    t = E.attrs["tablas"]["Sin_Consejeria"]
+    assert list(t["aten_id"]) == ["689438471"], list(t["aten_id"])
+
+
 # -- Guardarraíl de mes vacío (CLAUDE.md §3: fail loud, como el A05) --
 def test_mes_sin_datos_falla_duro():
     """Un ADA que no cubre el mes daría 0 perdidas, y eso se lee como la buena
@@ -256,6 +310,76 @@ def test_acepta_el_maestro_ya_cargado_y_no_lo_relee():
         ru.cargar_maestro = previo
     assert not veces, "releyo el Maestro habiendolo recibido en dfm"
     assert len(E) == 1 and E.iloc[0]["num_rem"].upper() == "REM-GESTION", E.attrs
+
+
+# -- El merge de la GUI 2.0 (1.9.17): las auditorias sobre la forma CANONICA ------
+
+def test_control_sm_no_se_arma_con_tokens_de_dos_actividades():
+    """La mascara del A32F2 son DOS tokens sueltos ("controles" + "salud mental por"),
+    porque la actividad real es "Controles DE Salud Mental POR llamadas telefonicas".
+    Sobre la celda canonica, que trae TODAS las actividades de la atencion unidas, uno
+    puede venir de cada actividad y NINGUNA ser un Control SM: la atencion caia en
+    Ctrl_sin_Formulario sin serlo -- falso positivo callado en una auditoria que se usa
+    para ir a buscar registros incompletos. Se evalua `por_actividad`."""
+    E = _run([_a("Controles de pie diabetico", "ANA", id="C1"),
+              _a("Consulta de salud mental por psicologo", "ANA", id="C1"),
+              _a("Controles de Salud Mental por videollamadas", "LUIS", id="C2")])
+    t = E.attrs["tablas"]["Ctrl_sin_Formulario"]
+    assert list(t["aten_id"]) == ["C2"], list(t["aten_id"])
+
+
+def test_las_auditorias_dan_lo_mismo_desde_iris_que_desde_el_monitoreo():
+    """El sentido entero de `_una_fila_por_atencion` (ronda 12): los dos formatos, el
+    MISMO numero. Este es el test que habria cazado solo el choque del merge -- la rama
+    movio la forma canonica aguas arriba y `auditar_atenciones` (main 1.9.16) seguia
+    resolviendo el multilinea por su cuenta, con su propio groupby por ATEN ID.
+
+    La misma atencion en los dos formatos: IRIS la trae en UNA fila con sus actividades
+    juntas; el Monitoreo la abre en una fila por actividad, con la cabecera solo en la
+    1a. Ojo que el Monitoreo NO trae FORMULARIOS CLINICOS, asi que ahi Ctrl_sin_Formulario
+    no se calcula (aviso NO CALCULADO): lo comparable entre los dos es Sin_Consejeria."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from contratos_fuentes import Contrato, escribir, plantilla
+    from programas.rem_utils import cargar_atenciones, _rango_mes
+
+    def _fx(ref, filas, sufijo):
+        b, h, pl = plantilla(Contrato(id=ref, cubre=(), llamar=None, fila={}, ref=ref))
+        return escribir(_TMP / f"dosfmt_{sufijo}_{ref}", b, h, filas, pl)
+    ctrl = "CONTROLES SALUD MENTAL"
+    cons = "PRIORIDAD - CON INTEGRANTE CON PROBLEMA DE SALUD MENTAL"     # A19a 97
+    pie = "CONTROLES DE PIE DIABETICO"
+    consulta = "CONSULTA DE SALUD MENTAL POR PSICOLOGO"
+    # At. 1: control SM CON consejeria -> no sale. At. 2: pie + consulta SM, sin
+    # consejeria -> sale por la consulta, y NO por un "Control SM" que no existe.
+    iris = _fx("ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx", [
+        {"NUMERO TIPO IDENTIFICACION": "11111111-1", "ATEN ID": "901",
+         "FECHA ATENCION": "05/08/2026", "ACTIVIDADES": f"{ctrl}; {cons}",
+         "DIAGNOSTICOS": "F32.1", "INSTRUMENTO": "MEDICO", "TIPO ATENCION": "CONTROL",
+         "PROFESIONAL ATENCION": "DR X"},
+        {"NUMERO TIPO IDENTIFICACION": "11111111-1", "ATEN ID": "902",
+         "FECHA ATENCION": "06/08/2026", "ACTIVIDADES": f"{pie}; {consulta}",
+         "DIAGNOSTICOS": "F32.1", "INSTRUMENTO": "MEDICO", "TIPO ATENCION": "CONSULTA",
+         "PROFESIONAL ATENCION": "DR Y"}], "iris")
+    mon = _fx("Monitoreo_de_Actividades_anonimizado.xlsx", [
+        {"N°": 1, "RUN": "11111111-1", "FECHA CONSULTA": "05/08/2026", "AÑOS": 40,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": ctrl, "DIAGNÓSTICO": "DEPRESION",
+         "INSTRUMENTO": "MEDICO", "TIPO DE ATENCIÓN": "CONTROL", "FUNCIONARIO": "DR X"},
+        {"N°": 1, "ACTIVIDAD Y/O PROCEDIMIENTO": cons},
+        {"N°": 2, "RUN": "11111111-1", "FECHA CONSULTA": "06/08/2026", "AÑOS": 40,
+         "ACTIVIDAD Y/O PROCEDIMIENTO": pie, "DIAGNÓSTICO": "DEPRESION",
+         "INSTRUMENTO": "MEDICO", "TIPO DE ATENCIÓN": "CONSULTA", "FUNCIONARIO": "DR Y"},
+        {"N°": 2, "ACTIVIDAD Y/O PROCEDIMIENTO": consulta}], "mon")
+    ini, fin = _rango_mes((2026, 8))
+    n = {}
+    for etiqueta, ruta in (("iris", iris), ("monitoreo", mon)):
+        d = cargar_atenciones(ruta, log=_quiet)
+        E = tp.analizar(d, ini, fin, log=_quiet)
+        t = E.attrs["tablas"]["Sin_Consejeria"]
+        n[etiqueta] = (len(t), sorted(t["actividades"]))
+    assert n["iris"][0] == n["monitoreo"][0] == 1, n
+    assert n["iris"][1] == n["monitoreo"][1], n     # la MISMA atencion, no otra
+    assert "Ctrl_sin_Formulario" not in tp.analizar(
+        cargar_atenciones(mon, log=_quiet), ini, fin, log=_quiet).attrs["tablas"]
 
 
 def _main():

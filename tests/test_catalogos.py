@@ -228,10 +228,11 @@ def test_cargar_catalogo_inexistente_falla_claro():
 
 def test_maestro_slim_se_busca_donde_los_otros_catalogos():
     """El Maestro slim vive en catalogos/: en el exe tiene que encontrarse en
-    `<exe>/catalogos/` (donde van los drop-in de cie10/eno/ges). Las dos GUI tenian
-    cada una su lista a mano que no miraba ahi -> el Trabajo Perdido caia callado a
-    la heuristica. Y las dos GUI tienen que preguntarle a la MISMA funcion."""
-    import autorem
+    `<exe>/catalogos/` (donde van los drop-in de cie10/eno/ges). Las dos GUI de
+    entonces tenian cada una su lista a mano que no miraba ahi -> el Trabajo Perdido
+    caia callado a la heuristica. Desde la 2.0.0 hay UNA sola GUI y UNA sola copia
+    (`runner.slim_por_defecto`): el `autorem._slim_por_defecto` que se comparaba aca
+    murio con la GUI 1.x (hallazgo #14 de la revision)."""
     from gui import runner
     exe_dir = _TMP / "exe_slim"
     (exe_dir / "catalogos").mkdir(parents=True, exist_ok=True)
@@ -243,7 +244,7 @@ def test_maestro_slim_se_busca_donde_los_otros_catalogos():
     sys.frozen, sys._MEIPASS, sys.executable = True, str(bundle), str(exe_dir / "autoREM.exe")
     try:
         assert cat.maestro_slim() == str(slim), cat.maestro_slim()
-        assert runner.slim_por_defecto() == autorem._slim_por_defecto() == str(slim)
+        assert runner.slim_por_defecto() == str(slim)
     finally:
         for k, v in previos.items():
             if v is None:
