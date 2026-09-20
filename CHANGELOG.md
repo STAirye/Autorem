@@ -10,6 +10,34 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.3] - 2026-09-20
+
+### Agregado
+- **`tools/correr_tests.py` — la suite completa en 3 procesos: 194 s -> 103 s.** Reparto
+  LPT, un archivo de tests por proceso, sin dependencias nuevas (`subprocess` + `heapq`).
+  No reemplaza a `pytest`: para depurar un test suelto se sigue usando pytest directo,
+  que da el traceback ordenado. Esto es para la pasada completa.
+
+  **Por que por ARCHIVO y no con `pytest-xdist -n auto`.** La culpa de todo es Tk:
+  `test_gui_construccion.py` abre la ventana de verdad, se lleva 90 s de los 191 s de la
+  suite y **no se paraleliza** -- dos procesos Tk en Windows se frenan entre si. Medido,
+  ese archivo tarda 74 s solo y 96 / 102 / 109 s con 1 / 2 / 3 procesos compitiendo, asi
+  que el wall es `max(gui_penalizada(N), resto / (N-1))`. Esa formula predice las
+  corridas reales (N=2 -> 106 s, N=3 -> 103 s, N=4 -> 110 s) y deja dos conclusiones:
+  mas procesos **no** es mejor pasado N=3, y hay que meter TODO Tk en UN proceso.
+  Repartir por test suelto, que es lo que hace `-n auto`, esparce los tests de Tk entre
+  todos los workers: es justo el caso malo, y medido dio peor que por archivo. Si algun
+  dia se instala xdist, el equivalente honesto es `--dist loadfile`.
+
+  El piso duro son esos 74 s de la GUI sola: **no hay reparto que lo baje**. Para ganar
+  mas hay que hacer la GUI mas barata -- lo que ya empezo la 2.0.2 (la GUI bajo de 106 s
+  a 90 s pese a sumar 5 tests) --, no sumar procesos.
+
+  Los numeros medidos viven en el docstring del script, y `PESOS` (el costo de cada
+  archivo) solo ORDENA el reparto: un archivo que no este ahi entra con un peso por
+  defecto y el reparto sigue funcionando. No hay que mantenerlo al dia para que corra,
+  solo para que reparta bien.
+
 ## [2.0.2] — 2026-09-20
 
 ### Corregido

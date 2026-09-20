@@ -22,12 +22,44 @@ Se carga al trabajar en `tools/`. Los `§N` son las anclas del [CLAUDE.md raíz]
 | `scan_catalogo.py` | Escáner de PII antes de versionar un catálogo. |
 | `limpiar_refs.py` | Deja en **banner + encabezado** lo que entra a `refs_tablas/` (libro nuevo, escaneado antes de escribirse). Skill `limpiar-refs`; lo vigila `tests/test_refs_tablas.py`. |
 | `slim_maestro.py` | Genera el Maestro de Actividades slim comprimido. |
+| `correr_tests.py` | **La suite completa en 3 procesos**, un archivo por proceso: 194 s -> 103 s. No reemplaza a `pytest` (para depurar un test suelto, pytest directo da mejor traceback). El reparto es por ARCHIVO y **no** por test suelto a propósito -> ver abajo. |
 
 **¿Por qué el check anti-RUT y `hooks_git.py` son archivos separados?** Porque son
 cosas distintas: uno **revisa**, el otro **instala**. Hasta 1.9.5 cada uno de los 3
 checks traía su propia copia del instalador, y las copias divergieron: la de
 `check_cp1252` dejaba su línea **después** del `exit 0`, o sea instalada y sin correr
 nunca. `hooks_git.py` es la fuente única de esa lógica.
+
+## Correr la suite: por qué 3 procesos y no `xdist -n auto`
+
+```bash
+python tools/correr_tests.py        # 194 s -> 103 s
+```
+
+La culpa de todo es **Tk**. `test_gui_construccion.py` abre la ventana de verdad, se
+lleva **90 s de los 191 s** de la suite y **no se paraleliza**: dos procesos Tk en
+Windows se frenan entre sí. Medido en 2.0.2, ese archivo tarda **74 s solo** y 96 /
+102 / 109 s con 1 / 2 / 3 procesos compitiendo al lado. O sea el wall de la suite es
+`max(gui_penalizada(N), resto / (N-1))`, y esa fórmula predice las corridas reales
+(N=2 -> 106 s · N=3 -> **103 s** · N=4 -> 110 s). De ahí dos cosas:
+
+- **Más procesos no es mejor** pasado N=3: la GUI se degrada más rápido de lo que se
+  acelera el resto. Por eso el default es 3 y no `os.cpu_count()`.
+- **Todo Tk tiene que caer en UN proceso**, y por eso el reparto es por archivo.
+  Repartir por test suelto — que es lo que hace `xdist -n auto` — esparce los tests de
+  Tk entre todos los workers: es justo el caso malo, y medido dio peor. Si algún día se
+  instala xdist, el equivalente honesto es `--dist loadfile`, nunca `-n auto` a secas.
+
+El **piso duro** son esos 74 s de la GUI sola: no hay reparto que lo baje. Para ganar
+más hay que hacer la GUI más barata — lo que ya empezó la 2.0.2, que la bajó de 106 s
+a 90 s pese a sumar 5 tests —, no sumar procesos.
+
+`PESOS` en el script solo **ordena** el reparto: un archivo que no esté ahí entra con
+un peso por defecto y el reparto sigue funcionando. No hay que mantenerlo al día para
+que corra, solo para que reparta bien.
+
+**Los tests no están en el pre-commit** y esto no los mete: `check_version` cuenta los
+`def test_` con regex justamente para no correr pytest en cada commit.
 
 ## §8 Privacidad (detalle)
 
