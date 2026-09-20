@@ -37,6 +37,7 @@ import customtkinter as ctk
 import programas.rem_saludmental as sm
 from gui.widgets import Reloj, ANIO_MAX, ANIO_MIN
 
+TITULO_NO_ENCONTRADO = "No encontrado"   # los tests lo comparan
 _MSG_PERMISO = (("No pude escribir el resultado.\n"
                  "\n"
                  "Suele ser porque el archivo está ABIERTO en Excel, o bloqueado por OneDrive/GoogleDrive/Dropbox/etc.\n"
@@ -114,7 +115,7 @@ def valida_ruta(ruta, messagebox):
         return None
     p = Path(ruta)
     if not p.exists():
-        messagebox.showerror("No encontrado", f"No encuentro el archivo:\n{p}")
+        messagebox.showerror(TITULO_NO_ENCONTRADO, f"No encuentro el archivo:\n{p}")
         return None
     return p
 

@@ -98,6 +98,7 @@ def correr(ctx, log):
 
 
 def resumen(res):
+    from gui.widgets import NO_SE_GENERO
     P, resultado, n_rescate = res["P"], res["resultado"], res["n_rescate"]
     y, m = res["mes"]
     n_ingresados = int((P["¿Ingresado?"] == "SI").sum())
@@ -106,7 +107,7 @@ def resumen(res):
     rtxt = ("\nRescate: " + " · ".join(f"{h}={n}" for h, n in n_rescate.items())
            if n_rescate is not None else "")
     if res.get("fallo_rescate"):
-        rtxt = f"\nRescate: NO se generó ({res['fallo_rescate']})."
+        rtxt = f"\nRescate: {NO_SE_GENERO} ({res['fallo_rescate']})."
     # Los avisos de cobertura (ADA/formulario que no llegan al mes) NO bloquean a
     # proposito (programas/poblacion._verificar_cobertura_fechas), y justamente por eso
     # tienen que verse ACA: solo en el log y en la LEEME, el "Listo" de abajo se leia

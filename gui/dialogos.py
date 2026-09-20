@@ -60,7 +60,7 @@ def bloque_estamentos(parent):
     etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
         ("¿Por qué? El reporte Administrativo NO indica el estamento, solo el nombre.\n"
          "La tabla del equipo QUEDA GUARDADA: cárgala una vez y los meses siguientes se autocompleta sola.\n"
-         "Vuelve a cargar 'Utilización de Cupos' solo si llega nuevo personal al equipo (se fusiona con lo guardado). \n"
+         "Vuelve a cargar «Utilización de Cupos» solo si llega nuevo personal al equipo (se fusiona con lo guardado). \n"
          "")
         + REF_PREFERENCIAS)
         ).pack(fill="x", padx=8, pady=(4, 0))
@@ -68,7 +68,7 @@ def bloque_estamentos(parent):
         ("En RAYEN Administrativo, descarga un reporte desde  Herramientas -> Reportes Estadísticos -> Otros -> Utilización de Cupos,\n"
          "con fecha de un día en que hubo atenciones de TODO tu equipo. Copia el reporte completo, pegalo en Excel como xlsx y cárgalo aquí.  (Opcional si ya lo cargaste antes.)"))).pack(fill="x", padx=8, pady=(4, 4))
     var = tk.StringVar()
-    fila_archivo(caja, var, "Elige el reporte 'Utilización de Cupos'")
+    fila_archivo(caja, var, "Elige el reporte «Utilización de Cupos»")
 
     def get_ruta():
         from gui.runner import limpiar_ruta
@@ -267,7 +267,7 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
     etiqueta_envolvente(caja, text_color=COLOR_AVISO, text=(
         ("¿Por qué? El ADA trae atenciones a nuestros usuarios hechas por funcionarios que NO son de tu dotación (programas externos); no deben tributar a este REM (doble conteo).\n"
          "La PRIMERA vez hay que vetar el equipo completo: carga el ADA y el mes aquí arriba y aprieta «Precargar dotación…». Después, al Procesar se pregunta solo por los nombres nuevos.\n"
-         "La tabla queda GUARDADA (caché en ~/.autorem/dotacion.json).\n"
+         "La tabla queda GUARDADA en tus preferencias de autoREM.\n"
          "Si en tu centro existen funcionarios externos que si contribuyen a tu REM interno, no los marques.\n"
          "Si existen funcionarios que tributan a rem externos e internos a la vez, este programa no tiene como distinguirlos actualmente.\n"
          "")

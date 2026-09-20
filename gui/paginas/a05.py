@@ -256,7 +256,7 @@ def preparar(ctx, pagina):
         return None
     if categoria == "administrativo" and not archivo["acuse"]:
         messagebox.showwarning(
-            "Falta el tick de reconocimiento", "Marca la casilla que confirma que entiendes que las "
+            TITULO_FALTA_ACUSE, "Marca la casilla que confirma que entiendes que las "
             "columnas demográficas saldrán vacías (formato Administrativo).")
         return None
 
@@ -295,6 +295,9 @@ def correr(ctx, log):
 def resumen(res):
     from autorem import _resumen_texto
     return _resumen_texto(res["resultados"], res["salida"])
+
+
+TITULO_FALTA_ACUSE = "Falta el tick de reconocimiento"   # los tests lo comparan
 
 
 PANTALLA = {

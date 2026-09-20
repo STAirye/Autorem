@@ -371,11 +371,11 @@ def resumen(res):
     rtxt = "\n".join(f"  {r['Casilla']}: {r['Total mes']}" for _, r in resu.iterrows())
     tptxt = f"\nTrabajo perdido: {res['n_tp']} atenciones a saco roto." if res["n_tp"] is not None else ""
     if res.get("fallo_tp"):
-        tptxt = f"\nTrabajo perdido: NO se generó ({res['fallo_tp']})."
+        tptxt = f"\nTrabajo perdido: {widgets.NO_SE_GENERO} ({res['fallo_tp']})."
     a03txt = (f"\nA03·D.3: {res['n_a03']} aplicaciones{_por_instrumento(res)}."
               if res["n_a03"] is not None else "")
     if res.get("fallo_a03"):
-        a03txt = (f"\nA03·D.3: NO se generó ({res['fallo_a03']}). Ningún archivo "
+        a03txt = (f"\nA03·D.3: {widgets.NO_SE_GENERO} ({res['fallo_a03']}). Ningún archivo "
                   f"REM_A03_D3 de esta carpeta es de esta corrida.")
     avisos = list(E.attrs.get("avisos") or []) + list(res.get("avisos_a03") or [])
     return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
