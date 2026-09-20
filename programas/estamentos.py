@@ -52,7 +52,6 @@ from programas.rem_utils import (
     ArchivoInvalido, norm, buscar_col, exigir_filas_ws, encontrar_fila_encabezado,
     leer_cache_json, guardar_cache_json,
 )
-from programas import formatos
 
 # -- Firmas del reporte 'Utilización de Cupos' (RAYEN Administrativo) --
 # Header en fila 9, de DOS pisos (celdas combinadas; banner Comuna/Establecimiento/Mes/

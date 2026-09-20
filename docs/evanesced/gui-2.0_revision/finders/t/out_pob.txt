@@ -1,0 +1,4 @@
+  File "C:\Users\Simon\AppData\Local\Temp\claude\E--git-Autorem\648a107e-f033-4d56-a55d-a415a58f003e\scratchpad\t\pob.py", line 44
+    print("
+           ^
+SyntaxError: EOL while scanning string literal

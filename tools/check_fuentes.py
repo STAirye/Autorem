@@ -49,6 +49,12 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
+# Codigo que lee planillas DEL USUARIO y viaja en el exe. `tools/` queda afuera hoy
+# porque no se distribuye -- pero ahi estan los dos lectores que abren el export CRUDO,
+# sin recortar: `limpiar_refs` (la compuerta de privacidad, §8) y `slim_maestro` (el
+# Maestro de 8,6 MB). Hoy los cubre `tests/test_refs_tablas.py`, no un contrato.
+# INTENCION DEL AUTOR (ronda 13): `tools/` va a viajar en el exe en algun momento (baja
+# prioridad); cuando pase, sumarlo aca y escribirles su contrato.
 CARPETAS = ("programas", "modulos", "gui")
 LECTORES = {"cargar_canonico", "leer_xlsx", "load_workbook", "abrir_xlsx_ro", "read_excel",
             "read_csv", "primeras_filas", "filas_hoja", "filas_xlsx"}

@@ -362,7 +362,7 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
     caían en ninguna casilla por estamento. La guarda va sobre la FUENTE (§3.1), no en
     el diálogo.
 - **GUI 2.0, revisión de paridad contra `autorem.py`** (lo que el port había perdido o
-  roto; `docs/review_gui-2.0_pendiente.md` §4, puntos 2 a 5):
+  roto; `docs/review_gui-2.0_pendiente.md` §1.C-ter y §1.D-bis):
   - **`after()` desde un hilo:** la detección de formato del A05 y el chequeo de cruce
     del SM hacían `frame.after(0, ...)` DESDE el worker. `Tk.after` no es thread-safe
     (registra un comando Tcl): tiraba `RuntimeError: main thread is not in main loop`
@@ -425,7 +425,7 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   log de errores inesperados trae el traceback del worker; errores en
   `preparar`/`al_completar`/`resumen` se muestran.
 - **`autorem._slim_por_defecto`** busca el Maestro slim en `catalogos/` (se movió ahí).
-- **GUI 2.0, barrido línea por línea del diff** (`docs/review_gui-2.0_pendiente.md` §5,
+- **GUI 2.0, barrido línea por línea del diff** (`docs/review_gui-2.0_pendiente.md` §1.D,
   ronda 3):
   - **El mes no se validaba por RANGO, solo por «son números»:** `ttk.Spinbox` acota
     únicamente sus flechas, así que un mes **13** tecleado llegaba al worker y reventaba
@@ -465,7 +465,7 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   síntoma se auto-corregía al colapsar/expandir —`alternar` re-empaca `contenido`, que
   ahí sí cae al final de la pila—, y por eso solo se veía en el PRIMER dibujo.
 - **GUI 2.0, auditoría de comportamiento REMOVIDO** (`docs/review_gui-2.0_pendiente.md`
-  §6, ronda 4: qué hacía `autorem.py` que el port dejó de hacer):
+  §1.D-bis y §1.E-bis, ronda 4: qué hacía `autorem.py` que el port dejó de hacer):
   - **La detección de formato del A05 aplastaba tres errores distintos en uno.**
     `_leer_categoria` tenía un `except Exception -> "error_lectura"` y `preparar`
     despachaba eso como **«Formato no reconocido»** con el mensaje de las firmas. O sea:
@@ -535,6 +535,38 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   queda bajo «Acerca de»: es un control de la ventana, no una página.
 
 ### Documentación
+- **Regla dura nueva (CLAUDE.md §0 regla 7): ningún documento de trabajo intermedio se
+  borra** — planes, registros de revisión, contextos de una rama chica. Son la
+  documentación del *por qué*, y una sesión fría (`compact` entre medio) no tiene otra
+  fuente. Al cerrarlos se les pone un **header de cierre** (`LISTO Y MERGEADO` + fecha +
+  versión en que dejaron de usarse) en vez de eliminarlos, y antes de borrar cualquier
+  archivo del repo se mira quién lo cita. Lo disparó un hallazgo de la ronda 13: este
+  CHANGELOG cita `docs/review_gui-2.0_pendiente.md` **11 veces** y el propio ledger
+  mandaba borrarse al mergear — el merge dejaba 11 referencias colgando en el registro
+  permanente, más 2 en `CLAUDE.md` y 1 en la skill `tests-fuentes`.
+- **`docs/evanesced/`** (nuevo): los scripts de trabajo intermedio de una rama o worktree
+  cuyo trabajo ya cerró, archivados **como quedaron**. Las 13 rondas de revisión de
+  `gui-2.0` dejaron 106 archivos de repro, arneses de medición y prompts en scratchpads
+  temporales; ahora viven en `docs/evanesced/gui-2.0_revision/`. NO entran copias de
+  fuentes del repo (se recuperan con `git show`, y una copia rancia de `app.py` dentro de
+  `docs/` se lee como si fuera actual), dumps regenerables con un comando, ni **binarios**:
+  el pre-commit anti-RUT salta los `.xlsx` y la whitelist de `.gitignore` es por archivo
+  justamente para que cada uno lleve un veto humano. Los 106 pasaron el gate de PII del
+  proyecto antes de entrar (0 RUT con DV válido, 0 email, 0 teléfono).
+- **Cuatro citas al ledger de la revisión apuntaban a secciones que no existen o se
+  movieron**, porque el registro creció de §1..§5 a §1.A..§1.N y las citas no siguieron:
+  `CLAUDE.md` decía «§6» (es §4) y este CHANGELOG «§4, puntos 2 a 5» (es §1.C-ter y
+  §1.D-bis), «§5, ronda 3» (es §1.D) y «§6, ronda 4» (es §1.D-bis y §1.E-bis).
+- **`docs/auditoria_filtros_plan.md`** seguía nombrando `refs_tablas/maestro_slim.csv.gz`
+  tras la mudanza a `catalogos/`: un snippet copiable que daba `FileNotFoundError` y un
+  `skipif` que habría saltado el test SIEMPRE.
+- **`rem_utils.indice_encabezado` decía ser la «fuente ÚNICA» del criterio de encabezado**
+  y no lo es desde que el grupo pandas pasó a `encabezado_por_columnas`: son TRES lugares
+  con umbral (ese, `encabezado_por_columnas` y `limpiar_refs.MIN_CELDAS_HEADER`). El
+  docstring ahora los nombra. Y **`check_fuentes.CARPETAS` excluía `tools/` sin motivo
+  escrito**, cuando cada exclusión de `EXENTOS` sí lleva el suyo — y ahí están los dos
+  lectores que abren el export CRUDO (`limpiar_refs`, `slim_maestro`). Queda anotada la
+  intención: `tools/` va a viajar en el exe en algún momento, y ahí entra al arnés.
 - **`gui/paginas/sm.py` decía que `_tab_a03` estaba «YA BORRADA de autorem.py»** y no lo
   está: sigue definida y montada en `lanzar_gui`, que es la GUI que corre el exe. Se
   borra en el paso 11 del plan; hasta entonces conviven. El tiempo verbal importa para
@@ -542,6 +574,12 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   pestaña vieja ya no existe).
 
 ### Agregado
+- **`pytest.ini`** (nuevo, y el repo no tenía ninguno): `testpaths = tests`. Sin él
+  `pytest` recorre el repo entero y recolecta cualquier `test_*.py` / `*_test.py` que
+  encuentre fuera de `tests/` — con `docs/evanesced/` archivado, uno de los scripts de
+  repro calzaba con el patrón, así que la suite lo **importaba** y corría su código de
+  nivel de módulo (creaba carpetas y leía `refs_tablas/`) en cada corrida. `pytest <ruta>`
+  explícito sigue funcionando: `testpaths` solo aplica sin argumentos.
 - **Tests de la ronda 6** (237 en total), con 37 mutantes (13 + 12 del cierre y la
   escritura vía temporal + 12 del caché), todos cazados por el test previsto. Los 9 del
   caché: dañado se aparta y avisa; ilegible no se sobreescribe (dotación y estamentos);

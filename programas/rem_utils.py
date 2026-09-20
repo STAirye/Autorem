@@ -230,8 +230,14 @@ def primeras_filas(entrada, n):
 def indice_encabezado(filas, ancla=None, max_scan=40):
     """Indice de la fila de encabezado dentro de `filas`, o None si ninguna calza.
     `ancla` = nombres de columna que deben estar TODOS en esa fila; sin ancla, la 1ª
-    fila con >3 celdas llenas. Fuente UNICA del criterio: la usan `leer_xlsx` y el
-    preview de cruce del SM, que antes lo copiaba a mano.
+    fila con >3 celdas llenas. La usan `leer_xlsx` y el preview de cruce del SM, que
+    antes lo copiaba a mano.
+
+    OJO, no es el unico criterio del proyecto (lo decia este docstring hasta la ronda
+    13, y era falso): el grupo pandas ubica el encabezado por las columnas REQUERIDAS
+    (`encabezado_por_columnas`, ronda 12) porque contar celdas rechazaba exports validos,
+    y `tools/limpiar_refs.py` tiene su propio umbral (`MIN_CELDAS_HEADER = 5`) para
+    recortar las referencias. Si hay que mover un umbral, son TRES lugares.
 
     Devolvia 0 (la 1ª fila, o sea el banner) cuando ninguna calzaba -- un fallback
     POSICIONAL callado, de la misma familia que los que la ronda 11 saco de

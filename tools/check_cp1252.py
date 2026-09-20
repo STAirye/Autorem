@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.6
+# Version: 1.9.17
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -65,8 +65,13 @@ RAIZ = Path(__file__).resolve().parent.parent
 # escribir de otra sesion. Se excluye 'worktrees' y no '.claude' entero porque en
 # .claude/ puede vivir un hook .py, y un hook que imprime a la consola de Windows es
 # justo lo que este checker tiene que revisar.
+# 'evanesced': docs/evanesced/ (CLAUDE.md SS0 regla 7) archiva los scripts de repro de
+# ramas y worktrees ya cerrados, TAL COMO QUEDARON -- traen flechas, tildes de estado y a
+# veces BOM. Mismo criterio que 'worktrees': codigo congelado de otra tanda, que no se
+# importa ni imprime a la consola del exe. Reescribirlos para que pasen el checker les
+# quitaria justo lo que los hace utiles (probar lo que probaron).
 EXCLUIR_DIRS = {".git", "__pycache__", ".pytest_cache", "build", "dist",
-                "venv", ".venv", ".mypy_cache", "worktrees"}
+                "venv", ".venv", ".mypy_cache", "worktrees", "evanesced"}
 
 # Simbolo problematico -> reemplazo ASCII (mismo criterio que la lista
 # "Usar ASCII" de la memoria 'solo-ascii-en-el-codigo'). Solo se auto-corrigen

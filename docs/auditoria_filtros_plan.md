@@ -38,7 +38,8 @@ que no corre solo no habría servido: nadie sospechaba.
 
 ## 1. Lo que ya se midió (no repetir el trabajo)
 
-Todo esto se corrió sep-2026 contra `refs_tablas/maestro_slim.csv.gz` y los
+Todo esto se corrió sep-2026 contra `refs_tablas/maestro_slim.csv.gz` (hoy
+`catalogos/maestro_slim.csv.gz`: el archivo se mudó en la rama `gui-2.0`) y los
 módulos en 1.9.10. Los números son el fundamento de las decisiones del §2.
 
 | Medición | Resultado |
@@ -89,7 +90,7 @@ matcheo, porque **ejecuta el código de verdad**.
 **Prototipo ya verificado** (sep-2026, corrió y dio verde):
 
 ```python
-m = pd.read_csv('refs_tablas/maestro_slim.csv.gz', dtype=str, keep_default_na=False)
+m = pd.read_csv('catalogos/maestro_slim.csv.gz', dtype=str, keep_default_na=False)
 acts = sorted(m['ACTIVIDAD'].unique())
 instrs = ["Médico", "Psicólogo(a)", "Terapeuta Ocupacional", "Trabajador(a) Social"]
 # 1 fila por (actividad x instrumento); ACT_n/INSTR_n normalizados, DEM_COLS en False
@@ -124,7 +125,7 @@ introspección y falla si a alguno le falta su entrada).
    tributa; si una actividad produce un evento pero la máscara la da por no
    tributante, vuelve a caer como trabajo perdido (fue el síntoma de 1.9.10).
    Asserción: `mask_tributa_ada` es `True` para toda actividad que genere evento.
-4. **`skipif`** si falta `refs_tablas/maestro_slim.csv.gz` (está versionado, pero
+4. **`skipif`** si falta `catalogos/maestro_slim.csv.gz` (está versionado, pero
    el test no debe reventar un clon parcial).
 
 Módulos a cubrir hoy: `rem_sm_actividades` (`_ada_eventos`, `_grupal_eventos`) y

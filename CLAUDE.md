@@ -59,6 +59,28 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
    `Formulario_Rayen.xlsx`. Identificar por firmas (ancla, banner, columnas) y
    **confirmar con el usuario**.
 6. **100% local, offline.** Sin nube (Ley 20.584 y 21.719).
+7. **Ningún documento de trabajo intermedio se borra** — planes de `docs/`, registros de
+   revisión, contextos de una rama chica, notas de una tanda de arreglos. Son la
+   documentación del *por qué* de cada decisión, y una sesión fría (`compact` entre medio)
+   no tiene otra fuente. Al terminar de usarlos **no se eliminan: se cierran con un header**
+   arriba del archivo, para que el que lo abra sepa en una línea que ya no es una tarea
+   pendiente:
+
+   ```markdown
+   > **LISTO Y MERGEADO** — 2026-09-20, dejó de usarse en 1.9.17.
+   > Se conserva como registro: lo citan CHANGELOG.md y CLAUDE.md.
+   ```
+
+   Vale igual si el documento tiene 10 líneas o 1000. Y antes de borrar cualquier archivo
+   del repo, mirar quién lo cita (`grep -rn "<nombre>" --include="*.md" --include="*.py" .`):
+   el `CHANGELOG` es permanente, y una cita colgada ahí no se arregla después.
+
+   Los **scripts** de trabajo intermedio (repros, arneses de medición, prompts de ronda)
+   viven en el scratchpad de la sesión, que es temporal. Cuando la rama o el worktree que
+   los produjo cierra su trabajo, se archivan en
+   **[docs/evanesced/](docs/evanesced/README.md)** — se archivan **como quedaron**, sin
+   reescribirlos, y sin copias de fuentes del repo ni binarios (el README dice por qué y
+   cómo se recuperan).
 
 ---
 
@@ -99,6 +121,7 @@ refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
 legacy/           monolitos viejos (no se importan; referencia de equivalencia)
 tests/            pruebas automáticas
 docs/             planes y contexto por módulo
+  evanesced/        scripts de repro de ramas/worktrees ya cerrados (§0 regla 7)
 ```
 
 **Nombre de módulo:** `rem_<pestaña>_<casilla>_<descriptor>`; la `<casilla>` es la
@@ -235,7 +258,7 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   trae RUN: si lo trae, es un merge barato.
 - **GUI 2.0 — cerrar la revisión de la rama:** mirar la ventana con ojos humanos y
   compilar el `.exe` para probar los arreglos de empaquetado. Ver
-  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §6.
+  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §4.
 - **Catálogos en la GUI 2.0** (fecha visible + actualización manual en modo
   avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
   lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.

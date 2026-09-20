@@ -1,7 +1,15 @@
-# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-19)
+# Code review `gui-2.0` — REGISTRO de lo revisado (act. 2026-09-20)
 
-Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`, ~3200 líneas).
-Sin PII. Borrar este archivo cuando la revisión esté cerrada y mergeada.
+Revisión de la rama `gui-2.0` contra `main` (merge-base `03e15f6`; en `f94a0ec` el diff va
+en 80 archivos y ~12.200 líneas nuevas, contra las ~3200 con que arrancó la revisión).
+Sin PII.
+
+> **Este archivo NO se borra al mergear** (orden del autor, 20-sep-2026: un documento de
+> trabajo intermedio es documentación del *por qué*, y una sesión fría no tiene otra
+> fuente). Lo que se hace al cerrarlo es ponerle el **header de cierre** que pide
+> [CLAUDE.md §0 regla 7](../CLAUDE.md): `LISTO Y MERGEADO` + fecha + versión en que dejó de
+> usarse. Lo citan `CHANGELOG.md` (11 veces), `CLAUDE.md` (2) y la skill `tests-fuentes`
+> (1): borrarlo dejaría 14 referencias colgando.
 
 ---
 
@@ -724,7 +732,8 @@ mano). **Guardarraíles nuevos:** `test_refs_tablas.py` (toda referencia version
 
 Ángulo: ¿cada arreglo de las rondas 1-11 está puesto donde está la causa, o emparcha al
 consumidor y deja la clase abierta para el resto? Once hallazgos, los once corregidos,
-**11/11 mutantes cazados** (`r12/mut12.py` del scratchpad). Lo que NO se hizo, por decisión
+**11/11 mutantes cazados**
+(`docs/evanesced/gui-2.0_revision/sesion-principal/r12/mut12.py`). Lo que NO se hizo, por decisión
 del autor: llevar los arreglos de `programas/`+`modulos/` a `main` (ver §4, hallazgo #4;
 se cierra con el merge de la 2.0).
 
@@ -817,6 +826,66 @@ de las 3 primeras letras de la actividad, así que colisionaba entre pacientes �
 canónica eso ya no es un detalle cosmético, y por eso la guarda del ítem 2 existe. El toy del
 arnés tenía 3 columnas (no lo tomaba como encabezado el criterio de >3 celdas).
 
+### §1.N · Coherencia estructural tras 12 rondas (ronda 13, última compuerta)
+
+Ángulo: las rondas 1-12 son la SALIDA de la revisión y nadie las había leído como un
+CUERPO. Ocho hallazgos, **ninguno de cálculo en la GUI**: los doce parches no dejaron un
+número mal. Lo que quedó descuadrado es el andamio que orienta a la sesión siguiente — y
+cuatro de los ocho se volvían permanentes justo al mergear. Casi todo fue decidible por
+comando (los 3 checks, `pytest`, la suite archivo por archivo, import de los 37 módulos,
+barridos AST de imports / atributos / constantes, y un repro de años discontinuos); los
+scripts quedaron archivados en
+[docs/evanesced/gui-2.0_revision/](evanesced/gui-2.0_revision/) (CLAUDE.md §0 regla 7),
+los de esta ronda en `sesion-principal/r13/`.
+
+**Corregido en la ronda (4):**
+
+1. **El ledger no se borra, se cierra con header.** Había 14 citas a este archivo desde
+   archivos PERMANENTES — `CHANGELOG.md` 11, `CLAUDE.md` 2, skill `tests-fuentes` 1 — y el
+   propio archivo mandaba borrarse al mergear: el merge dejaba las 14 colgando. Tres ya
+   estaban rotas porque el ledger creció de §1..§5 a §1.A..§1.N y las citas no siguieron:
+   `CLAUDE.md` decía «§6» (no existe; es §4), y el `CHANGELOG` «§4, puntos 2 a 5» para la
+   paridad del port (es §1.C-ter/§1.D-bis) y «§5, ronda 3» para el barrido línea por línea
+   (es §1.D). Las tres corregidas, la línea de borrado reemplazada por el header de cierre,
+   y la regla generalizada a **CLAUDE.md §0 regla 7**: ningún documento de trabajo
+   intermedio se borra, ni el de una rama chica.
+2. **`docs/auditoria_filtros_plan.md`** quedó con `refs_tablas/maestro_slim.csv.gz` tres
+   veces tras la mudanza a `catalogos/`: una medición histórica (se conserva, con la ruta
+   de hoy entre paréntesis), un snippet copiable que daba `FileNotFoundError` y un
+   `skipif` que habría saltado el test SIEMPRE. El resto de la mudanza estaba completo
+   (código, `.spec`, `.gitignore`, `slim_maestro`, `tools/CLAUDE.md`).
+3. **`programas/estamentos.py`: `from programas import formatos`** quedó muerto cuando
+   §1.M.11 borró `formatos.fila_encabezado_admin`, su único uso — el módulo tiene su propia
+   `ANCLA` y su propio `detectar`. Es el ÚNICO import muerto que introdujeron las 12 rondas
+   (los otros tres del barrido AST —`catalogos.gzip`, `rem_sm_actividades._band_idx`,
+   `rem_sp_p6_poblacion.re`— vienen igual de `main`).
+4. **Dos afirmaciones falsas: el criterio de encabezado y el alcance del arnés.**
+   `rem_utils.indice_encabezado` decía «Fuente UNICA del criterio» cuando desde §1.M.10 hay
+   TRES reglas vivas (`>3` celdas ahí, `>=5` en `limpiar_refs.MIN_CELDAS_HEADER`, y las
+   columnas requeridas en `encabezado_por_columnas`); y `check_fuentes.CARPETAS` excluía
+   `tools/` sin motivo escrito, cuando cada exclusión de `EXENTOS` sí lleva el suyo — y en
+   `tools/` están los dos lectores que abren exports CRUDOS (`limpiar_refs`, la compuerta de
+   privacidad, y `slim_maestro`). Las dos ahora dicen lo que pasa, y la de `CARPETAS` anota
+   la intención del autor: **`tools/` va a viajar en el exe en algún momento** (baja
+   prioridad), y ahí entra al arnés.
+
+**Al paso 11, en el commit del merge (3):** la tabla-compuerta del plan, los tres headers de
+versión y `gui/` ausente del mapa del repo. Ver §4, «Checklist del paso 11».
+
+**A `main`, lógica de módulo (1):** años discontinuos en la familia población. Ver §4.
+
+**Medido, no opinado** (los números de esta ronda):
+
+```
+python tools/check_version.py         -> OK 1.9.17, 296 tests
+python tools/check_cp1252.py          -> OK 64 archivos
+python tools/check_fuentes.py --todo  -> OK 18 contratos, 0 lectores sin contrato
+python -m pytest -q                   -> 298 passed
+suite archivo por archivo             -> 16/16 ok, 0 fallas
+import de los 4 paquetes              -> 37 modulos, 0 fallos
+git diff fd1b0cc^..HEAD --stat        -> 74 archivos, +9718/-1007
+```
+
 ### §1.E · Estructura y versionado
 
 - **Colisión de versión:** `main` y la rama tenían cada una su 1.9.16 → la rama pasó a
@@ -853,6 +922,54 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
   `test_formatos_fuente.py` que se las pasaban usan ahora `_con_una_fila()`, que agrega
   una fila sintética **conservando el encabezado REAL** como guardarraíl de la firma.
 
+**Ronda 13 (coherencia estructural).** Todo por comando; los scripts están en
+`docs/evanesced/gui-2.0_revision/sesion-principal/r13/`. No volver a barrerlo:
+
+- **Nada quedó apuntando a un símbolo que una ronda posterior renombró o borró.** Barrido
+  AST de todo `mod.attr` de los 4 paquetes + `tests/` contra el módulo REAL importado: 7
+  hits, los 7 falsos positivos (`urllib.request` x4 —el archivo sí hace ese import—,
+  `sys.frozen` y `sys._MEIPASS` parcheados a propósito en `test_catalogos`, y el de abajo).
+  Los 37 módulos de `gui`/`programas`/`modulos`/`tools` importan sin error.
+- **`gui/app.py:599` nombra `inicio` a un dict local**, tapando el módulo
+  `gui.paginas.inicio` importado en la línea 94. Hoy es inofensivo (dentro de
+  `lanzar_corrida` nadie necesita el módulo; el uso real, `inicio.construir`, está a nivel
+  de módulo en la 108). Queda anotado por si alguien necesita la página desde ahí.
+- **No hay helper duplicado por dos rondas arreglando lo mismo.** Nombres de función
+  repetidos entre archivos: todos son el protocolo del proyecto (`procesar`, `escribir`,
+  `correr`, `resumen`, `preparar`, `main`, `TAREA`, `PANTALLA`) o gemelos documentados
+  (`dotacion`/`estamentos`, `a05_n`/`a05_o`). El único par de cuerpos IDÉNTICOS
+  (`dialogos.get_ruta` / `widgets.get`) son las dos closures de 2 líneas que §1.I.2 creó a
+  propósito para pasar por `runner.limpiar_ruta`. Constantes MAYÚSCULAS repetidas: ninguna
+  nueva, y `_QUE`/`_SI_SE_PIERDE`/`_SI_NO_SE_GUARDA` dicen textos DISTINTOS en cada gemelo
+  (cada caché nombra lo que pierde), que es lo correcto.
+- **Las 61 citas `CLAUDE.md §N` del repo (código, docs y skills) resuelven todas** contra
+  los encabezados reales de los 4 `CLAUDE.md`. Las rotas eran las de este ledger (§1.N.1).
+- **`programas/CLAUDE.md` y `modulos/CLAUDE.md` describen la realidad**, al día hasta la
+  ronda 12 (citan `encabezado_por_columnas`, `MAPA_INSCRITOS` en `rem_utils`, el `dfm=` del
+  Trabajo Perdido, «los OPCIONALES se cargan y validan PRIMERO», el `modo` que se fue).
+  `tools/CLAUDE.md §8.2` describe los cuatro hooks tal como los instala
+  `hooks_git.INSTALADORES`. Las 4 skills del árbol de §2 existen y el contador de tests
+  calza en los 4 sitios.
+- **La whitelist POR ARCHIVO de `refs_tablas/` está sincronizada:** 23 líneas de veto y 23
+  archivos trackeados (sin `specs/`), sin sobrantes ni faltantes en ninguna dirección; el
+  `Maestro_de_Actividades.xlsx` de 8,6 MB sigue ignorado.
+- **La compuerta de PII de `limpiar_refs` SÍ está en el script** (`_hallazgos` ->
+  `scan_catalogo.escanear`; con hallazgos devuelve «NO ESCRITO») y
+  `tests/test_refs_tablas.py::test_las_referencias_versionadas_estan_limpias` la cubre. Se
+  persiguió el escenario «un header de dos pisos con celdas combinadas se ve angosto ->
+  `_fila_header` cae en la 1ª fila de DATOS y esa fila sobrevive al recorte»: medido sobre
+  las 23 referencias, los dos criterios difieren en 2 hojas y en las dos `limpiar_refs`
+  falla ruidoso. No hay caso realizado; lo que estaba mal era la afirmación (§1.N.4).
+- **Reglas duras, limpias.** Regla 4: los 24 `.str.contains(` sin `norm(` del árbol usan
+  todos literal en MAYÚSCULA contra una serie ya normalizada (`INGRES`, `MEDIC`, `CHILEN`,
+  `FALLECI`); no hay minúscula contra serie normalizada. Regla 5: 0 detecciones por nombre
+  de archivo en `programas/`/`modulos/`/`gui/`.
+- **Contratos completos:** `check_fuentes --todo` no reporta ningún lector sin contrato en
+  las tres carpetas que vigila (18 contratos, 0 huérfanos); el único aviso es el encabezado
+  SINTÉTICO de `rem_utils.cargar_maestro`, ya anotado en §4.
+- **La suite corre por los dos caminos:** `pytest -q` -> 298 passed; archivo por archivo ->
+  16/16 ok, 0 fallas (esta vez no salió el `tk.tcl` intermitente).
+
 ---
 
 ## §3 — Verificación (estado actual)
@@ -864,6 +981,10 @@ Estas fueron sospechas explícitas de rondas anteriores. **Están cerradas con m
   `check_cp1252` OK, `check_fuentes --todo` OK (18 contratos, ahora con el chequeo C4b). En la
   corrida completa de pytest sigue saliendo a veces el `tk.tcl` intermitente de
   `test_gui_construccion` (pasa solo; lo investiga una sesión aparte).
+- **La ronda 13 no agregó tests** (sus 4 arreglos son documentación, un import muerto y
+  dos docstrings: nada que mutar), pero re-corrió todo: `pytest -q` 298 passed, la suite
+  archivo por archivo 16/16 sin fallas, los 3 checks en verde y los 37 módulos de
+  `gui`/`programas`/`modulos`/`tools` importando. Sigue en **296** `def test_`.
 - Se instalaron `pytest` y `customtkinter`, que faltaban en el Python 3.9 local: los
   **dos** test files que antes no se podían correr ahora corren.
   `test_formatos_fuente` 33/33 · `test_gui_registro` 19/19 · `test_gui_construccion`
@@ -962,16 +1083,113 @@ corregir para que el detalle se lea igual en los dos formatos.
 
 ### Ángulos de revisión que NO se han corrido todavía
 
-Los agentes en paralelo murieron antes de entregar; lo hecho a mano fue más acotado que
-el `max` planeado. Sin cubrir de forma sistemática:
+Esta lista arrancó tras la ronda 0 (los 12 agentes en paralelo murieron con HTTP 429) y se
+va podando a medida que las rondas cubren cada ángulo. **Mantenerla al día importa tanto
+como §1:** es donde se mira para decidir qué ronda correr, así que un ángulo ya cubierto
+que sigue acá hace gastar una ronda entera en repetir trabajo. Sin cubrir de forma
+sistemática:
 
-- **Eficiencia**: nadie miró si la GUI 2.0 relee archivos o rehace trabajo (el caso de
-  la familia población, §1.E, se encontró de casualidad).
-- **Convenciones**: headers de versión de cada `.py` de `gui/` vs su último cambio real
-  (se sincronizaron a 1.9.17 los tocados, no se auditó el resto).
-- **Paridad del port**: se comparó a mano `_tab_sm`, `_tab_a05`, `_tab_a23`, `_tab_a03`
-  y `_manejar_error`. **Falta `_tab_beta`** (vs `gui/paginas/poblacion.py`) y los
-  **diálogos de dotación** (`gui/dialogos.py` vs `_dialogo_dotacion`).
+- **Eficiencia**: nadie barrió si la GUI 2.0 relee archivos o rehace trabajo. Los dos
+  casos conocidos salieron de casualidad, cada uno en su ronda: la familia población
+  cargando Inscritos/Formulario/ADA dos veces (§1.E) y el A05 leyendo el export completo
+  dos veces por corrida (§1.E-bis). La ronda 12 midió la detección cacheada del A05
+  (§1.M), pero como parte del ángulo de altitud, no como un barrido de eficiencia.
+**Ojo:** la **Eficiencia** es lo único que sigue sin barrerse. El ángulo de
+**Convenciones** lo cubrió la ronda 13 (auditoría de los 37 `.py` versionados: header vs
+último cambio real), y lo que encontró son los 3 headers del «Checklist del paso 11» de más
+arriba — el ángulo está cerrado, el arreglo no.
+
+**Cerrado y sacado de esta lista — no volver a anotarlo como pendiente:**
+la **paridad del port** ya está completa. `_tab_sm`, `_tab_a05`, `_tab_a23`, `_tab_a03` y
+`_manejar_error` se compararon en la ronda 2; **`_tab_beta`** (vs `gui/paginas/poblacion.py`)
+lo cubrió la ronda 4 y de ahí salieron hallazgos — la salida por defecto de Población que se
+había mudado de carpeta (§1.D-bis) y la validación de rango que `_tab_beta` hacía en
+`autorem.py` (§1.D) —; y los **diálogos de dotación** se revisaron dos veces: la ronda 3 los
+dio fieles línea por línea contra `_dialogo_dotacion`/`_grupo_dotacion`, incluido el `orden`
+por `attrs['por_estamento']` (nota al pie de §5), y la ronda 7 los contrastó contra el
+esquema de `dotacion.py` (§1.H).
+
+### Checklist del paso 11 — abierto tras la ronda 13
+
+Los tres se arreglan **en el commit del merge**, no antes (decisión del autor): tocan
+documentación que el propio merge reescribe, y adelantarlos duplicaría el trabajo si la 2.0
+mueve algo. Están acá para que el commit del paso 11 los tenga como lista.
+
+1. **La tabla-compuerta del plan dice que la compuerta está cerrada.**
+   `docs/GUI_2.0_plan.md` §9.1 («**Antes del paso 11**, esta tabla tiene que estar entera en
+   "sí". Es la condición para borrar la GUI vieja») tiene sus DOS filas en «pendiente»:
+   dotación (1.9.8/1.9.9) y el título propio de `cruzados` (1.9.10). **Las dos están
+   portadas y verificadas dos veces por esta revisión** — `gui/dialogos.py` trae
+   `bloque_dotacion` / `dotacion_ada` / `dialogo_dotacion` / `revisar_dotacion` (rondas 3 y
+   7) y `runner._TITULO_INVALIDO["cruzados"]` existe, con el docstring de `runner` citando
+   «la rama 'cruzados' de 1.9.10». Pasar las dos filas a «sí», cada una con el símbolo que
+   lo prueba, y anotar «verificado en la ronda 13». Si se mergea así, quien ejecute el paso
+   11 o re-porta trabajo hecho, o le pierde la confianza a la única compuerta escrita del
+   merge.
+2. **Tres headers de versión apuntan a un release de `main` ANTERIOR a su contenido** —
+   misma clase que la colisión de §1.E, que ya se pagó para `rem_utils.VERSION`:
+   `gui/paginas/inicio.py` dice 1.9.15 y es un archivo NUEVO de la rama;
+   `tools/check_version.py` dice 1.9.10 (en `main` está en 1.9.6) y trae el `"gui"` de
+   `DIRS_VERSIONADOS`, que ningún 1.9.10 shippeó; `tools/slim_maestro.py` dice 1.9.15 con el
+   cambio de ruta a `catalogos/`. Los tres a 1.9.17 (o a la versión del merge). **Por qué no
+   salta el hook:** el chequeo 3 de `check_version` solo mira `staged_py()`, así que un
+   header queda viejo para siempre a menos que alguien vuelva a tocar el archivo — vale
+   sumarle un modo `--auditar` que compare cada `.py` versionado contra la versión vigente
+   cuando lo cambió su último commit, y colgarlo de la skill `versionar`, no del hook.
+3. **`gui/` no existe en el mapa del repo.** El `CLAUDE.md` raíz no la nombra en NINGUNA
+   parte: ni en el árbol de §2, ni en el reparto compartido/modular, ni en la cadena de
+   imports (`rem_utils <- formatos <- capas <- módulos <- autorem`, y `gui/` importa las
+   tres) — y es el único paquete de código sin su propio `CLAUDE.md`, con `"gui"` ya en
+   `DIRS_VERSIONADOS` y en `CARPETAS` de `check_fuentes`. Lo único que la documenta es un
+   PLAN, que declara trabajo futuro: su §11 todavía dice «Hoy la GUI **no tiene cobertura**»
+   con 38 tests de GUI escritos. Al mergear: fila `gui/ -> gui/CLAUDE.md` en el árbol, `gui/`
+   en el reparto y en la cadena de imports, corregir la fila de `catalogos/` (ahora también
+   guarda el `maestro_slim.csv.gz`), y escribir `gui/CLAUDE.md` con el CONTRATO de la carpeta
+   (`PANTALLA`, el descubrimiento por `pkgutil`, `runner` como única frontera con el worker,
+   qué NO va en una página), apuntando al plan para el resto.
+
+### Abierto tras la ronda 13 — años discontinuos en la familia población (a `main`)
+
+**Hallazgo 8 de la ronda 13, lógica de módulo:** los inputs multi-archivo de población
+(`formularios`, `ada`) aceptan años cualesquiera y **un hueco en el medio es invisible**,
+porque `poblacion._verificar_cobertura_fechas` compara solo `min` y `max`. Repro en
+`docs/evanesced/gui-2.0_revision/sesion-principal/r13/anios_discontinuos.py`, corte 2016-08:
+
+```
+B) ADA 2016 + 2014 + 2012  (falta 2015 entero)
+   LOG cobertura de fechas -> corte: 2016-08 | ADA: 2012-05..2016-08
+   avisos: 0
+   Activo 12m : ['run_2016_03', 'run_2016_08']
+C) lo mismo con 2015 cargado
+   Activo 12m : ['run_2015_10', 'run_2016_03', 'run_2016_08']
+```
+
+Los dos loguean `ADA: 2012-05..2016-08`, que se lee como cobertura completa, y los dos
+devuelven **0 avisos**, así que la hoja LEEME no dice nada. Quien tuvo su única atención de
+la ventana en el año que falta sale `¿Activo 12m?` = **NO**: se cae de la población en
+control (el P6·A.1 subcuenta) y, como `Activo 12m` y el rescate comparten la lista
+`ACTIVIDADES_SM_7`, los flags de rescate subcuentan también. Es el bug recurrente completo:
+número plausible, mal, y callado, en un módulo cuya salida se copia al REM.
+
+**Lo que NO es el problema:** cargar un año viejo suelto (2012 reportando 2016) está bien.
+Todo se calcula en ventanas hacia atrás desde el corte (`_flags_actividad`, nunca `TODAY()`),
+así que las filas fuera de la ventana se ignoran para Activo 12m / rescate / gestante y sí
+cuentan para `¿Ingresado?` y `_estado_dx`, que es para lo que existe el histórico. El orden
+de los archivos tampoco importa, y cada archivo se valida por separado (`cargar_canonico`:
+0 filas, columnas ausentes, clave vacía -> `ArchivoInvalido` nombrándolo).
+
+**Arreglo propuesto, en la guarda que ya existe** (no un caso nuevo): que
+`_verificar_cobertura_fechas` compare los **meses calendario presentes** contra los que la
+ventana necesita (`_mes_offset(corte, 13)` .. `corte`) en vez de los extremos, y devuelva un
+aviso `SUBCONTADO` **listando los meses que faltan**. Un mes sin ninguna atención en un ADA
+de CESFAM no existe en la práctica: un mes ausente es un archivo ausente. Aviso y no
+`ArchivoInvalido`, igual que esa función ya trata el histórico incompleto.
+
+**No es exclusivo de población:** `rem_a23_respiratorio.py` chequea el historial de la
+Sección G con `od["FECHA"].min() > limite`, también solo el extremo. Al arreglarlo, mirar los
+dos. Emparentado con §1.K.8, que cerró el caso del año **cargado pero solo-encabezado** (ahí
+hay archivo, así que dispara la guarda por archivo); el año que **no se carga** no tiene
+archivo y por eso quedaba afuera.
 
 ### Deuda conocida, para el paso 11 / el merge
 
@@ -1103,7 +1321,8 @@ listados en §4.
 | 10 | **Bug recurrente, ESTÁTICO (R2)**: lectura de cada loader y filtro alcanzable desde las páginas (A05, A03, A23, SM, TP, Población, Rescate, dotación), con foco en cruces entre fuentes, casilleros que fijan el tipo y columnas opcionales; cada candidato confirmado con un repro | 8 ✅ (9 ítems; 3 fixtures eran el bug) + 7 ✅ de la 2a pasada sin tope (la edad del A05 por posición + 6) | §1.K |
 | 11 | **Cada referencia y fallback contra el export REAL, interactiva**: todo mapa de columnas, número de pregunta, ancla y literal de actividad contra `refs_tablas/` y el Maestro; el autor bajó los exports que faltaban y re-bajó los editados a mano; `limpiar_refs` revisado (lo pidió el autor) | 11 ✅ (1 fixture era el caso) + 3 decisiones del autor, implementadas (§1.L.12-14) | §1.L · §4 «Abierto tras la ronda 11» |
 | 12 | **Altitud**: ¿cada arreglo de las rondas 1-11 está a la altura de su causa, o emparcha al consumidor y deja la clase abierta? Cada guarda repetida a mano, la forma de la atención del Monitoreo, el filtro por tipo de excepción de los opcionales, la detección cacheada del A05, el sidebar por prefijo, el router por pila, el encabezado por conteo de celdas y los envoltorios vacíos. Con repros y mediciones | 11 ✅ (1 no se hace acá: los fixes de `programas/` a `main`, §4) | §1.M |
-| 13 | _(siguiente: eficiencia, convenciones —headers de versión del resto de `gui/`—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
+| 13 | **Coherencia estructural tras 12 rondas de parches** — el rango `fd1b0cc^..HEAD` (74 archivos, +9718/-1007) leído como CUERPO y no por ángulo: imports y referencias muertas entre rondas, helpers duplicados, la mudanza de `maestro_slim` a `catalogos/` en todos sus lectores/doc/spec/gitignore, **headers de versión** de cada `.py` tocado vs su último cambio real (cierra el ángulo de convenciones), anclas `§N` citadas desde código y docs, tablas de estado de los 4 `CLAUDE.md`, reglas duras y cobertura de contratos. Casi todo por comando: los 3 checks, `pytest`, la suite archivo por archivo, import de los 37 módulos, barridos AST de imports/atributos/constantes | 8: **4 ✅** + 3 ⏸ al paso 11 + 1 ⏸ a `main` (años discontinuos) | §1.N · §2 · §4 (checklist del paso 11 · años discontinuos) |
+| 14 | _(siguiente: EFICIENCIA —el único ángulo sin barrer: ¿la GUI 2.0 relee archivos o rehace trabajo?—, la prueba a mano del caché en el PC del trabajo (§4), y otra pasada a ojo del autor)_ | | |
 
 **Lo que la ronda 3 revisó y NO era bug** (además de §2, para no repetir el barrido):
 la paridad de los diálogos de dotación contra `_dialogo_dotacion`/`_grupo_dotacion` es
