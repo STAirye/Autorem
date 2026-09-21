@@ -82,8 +82,9 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
    viven en el scratchpad de la sesión, que es temporal. Cuando la rama o el worktree que
    los produjo cierra su trabajo, se archivan en
    **[docs/evanesced/](docs/evanesced/README.md)** — se archivan **como quedaron**, sin
-   reescribirlos, y sin copias de fuentes del repo ni binarios (el README dice por qué y
-   cómo se recuperan).
+   reescribirlos, y sin copias de fuentes del repo ni binarios (el README dice qué hay y
+   cómo se recupera; las reglas de la carpeta están en
+   [docs/evanesced/CLAUDE.md](docs/evanesced/CLAUDE.md)).
 
 ---
 

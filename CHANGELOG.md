@@ -41,6 +41,26 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   posición del grupo.
 
 ### Agregado
+- **Auditoría de los otros tres pre-commit, archivada en
+  [`docs/evanesced/hooks_auditoria-2.0.5/`](docs/evanesced/hooks_auditoria-2.0.5/).**
+  Si `check_version` tenía tres referencias muertas, la pregunta obvia es si los demás
+  también. `auditar_hooks.py` verifica por AST que cada `archivo.py::funcion` nombrada a
+  mano en `TRANSVERSALES` y `EXENTOS` de `check_fuentes` siga existiendo (**0 de 20
+  muertas**); `probar_hooks.py` le da a cada check un positivo y confirma que lo caza —
+  el anti-RUT caza un DV válido y deja pasar el `11111111-1`, cp1252 caza la flecha
+  Unicode, `check_fuentes` detecta por AST el lector sin contrato. **Los tres están
+  sanos.**
+
+  Único pendiente que dejó: `check_fuentes --todo` avisa que `rem_utils.cargar_maestro`
+  tiene el contrato con **encabezado sintético** y pide el export real recortado a solo
+  encabezado (skill `limpiar-refs`). No bloquea.
+
+- **`docs/evanesced/CLAUDE.md`** — las reglas de la carpeta, separadas del README (que
+  dice *qué hay*): no reescribir lo archivado, no borrarlo, no hacerlo pasar los checks
+  (está excluido de cp1252 a propósito, y un `# Version:` ahí bloquearía el commit), y
+  que archivar se anota en este CHANGELOG y **no** en el README de la raíz, que es para
+  quien usa el `.exe`.
+
 - **`tests/test_check_version.py`** (12 pruebas): que cada patrón siga matcheando su
   archivo, que sean específicos (no cazan versiones, segundos ni leyes del README —
   un falso positivo en el pre-commit bloquea commits sanos), que `_sub_contador` no
