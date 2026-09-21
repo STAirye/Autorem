@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.0
+# Version: 2.0.5
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -36,9 +36,12 @@ QUE REVISA
   3. Los .py de codigo que vas a commitear declaran la VERSION ACTUAL en su header.
      Convencion del proyecto: cada archivo lleva la version de SU ULTIMO CAMBIO
      (no todos sincronizados) -> el header dice CUANDO cambio ese archivo.
-  4. El conteo de tests declarado en CLAUDE.md calza con los `def test_` reales.
-     Se cuenta ESTATICAMENTE (no corre pytest): son 143 por ambos metodos, y un hook
-     que tarda 30 segundos por commit no lo usa nadie.
+  4. Los conteos declarados en la documentacion VIGENTE calzan con la realidad:
+     los `def test_` de CLAUDE.md y del README, mas los ARCHIVOS de tests que el
+     README declara ("N pruebas en M archivos"). Que sitios se miran y cuales NO
+     (docs/ es registro historico) esta en CONTADORES, aca abajo.
+     Se cuenta ESTATICAMENTE (no corre pytest): da lo mismo por ambos metodos, y un
+     hook que tarda 30 segundos por commit no lo usa nadie.
 
 LEGACY. legacy/ esta CONGELADO a proposito en sus versiones historicas (1.1, 1.2):
 son el registro de como era el monolito, no codigo vivo. Queda exento de todo.
@@ -75,14 +78,45 @@ EXENTOS_DIR = ("legacy",)
 RE_HEADER = re.compile(r"^# Version: *([\d.]+) *$", re.M)
 RE_VERSION_PY = re.compile(r'^VERSION = "([\d.]+)"', re.M)
 
-# Los sitios de CLAUDE.md donde se repite el conteo de tests. Cada patron tiene UN
-# grupo: el numero. Si agregas otra frase con el conteo, agregala aca o se desincroniza.
-PATRONES_TESTS = [
-    re.compile(r"\*\*(\d+) tests\.\*\*"),
-    re.compile(r"pruebas automáticas \((\d+)\)"),
-    re.compile(r"suite: (\d+) tests"),
-    re.compile(r"\*\*(\d+) tests\*\* \(§2\.1"),
-]
+# Los sitios de la documentacion VIGENTE donde se repite el conteo de tests, POR
+# ARCHIVO. Cada patron tiene UN grupo -- el numero -- y una etiqueta que dice que
+# cuenta ("tests" o "archivos"). Si agregas otra frase con un conteo, agregala aca o
+# se desincroniza EN SILENCIO: le paso al README, que declaro 311 pruebas cuando
+# habia 309 porque hasta la 2.0.5 esto solo miraba CLAUDE.md.
+#
+# OJO, y es la razon de que sea una lista explicita y no un barrido de *.md: docs/
+# y docs/evanesced/ estan llenos de conteos HISTORICOS ("Suite actual: **94 tests**",
+# "de los 170 tests de entonces"). Esos son el REGISTRO de lo que habia en ese
+# momento (CLAUDE.md regla 7): vigilarlos seria "arreglarlos", o sea reescribir la
+# historia. Solo entran los archivos que describen el repo de HOY.
+CONTADORES = {
+    "CLAUDE.md": (
+        (re.compile(r"\*\*(\d+) tests\.\*\*"), "tests"),
+    ),
+    # La frase entera, no un numero suelto: el README tiene decenas de cifras
+    # (versiones, segundos, leyes) y un patron laxo bloquearia commits sanos.
+    "README.md": (
+        (re.compile(r"\*\*(\d+) pruebas\*\* en \d+ archivos"), "tests"),
+        (re.compile(r"\*\*\d+ pruebas\*\* en (\d+) archivos"), "archivos"),
+    ),
+}
+
+# Como se nombra cada conteo cuando el check reclama.
+ETIQUETAS = {"tests": "tests", "archivos": "archivos de tests"}
+
+# LO QUE NO SE VIGILA, a proposito:
+#   - gui/CLAUDE.md declara "**56 tests** (`def test_`: 26 + 30)": es un SUBconteo
+#     (solo los dos archivos de GUI), no el total, asi que compararlo contra
+#     `contar_tests()` seria peor que no mirarlo. Queda pendiente decidir si se
+#     vigila con un contador por-archivo.
+#   - docs/ y legacy/: registro historico, ver el comentario de CONTADORES.
+#
+# Y una leccion que costo: en la 2.0.5 se sacaron TRES patrones muertos de aca
+# ("pruebas automaticas (N)", "suite: N tests", "**N tests** (SS2.1"). Vigilaban
+# frases del CLAUDE.md monolitico que desaparecieron al partirlo por carpeta. Un
+# patron que no matchea NO falla el check: deja de vigilar, calladito, y da
+# confianza falsa. Por eso `tests/test_check_version.py` exige que cada patron
+# siga matcheando su archivo.
 
 
 def _git(*args):
@@ -145,9 +179,32 @@ def py_del_repo():
     return [l for l in _git("ls-files", "*.py").split("\n") if l.strip()]
 
 
+def _archivos_test():
+    return sorted(TESTS.glob("test_*.py"))
+
+
 def contar_tests():
     return sum(len(re.findall(r"^def test_", f.read_text(encoding="utf-8"), re.M))
-               for f in sorted(TESTS.glob("test_*.py")))
+               for f in _archivos_test())
+
+
+def cuentas():
+    """Los conteos reales que la documentacion declara, por etiqueta."""
+    return {"tests": contar_tests(), "archivos": len(_archivos_test())}
+
+
+def _sub_contador(texto, pat, valor):
+    """Reemplaza SOLO el grupo 1 de cada match, por posicion.
+
+    No sirve `m.group(0).replace(m.group(1), valor)`: `str.replace` cambia TODAS
+    las apariciones del numero dentro del match, asi que con 16 tests en 16
+    archivos ("**16 pruebas** en 16 archivos") pisaria las dos.
+    """
+    def repl(m):
+        i, j = m.span(1)
+        base = m.start()
+        return m.group(0)[:i - base] + str(valor) + m.group(0)[j - base:]
+    return pat.sub(repl, texto)
 
 
 def header_de(rel):
@@ -212,27 +269,35 @@ def revisar(solo_staged=True):
                 problemas.append((True, f"{rel}: header dice {h} pero la version "
                                         f"actual es {ver} (lo estas commiteando)"))
 
-    # 4. Contadores de tests.
-    n = contar_tests()
-    for pat in PATRONES_TESTS:
-        for declarado in pat.findall(claude):
-            if int(declarado) != n:
-                problemas.append((False, f"CLAUDE.md declara {declarado} tests, "
-                                         f"pero hay {n}"))
+    # 4. Contadores de tests en la documentacion vigente (ver CONTADORES).
+    reales = cuentas()
+    for nombre, patrones in CONTADORES.items():
+        texto = claude if nombre == "CLAUDE.md" else (RAIZ / nombre).read_text(encoding="utf-8")
+        for pat, que in patrones:
+            for declarado in pat.findall(texto):
+                if int(declarado) != reales[que]:
+                    problemas.append((False, f"{nombre} declara {declarado} "
+                                             f"{ETIQUETAS[que]}, pero hay {reales[que]}"))
     return problemas
 
 
 # -- Arreglo automatico -------------------------------------------------------
 def arreglar():
-    ver, n, tocados = version_actual(), contar_tests(), []
+    ver, reales, tocados = version_actual(), cuentas(), []
 
-    claude = CLAUDE.read_text(encoding="utf-8")
-    nuevo = claude
-    for pat in PATRONES_TESTS:
-        nuevo = pat.sub(lambda m: m.group(0).replace(m.group(1), str(n)), nuevo)
-    if nuevo != claude:
-        CLAUDE.write_text(nuevo, encoding="utf-8")
-        tocados.append(f"CLAUDE.md: contador de tests -> {n}")
+    for nombre, patrones in CONTADORES.items():
+        ruta = RAIZ / nombre
+        antes = ruta.read_text(encoding="utf-8")
+        nuevo = antes
+        for pat, que in patrones:
+            nuevo = _sub_contador(nuevo, pat, reales[que])
+        if nuevo != antes:
+            ruta.write_text(nuevo, encoding="utf-8")
+            # Nombrar solo los conteos que ESE archivo declara (CLAUDE.md no
+            # lleva el de archivos), sin repetir etiqueta.
+            hubo = dict.fromkeys(que for _, que in patrones)
+            tocados.append(f"{nombre}: contadores -> " +
+                           ", ".join(f"{reales[q]} {ETIQUETAS[q]}" for q in hubo))
 
     for rel in staged_py():
         h = header_de(rel)

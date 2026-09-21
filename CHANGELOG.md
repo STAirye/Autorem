@@ -10,6 +10,42 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.5] — 2026-09-21
+
+### Corregido
+- **El check de contadores ahora mira el README, no solo `CLAUDE.md`.** Era la causa de
+  la deriva que se corrigió a mano en la 2.0.4: el README declaraba **311 pruebas
+  cuando había 309**, y nada lo vigilaba. `PATRONES_TESTS` (una lista de patrones)
+  pasó a ser **`CONTADORES`**, un mapa POR ARCHIVO donde cada patrón lleva la etiqueta
+  de qué cuenta. De yapa entra el conteo de ARCHIVOS: el README dice «N pruebas en M
+  archivos» y ahora las dos cifras se verifican. `--arreglar` las sincroniza solo, y el
+  mensaje de error nombra el archivo real en vez de decir siempre «CLAUDE.md declara…».
+
+- **Tres patrones muertos, sacados.** Al escribir el test de que cada patrón siga
+  matcheando aparecieron tres que ya no matcheaban nada: `pruebas automáticas (N)`,
+  `suite: N tests` y `**N tests** (§2.1`. Vigilaban frases del `CLAUDE.md` monolítico
+  que desaparecieron cuando se partió por carpeta. **No fallaban: dejaron de vigilar**,
+  en silencio, y daban confianza falsa — de los cuatro contadores que el check decía
+  cuidar, sólo uno seguía vivo.
+
+  Este es el modo de falla que hay que tener presente: un patrón que deja de matchear
+  no se queja. Por eso el test nuevo exige que **cada** patrón encuentre su frase.
+
+  **Lo que sigue SIN vigilar, a propósito:** `gui/CLAUDE.md` declara «**56 tests**»,
+  pero es un SUBconteo (sólo los dos archivos de GUI), así que compararlo contra el
+  total sería peor que no mirarlo. Queda anotado en `CONTADORES`.
+
+- **`_sub_contador` reemplaza sólo su grupo.** El `--arreglar` viejo hacía
+  `m.group(0).replace(m.group(1), n)`, y `str.replace` cambia TODAS las apariciones:
+  con 16 tests en 16 archivos habría pisado las dos cifras. Ahora se reemplaza por
+  posición del grupo.
+
+### Agregado
+- **`tests/test_check_version.py`** (12 pruebas): que cada patrón siga matcheando su
+  archivo, que sean específicos (no cazan versiones, segundos ni leyes del README —
+  un falso positivo en el pre-commit bloquea commits sanos), que `_sub_contador` no
+  pise cifras vecinas y sea idempotente, y que el repo de hoy esté sincronizado.
+
 ## [2.0.4] — 2026-09-21
 
 ### Agregado

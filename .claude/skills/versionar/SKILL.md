@@ -72,8 +72,12 @@ versión de la primera, no un número paralelo.
 
 - **Si el check bloquea, arregla — no uses `--no-verify`.** Ese escape es para un
   caso consciente y puntual, no para destrabarse.
-- **Si agregas otra frase con el conteo de tests a CLAUDE.md**, agrégala a
-  `PATRONES_TESTS` en `tools/check_version.py` o quedará desincronizada en silencio.
+- **Si agregas otra frase con un conteo de tests** a `CLAUDE.md` o al `README.md`,
+  agrégala a `CONTADORES` en `tools/check_version.py` o quedará desincronizada en
+  silencio. Pasó: el README declaró **311 pruebas cuando había 309** porque hasta la
+  2.0.5 el check solo miraba `CLAUDE.md`. Ojo con el modo de falla al revés —
+  reescribir la frase **mata el patrón**, que entonces no falla: deja de vigilar. Eso
+  lo amarra `tests/test_check_version.py`, que exige que cada patrón siga matcheando.
 - **Los hooks no se versionan** (viven en `.git/hooks/`): instalar en cada clon con
   `python tools/check_version.py --instalar`. Se encadena a los hooks que ya haya
   (anti-RUT §8.2, cp1252) sin pisarlos.

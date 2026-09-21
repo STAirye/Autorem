@@ -98,7 +98,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.4** (§9). **309 tests.**
+Versión **2.0.5** (§9). **321 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -186,14 +186,18 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.4**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.5**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
   y `__init__.py`. **Exento:** `legacy/`.
 - `tools/check_version.py` (en el pre-commit) verifica el manifiesto, la versión de
   este archivo (las dos frases en negrita de arriba: **no las reformules**), el
-  CHANGELOG y el contador de tests. **Skill `versionar`.** Árbitro anti-colisión entre
+  CHANGELOG y los contadores de tests **de este archivo y del README** (desde la
+  2.0.5; antes solo miraba éste, y el del README derivó a 311 con 309 reales).
+  Valen igual para el README: **no reformules** la frase «**N pruebas** en M
+  archivos» sin actualizar `CONTADORES`, porque un patrón que deja de matchear no
+  falla — deja de vigilar. **Skill `versionar`.** Árbitro anti-colisión entre
   sesiones paralelas = el CHANGELOG.
 - **Header en cada archivo:** «This code/document was generated with the assistance
   of [modelo]. The human author reviewed, modified, and integrated the code.» + autor
