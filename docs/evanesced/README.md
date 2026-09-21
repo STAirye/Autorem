@@ -66,6 +66,36 @@ Lo mas reutilizable, por si sirve de nuevo:
 - `finders/alt/harness.py` - arnes de contratos de fuentes, antes de que fuera
   `tests/contratos_fuentes.py`.
 
+### `hooks_auditoria-2.0.5/`
+
+La auditoria de los cuatro pre-commit (sep-2026), disparada por el bug que corrigio la
+**2.0.5**: `check_version` decia vigilar cuatro contadores de tests y **tres de sus
+patrones estaban muertos** -- apuntaban a frases del `CLAUDE.md` monolitico que
+desaparecieron al partirlo por carpeta. Un patron que deja de matchear **no falla: deja
+de vigilar**, calladito. Estos dos scripts fueron a buscar esa misma clase de bug en los
+otros tres checks (no encontraron ninguno) y a confirmar que cada uno caza un positivo.
+
+- `auditar_hooks.py` - busca **referencias muertas**: recorre `TRANSVERSALES` y `EXENTOS`
+  de `check_fuentes` (que nombran funciones a mano, `archivo.py::funcion`) y verifica por
+  AST que cada una siga existiendo; ademas lista que llamadas con pinta de lectura de
+  planilla no estan en `LECTORES`. **Ojo con esa ultima lista:** da falsos positivos a
+  proposito -- los wrappers (`cargar_atenciones`, `cargar_inscritos`…) salen como «NO
+  VIGILADO» pero el AST SI los caza, porque adentro llaman a un lector de `LECTORES`.
+- `probar_hooks.py` - prueba **funcional**: le da a cada check algo que DEBE cazar y
+  confirma que lo caza (un check que pasa siempre no sirve). El RUT de prueba se arma en
+  runtime, cuerpo aritmetico + DV calculado, para no dejar un literal con forma de RUT en
+  disco (§8.1); el `.py` con la flecha Unicode se escribe en `tools/` y se borra en un
+  `finally`.
+
+**Los dos llevan `RAIZ` como ruta ABSOLUTA de la maquina del autor** (vivieron en el
+scratchpad de la sesion, fuera del repo): archivados como quedaron, hay que ajustar
+`RAIZ` para correrlos desde aca.
+
+Lo que la auditoria encontro vivo esta en el `CHANGELOG` de la 2.0.5. Lo unico que quedo
+abierto: `check_fuentes --todo` avisa que `rem_utils.cargar_maestro` tiene el contrato con
+**encabezado sintetico**, y pide el export real recortado a solo encabezado (skill
+`limpiar-refs`). No bloquea.
+
 ### `gui-2.0_textos/`
 
 La revision de textos user-facing de la GUI 2.0 (sep-2026), hecha por el autor. El
