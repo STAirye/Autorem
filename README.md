@@ -46,6 +46,24 @@ módulo y por qué, más los avisos de esa corrida.
 
 ---
 
+## ¿Qué ventajas tiene sobre el REM automático de RAYEN?
+
+- **100% offline** — no requiere conexión a internet y **ningún dato sale de este
+  computador**: los exports se leen y las salidas se escriben en tu propio equipo.
+- **Trazabilidad** — a diferencia de RAYEN, **cada reporte deja la lista de los RUT que
+  lo componen** (el A05 marca el export completo; el resto escribe su hoja `*_Detalle`),
+  así que cualquier cifra se puede abrir y revisar caso a caso.
+- **Transparencia** — programa de **código abierto**, 100% auditable y revisable por
+  cualquiera.
+- **Apoyo a la gestión** — genera automáticamente **reportes de auditoría** (Trabajo
+  perdido, Rescate de inasistentes) para mejorar los flujos de atención y automatizar
+  tareas recurrentes.
+- **Criterios explícitos** — los criterios de conteo están revisados y escritos en la
+  documentación, y la hoja **LEEME** de cada salida dice qué casillas **no** cubre ese
+  módulo.
+
+---
+
 ## 🔒 Privacidad (regla dura)
 
 Los exports de RAYEN/IRIS traen **datos identificatorios de pacientes** (RUT,
@@ -68,11 +86,14 @@ primer commit, instálalos:
 python tools/hooks_git.py --instalar
 ```
 
-Instala **y verifica** tres checks de pre-commit:
+Instala **y verifica** cuatro checks de pre-commit:
 - **Anti-RUT:** bloquea cualquier RUT con dígito verificador válido, en los archivos y
   en el mensaje del commit.
 - **cp1252:** que el código no reviente la consola de Windows.
 - **Coherencia de versión.**
+- **Contratos de fuentes:** toda función que lee una planilla del usuario debe tener su
+  prueba de contrato (que lea >0 filas, que el filtro no vacíe, que las fechas se
+  entiendan). Caza al commitear el bug recurrente de leer un export y tabular cero.
 
 - **El autor no se hace responsable** de datos personales que aparezcan en un clon o
   fork donde no se instalaron los hooks.
@@ -202,7 +223,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **311 pruebas** en 16 archivos:
+Datos 100% sintéticos, sin PII. **309 pruebas** en 16 archivos:
 
 ```bash
 python tools/correr_tests.py

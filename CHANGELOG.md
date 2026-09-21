@@ -10,6 +10,28 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.4] — 2026-09-21
+
+### Agregado
+- **«¿Qué ventajas tiene sobre el REM automático de RAYEN?» — en el README y en la
+  pantalla de Inicio.** Cinco puntos: 100% offline, trazabilidad (la lista de RUT de
+  cada reporte), transparencia (código abierto), apoyo a la gestión (los reportes de
+  auditoría) y criterios explícitos.
+
+  **Las cinco afirmaciones se verificaron antes de escribirlas**, porque una ventaja
+  falsa en un README público es peor que no tenerla: la de trazabilidad se apoya en que
+  los siete módulos dejan el RUT/RUN en la salida — el A05 marca el export completo (la
+  columna RUT abre su hoja, `rem_saludmental.ANCHOS_BASE`) y el resto escribe su hoja
+  `*_Detalle`. Si un módulo nuevo NO deja detalle por paciente, la frase deja de ser
+  cierta y hay que corregirla en los dos lugares; queda dicho en el comentario de
+  `_VENTAJAS`.
+
+### Cambiado
+- **La descripción de Inicio ya no repite el «100% local».** Lo decía en dos líneas
+  justo encima de la caja nueva, que abre con el mismo punto. Quedó solo con lo que el
+  bullet no cubre: que la PII se procesa en memoria sin guardar copia, y que sin
+  conexión no hay actualización automática (se revisa a mano en «Acerca de»).
+
 ## [2.0.3] - 2026-09-20
 
 ### Agregado

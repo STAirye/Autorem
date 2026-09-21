@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.4
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,8 +42,28 @@ from gui import widgets
 _DESCRIPCION = (
     ("autoREM tabula el REM (Registro Estadístico Mensual) a partir de los exports directamente descargados de RAYEN Administrativo e IRIS: cargas las planillas de Excel, eliges el mes, y obtienes una planilla lista para copiar al formulario oficial.\n"
      "Nació por iniciativa de referente de Salud Mental del CESFAM Dr. Luis Ferrada Urzúa y apunta a ser universal — cualquier programa de salud, cualquier centro.\n"
-     "100% local: ningún archivo ni dato sale de este computador. Toda informacion sensible de paciente (PII) es procesada por el programa, pero no se guarda memoria de ello ni sale del equipo.\n"
-     "Por diseño, el programa no realiza conexion con internet, por lo que cualquier actualizacion debe ser revisada a mano en el link en Acerca De.")
+     "La informacion sensible de paciente (PII) se procesa en memoria: el programa no guarda copia de ella.\n"
+     "Como no hay conexion con internet, no hay actualizacion automatica: se revisa a mano en el link de Acerca de.")
+)
+
+_TITULO_VENTAJAS = "¿Qué ventajas tiene sobre el REM automático de RAYEN?"
+
+# Las cinco afirmaciones son VERIFICABLES y hay que mantenerlas asi (regla 2:
+# nada plausible pero falso). La de trazabilidad se apoya en que los siete
+# modulos dejan el RUT/RUN en la salida: el A05 marca el export completo (la
+# columna RUT abre su hoja, ver rem_saludmental.ANCHOS_BASE) y el resto escribe
+# su hoja `*_Detalle`. Si algun modulo nuevo NO deja detalle por paciente, esta
+# frase deja de ser cierta y hay que corregirla aca y en el README.
+_VENTAJAS = (
+    ("100% offline: no requiere conexión a internet y ningún dato sale de este computador. "
+     "Los exports se leen y las salidas se escriben en tu propio equipo.\n"
+     "Trazabilidad: a diferencia de RAYEN, cada reporte deja la lista de los RUT que lo componen, "
+     "así que cualquier cifra se puede abrir y revisar caso a caso.\n"
+     "Transparencia: programa de código abierto, 100% auditable y revisable por cualquiera.\n"
+     "Apoyo a la gestión: genera automáticamente reportes de auditoría para mejorar los flujos de "
+     "atención y automatizar tareas recurrentes.\n"
+     "Criterios explícitos: los criterios de conteo están revisados y escritos en la documentación, "
+     "y la hoja LEEME de cada salida dice qué casillas NO cubre ese módulo.")
 )
 
 # Accesos directos a lo mas usado (ids de PANTALLA, ver gui/paginas/*.py). A05
@@ -69,3 +89,9 @@ def construir(frame, app):
         ctk.CTkButton(caja, text=pantalla["titulo"], anchor="w",
                      command=lambda pid=pid: app.mostrar(pid)
                     ).pack(fill="x", padx=8, pady=(4, 4))
+
+    # Debajo de los accesos directos A PROPOSITO: esto se lee una vez, y los
+    # botones son lo que se usa mes a mes.
+    ventajas = widgets.caja_titulada(frame, _TITULO_VENTAJAS)
+    ventajas.pack(fill="x", pady=(12, 8))
+    widgets.etiqueta_envolvente(ventajas, _VENTAJAS).pack(fill="x", padx=8, pady=(4, 8))
