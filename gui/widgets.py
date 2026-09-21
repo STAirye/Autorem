@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -91,6 +91,37 @@ def etiqueta_envolvente(parent, text, **kwargs):
     parent.bind("<Configure>", lambda e: lbl.configure(
         wraplength=lbl._reverse_widget_scaling(max(e.width - 20, 50))), add="+")
     return lbl
+
+
+# Texto de la barra de precarga. Vive aca UNA vez y el test lo importa:
+# no se compara texto plano que ve el usuario (ver tests/CLAUDE.md).
+TEXTO_PRECARGA = "Preparando"
+
+
+def barra_precarga(parent):
+    """Franja delgada al pie de la ventana, con el progreso de la precarga de paginas
+    (ver `app.App._precargar_tick`). Se destruye sola al terminar.
+
+    Expone `avanzar(fraccion, titulo)`. Deliberadamente DETERMINADA y no un spinner:
+    la espera es de varios segundos y de largo conocido (una pagina por tick), asi que
+    decir cuanto falta vale mas que decir que algo pasa."""
+    import customtkinter as ctk
+
+    fila = ctk.CTkFrame(parent, fg_color=COLOR_CAJA, corner_radius=0)
+    fila.grid_columnconfigure(1, weight=1)
+    etiqueta = ctk.CTkLabel(fila, text=f"{TEXTO_PRECARGA}\u2026", anchor="w",
+                            text_color=COLOR_ATENUADO)
+    etiqueta.grid(row=0, column=0, sticky="w", padx=(10, 8), pady=4)
+    barra = ctk.CTkProgressBar(fila, height=8)
+    barra.set(0)
+    barra.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=4)
+
+    def avanzar(fraccion, titulo):
+        barra.set(max(0.0, min(1.0, fraccion)))
+        etiqueta.configure(text=f"{TEXTO_PRECARGA}: {titulo}\u2026")
+
+    fila.avanzar = avanzar
+    return fila
 
 
 def caja_titulada(parent, titulo):

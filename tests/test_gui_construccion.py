@@ -29,6 +29,7 @@ sesion grafica, que es donde importa.
 """
 
 import sys
+import time
 import tempfile
 from pathlib import Path
 
@@ -67,9 +68,12 @@ def _fixture_iris():
     return p
 
 
-def _app(ruta_inicial=""):
+def _app(ruta_inicial="", precargar=False):
     from gui.app import App
-    app = App(ruta_inicial=str(ruta_inicial))
+    # `precargar=False` por defecto: la precarga de paginas construye TODAS las
+    # reales (~11 s, ver App._precargar_tick) y ningun test de aca la necesita.
+    # Los que la prueban la piden explicita.
+    app = App(ruta_inicial=str(ruta_inicial), precargar=precargar)
     app.geometry("1180x820")
     return app
 
@@ -653,7 +657,7 @@ def test_el_banner_no_describe_una_corrida_cuyos_archivos_se_cambiaron_mientras_
                 "extras": [{"despues_de": "atenciones", "construir": widgets.bloque_banner_fuente}],
                 "correr": correr, "resumen": lambda res: "Listo.",
                 "al_completar": lambda res, pagina: widgets.pintar_banner_fuente(pagina, res)}
-    app = App(registro=[pantalla])
+    app = App(registro=[pantalla], precargar=False)
     try:
         app.mostrar("prueba")
         frame = app._frames["prueba"]
@@ -695,7 +699,7 @@ def test_cerrar_la_ventana_con_una_corrida_viva_pregunta_primero():
                 "correr": lambda ctx, log: soltar.wait(5), "resumen": lambda res: "Listo."}
     preguntas = []
     previo = appmod.messagebox.askyesno
-    app = App(registro=[pantalla])
+    app = App(registro=[pantalla], precargar=False)
     try:
         app.mostrar("prueba")
 
@@ -753,7 +757,7 @@ def test_el_aviso_de_cache_de_una_corrida_se_muestra():
                 "correr": correr, "resumen": lambda res: "Listo."}
     vistos, previo = [], appmod.messagebox.showwarning
     ru.tomar_avisos_cache()
-    app = App(registro=[pantalla])
+    app = App(registro=[pantalla], precargar=False)
     try:
         appmod.messagebox.showwarning = lambda t, m, **k: vistos.append(m)
         app.mostrar("prueba")
@@ -1061,7 +1065,7 @@ def test_cada_programa_es_UN_grupo_del_sidebar():
     real = cargar_registro()
     nueva = dict(real[0], id="sm_infanto", titulo="Infanto", programa="Salud Mental Infanto")
     for registro in (real, real + [nueva]):
-        app = App(registro=registro)
+        app = App(registro=registro, precargar=False)
         app.withdraw()
         try:
             cabeceras = []
@@ -1077,6 +1081,112 @@ def test_cada_programa_es_UN_grupo_del_sidebar():
         finally:
             _cerrar(app)
 
+
+# -- Precarga incremental de paginas (2.0.2) ----------------------------------
+# Construir una pagina cuesta segundos (sm_actividades: 5,8 s medidos con mainloop),
+# asi que se precargan de a una por tick de `after`, con barra al pie. NO se puede en
+# un hilo: los widgets de Tk solo existen en el hilo del mainloop.
+
+def _precargar_todo(app, limite=90):
+    """Corre el mainloop hasta que no quede tick de precarga pendiente."""
+    t0 = time.time()
+    while app._tick_precarga is not None and time.time() - t0 < limite:
+        app.update()
+    assert app._tick_precarga is None, "la precarga no termino"
+
+
+def test_tras_la_precarga_todo_esta_construido_y_ESCONDIDO():
+    """Post-condicion de la precarga completa, en un solo test porque es un solo
+    escenario (y cada precarga real cuesta ~11 s).
+
+    Lo critico es lo ESCONDIDO, que es el bug del Tab de la ronda 12:
+    `_construir_pagina` hace `grid()`, asi que una pagina precargada y no escondida
+    queda MAPEADA aunque no se vea, y el Tab del teclado recorre lo mapeado -- se
+    llegaba a las cajas de texto de otras paginas y lo tecleado no aparecia en ningun
+    lado."""
+    app = _app(precargar=True)
+    try:
+        _precargar_todo(app)
+        app.update()
+        ids = {p["id"] for p in app.registro}
+        assert ids <= set(app._frames), sorted(ids - set(app._frames))
+        visibles = [pid for pid, f in app._frames.items()
+                    if getattr(f, "_parent_frame", f).winfo_ismapped()]
+        assert visibles == ["inicio"], visibles
+        assert getattr(app, "_barra_precarga", None) is None, "la barra quedo en pantalla"
+    finally:
+        app.destroy()
+
+
+def test_cerrar_cancela_la_precarga_pendiente():
+    """Un tick que corriera DESPUES del destroy reventaria sobre widgets muertos, y en
+    un exe --windowed esa excepcion es INVISIBLE.
+
+    `update_idletasks` y no `update`: el segundo procesa los timers vencidos y drena la
+    cadena entera de `after`, dejando la precarga TERMINADA -- justo el estado que este
+    test no quiere observar."""
+    app = _app(precargar=True)
+    app.update_idletasks()
+    assert app._tick_precarga is not None, "la precarga ni siquiera arranco"
+    app._al_cerrar()
+    assert app._tick_precarga is None, "quedo un after() pendiente tras cerrar"
+
+
+def test_sin_precarga_no_se_construye_ninguna_pagina():
+    """`precargar=False` es lo que deja rapida a esta suite: tiene que NO construir."""
+    app = _app(precargar=False)
+    try:
+        app.update()
+        assert set(app._frames) == {"inicio"}, sorted(app._frames)
+        assert app._tick_precarga is None
+    finally:
+        app.destroy()
+
+
+def test_la_barra_de_precarga_dice_que_pagina_va():
+    """No se compara texto plano que ve el usuario (tests/CLAUDE.md): la constante vive
+    UNA vez en `widgets` y el test la importa."""
+    from gui import widgets
+    app = _app(precargar=True)
+    try:
+        app.update_idletasks()
+        barra = app._barra_precarga
+        assert barra is not None, "no se pinto la barra"
+        etiquetas = [w for w in barra.winfo_children() if isinstance(w, ctk.CTkLabel)]
+        assert etiquetas, "la barra no tiene etiqueta"
+        assert widgets.TEXTO_PRECARGA in etiquetas[0].cget("text")
+    finally:
+        app._al_cerrar()
+
+def test_una_pagina_recien_construida_NO_esta_en_pantalla():
+    """El parpadeo de la 2.0.2, reportado por el autor: al abrir, las cuatro paginas
+    se pintaban una tras otra encima del Inicio antes de esconderse.
+
+    `_construir_pagina` grideaba el frame ANTES de crear sus hijos, y customtkinter
+    llama `update_idletasks()` al crear cada widget (100 veces por pagina, medido con
+    cProfile), asi que la pagina a medio armar se PINTABA durante toda su construccion.
+    Con la construccion perezosa casi no se notaba -- era la pagina que ibas a ver
+    igual --; con la precarga se volvio cuatro flashes seguidos.
+
+    El invariante es mas fuerte que «no mapeada»: el frame no tiene geometry manager
+    hasta que `mostrar` lo pide. Mapearlo es lo que lo pinta."""
+    app = _app(precargar=False)
+    try:
+        app.update()
+        pantalla = app.registro[0]
+        frame = app._construir_pagina(pantalla)
+        real = getattr(frame, "_parent_frame", frame)
+        assert real.winfo_manager() == "", (
+            f"el frame se gridea al construirse ({real.winfo_manager()}): se pinta mientras se arma")
+        app.update()          # ni con ciclos de evento de por medio
+        assert not real.winfo_ismapped()
+        # y `mostrar` si lo pone en pantalla
+        app._frames[pantalla["id"]] = frame
+        app.mostrar(pantalla["id"])
+        app.update()
+        assert real.winfo_ismapped(), "mostrar() dejo de mapear la pagina"
+    finally:
+        app.destroy()
 
 def _main():
     if SIN_DISPLAY:

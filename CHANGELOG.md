@@ -10,6 +10,51 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.2] — 2026-09-20
+
+### Corregido
+- **Las páginas se pintaban a medio construir.** `_construir_pagina` grideaba su frame
+  ANTES de crear los hijos, y customtkinter llama `update_idletasks()` al crear cada
+  widget (~100 veces por página, medido con `cProfile`): la página a medio armar se
+  dibujaba encima de la que estaba a la vista. Con la construcción perezosa casi no se
+  notaba — era la página que ibas a ver igual —, pero al precargar varias se volvía un
+  parpadeo seguido. Ahora el frame se arma **sin gridear** y lo mapea `mostrar`, que igual
+  lo iba a hacer. Amarrado con un test que verifica el invariante fuerte: una página
+  recién construida **no tiene geometry manager**.
+
+### Agregado
+- **Precarga incremental de páginas, con barra al pie** — implementada y con tests, pero
+  **APAGADA por defecto** (`App(precargar=False)`).
+
+  **Por qué entra apagada, dicho derecho:** funciona, pero hoy **empeora** el arranque. La
+  precarga no crea el problema de fondo, lo junta y lo hace visible: construir una página
+  bloquea el hilo de la GUI entre 1 y 7 segundos, y mientras tanto Windows no puede
+  repintar la ventana, así que se ve rota (sin sidebar, con el texto del Inicio a medio
+  dibujar). Probado por el autor en el `.exe` y con `python -m gui.app`: el mismo
+  resultado, o sea no es empaquetado. Se enciende cuando `_construir_pagina` ceda el
+  control entre paso y paso — ver el §12 de `CLAUDE.md`, «Destrabar la GUI durante la
+  carga de una página», que lleva las mediciones y el plan.
+
+  Lo que queda listo para ese día: `App._precargar_iniciar` / `_precargar_tick` /
+  `_precargar_terminar` / `_precargar_cancelar`, `widgets.barra_precarga`, y cinco tests
+  (que las páginas precargadas no queden **mapeadas** — si no, vuelve el bug del Tab de
+  la ronda 12 —, que cerrar cancele el tick pendiente, y que la barra diga qué página va).
+
+### Medido (queda escrito para no re-derivarlo)
+- **Bloqueo al construir cada página**, con `mainloop` real: `acerca_de` **7105 ms** ·
+  `sm_actividades` 5753 · `a23_respiratorio` 1813 · `a05` 1090 · `sp_p6_poblacion` 1031 ·
+  `inicio` 89.
+- **El costo es Tk puro, no I/O ni imports:** `sm_actividades` = 7,1 s de 8,4 en
+  `_tkinter.tkapp.call` (101.700 llamadas); `acerca_de` = 6,1 s de 7,1 (76.181). Por eso
+  **ningún hilo lo arregla** — no hay trabajo puro que mandar afuera, y los widgets de Tk
+  solo existen en el hilo del `mainloop`. Se evaluó y se descartó con el perfil en la mano,
+  no de oídas.
+- `acerca_de` es la página **más cara** y es una **página especial**: no está en `registro`,
+  así que la precarga ni siquiera la cubría.
+
+Arneses archivados en `docs/evanesced/gui-2.0_merge/` (`perfilar_sm.py`,
+`perfilar_about.py`, `medir_cambio_pagina.py`, `medir_precarga_real.py`).
+
 ## [2.0.1] — 2026-09-20 · hotfix de empaquetado
 
 ### Corregido

@@ -98,7 +98,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.1** (§9). **304 tests.**
+Versión **2.0.2** (§9). **309 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -186,7 +186,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.1**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.2**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -278,25 +278,48 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   (lectura del `.xlsx` vs cálculos). Si es la lectura, probar `python-calamine`
   (`engine="calamine"`) contra la «dimension rota» de RAYEN. Cortar un mismo `.xlsx`
   y leer las partes en paralelo no rinde, porque no hay acceso aleatorio por fila.
-- **La PRIMERA visita a cada página tarda segundos** (reportado por el autor al probar
-  el exe de la 2.0.0, y él lo atribuyó a customtkinter). **No es ctk:** `app.mostrar()`
-  construye la página la primera vez que se entra (`if pantalla_id not in self._frames`)
-  y después solo hace `grid`/`grid_remove`. Medido:
+- **Destrabar la GUI durante la carga de una página** (2.0.2; el autor lo probó y lo
+  llamó «VERY JARRING»). Construir una página **bloquea el hilo de la GUI varios
+  segundos**, y mientras tanto Windows no puede repintar: la ventana se ve ROTA — sin
+  sidebar, con el texto del Inicio a medio dibujar y pedazos de la página que se está
+  armando. Pasa igual con el `.exe` y con `python -m gui.app`, o sea **no es empaquetado**.
 
-  | Página | 1a visita | 2a | 3a |
-  |---|---|---|---|
-  | `sm_actividades` | **6943 ms** | 177 ms | 16 ms |
-  | `a23_respiratorio` | 1814 ms | 184 ms | 32 ms |
-  | `a05` | 1449 ms | 129 ms | 19 ms |
-  | `sp_p6_poblacion` | 1063 ms | 141 ms | 15 ms |
-  | `inicio` | 89 ms | 29 ms | 18 ms |
+  **Medido** (con `mainloop` real; arneses en `docs/evanesced/gui-2.0_merge/`):
 
-  O sea el costo es **de construcción, y se paga una sola vez por página**. Opciones:
-  construirlas todas al arranque (mueve la espera a un solo lugar, donde se puede
-  mostrar progreso), o construir las que faltan en el hilo de la GUI con el sidebar ya
-  pintado. Medir antes qué se lleva los 7 s del SM: es la página con `extras`,
-  `preparar` y la caja de cuestionarios. Arnés en
-  [docs/evanesced/gui-2.0_merge/medir_cambio_pagina.py](docs/evanesced/gui-2.0_merge/medir_cambio_pagina.py).
+  | Página | Bloqueo |
+  |---|---|
+  | `acerca_de` | **7105 ms** |
+  | `sm_actividades` | 5753 ms |
+  | `a23_respiratorio` | 1813 ms |
+  | `a05` | 1090 ms |
+  | `sp_p6_poblacion` | 1031 ms |
+  | `inicio` | 89 ms |
+
+  **No se arregla con hilos, y está medido, no supuesto.** `cProfile` dice que el costo
+  es Tk puro: `sm_actividades` = 7,1 s de 8,4 en `_tkinter.tkapp.call` (101.700 llamadas);
+  `acerca_de` = 6,1 s de 7,1 (76.181). No hay I/O ni imports que adelantar, y los widgets
+  de Tk solo existen en el hilo del `mainloop` (un intérprete Tcl por hilo), así que
+  crearlos en un worker es la trampa #1 de `gui/CLAUDE.md`.
+
+  **El arreglo propuesto:** que `_construir_pagina` **ceda el control**, convirtiéndola en
+  un **generador** que hace `yield` entre pasos (título, cada input, extras, mes/carpeta,
+  log, botones). El generador conserva sus closures solo, así que encaja con el código
+  actual sin desarmar el contrato `PANTALLA`. Los llamadores: `mostrar` lo drena entero
+  (comportamiento de hoy) y la precarga lo avanza **un paso por tick**. Con ~10 pasos,
+  `sm_actividades` pasa de un bloqueo de 5753 ms a tramos de ~570 ms.
+
+  **Lo que ya está hecho** y no hay que rehacer:
+  - La **precarga incremental** con barra al pie (`App._precargar_tick`,
+    `widgets.barra_precarga`), con sus tests. Queda **apagada**: `App(precargar=False)`
+    por defecto, porque hoy junta los bloqueos al arranque y empeora la primera
+    impresión. Encenderla es cambiar ese default, una vez que el generador exista.
+  - Las páginas ya **no se gridean mientras se construyen**, que era una causa aparte:
+    customtkinter llama `update_idletasks()` al crear cada widget, así que un frame
+    gridado se PINTA a medio armar. Eso daba páginas superpuestas; ya no pasa.
+
+  **Ojo al implementarlo:** `acerca_de` e `inicio` son **páginas especiales**, no están en
+  `registro` y por eso la precarga no las cubre — y `acerca_de` es justamente la más cara
+  de todas. La solución tiene que incluirlas, o se arregla todo menos lo peor.
 - **Catálogos en la GUI** (fecha visible + actualización manual en modo
   avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
   lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.

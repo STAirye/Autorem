@@ -26,7 +26,7 @@ compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
 
 | Archivo | Rol |
 |---|---|
-| `app.py` | **Shell:** ventana, sidebar, router, `_resolver_ctx`, construcción de cada página desde su `PANTALLA`, `_al_cerrar`. El contrato completo, en su docstring. |
+| `app.py` | **Shell:** ventana, sidebar, router, `_resolver_ctx`, construcción de cada página desde su `PANTALLA`, la **precarga incremental** (`_precargar_tick`) y `_al_cerrar`. El contrato completo, en su docstring. |
 | `registro.py` | **Descubrimiento** de `gui/paginas/*.py` por `pkgutil` + `ORDEN_PROGRAMAS` / `ORDEN_PAGINAS`. Agregar una página no requiere tocar este archivo; sí agregarla al orden. |
 | `runner.py` | **Única frontera con el worker:** hilo + cola, despacho de errores (`manejar_error`, `motivo_fuente`, `_TITULO_INVALIDO`), validaciones de entrada (`valida_ruta` / `valida_mes` / `valida_carpeta`, `limpiar_ruta`), avisos de caché, `en_hilo`, `correr_con_reloj`, `sin_opcional`. |
 | `widgets.py` | Piezas de UI reutilizables: `fila_archivo(s)`, `fila_carpeta_salida`, `selector_mes`, `crear_log`, `caja_titulada`, `etiqueta_envolvente`, banner de fuente, `texto_avisos`, la paleta (`COLOR_*`). |
@@ -68,6 +68,7 @@ compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
   corrida.
 - **`CTkScrollableFrame` redefine `grid`/`grid_remove`/`lift`** (operan sobre su
   `_parent_frame`) pero **no** `tkraise`.
+- **Construir una página cuesta SEGUNDOS, y no hay hilo que lo salve.** Perfilado (2.0.1): `sm_actividades` = 8,4 s, de los cuales **7,1 s son `_tkinter.tkapp.call`** — 101.700 llamadas a Tk. No es I/O ni imports, así que **no hay trabajo puro que mandar a un worker**; y los widgets de Tk solo existen en el hilo del `mainloop` (un intérprete Tcl por hilo), así que crearlos afuera es la trampa de arriba. La salida es **cooperativa**: `App._precargar_tick` arma UNA página por tick de `after`, con `widgets.barra_precarga` al pie. Tres cosas que no se pueden soltar — las páginas se construyen **escondidas** (`grid_remove`; `_construir_pagina` hace `grid()`, y una página mapeada revive el bug del Tab), la barra se repinta con `update_idletasks` **antes** de cada construcción (si no muestra la página anterior durante todo el bloqueo), y `_al_cerrar` **cancela** el tick pendiente. **Hoy la precarga viene APAGADA** (`precargar=False` por defecto): junta los bloqueos al arranque y la ventana se ve rota mientras tanto (el autor la probo y la llamo «VERY JARRING»). Se enciende cuando `_construir_pagina` ceda el control entre paso y paso -- el plan, con las mediciones, esta en el §12 del CLAUDE.md raiz.
 
 **Posición y agrupación: es un DATO, nunca el orden en que corrió algo**
 
@@ -116,7 +117,7 @@ Antes de escribir un helper acá, buscarlo en:
 
 ## Tests
 
-**51 tests** (`def test_`: 26 + 25). `tests/test_gui_registro.py` amarra el CONTRATO (claves,
+**56 tests** (`def test_`: 26 + 30). `tests/test_gui_registro.py` amarra el CONTRATO (claves,
 ids únicos, orden declarado, `extras[].despues_de` apuntando a un input real, una sola
 `ancla_salida`, callables invocables) y `tests/test_gui_construccion.py` **arma la ventana de
 verdad** y bombea eventos — es lo que cazó el `after()` desde el hilo. Las dos necesitan

@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.2
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -287,7 +287,7 @@ class App(ctk.CTk):
     (comportamiento real). Pasar una lista propia sirve para probar el shell
     con una PANTALLA de mentira sin tener que dejarla en gui/paginas/."""
 
-    def __init__(self, registro=None, ruta_inicial=""):
+    def __init__(self, registro=None, ruta_inicial="", precargar=False):
         super().__init__()
         self.title(f"autoREM {VERSION}")
         # Ancho por defecto (feedback del autor, sep-2026: 1000 quedaba
@@ -309,6 +309,9 @@ class App(ctk.CTk):
         self._botones_sidebar = {}
         # Corridas con el worker vivo (todas las paginas): ver `_al_cerrar`.
         self._corridas = 0
+        # Precarga incremental de paginas (ver `_precargar_tick`). Guarda el id del
+        # after() pendiente, o None si no hay ninguno.
+        self._tick_precarga = None
         self.protocol("WM_DELETE_WINDOW", self._al_cerrar)
 
         self._construir_sidebar()
@@ -319,6 +322,14 @@ class App(ctk.CTk):
         self.contenedor.grid_columnconfigure(0, weight=1)
 
         self.mostrar("inicio")
+        # APAGADA por defecto (2.0.2). La precarga funciona y esta amarrada por
+        # tests, pero hoy EMPEORA el arranque: cada pagina bloquea el hilo de la
+        # GUI 1-6 s y Windows no puede repintar la ventana mientras tanto, asi que
+        # se ve rota (sin sidebar, con el texto del Inicio a medio dibujar). Se
+        # enciende cuando `_construir_pagina` ceda el control entre paso y paso
+        # -- ver el §12 del CLAUDE.md raiz, «Destrabar la GUI durante la carga».
+        if precargar:
+            self._precargar_iniciar()
 
     # -- Sidebar / router ------------------------------------------------
     def _construir_sidebar(self):
@@ -388,6 +399,75 @@ class App(ctk.CTk):
             switch_oscuro.select()
         switch_oscuro.pack(anchor="w", padx=6, pady=(2, 10))
 
+    # -- Precarga incremental de paginas ---------------------------------
+    # Construir una pagina cuesta SEGUNDOS (medido en 2.0.1, perfilando con cProfile:
+    # sm_actividades = 8,4 s, de los cuales 7,1 s son `_tkinter.tkapp.call` -- 101.700
+    # llamadas a Tk). Con la construccion perezosa sola, ese costo se lo come el usuario
+    # la PRIMERA vez que entra a cada pagina, y parece que la ventana se colgo.
+    #
+    # NO se puede paralelizar con hilos, y no es una limitacion de customtkinter: los
+    # widgets de Tk solo existen en el hilo que corre el mainloop (un interprete Tcl por
+    # hilo). Crearlos desde un worker da «main thread is not in main loop» o corrupcion
+    # intermitente -- la trampa #1 de gui/CLAUDE.md. Y tampoco habria nada que ganar: el
+    # perfil dice que el costo es Tk, no I/O ni imports, asi que no hay trabajo puro que
+    # mandar afuera.
+    #
+    # Lo que SI se puede es ser COOPERATIVO: una pagina por tick de `after`, devolviendo
+    # el control al event loop entre medio. No es mas rapido en total; lo que cambia es
+    # que la ventana responde desde el primer segundo, el usuario lee el Inicio mientras
+    # tanto, y la espera se paga una sola vez y con una barra que la explica.
+    def _precargar_iniciar(self):
+        """Encola la construccion de las paginas que falten, en el orden del sidebar."""
+        self._pendientes = [p["id"] for p in self.registro if p["id"] not in self._frames]
+        if not self._pendientes:
+            return
+        self._total_precarga = len(self._pendientes)
+        self._barra_precarga = widgets.barra_precarga(self)
+        self._barra_precarga.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self._tick_precarga = self.after(120, self._precargar_tick)
+
+    def _precargar_tick(self):
+        """UNA pagina por tick. Vuelve a encolarse hasta que no quede ninguna."""
+        self._tick_precarga = None
+        while self._pendientes and self._pendientes[0] in self._frames:
+            self._pendientes.pop(0)     # la visito el usuario mientras tanto
+        if not self._pendientes:
+            return self._precargar_terminar()
+        pid = self._pendientes.pop(0)
+        pantalla = next(p for p in self.registro if p["id"] == pid)
+        self._barra_precarga.avanzar(
+            1 - len(self._pendientes) / self._total_precarga, pantalla["titulo"])
+        # Repintar ANTES de construir: `_construir_pagina` bloquea el hilo de la GUI
+        # varios segundos (es el costo que esta precarga existe para explicar), y sin
+        # esto la barra se quedaria mostrando la pagina ANTERIOR durante todo el bloqueo
+        # -- o sea, justo cuando el usuario mas necesita saber que esta pasando.
+        self.update_idletasks()
+        try:
+            self._frames[pid] = self._construir_pagina(pantalla)
+            # Cinturon: `_construir_pagina` ya no gridea, asi que esto es un no-op.
+            # Se deja porque el dia que alguien le devuelva el `grid()` (ya estuvo
+            # ahi), una pagina precargada quedaria MAPEADA y volveria el bug del Tab.
+            self._frames[pid].grid_remove()
+        except Exception as e:   # noqa: BLE001
+            # NO se traga el error: se descarta la pagina a medias para que el click del
+            # usuario la reconstruya y lo muestre donde corresponde (runner.manejar_error),
+            # en vez de un modal a los 2 segundos de abrir el programa.
+            self._frames.pop(pid, None)
+            print(f"[precarga] «{pantalla['titulo']}» fallo al construirse "
+                  f"({type(e).__name__}: {e}); se reintenta al abrirla.")
+        self._tick_precarga = self.after(1, self._precargar_tick)
+
+    def _precargar_terminar(self):
+        self._precargar_cancelar()
+        if getattr(self, "_barra_precarga", None) is not None:
+            self._barra_precarga.destroy()
+            self._barra_precarga = None
+
+    def _precargar_cancelar(self):
+        if self._tick_precarga is not None:
+            self.after_cancel(self._tick_precarga)
+            self._tick_precarga = None
+
     def _al_cerrar(self):
         """La X de la ventana. El worker es un hilo `daemon`: al cerrar, el proceso
         termina y lo mata donde este, aunque sea escribiendo el .xlsx. Sin corridas
@@ -403,6 +483,9 @@ class App(ctk.CTk):
                  "¿Cerrar igual?"),
                 icon="warning", default="no"):
             return
+        # Un tick de precarga pendiente que corriera DESPUES del destroy reventaria
+        # sobre widgets muertos, y en un exe --windowed esa excepcion es INVISIBLE.
+        self._precargar_cancelar()
         self.destroy()
 
     def _alternar_tema(self):
@@ -432,8 +515,7 @@ class App(ctk.CTk):
                              if pid == pantalla_id), None)
             if especial is not None:
                 frame = ctk.CTkScrollableFrame(self.contenedor)
-                frame.grid(row=0, column=0, sticky="nsew")
-                especial(frame, self)
+                especial(frame, self)   # sin grid: lo hace el bucle de abajo
                 self._frames[pantalla_id] = frame
             else:
                 pantalla = next(p for p in self.registro if p["id"] == pantalla_id)
@@ -448,8 +530,13 @@ class App(ctk.CTk):
 
     # -- Construccion de una pagina desde su PANTALLA --------------------
     def _construir_pagina(self, pantalla):
+        # El frame se arma SIN gridear: lo mapea el bucle de `mostrar`, que igual
+        # lo iba a hacer. Gridearlo aca lo dejaba MAPEADO durante toda su
+        # construccion, y como customtkinter llama `update_idletasks()` al crear
+        # cada widget (100 veces en una pagina, medido con cProfile), la pagina se
+        # PINTABA encima del Inicio mientras se armaba: con la precarga de la 2.0.2
+        # eso eran cuatro paginas parpadeando una tras otra al abrir el programa.
         frame = ctk.CTkScrollableFrame(self.contenedor)
-        frame.grid(row=0, column=0, sticky="nsew")
 
         ctk.CTkLabel(frame, text=pantalla["titulo"],
                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0, 6))
