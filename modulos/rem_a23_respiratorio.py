@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -560,7 +560,12 @@ def _sala(idx, edad, aten, otros, estrat):
     med = o["_med"]
     si  = lambda k: N(k).eq("SI")   # padece/recurrente = 'Si'
     nn  = lambda k: N(k).str.len() > 0                               # campo obligatorio no vacío
-    est = lambda k: N(k).str.contains("INGRESO", na=False) | N(k).str.contains("SEGUIMIENTO", na=False)
+    # Por `_any` (= rem_utils.contiene_alguno) y no dos `.str.contains` sueltos: la versión a mano llamaba
+    # a `N(k)` DOS veces, o sea normalizaba la misma columna ESTADO dos veces por
+    # condición. Entre esta función y `_seccion_g` eran 47 pasadas de `norm` sobre el
+    # formulario, de las cuales 13 eran ese duplicado. Y de paso es el idioma de la
+    # regla 4, que ya existía en rem_utils.
+    est = lambda k: _any(N(k), ("INGRESO", "SEGUIMIENTO"))
 
     valid = {   # formulario válido por condición (máscara de fila de 'Otros y Respi')
         "SBOR":  med & si("SBOR_p") & si("SBOR_rec") & nn("SBOR_grav") & est("SBOR_est"),
@@ -638,7 +643,7 @@ def _seccion_g(otros, corte, edad_extra=None, sin_edad=None):
     def N(k): return o[k].map(norm)
     med = o["_med"]
     si  = lambda k: N(k).eq("SI")
-    est = lambda k: N(k).str.contains("INGRESO", na=False) | N(k).str.contains("SEGUIMIENTO", na=False)
+    est = lambda k: _any(N(k), ("INGRESO", "SEGUIMIENTO"))   # ver `_sala`
     ed = ((corte - pd.to_datetime(o["FNAC_o"], errors="coerce", dayfirst=True)).dt.days // 365.25)
     edad_run = ed.groupby(o["RUN"]).max()
     if edad_extra is not None:
