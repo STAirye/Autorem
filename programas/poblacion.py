@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.7
+# Version: 2.0.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -227,7 +227,17 @@ def cargar_inscritos(entrada, log=print):
                              no_vacias=("RUN",))
     n_filas = len(d)
     d["RUN"] = d["RUN"].astype(str).str.strip()
-    sin_run = d["RUN"].isin(("", "None", "nan"))
+    # Las DOS mitades hacen falta, una por cada pandas mayor -- no es redundancia:
+    #   pandas 2: `astype(str)` vuelve el faltante el TEXTO "nan" (o "None"), que no es
+    #             nulo para `isna()` y solo lo caza el `isin`.
+    #   pandas 3: `astype(str)` PRESERVA el faltante, asi que el `isin` no ve nada y solo
+    #             lo caza el `isna()`.
+    # Con solo el `isin` (como estaba hasta la 2.0.8) bajo pandas 3 la fila sin RUN
+    # sobrevivia: el snapshot Ferrada quedaba con una persona fantasma de `Numero` NaN.
+    # No rompia el P6 -- `_base_valida` la descarta con `rut_valido` --, pero ensuciaba la
+    # hoja PSM_Poblacion, que es la que se archiva para auditar, e inflaba el conteo del
+    # log. Mismo patron que `rem_utils.fecha_col`, que ya lo hacia bien.
+    sin_run = d["RUN"].isna() | d["RUN"].isin(("", "None", "nan"))
     n_sin_run = int(sin_run.sum())
     d = d[~sin_run]
 

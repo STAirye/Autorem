@@ -10,6 +10,43 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.8] — 2026-09-22
+
+### Corregido
+- **Un inscrito SIN RUN sobrevivía como persona fantasma bajo pandas 3.** La guarda de
+  `poblacion.cargar_inscritos` era `d["RUN"].isin(("", "None", "nan"))`, y esos literales
+  sólo aparecen si `astype(str)` convierte el faltante en TEXTO — que es lo que hacía
+  **pandas 2**. **Pandas 3 lo PRESERVA**, así que el `isin` no veía nada y la fila pasaba:
+  el snapshot Ferrada salía con una persona de `Número` NaN (y las varias sin RUN
+  colapsaban en una sola por el `drop_duplicates`).
+
+  **Qué alcanzaba y qué no:** la grilla del P6 NO se movía — `_base_valida` descarta esa
+  fila con `rut_valido` —, pero ensuciaba la hoja `PSM_Poblacion`, que es justamente la
+  que se archiva mes a mes para auditar, e inflaba el `N personas en el snapshot` del log.
+  Y apagaba la guarda fail-loud en el caso MIXTO (un `RUN Responsable` + una fila sin RUN),
+  que es para el que existe. El caso «ninguna fila trae RUN» seguía cortado antes, por el
+  `no_vacias` de `cargar_canonico`.
+
+  Ahora lleva **las dos mitades**, una por cada pandas mayor:
+  `d["RUN"].isna() | d["RUN"].isin((...))` — el mismo patrón que `rem_utils.fecha_col`,
+  que ya lo hacía bien un archivo más allá. Lo cazaba
+  `test_inscritos_con_filas_pero_ningun_run_usable_lo_dice`, que llevaba tiempo en rojo.
+
+  **Lo que habría evitado esto:** la regla 4 del CLAUDE.md. Todo el resto del código
+  filtra el RUN vacío con `norm(run) == ""`, que maneja el faltante solo y es inmune al
+  cambio de pandas; éste era el único punto que se salió del idioma y comparó contra
+  literales.
+
+### Cambiado
+- **`requirements.txt`: `pandas>=2.0,<4`**, y dice POR QUÉ cada extremo. El piso es que el
+  código corre en 2.x y 3.x a propósito (el `.exe` se compila con la versión de turno,
+  pero un clon nuevo instala lo que pip tenga ese día), con las diferencias que hay que
+  aguantar anotadas: `astype(str)` sobre un faltante y el dtype inferido de las columnas
+  de texto. El techo NO es prudencia genérica: `rem_utils.grid()` ya dispara
+  `Pandas4Warning` y **pandas 4 lo vuelve error** (§12, «Deuda»), así que sin tope un
+  `pip install` el día que salga pandas 4 dejaba la herramienta reventando en la grilla
+  edad x sexo, que es la salida.
+
 ## [2.0.7] — 2026-09-22
 
 Cierra el hallazgo que había destapado el arnés de la 2.0.6: tras recortar las columnas,

@@ -7,8 +7,22 @@
 #                 viene incluido con el Python de Windows y no se instala aparte.
 # En el .exe (PyInstaller) todo va empaquetado; el usuario final no instala nada.
 # Probado con openpyxl 3.1.5 / pandas 3.0.5 / Python 3.14.
+#
+# pandas: el codigo corre en 2.x Y 3.x, y eso es una decision, no una casualidad --
+# el .exe se compila con la version de turno, pero un clon nuevo se instala con lo que
+# pip tenga ese dia. Lo que cambia entre las dos y el codigo tiene que aguantar:
+#   - `astype(str)` sobre un faltante: en 2.x da el TEXTO "nan"/"None", en 3.x lo
+#     PRESERVA. Toda guarda de "celda vacia" lleva por eso las dos mitades
+#     (`.isna() | .isin((...))`) -- ver `poblacion.cargar_inscritos` y
+#     `rem_utils.fecha_col`. Con una sola mitad la guarda se apaga CALLADA en una de
+#     las dos versiones (paso: 2.0.8).
+#   - dtype inferido de las columnas de texto: `str` en 3.x, `object` en 2.x.
+# El TOPE en 4 no es prudencia generica, es una incompatibilidad YA conocida y medida:
+# `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con dtype mixto) y pandas 4 lo
+# vuelve error (CLAUDE.md §12, "Deuda"). Sin el tope, un `pip install` el dia que salga
+# pandas 4 deja la herramienta reventando en la grilla edad x sexo, que es la salida.
 openpyxl>=3.1,<4
-pandas>=2.0
+pandas>=2.0,<4
 customtkinter>=5.2
 #
 # Solo para desarrollo (no lo necesita el .exe):
