@@ -540,7 +540,13 @@ def cargar_canonico(entrada, resolver, requeridas, no_vacias=(), solo_iris=None,
              for k, c in col.items()})
         # Columna clave PRESENTE pero vacia en todas las filas = el mismo 0 callado que
         # la columna ausente, y POR ARCHIVO (ver el docstring).
-        vacias = [k for k in no_vacias if not parte[k].map(norm).ne("").any()]
+        # Corto circuito, no barrido: la pregunta es «¿hay ALGÚN valor con dato?», y en
+        # un export sano la contesta la 1ª fila. `.map(norm).ne("").any()` normalizaba
+        # la columna ENTERA antes de reducir -- 0,091 s por (clave x archivo) sobre
+        # 30.000 filas, o sea ~0,55 s en un ADA de 3 años (2 claves x 3 archivos), y se
+        # pagaban COMPLETOS justo cuando el archivo está bien. El `norm` sigue siendo
+        # quien define «vacío» (regla 4), no un `.strip()` a mano: mismo booleano.
+        vacias = [k for k in no_vacias if not any(norm(v) != "" for v in parte[k])]
         if vacias:
             raise ArchivoInvalido(
                 "sin_datos",
@@ -1103,13 +1109,19 @@ def marcar_demografia(d):
             d[c] = False
         return d
 
+    # La columna normalizada se calcula UNA vez y no dentro de `alerta`: no depende de
+    # `subs`, y `alerta` se llama CUATRO veces (migrante, SENAME, Mejor Niñez,
+    # cuidador), o sea que tres de las cuatro pasadas de `norm` sobre la columna eran
+    # puro descarte. Medido sobre 30.000 atenciones: 0,328 s -> 0,104 s (3,2x), con las
+    # cuatro máscaras idénticas.
+    alertas_n = d["ALERTAS"].map(norm) if "ALERTAS" in d else None
+
     def alerta(*subs):   # ALERTAS ADMIN contiene ALGUNA subcadena
-        s = d["ALERTAS"].map(norm) if "ALERTAS" in d else None
-        if s is None:
+        if alertas_n is None:
             return d.get("RUN", d.index).map(lambda _: False)
         m = None
         for x in subs:
-            c = s.str.contains(norm(x), regex=False, na=False)
+            c = alertas_n.str.contains(norm(x), regex=False, na=False)
             m = c if m is None else (m | c)
         return m.fillna(False)
 

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -356,17 +356,23 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
 
     demo_abiertas = set(_mascara_demo(fila))
     for col, flag in DEMO_COLS_MAP.items():
-        activo_col = col in demo_abiertas
-        marcados = sub[sub[flag]] if flag in sub.columns else sub.iloc[0:0]
-        if activo_col:
-            fila_grid[col] = len(marcados)
-        else:
-            fila_grid[col] = 0
-            if len(marcados):
-                for run in marcados["Número"]:
-                    revisar.append({"RUN": run, "Motivo": "Dato demográfico no aplica en esta fila",
-                                    "Fila_P6": fila, "Detalle": col, "Valor_crudo": "SI",
-                                    "Categoria": "Administrativo"})
+        # Se CUENTA la máscara, no se materializan las filas: `sub[sub[flag]]` copiaba
+        # las ~60 columnas de `Pv` (identidad + actividad + los 28 dx + los `_dem_*`)
+        # para que en la rama normal se leyera solo su `len()`. Son 11 flags x ~45
+        # filas del P6 = ~495 copias por corrida: 0,094 s contra 0,010 s (9,6x) sobre
+        # 4.000 personas. El subconjunto SOLO hace falta en la rama de la columna
+        # CERRADA -- y solo si hay alguien marcado, que es el caso raro.
+        marcados = sub[flag] if flag in sub.columns else None
+        n = int(marcados.sum()) if marcados is not None else 0
+        if col in demo_abiertas:
+            fila_grid[col] = n
+            continue
+        fila_grid[col] = 0
+        if n:
+            for run in sub.loc[marcados, "Número"]:
+                revisar.append({"RUN": run, "Motivo": "Dato demográfico no aplica en esta fila",
+                                "Fila_P6": fila, "Detalle": col, "Valor_crudo": "SI",
+                                "Categoria": "Administrativo"})
 
     for _, r in sub.iterrows():
         if r["_plegada"]:
