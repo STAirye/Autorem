@@ -597,6 +597,44 @@ def test_edad_se_pliega_no_se_descarta_fila37_y_fila38():
     assert any(m.startswith("Edad plegada") for m in _motivos(r))
 
 
+def test_el_plegado_y_el_detalle_quedan_colgados_de_la_persona_correcta():
+    """El test de arriba comprueba que ALGUIEN quedó marcado «Edad plegada»; este
+    comprueba QUIÉN. No es lo mismo, y la diferencia es el modo de falla que importa.
+
+    `_grid_y_detalle` recorre las columnas en paralelo con `zip` (antes `iterrows`,
+    que costaba 0,53 s de los 1,53 s de `construir_p6`). El riesgo propio de un `zip`
+    es el DESALINEAMIENTO: si `plegada`/`efectiva` van en otro orden que las filas de
+    `sub`, cada flag se cuelga de la persona equivocada. Los totales del grid no se
+    mueven ni un número —se calculan aparte, en `grid()`— así que la corrida sale
+    perfecta y la hoja P6_Detalle miente sobre quién es quién: plausible y errado,
+    callado (CLAUDE.md regla 2).
+
+    Fila 37 (Ansiedad separación) reporta 0-14, así que a los 40 años se pliega y a
+    los 8 no. Dos personas, una de cada tipo."""
+    P = _poblacion([
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[71]: "SI", _Q[72]: "INGRESO"}},
+        {"rut": "22222222-2", "fecha": date(2026, 7, 1), **{_Q[71]: "SI", _Q[72]: "INGRESO"}},
+    ], [
+        {"rut": "11111111-1", "fnac": date(2018, 1, 1), "sexo": "Mujer"},   # 8 años: NO pliega
+        {"rut": "22222222-2", "fnac": date(1986, 1, 1), "sexo": "Hombre"},  # 40 años: SÍ pliega
+    ], ada_filas=[_sm("11111111-1"), dict(_sm("22222222-2"), id="B")])
+    r = _p6(P)
+
+    det = r["detalle"]
+    d37 = det[det["Fila_P6"] == 37].set_index("RUN")
+    assert set(d37.index) == {"11111111-1", "22222222-2"}, list(d37.index)
+    assert d37.loc["22222222-2", "Plegada"] == "SI", "el plegado se colgó de otra persona"
+    assert d37.loc["11111111-1", "Plegada"] == "", "marcó plegada a quien no lo estaba"
+    # y las otras columnas del detalle tampoco se cruzan entre personas
+    assert d37.loc["11111111-1", "Edad"] == 8 and d37.loc["11111111-1", "Sexo"] == "Mujer"
+    assert d37.loc["22222222-2", "Edad"] == 40 and d37.loc["22222222-2", "Sexo"] == "Hombre"
+
+    clin = r["revisar_clinico"]
+    plegados = clin[clin["Motivo"].str.startswith("Edad plegada") & (clin["Fila_P6"] == 37)]
+    assert list(plegados["RUN"]) == ["22222222-2"], list(plegados["RUN"])
+    assert "40" in plegados.iloc[0]["Detalle"], plegados.iloc[0]["Detalle"]
+
+
 def test_dato_demografico_bloqueado_va_a_revisar_y_no_se_escribe():
     """TDAH (fila 35): AO (madre<5) está bloqueado en la plantilla -> no se escribe,
     aunque la persona tenga el flag, y queda trazado en P6_Revisar."""

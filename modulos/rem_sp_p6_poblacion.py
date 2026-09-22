@@ -343,15 +343,16 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
     para un DataFrame `sub` de personas que tributan a `fila`, y acumula
     filas de detalle/revisión (edad plegada)."""
     lo, hi = MASCARA_BANDA[fila]
-    sub = sub.copy()
     efectiva, plegada = [], []
     for edad in sub["Edad"]:
         e, p = _banda_efectiva(edad, lo, hi)
         efectiva.append(e)
         plegada.append(p)
-    sub["_edad_grid"] = efectiva
-    sub["_plegada"] = plegada
-    grid_sub = sub.rename(columns={"Sexo": "sexo"}).assign(edad=sub["_edad_grid"])
+    # `_edad_grid`/`_plegada` ya no se escriben como columnas de `sub`: eran temporales
+    # para el bucle de abajo, y escribirlas obligaba a copiar el frame entero (~60
+    # columnas) en cada una de las ~45 llamadas. `rename`+`assign` devuelven un frame
+    # nuevo sin tocar el del llamador, así que el `sub.copy()` tampoco hace falta.
+    grid_sub = sub.rename(columns={"Sexo": "sexo"}).assign(edad=efectiva)
     fila_grid = grid(grid_sub, BANDAS, LBL)
 
     demo_abiertas = set(_mascara_demo(fila))
@@ -374,23 +375,31 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
                                 "Fila_P6": fila, "Detalle": col, "Valor_crudo": "SI",
                                 "Categoria": "Administrativo"})
 
-    for _, r in sub.iterrows():
-        if r["_plegada"]:
-            revisar.append({"RUN": r["Número"], "Motivo": "Edad plegada al rango reportable",
-                            "Fila_P6": fila, "Detalle": f"edad real {r['Edad']}",
+    # Por `zip` de las CINCO columnas que el bucle lee, no por `iterrows`. `iterrows`
+    # arma una Serie COMPLETA por fila -- las ~60 columnas de `Pv` -- y acá corre una
+    # vez por (persona x fila del P6): 30.478 veces en una corrida de 30.000 inscritos.
+    # Medido: 0,53 s de los 1,53 s de `construir_p6`, la pieza más cara que quedaba.
+    # `zip` recorre en el MISMO orden posicional que `iterrows`, y `efectiva`/`plegada`
+    # se leen de las listas que ya se armaron arriba, en ese mismo orden.
+    concepto, subconcepto = ROW_LABELS.get(fila, ("", ""))
+    for run, edad, sexo, pleg, egrid in zip(sub["Número"], sub["Edad"], sub["Sexo"],
+                                            plegada, efectiva):
+        if pleg:
+            revisar.append({"RUN": run, "Motivo": "Edad plegada al rango reportable",
+                            "Fila_P6": fila, "Detalle": f"edad real {edad}",
                             "Valor_crudo": f"-> banda destino desde idx {lo}-{hi}",
                             "Categoria": "Clinico"})
-        elif r["_edad_grid"] is None:
+        elif egrid is None:
             # Sin edad (Inscritos sin FECHA DE NACIMIENTO ni EDAD AÑOS legibles): grid()
             # la cuenta en Ambos y en NINGUNA banda -> las columnas pegables suman menos
             # que el total, callado. Mismo criterio que el sexo fuera de H/M: a Revisar.
-            revisar.append({"RUN": r["Número"], "Motivo": "Sin edad: cuenta en Ambos, en ninguna banda",
+            revisar.append({"RUN": run, "Motivo": "Sin edad: cuenta en Ambos, en ninguna banda",
                             "Fila_P6": fila, "Detalle": "sin fecha de nacimiento ni edad legible",
-                            "Valor_crudo": r["Edad"], "Categoria": "Administrativo"})
+                            "Valor_crudo": edad, "Categoria": "Administrativo"})
         detalle_rows.append({
-            "RUN": r["Número"], "Fila_P6": fila,
-            "Concepto": ROW_LABELS.get(fila, ("", ""))[0], "Subconcepto": ROW_LABELS.get(fila, ("", ""))[1],
-            "Sexo": r["Sexo"], "Edad": r["Edad"], "Plegada": "SI" if r["_plegada"] else "",
+            "RUN": run, "Fila_P6": fila,
+            "Concepto": concepto, "Subconcepto": subconcepto,
+            "Sexo": sexo, "Edad": edad, "Plegada": "SI" if pleg else "",
         })
     return fila_grid
 
