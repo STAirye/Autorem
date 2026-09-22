@@ -243,6 +243,29 @@ def test_diagnostico_exige_instrumento_medico():
     assert P.loc[P["Número"] == "11111111-1", "Depresión (form)"].iloc[0] == ""
 
 
+def test_la_mascara_de_medico_no_se_filtra_de_una_corrida_a_la_siguiente():
+    """`_estado_dx` cachea la máscara «lo aplicó un médico» (es lo único suyo que no
+    depende del dx, y se recalculaba en las 28 specs de cada pasada). El riesgo propio
+    de esa caché es servirle a la corrida SIGUIENTE la máscara de la anterior: con los
+    dos formularios del mismo largo la máscara vieja ALINEA por posición, así que no
+    revienta -- devuelve un Activo que no existe, callado (regla 2).
+
+    Dos corridas seguidas, mismo largo, instrumento opuesto: la segunda tiene que ver
+    su PROPIO instrumento. Si la caché se filtra, «Depresión (form)» sale Activo."""
+    filas_medico = [{"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Médico",
+                     **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}]
+    filas_psico = [{"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Psicólogo(a)",
+                    **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}]
+    primera = _poblacion(filas_medico, [{"rut": "11111111-1"}])
+    assert primera["Depresión (form)"].iloc[0] == "Activo", "premisa: con médico sí entra"
+    segunda = _poblacion(filas_psico, [{"rut": "11111111-1"}])
+    assert segunda["Depresión (form)"].iloc[0] == "", \
+        "la 2a corrida usó la máscara de médico de la 1a: la caché no se invalidó"
+    # y al revés, por si la invalidación sólo funcionara en una dirección
+    tercera = _poblacion(filas_medico, [{"rut": "11111111-1"}])
+    assert tercera["Depresión (form)"].iloc[0] == "Activo"
+
+
 def test_d1_fallback_tgd_pregunta_63():
     """La 91 (TGD no especificado) casi nunca tiene dato -> fallback a la 63, SOLO si
     ninguna TGD específica (83/85/87/89/91) está activa."""

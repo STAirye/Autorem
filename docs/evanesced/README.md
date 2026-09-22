@@ -135,9 +135,13 @@ Los tres se corren con `PYTHONPATH=<raiz del repo>` (viven fuera de `programas/`
 `equivalencia_cruzar.py` ademas necesita los `catalogos/*.csv.gz` vendorizados). A
 diferencia de los otros archivados, **no tienen rutas absolutas**: corren desde aca.
 
-**Lo que midieron y quedo SIN hacer** (el hallazgo que destapo el propio arnes): tras
-recortar las columnas, el costo dominante de `_estado_dx` ya no es el `groupby` sino las
-tres `str.contains` de las mascaras — 0,44 s de los 0,63 s que quedan —, y una de ellas,
-`INSTR_n.str.contains("MEDIC")`, es **invariante entre las 28 specs** y se recalcula 28
-veces. Es un hoist de tres lineas; no se hizo porque estaba fuera de los tres hallazgos
-que el autor mando aplicar.
+**Lo que midieron de yapa** (el hallazgo que destapo el propio arnes): tras recortar las
+columnas, el costo dominante de `_estado_dx` dejo de ser el `groupby` y paso a ser las
+tres `str.contains` de las mascaras — 0,44 s de los 0,63 s que quedaban —, y una de ellas,
+`INSTR_n.str.contains("MEDIC")`, es **invariante entre las 28 specs**. Eso se cerro en la
+**2.0.7** (memo de una ranura por weakref); `equivalencia_estado_dx.py` se volvio a correr
+para esa version y sigue dando 0 diferencias, porque compara contra la 2.0.5.
+
+Lo que sigue SIN hacer de ese mismo perfil: las otras dos `str.contains` (`INGRES` y
+`SEGUIMIEN`) SI dependen de la spec, asi que no se pueden izar igual — habria que
+precalcularlas por pregunta, que es otro diseno y no estaba pedido.

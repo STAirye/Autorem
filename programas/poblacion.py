@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.6
+# Version: 2.0.7
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -55,6 +55,7 @@ usar False para tabular el P6 — GUARDARRAÍL: rem_sp_p6_poblacion.construir_p6
 rechaza un `P` construido con el toggle apagado.
 """
 
+import weakref
 from pathlib import Path
 
 import numpy as np
@@ -405,6 +406,36 @@ def _mes_offset(corte, n_meses):
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
+# Mascara "el formulario lo aplico un MEDICO" del ultimo `df` que la pidio. Es lo unico
+# de `_estado_dx` que NO depende del dx ni del estado, y se recalculaba en las 28 specs
+# de cada pasada (mas las de Brecha_Medico): 0.138 s de los 0.425 s que cuestan las
+# mascaras, medido sobre 30k filas.
+#
+# Memo de UNA sola ranura y por WEAKREF, no un parametro. Las dos cosas a proposito:
+#   - un parametro `instr_ok=` dejaria pasar una mascara calculada sobre OTRO DataFrame,
+#     que alinearia por indice y daria un resultado plausible y errado (regla 2). Aca la
+#     mascara se deriva siempre del `df` que se recibe: no hay como equivocarse.
+#     (Y no vale guardarse comparando `serie.index is df.index`: pandas NO comparte el
+#     objeto indice, lo comprobamos -- da False.)
+#   - el weakref evita retener el formulario historico (cientos de MB) despues de la
+#     corrida. `ref()` devuelve None cuando el df murio, nunca un objeto distinto, asi
+#     que una ranura vieja jamas se confunde con el df de ahora.
+# Una ranura basta: dentro de una corrida siempre es el MISMO `form` (construir_poblacion,
+# el fallback TGD y las dos pasadas de Brecha_Medico), y las specs con instrumento=False
+# ni siquiera la piden, asi que no la hacen rebotar.
+_MEDICO_MEMO = (None, None)   # (weakref al df, mascara)
+
+
+def _instr_medico(df):
+    """Mascara booleana 'INSTRUMENTO contiene MEDIC' de `df`, cacheada (ver arriba)."""
+    global _MEDICO_MEMO
+    ref, mascara = _MEDICO_MEMO
+    if mascara is None or ref() is not df:
+        mascara = df["INSTR_n"].str.contains("MEDIC", na=False)
+        _MEDICO_MEMO = (weakref.ref(df), mascara)
+    return mascara
+
+
 def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
               subtipo=None, subtipo2=None):
     """Motor ÚNICO (parametrizado por dx/estado/instrumento) que reemplaza las
@@ -426,7 +457,7 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
                           df[qe].str.contains("SEGUIMIEN", na=False))
     cond_egr = cond_si & df[qe].str.contains("EGRES", na=False)
     if instrumento:
-        instr_ok = df["INSTR_n"].str.contains("MEDIC", na=False)
+        instr_ok = _instr_medico(df)
         cond_ing &= instr_ok
         cond_egr &= instr_ok
 

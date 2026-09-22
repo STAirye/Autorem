@@ -10,6 +10,36 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.7] — 2026-09-22
+
+Cierra el hallazgo que había destapado el arnés de la 2.0.6: tras recortar las columnas,
+el costo dominante de `_estado_dx` ya no era el `groupby` sino sus máscaras.
+
+### Cambiado
+- **La máscara «lo aplicó un médico» se calcula una vez por formulario, no 28.**
+  `INSTR_n.str.contains("MEDIC")` es lo único de `_estado_dx` que NO depende del
+  diagnóstico ni del estado, y se recalculaba en cada spec de cada pasada (más las de
+  `Brecha_Medico`). Medido sobre 30k filas: **0,138 s de los 0,425 s** que cuestan las
+  máscaras — un 32% de ellas, ~22% de la función. Equivalencia re-verificada con el mismo
+  arnés de la 2.0.6 (56 comparaciones contra la implementación de la 2.0.5): 0 diferencias.
+
+  **Es un memo de una ranura y por weakref, no un parámetro `instr_ok=`**, y las dos
+  decisiones son de seguridad, no de estilo:
+  - un parámetro dejaría pasar una máscara calculada sobre OTRO DataFrame; alinearía por
+    posición y daría un Activo que no existe, callado (regla 2). Derivándola siempre del
+    `df` recibido, no hay forma de equivocarse. De paso quedó comprobado que **`pandas` NO
+    comparte el objeto índice** entre un DataFrame y una Serie derivada (`serie.index is
+    df.index` da `False`), así que la guarda barata por identidad que parecía obvia no
+    existe.
+  - el weakref evita retener el formulario histórico (cientos de MB) después de la
+    corrida; `ref()` devuelve `None` cuando el df murió, nunca un objeto distinto.
+
+### Agregado
+- **Test de que esa máscara no se filtra de una corrida a la siguiente.** Dos corridas
+  seguidas, mismo largo y estamento opuesto: con el mismo largo la máscara vieja **alinea**
+  y no revienta, sólo miente. Verificado por mutación: al romper la invalidación caen 12
+  tests, entre ellos éste.
+
 ## [2.0.6] — 2026-09-22
 
 Primeros tres arreglos de la **ronda de EFICIENCIA y REUSO** sobre `main` (CLAUDE.md
