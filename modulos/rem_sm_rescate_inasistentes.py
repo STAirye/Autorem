@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.8
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -58,6 +58,7 @@ import pandas as pd
 from programas.rem_utils import norm, contiene_alguno, fecha_col, _rango_mes, ArchivoInvalido
 from programas.poblacion import (
     cargar_inscritos, cargar_formulario_sm, construir_poblacion,
+    runs_ingresados_sin_filtro_medico,
     ACTIVIDADES_SM_7, TABLA_DX, TODAS_LAS_SPECS, _estado_dx,
 )
 from programas.rem_utils import cargar_atenciones
@@ -183,16 +184,23 @@ def construir_rescate(P, d_ada, mes=None, log=print):
 
 
 def calcular_brecha_medico(insc, form, d_ada, P_med, mes=None, log=print):
-    """§8.6: corre `construir_poblacion` una SEGUNDA vez con `exigir_medico=False` y
-    compara contra `P_med` (la pasada normal) para encontrar a quién le falta
-    control médico del diagnóstico (lo tiene solo por otro estamento). El toggle
-    NUNCA sale de esta función — nunca alimenta un P6."""
-    def _base(P):
-        return (P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI") & (P["¿Ingresado?"] == "SI")
+    """§8.6: recalcula `¿Ingresado?` con `exigir_medico=False` y lo compara contra
+    `P_med` (la pasada normal) para encontrar a quién le falta control médico del
+    diagnóstico (lo tiene solo por otro estamento). El toggle NUNCA sale de esta
+    función — nunca alimenta un P6.
 
-    P_todos = construir_poblacion(insc, form, d_ada, mes=mes, log=lambda *a, **k: None, exigir_medico=False)
-    runs_med = set(P_med.loc[_base(P_med), "Número"])
-    runs_todos = set(P_todos.loc[_base(P_todos), "Número"])
+    Hasta acá esto corría `construir_poblacion` ENTERA por segunda vez, que era el 41%
+    del tiempo de toda la familia población, para consumir UNA columna de esa tabla.
+    Ahora pide solo esa columna (`poblacion.runs_ingresados_sin_filtro_medico`): los
+    otros dos filtros de la base, `Estado` y `¿Activo 12m?`, no dependen del toggle
+    —vienen del Inscritos y de `_flags_actividad`—, así que se leen del `P_med` que ya
+    está armado. `insc` y `d_ada` siguen en la firma porque los usa el resto del
+    módulo y para no mover la llamada."""
+    base_comun = (P_med["Estado"].map(norm) == "ACTIVO") & (P_med["¿Activo 12m?"] == "SI")
+    runs_med = set(P_med.loc[base_comun & (P_med["¿Ingresado?"] == "SI"), "Número"])
+    runs_todos = (set(P_med.loc[base_comun, "Número"])
+                  & runs_ingresados_sin_filtro_medico(P_med, form, mes=mes,
+                                                      log=lambda *a, **k: None))
     brecha_runs = runs_todos - runs_med
     log(f"[rescate] Brecha_Medico: {len(brecha_runs)} persona(s) quedan Ingresado=SI SOLO sin "
         "el filtro de estamento médico (§8.6) -> al debe de control médico del diagnóstico.")

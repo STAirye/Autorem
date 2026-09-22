@@ -705,8 +705,108 @@ def _ultima_respuesta(form, pregunta, corte):
     'Madre <5 años': se reporta con el dato más reciente que exista, sin
     exigir ingreso/seguimiento — así lo trae el DAX)."""
     q = f"q{pregunta}_n"
-    w = form[(form[q] != "") & (form["FECHA"] <= corte)].sort_values("FECHA").groupby("RUN").last()
+    # Recorte de columnas por el MISMO motivo y con el MISMO argumento que `_estado_dx`
+    # (ver alla): de las ~134 columnas del formulario historico aca se lee UNA, y
+    # ordenar y agrupar las otras 131 era todo el costo. `sort_values` ordena por la
+    # clave FECHA sola y `groupby().last()` trabaja columna por columna, asi que el
+    # resultado es identico. Medido sobre 60.000 x 132: 0,514 s -> 0,019 s (28x),
+    # comparado tambien con fechas llenas de empates a proposito (25 fechas distintas
+    # sobre 60.000 filas), que es donde el orden podria moverse.
+    cols = [c for c in ("RUN", "FECHA", q) if c in form.columns]
+    w = (form.loc[(form[q] != "") & (form["FECHA"] <= corte), cols]
+         .sort_values("FECHA").groupby("RUN").last())
     return w[q] if q in w.columns else pd.Series(dtype=object)
+
+
+# ======================================================================
+# Las 28 columnas de diagnóstico — motor compartido por las DOS pasadas
+# ======================================================================
+_COLS_DX = [s["col"] for s in TODAS_LAS_SPECS]
+
+
+def _ingresado(P):
+    """Máscara booleana `¿Ingresado?`: CUALQUIER dx/factor quedó 'Activo'. Regla en UN
+    solo lugar, porque la usan las dos pasadas y su DIFERENCIA es la Brecha_Medico."""
+    return (P[_COLS_DX] == "Activo").any(axis=1)
+
+
+def _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
+                        con_subtipos=True, divergencias=None):
+    """Escribe en `P` las columnas de los 28 diagnósticos/factores ('Activo' /
+    'Egresado' / '') y aplica el fallback TGD (D1). Devuelve `P`.
+
+    Es el ÚNICO lugar donde se decide qué diagnóstico queda Activo, y eso es a
+    propósito: lo llaman `construir_poblacion` y `runs_ingresados_sin_filtro_medico`
+    (§8.6), y el número que sale de COMPARAR las dos ES la Brecha_Medico. Con una copia
+    del bucle en cada lado, una puede derivar de la otra y la brecha pasaría a medir la
+    diferencia entre dos implementaciones en vez de la del filtro de estamento — un
+    número plausible y errado, callado (CLAUDE.md regla 2).
+
+    `con_subtipos=False` para quien solo va a leer `¿Ingresado?`: el 'estado' sale del
+    índice de `activos` y del set de egresados, NUNCA de los subtipos, así que es el
+    mismo valor y `_estado_dx` se ahorra arrastrar dos columnas más por spec.
+
+    `divergencias` = lista donde acumular la auditoría §4.3 (None = no auditar; la
+    Brecha no la necesita y así se salta también `_egreso_powerbi_bug`).
+
+    OJO con el fallback TGD: llama a `_estado_dx` SIN pasarle `instrumento`, o sea que
+    la pregunta 63 sigue exigiendo médico aunque `exigir_medico` esté en False. Es el
+    comportamiento que había antes de partir esta función en dos y se conserva TAL CUAL
+    — si algún día se decide que el toggle también debe alcanzarlo, se cambia acá y
+    cambia en las dos pasadas a la vez, que es justamente la gracia."""
+    en_bug = None
+    if divergencias is not None:
+        # `_egreso_powerbi_bug` no depende de la spec: se calcula UNA vez, no 28.
+        en_bug = P["Número"].isin(_egreso_powerbi_bug(form, mes_ini, mes_fin))
+    for spec in TODAS_LAS_SPECS:
+        est = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin,
+                         instrumento=spec["instrumento"] and exigir_medico,
+                         subtipo=spec["subtipo"] if con_subtipos else None,
+                         subtipo2=spec["subtipo2"] if con_subtipos else None)
+        P[spec["col"]] = P["Número"].map(est["estado"]).fillna("")
+        if con_subtipos and spec["subtipo_col"]:
+            P[spec["subtipo_col"]] = P["Número"].map(est.get("subtipo", pd.Series(dtype=object))).fillna("")
+        if con_subtipos and spec["subtipo2_col"]:
+            P[spec["subtipo2_col"]] = P["Número"].map(est.get("subtipo2", pd.Series(dtype=object))).fillna("")
+        if divergencias is None:
+            continue
+        # Auditoría §4.3: valor que habría dado el PowerBI (bug cross-dx de egreso).
+        # Se guarda el RUN (no solo el conteo) para que Egreso_Divergencias sea auditable.
+        base = P["Número"].map(est["activo_base"]).fillna(False)
+        pbi = np.where(base & en_bug, "Egresado", np.where(base, "Activo", ""))
+        diverge = ((P[spec["col"]] != pbi) & base).to_numpy()
+        if diverge.any():
+            for run, nuestro, pbi_v in zip(P.loc[diverge, "Número"], P.loc[diverge, spec["col"]],
+                                           pbi[diverge]):
+                divergencias.append({"Diagnostico": spec["col"], "RUN": run,
+                                     "Valor_port": nuestro, "Valor_PowerBI": pbi_v})
+    return _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
+
+
+def runs_ingresados_sin_filtro_medico(P, form, mes=None, log=print):
+    """Los RUN que quedarían `¿Ingresado?`=SI con el filtro de estamento médico
+    APAGADO. USO EXCLUSIVO de Brecha_Medico (§8.6 del plan) — nunca del P6.
+
+    POR QUÉ existe: `calcular_brecha_medico` corría `construir_poblacion` COMPLETA una
+    segunda vez (1,66 s de los 4,06 s de la familia población, el 41% del total) y de
+    esa tabla entera consumía UNA columna. El toggle solo toca los ~25 diagnósticos que
+    filtran por estamento: la demografía, la edad al corte, Pueblo/Migrante, PROTECCION
+    NIÑEZ, los flags de actividad, gestante, Madre<5 y la cobertura de fechas salen
+    IDÉNTICOS en las dos pasadas. Y `Estado` y `¿Activo 12m?` también — que es lo otro
+    que mira la base de la brecha —, así que se leen del `P` que ya existe en vez de
+    recalcularse: `Estado` viene del Inscritos y `¿Activo 12m?` de `_flags_actividad`,
+    y ninguno de los dos sabe del toggle.
+
+    Devuelve un SET de RUN, y NO una columna, a propósito: una Serie alineada a `P` se
+    puede escribir de vuelta en la tabla, y ahí el guardarraíl del P6 —que mira
+    `attrs['exigir_medico']`— ya no la vería. Quedaría un `¿Ingresado?` sin filtro de
+    estamento dentro de un `P` que se declara filtrado, que es exactamente el número
+    plausible y errado que ese guardarraíl existe para impedir. Un set no se pega por
+    descuido."""
+    ini, fin = _rango_mes(mes)
+    Q = pd.DataFrame({"Número": P["Número"].to_numpy()})
+    Q = _poner_diagnosticos(Q, form, fin, ini, fin, False, log, con_subtipos=False)
+    return set(Q.loc[_ingresado(Q), "Número"])
 
 
 # ======================================================================
@@ -813,36 +913,14 @@ def construir_poblacion(inscritos, formulario_sm, ada, mes=None, log=print,
 
     # -- Los 28 diagnósticos/factores de riesgo (motor único, ver _estado_dx) --
     divergencias_detalle = []   # 1 fila por (Diagnóstico, RUN) que diverge — auditoría §4.3
-    egreso_bug_runs = _egreso_powerbi_bug(form, mes_ini, mes_fin)
-    for spec in TODAS_LAS_SPECS:
-        est = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin,
-                         instrumento=spec["instrumento"] and exigir_medico,
-                         subtipo=spec["subtipo"], subtipo2=spec["subtipo2"])
-        P[spec["col"]] = P["Número"].map(est["estado"]).fillna("")
-        if spec["subtipo_col"]:
-            P[spec["subtipo_col"]] = P["Número"].map(est.get("subtipo", pd.Series(dtype=object))).fillna("")
-        if spec["subtipo2_col"]:
-            P[spec["subtipo2_col"]] = P["Número"].map(est.get("subtipo2", pd.Series(dtype=object))).fillna("")
-
-        # Auditoría §4.3: valor que habría dado el PowerBI (bug cross-dx de egreso).
-        # Se guarda el RUN (no solo el conteo) para que Egreso_Divergencias sea auditable.
-        base = P["Número"].map(est["activo_base"]).fillna(False)
-        pbi = np.where(base & P["Número"].isin(egreso_bug_runs), "Egresado",
-                       np.where(base, "Activo", ""))
-        diverge = ((P[spec["col"]] != pbi) & base).to_numpy()
-        if diverge.any():
-            for run, nuestro, pbi_v in zip(P.loc[diverge, "Número"], P.loc[diverge, spec["col"]],
-                                           pbi[diverge]):
-                divergencias_detalle.append({"Diagnostico": spec["col"], "RUN": run,
-                                             "Valor_port": nuestro, "Valor_PowerBI": pbi_v})
-
-    P = _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
+    P = _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
+                            divergencias=divergencias_detalle)
 
     # -- ¿Ingresado? (SI si CUALQUIER dx/FR quedó 'Activo') --
-    cols_dx = [s["col"] for s in TODAS_LAS_SPECS]
-    P["¿Ingresado?"] = np.where((P[cols_dx] == "Activo").any(axis=1), "SI", "NO")
+    P["¿Ingresado?"] = np.where(_ingresado(P), "SI", "NO")
 
     # -- ¿Pertenece? en sus DOS versiones (ver _PERTENECE_FALTANTES_EN_DAX) --
+    cols_dx = _COLS_DX
     cols_24 = [c for c in cols_dx if c not in _PERTENECE_FALTANTES_EN_DAX]
     P["¿Pertenece? (24 DAX)"] = np.where((P[cols_24] != "").any(axis=1), "SI", "NO")
     P["¿Pertenece? (28 real)"] = np.where((P[cols_dx] != "").any(axis=1), "SI", "NO")

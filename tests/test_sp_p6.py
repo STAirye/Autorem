@@ -266,6 +266,32 @@ def test_la_mascara_de_medico_no_se_filtra_de_una_corrida_a_la_siguiente():
     assert tercera["Depresión (form)"].iloc[0] == "Activo"
 
 
+def test_madre_menor5_toma_la_ultima_respuesta_con_dato_hasta_el_corte():
+    """`_ultima_respuesta` (la fuente de «Madre <5 años») recorta el formulario a
+    RUN/FECHA/la pregunta antes de ordenar y agrupar — de 134 columnas se lee UNA. El
+    recorte es válido por el mismo argumento que `_estado_dx` (`sort_values` ordena por
+    la clave FECHA sola, `groupby().last()` trabaja columna por columna), pero el
+    contrato que tiene que sobrevivir no estaba fijado por ningún test:
+
+      - gana la ÚLTIMA respuesta, no la primera;
+      - una respuesta VACÍA posterior no pisa a la anterior con dato (por eso el filtro
+        `!= ''` va ANTES del groupby, no después);
+      - un formulario POSTERIOR al corte no cuenta, aunque sea el más reciente.
+    """
+    P = _poblacion([
+        # A: SI en abril, NO en junio, y vacío en julio -> vale el NO de junio
+        {"rut": "11111111-1", "fecha": date(2026, 4, 1), **{_Q[1]: "SI"}},
+        {"rut": "11111111-1", "fecha": date(2026, 6, 1), **{_Q[1]: "NO"}},
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[1]: ""}},
+        # B: su único SI es de SEPTIEMBRE, posterior al corte (31/08) -> no cuenta
+        {"rut": "22222222-2", "fecha": date(2026, 9, 15), **{_Q[1]: "SI"}},
+    ], [{"rut": "11111111-1"}, {"rut": "22222222-2"}],
+        ada_filas=[_sm("11111111-1"), dict(_sm("22222222-2"), id="B")])
+    m5 = dict(zip(P["Número"], P["Madre <5 años"]))
+    assert m5["11111111-1"] == "NO", m5
+    assert m5["22222222-2"] == "", m5
+
+
 def test_las_mascaras_de_estado_no_se_filtran_de_una_corrida_a_la_siguiente():
     """Gemelo del test de arriba, para la caché de `_tok` (máscaras «la columna ESTADO
     contiene INGRES/SEGUIMIEN/EGRES»). La caché existe porque `_egreso_powerbi_bug`

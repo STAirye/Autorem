@@ -26,7 +26,7 @@ import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem re
 import programas.poblacion as pob                          # noqa: E402
 import modulos.rem_sp_p6_poblacion as p6mod                 # noqa: E402
 import modulos.rem_sm_rescate_inasistentes as resc          # noqa: E402
-from programas.rem_utils import ArchivoInvalido             # noqa: E402
+from programas.rem_utils import ArchivoInvalido, norm       # noqa: E402
 
 _TMP = Path(tempfile.mkdtemp(prefix="autorem_rescate_"))
 
@@ -217,6 +217,60 @@ def test_brecha_medico_vacia_si_el_dx_ya_es_medico():
     d_ada = pob.cargar_atenciones(_mk_ada([_sm("77777777-7", date(2026, 8, 1))]), log=_quiet)
     brecha = resc.calcular_brecha_medico(insc, form, d_ada, P_med, mes=MES, log=_quiet)
     assert "77777777-7" not in set(brecha["RUN"])
+
+
+def test_la_brecha_da_lo_mismo_que_armar_la_tabla_entera_sin_filtro_medico():
+    """Brecha_Medico ya no arma `construir_poblacion` COMPLETA por segunda vez: pide
+    solo `¿Ingresado?` sin filtro médico y lee `Estado` y `¿Activo 12m?` del `P_med`
+    que ya existe. Ese atajo descansa en una PREMISA — que esos dos no dependen del
+    toggle — y esta prueba la fija: calcula la brecha de las dos formas y exige el
+    mismo set. Si alguien hace que `¿Activo 12m?` (o `Estado`) mire el estamento, acá
+    revienta en vez de mover la hoja en silencio.
+
+    Las cuatro personas cubren las dos mitades del filtro base, no solo el dx:
+      A · dx solo por psicólogo, Estado Activo, con actividad SM -> ENTRA a la brecha
+      B · el mismo dx pero por médico                            -> no entra
+      C · dx solo por psicólogo pero Estado=Pasivo               -> no entra (Estado)
+      D · dx solo por psicólogo pero sin actividad SM en 12m     -> no entra (Activo 12m)
+    Sin el `base_comun` en la intersección, C y D se colarían."""
+    dep_psico = {_Q[18]: "SI", _Q[19]: "19.- INGRESO"}
+    form_filas = [
+        {"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Psicólogo(a)", **dep_psico},
+        {"rut": "22222222-2", "fecha": date(2026, 8, 1), "instr": "Medico", **dep_psico},
+        {"rut": "33333333-3", "fecha": date(2026, 8, 1), "instr": "Psicólogo(a)", **dep_psico},
+        {"rut": "44444444-4", "fecha": date(2026, 8, 1), "instr": "Psicólogo(a)", **dep_psico},
+    ]
+    insc_filas = [{"rut": "11111111-1"}, {"rut": "22222222-2"},
+                  {"rut": "33333333-3", "estado": "Pasivo"},          # C
+                  {"rut": "44444444-4"}]
+    # un ATEN ID distinto por atención: el mismo id con dos pacientes es `modificado`
+    ada_filas = [dict(_sm(r, date(2026, 8, 1)), id=f"A{i}") for i, r in
+                 enumerate(("11111111-1", "22222222-2", "33333333-3"))]   # D no aparece
+    P_med = _poblacion(form_filas, insc_filas, ada_filas)
+    insc = pob.cargar_inscritos(_mk_inscritos(insc_filas), log=_quiet)
+    form = pob.cargar_formulario_sm(_mk_formulario(form_filas), log=_quiet)
+    d_ada = pob.cargar_atenciones(_mk_ada(ada_filas), log=_quiet)
+
+    # -- la forma VIEJA, a mano: la tabla entera con el toggle apagado --
+    P_todos = pob.construir_poblacion(insc, form, d_ada, mes=MES, log=_quiet,
+                                      exigir_medico=False)
+
+    def _base(P):
+        return ((P["Estado"].map(norm) == "ACTIVO") & (P["¿Activo 12m?"] == "SI")
+                & (P["¿Ingresado?"] == "SI"))
+
+    esperado = set(P_todos.loc[_base(P_todos), "Número"]) - set(P_med.loc[_base(P_med), "Número"])
+
+    # -- la forma NUEVA, la que corre en producción --
+    obtenido = set(resc.calcular_brecha_medico(insc, form, d_ada, P_med,
+                                               mes=MES, log=_quiet)["RUN"])
+    assert obtenido == esperado, f"nueva={sorted(obtenido)} vs vieja={sorted(esperado)}"
+    assert obtenido == {"11111111-1"}, sorted(obtenido)
+
+    # y la premisa, dicha explícita: el toggle NO toca estas dos columnas
+    for col in ("Estado", "¿Activo 12m?"):
+        assert P_med[col].astype(str).equals(P_todos[col].astype(str)), \
+            f"«{col}» cambió con exigir_medico: el atajo de Brecha_Medico deja de valer"
 
 
 # ======================================================================
