@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -496,14 +496,41 @@ def existe(cod, log=None):
     return bool((d["COD"] == norm_codigo(cod)).any())
 
 
+# Indice por codigo de cada catalogo YA CARGADO: {nombre: (df, {COD: posiciones},
+# df_de_rangos)}. Se arma una vez por DataFrame y se invalida solo -- la clave guarda
+# el `df` que se indexo y se compara por IDENTIDAD, asi que un `usar_en_sesion` o un
+# `cargar(recargar=True)` (que devuelven un objeto NUEVO) fuerzan el rearmado. No se
+# cuelga de `d.attrs` a proposito: los slices heredan attrs y `pd.concat` los compara,
+# asi que un DataFrame ahi adentro revienta con "truth value of a DataFrame is
+# ambiguous" -- el mismo problema que ya documenta rem_sp_p6_poblacion.construir_p6.
+_INDICE = {}
+
+
+def _indice(nombre, d):
+    """({COD: posiciones}, filas_de_rango) del catalogo `d`, cacheado por DataFrame."""
+    hit = _INDICE.get(nombre)
+    if hit is None or hit[0] is not d:
+        hit = (d, d.groupby("COD").indices,
+               d[d["COD"].str.contains("-", regex=False)])
+        _INDICE[nombre] = hit
+    return hit[1], hit[2]
+
+
 def _cruzar(nombre, cod, log=None):
     """Filas del catalogo cuyo patron de codigo casa con `cod` (maneja rangos)."""
     d = cargar(nombre, log=log)
     c = norm_codigo(cod)
     if not c:
         return d.iloc[0:0]
-    exacto = d[d["COD"] == c]
-    rangos = d[d["COD"].str.contains("-", regex=False)]
+    # Por indice y no por barrido. Antes cada consulta comparaba la columna COD entera
+    # (`d["COD"] == c`) Y recalculaba la mascara de rangos -- que es INVARIANTE -- sobre
+    # todo el catalogo: `anotar`, que es el uso previsto (la columna de diagnosticos de
+    # un export), llamaba aca dos veces por codigo. Medido con los catalogos que shippea
+    # el repo (ges 5936 filas, eno 448): 500 codigos pasaban de 0.87 s a 0.0002 s.
+    # `groupby().indices` da las posiciones en orden ascendente de fila, asi que
+    # `d.iloc[...]` devuelve las MISMAS filas y en el MISMO orden que el barrido.
+    exactos, rangos = _indice(nombre, d)
+    exacto = d.iloc[exactos.get(c, [])]
     if len(rangos):
         rangos = rangos[[_casa(c, p) for p in rangos["COD"]]]
     import pandas as pd

@@ -217,6 +217,33 @@ def test_el_catalogo_elegido_a_mano_lo_ven_todas_las_consultas():
         cat._SESION.clear()
 
 
+def test_el_indice_por_codigo_se_rearma_al_cambiar_el_catalogo():
+    """`_cruzar` consulta por INDICE (armado una vez por DataFrame cargado) en vez de
+    barrer la columna COD entera en cada codigo. El riesgo propio de un indice es
+    quedarse VIEJO: tras un `usar_en_sesion` las consultas seguirian contestando con el
+    catalogo ANTERIOR, calladas -- el peor desenlace posible (regla 2), porque la pagina
+    diria «cargado a mano» y los codigos saldrian del embebido. Se invalida comparando
+    por IDENTIDAD el DataFrame indexado; esto lo amarra en las dos direcciones, y sobre
+    las dos mitades del indice (codigos exactos Y rangos)."""
+    ruta = _xlsx("eno_sesion.xlsx", {
+        "Actual Decreto 7- 2019": [
+            ("Enfermedades de notificacion obligatoria.", None, "Código CIE-10 Edición 2018"),
+            ("Botulismo", None, "U777"),                     # código que el embebido NO trae
+            ("Peste Bubónica Marciana", None, "V00-V99"),    # y un RANGO, la otra mitad
+        ]})
+    assert cat.eno_de("U777", log=_quiet) == [], "premisa: el embebido no trae U777"
+    try:
+        cat.usar_en_sesion("eno", ruta, log=_quiet)
+        assert [e for e, _t, _a in cat.eno_de("U777", log=_quiet)] == ["Botulismo"], \
+            "la consulta contesta con el catálogo anterior: el índice quedó viejo"
+        assert [e for e, _t, _a in cat.eno_de("V500", log=_quiet)] == ["Peste Bubónica Marciana"], \
+            "el rango del catálogo nuevo no se ve: el índice de rangos quedó viejo"
+    finally:
+        cat.usar_en_sesion("eno", None, log=_quiet)
+        cat._SESION.clear()
+    assert cat.eno_de("U777", log=_quiet) == [], "«Volver al embebido» no invalidó el índice"
+
+
 def test_cargar_catalogo_inexistente_falla_claro():
     try:
         cat.cargar("colesterol", log=_quiet)

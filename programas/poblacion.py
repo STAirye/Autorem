@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.6
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -430,7 +430,21 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
         cond_ing &= instr_ok
         cond_egr &= instr_ok
 
-    activos = (df[cond_ing & (df["FECHA"] <= corte)]
+    # Solo las columnas que se LEEN del resultado. `df` trae ~130 columnas (q<N> y
+    # q<N>_n de cada una de las ~65 preguntas) y esta funcion corre 29 veces por pasada
+    # de `construir_poblacion` -- y Brecha_Medico (§8.6) agrega una pasada entera mas,
+    # con otras 44 llamadas sueltas: copiar y ordenar esas 130 columnas para leer 5 era
+    # el costo dominante de toda la familia poblacion.
+    # Es EXACTAMENTE el mismo resultado, no una aproximacion: `sort_values` ordena por
+    # la clave FECHA sola (el orden de filas no depende de cuantas columnas cuelguen) y
+    # `groupby().last()` trabaja columna por columna. Medido sobre 30k x 130: 0.22 s ->
+    # 0.008 s por llamada, con los dos resultados comparados fila a fila.
+    # OJO si algun dia se lee otra columna de `activos`: hay que agregarla ACA.
+    cols = [c for c in ("RUN", "FECHA", "INSTR",
+                        f"q{subtipo}" if subtipo else None,
+                        f"q{subtipo2}" if subtipo2 else None)
+            if c and c in df.columns]
+    activos = (df.loc[cond_ing & (df["FECHA"] <= corte), cols]
               .sort_values("FECHA").groupby("RUN").last())
     egresados_mes = set(df.loc[cond_egr & df["FECHA"].between(mes_ini, mes_fin), "RUN"])
 

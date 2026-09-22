@@ -10,6 +10,71 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.6] — 2026-09-22
+
+Primeros tres arreglos de la **ronda de EFICIENCIA y REUSO** sobre `main` (CLAUDE.md
+§12). Los tres son **equivalencias exactas**, no aproximaciones, y así se verificaron:
+misma salida comparada fila a fila contra la implementación vieja antes de tocar nada.
+Ningún número del REM cambia.
+
+### Cambiado
+- **`rem_utils.norm` 2,2x más rápida, con el mismo resultado.** Es la función más
+  llamada del proyecto (una vez por CELDA en `encontrar_fila_encabezado`,
+  `detectar_eje_filas`, `marcar_eventos` y en cada `.map(norm)` de los loaders pandas).
+  Las 7 `str.replace` encadenadas de tildes pasaron a un `str.translate` con la tabla
+  construida a nivel de módulo (una pasada en vez de siete, y sin rearmar el `zip()` en
+  cada llamada), y el `re.sub` de espacios a un patrón compilado. Medido: 400k celdas
+  de 0,47 s a 0,23 s. Verificada contra tildes, ñ, `\xa0` (el espacio duro que traen los
+  exports copy-paste), `\r\v\f` y los caracteres cuya mayúscula cambia de largo o de
+  forma (la ligadura fi, la i sin punto del turco).
+
+  **Descartado en el camino: cachear `norm` con `lru_cache`.** Parecía el arreglo obvio
+  (20x sobre columnas categóricas), pero **es más lenta sobre columnas de alta
+  cardinalidad** — 0,36 s contra 0,24 s sobre 200k RUN distintos —, y justamente el RUN,
+  el ATEN ID y los nombres de funcionario pasan por ahí en cada loader. Peor: la caché
+  colisiona `1`/`1.0`/`True` y `0`/`False` (mismo hash, `str()` distinto), que es
+  exactamente el bug que `clave_atencion` existe para evitar. Habría que meter el tipo
+  en la clave y aun así perder en la mitad de los usos. No se hace.
+
+- **`poblacion._estado_dx` ya no copia ni ordena 130 columnas para leer 5.** El frame
+  del formulario trae `q<N>` y `q<N>_n` de cada una de las ~65 preguntas, y esta función
+  corre 29 veces por pasada de `construir_poblacion` (más la pasada entera extra de
+  `Brecha_Medico`, §8.6, con otras 44 llamadas). Ahora recorta a `RUN`/`FECHA`/`INSTR` +
+  los subtipos pedidos ANTES del filtro y del `sort_values`. Es el mismo resultado:
+  `sort_values` ordena por la clave `FECHA` sola (el orden de filas no depende de cuántas
+  columnas cuelguen) y `groupby().last()` trabaja columna por columna — comparado contra
+  la versión vieja en las 28 specs x `instrumento` True/False, con fechas llenas de
+  empates a propósito, 0 diferencias.
+
+  Medido: la parte que se tocó (selección + orden + agrupación) baja de 0,28 s a 0,04 s
+  por 28 llamadas, **7x**. La función completa mejora ~30%, porque el costo dominante
+  pasó a ser OTRO: las tres `str.contains` de las máscaras, que se recalculan por spec
+  (0,44 s de las 0,63 s que quedan) e incluyen un `INSTR_n.str.contains("MEDIC")` que es
+  **invariante entre las 28 specs**. Queda anotado, no hecho.
+
+- **Los catálogos DEIS se consultan por índice, no barriendo la columna.**
+  `catalogos._cruzar` comparaba `d["COD"] == c` sobre el catálogo entero Y recalculaba
+  la máscara de rangos —que es **invariante**— en cada código; `anotar`, que es el uso
+  previsto (la columna de diagnósticos de un export), lo llamaba dos veces por código.
+  Ahora hay un índice `{COD: posiciones}` + las filas de rango, armado una vez por
+  DataFrame cargado. Medido: `anotar` de 2000 códigos de 3,05 s a 0,61 s (**5x**); la
+  consulta suelta, de 1,7 ms a ~0. Comparado contra la versión vieja en los **12.548
+  códigos** de la Lista Tabular x los dos catálogos cruzados (25.096 consultas):
+  0 diferencias.
+
+### Agregado
+- **Test de que el índice de catálogos se invalida.** El riesgo propio de un índice es
+  quedarse viejo: tras un `usar_en_sesion` las consultas seguirían contestando con el
+  catálogo anterior **calladas**, con la página diciendo «cargado a mano» (regla 2, el
+  peor desenlace). Se invalida comparando por IDENTIDAD el DataFrame indexado, y el test
+  lo amarra en las dos direcciones y sobre las dos mitades del índice (códigos exactos y
+  rangos). Verificado por mutación: si se rompe la invalidación, el test falla.
+
+- **Arneses archivados en
+  [`docs/evanesced/eficiencia-2.0.6/`](docs/evanesced/eficiencia-2.0.6/)** (§0 regla 7):
+  el benchmark antes/después y las dos pruebas de equivalencia, cada una con una copia
+  textual de la implementación vieja adentro. Son la prueba de los números de acá arriba.
+
 ## [2.0.5] — 2026-09-21
 
 ### Corregido

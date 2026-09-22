@@ -108,3 +108,36 @@ resultado esta en el codigo y en el commit `722ecbe`; esto es la herramienta.
   de las f-strings). **Ojo:** archivado como quedo, con `RAIZ` = la carpeta padre de donde
   vivia (`textos_review/` en la raiz del worktree); hay que ajustar `RAIZ`/`AQUI` para
   correrlo desde aca. Solo cubre `gui/`, no los textos de `programas/` ni `modulos/`.
+
+### `eficiencia-2.0.6/`
+
+Los arneses de los tres primeros arreglos de la **ronda de EFICIENCIA** (sep-2026, sobre
+`main`). Estan archivados porque **son la prueba de los numeros del CHANGELOG de la
+2.0.6**: los tres cambios se vendieron como equivalencias EXACTAS, y eso hay que poder
+volver a verificarlo sin rehacer el razonamiento.
+
+- `bench_3fix.py` - el antes/contra-despues. Mide las tres cosas en una corrida
+  (`_estado_dx` de las 28 specs, `norm` sobre 400k celdas, `anotar` de 2000 codigos) y se
+  corre **dos veces**: una en un worktree en el commit viejo y otra en el arbol nuevo. Asi
+  salieron las cifras del CHANGELOG.
+- `equivalencia_estado_dx.py` - 56 comparaciones (28 specs x `instrumento` True/False)
+  contra una copia textual de la version 2.0.5, con **fechas llenas de empates a
+  proposito**: el unico caso en que recortar columnas podria haber movido un resultado.
+- `equivalencia_cruzar.py` - los **12.548 codigos** de la Lista Tabular contra los dos
+  catalogos cruzados (25.096 consultas) mas los bordes, tambien contra una copia textual
+  de la version vieja.
+
+**Los dos `equivalencia_*` llevan adentro una COPIA de la implementacion vieja** — es
+justamente lo que los hace servir, asi que no se actualizan cuando el codigo vivo cambie.
+Si vuelven a hacer falta, lo que se compara es «la version de entonces» contra la de hoy.
+
+Los tres se corren con `PYTHONPATH=<raiz del repo>` (viven fuera de `programas/`, y
+`equivalencia_cruzar.py` ademas necesita los `catalogos/*.csv.gz` vendorizados). A
+diferencia de los otros archivados, **no tienen rutas absolutas**: corren desde aca.
+
+**Lo que midieron y quedo SIN hacer** (el hallazgo que destapo el propio arnes): tras
+recortar las columnas, el costo dominante de `_estado_dx` ya no es el `groupby` sino las
+tres `str.contains` de las mascaras — 0,44 s de los 0,63 s que quedan —, y una de ellas,
+`INSTR_n.str.contains("MEDIC")`, es **invariante entre las 28 specs** y se recalcula 28
+veces. Es un hoist de tres lineas; no se hizo porque estaba fuera de los tres hallazgos
+que el autor mando aplicar.
