@@ -684,13 +684,55 @@ def _una_fila_por_atencion(d, log=print):
         vals = [str(v).strip() for v in s if norm(v) != ""]
         return SEP_ACTIVIDADES.join(dict.fromkeys(vals)) if vals else None
 
-    def _primero(s):     # cabecera: el 1er valor no vacío del grupo (= el de la fila padre)
-        vals = [v for v in s if norm(v) != ""]
-        return vals[0] if vals else (s.iloc[0] if len(s) else None)
+    # La CABECERA no se agrega con una función Python, se ELIGE POR POSICIÓN. Un
+    # `groupby().agg({col: fn})` manda a pandas por su camino pure-python: rebana una
+    # Serie por cada par (grupo x columna) y llama a la función ahí. Con las 18 columnas
+    # de CAB_ATENCION eso son decenas de miles de rebanadas -- medido sobre un Monitoreo
+    # de 20.000 filas / 9.525 atenciones: 2,15 s, de los cuales cProfile pone 3,9 s (con
+    # el perfilador encima) en `_aggregate_series_pure_python`, 140.007 llamadas a
+    # `_chop`.
+    # Lo que la vieja `_primero` calculaba era, en realidad, UNA POSICIÓN: la del 1er
+    # valor no vacío del grupo, y si el grupo entero venía vacío, la de su 1ª fila. Eso
+    # es un `min()` por grupo sobre enteros -- que pandas sí hace en C --, y después un
+    # indexado numpy sobre los valores ORIGINALES. Tres detalles que NO son de adorno:
+    #   - el centinela `len(d)` ("este grupo no tiene ningún valor lleno") es mayor que
+    #     cualquier posición real, así que el `min()` lo descarta solo. Sin él, la
+    #     atención con la columna vacía en TODAS sus filas se lleva el valor de OTRA
+    #     atención: el SECTOR (o el estamento) de otro paciente, con cara de dato propio.
+    #   - el respaldo es la 1ª fila POSICIONAL, no un `groupby().first()` de pandas, que
+    #     salta los nulos: un grupo vacío que empieza en None y sigue en '' devolvería el
+    #     '' de la 2ª fila en vez del None de la 1ª. Distinto valor, mismo "vacío".
+    #   - `col.to_numpy()[posicion]` devuelve el valor TAL CUAL, así que el ATEN ID
+    #     numérico de IRIS sigue saliendo entero y no hay dtype que se mueva. (Un
+    #     `col.where(...)` habría sido más corto, pero introduce nulos y con ellos la
+    #     promoción a float64; acá no hay por dónde.)
+    # ACT/DIAG siguen con `_juntar`: juntar y deduplicar no es elegir una fila. Son 2
+    # columnas de 21, o sea ~1/10 del costo de antes.
+    # Medido: 2,15 s -> 0,39 s (5,5x). Equivalencia verificada valor a valor y por
+    # `repr` (no por texto: un int que se vuelve float tiene que saltar) contra una copia
+    # textual de la versión 2.0.8, sobre los bordes -- grupo con la cabecera vacía en
+    # TODAS sus filas, NaN antes que '' y al revés, ACT/DIAG vacíos en todo el grupo,
+    # fila padre que no es la primera, ATEN ID numérico, filas sueltas entre medio -- y
+    # sobre 6 frames grandes al azar. Arnés en docs/evanesced/.
+    import numpy as np
+    pos = np.arange(len(d))
+    gpos = pd.Series(pos, index=d.index).groupby(clave, sort=False)
+    primera = gpos.min()                 # 1ª fila de cada grupo, en orden de aparición
+    orden = primera.index                # las claves, en ESE mismo orden
+    primera = primera.to_numpy()
 
-    agg = {c: (_juntar if c in ("ACT", "DIAG") else _primero) for c in d.columns}
+    out = {}
+    for c in d.columns:
+        col = d[c]
+        if c in ("ACT", "DIAG"):
+            out[c] = col.groupby(clave, sort=False).agg(_juntar).to_numpy()
+            continue
+        lleno = col.map(norm).ne("").to_numpy()
+        llena = (pd.Series(np.where(lleno, pos, len(d)), index=d.index)
+                 .groupby(clave, sort=False).min().to_numpy())
+        out[c] = col.to_numpy()[np.where(llena < len(d), llena, primera)]
     attrs = dict(d.attrs)   # groupby().agg() no conserva attrs (fuente, columnas_por_archivo)
-    out = d.groupby(clave, sort=False).agg(agg).reset_index(drop=True)
+    out = pd.DataFrame(out, index=orden).reset_index(drop=True)
     out.attrs.update(attrs)
     log(f"[atenciones] {len(d)} filas -> {len(out)} atenciones (el Monitoreo abre cada "
         "atencion en una fila por actividad; se juntan para contar igual que IRIS)")

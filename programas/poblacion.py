@@ -443,7 +443,44 @@ def _instr_medico(df):
     if mascara is None or ref() is not df:
         mascara = df["INSTR_n"].str.contains("MEDIC", na=False)
         _MEDICO_MEMO = (weakref.ref(df), mascara)
-    return mascara
+    return mascara.copy()   # ver `_tok`: una mascara compartida se corrompe con un `&=`
+
+
+# Mascaras "la columna ESTADO contiene <token>", del ultimo `form` que las pidio. Mismo
+# mecanismo y mismo por que que `_instr_medico` (weakref, UNA ranura, derivada siempre
+# del `df` que se recibe): ver el bloque de arriba, no se repite aca.
+#
+# QUE se repetia, que no salta a la vista: dentro de una pasada de `construir_poblacion`
+# cada columna ESTADO pertenece a UNA sola spec, asi que parece que no hay repeticion --
+# pero `_egreso_powerbi_bug` recorre ESTADOS_TODOS y calcula el EGRES de las 29 columnas,
+# que son EXACTAMENTE las que `_estado_dx` vuelve a calcular una por spec. Y encima
+# `Brecha_Medico` (§8.6) repite la pasada entera y ademas llama a `_estado_dx` DOS veces
+# mas por spec, con el mismo dx y el mismo estado y solo cambiando `instrumento` -- y las
+# tres mascaras no dependen de ese toggle, asi que esas dos son identicas. Entre todo,
+# cada mascara se calculaba hasta 4 veces sobre el mismo formulario historico.
+# Medido sobre 60.000 formularios x 29 columnas: calcular las 29 EGRES dos veces cuesta
+# 0,629 s contra 0,289 s memoizadas (2,2x), mismo resultado.
+#
+# OJO, y por eso se devuelve una COPIA: `serie &= otra` en pandas SI muta la Serie en su
+# lugar (comprobado, no es como los `int`), asi que entregar el objeto cacheado dejaria
+# que un llamador lo pise y la siguiente spec leyera una mascara ya intersectada -- un
+# resultado plausible y errado, que es lo que la regla 2 persigue. Copiar una mascara de
+# 60k cuesta 0,007 ms contra los 10 ms del `str.contains`: es gratis al lado de lo que
+# ahorra, y hace que la memo no tenga forma de morder.
+_TOKENS_MEMO = (None, None)   # (weakref al df, {(columna, token): mascara})
+
+
+def _tok(df, col, token):
+    """Mascara booleana '`df[col]` contiene `token`', cacheada por DataFrame (ver arriba)."""
+    global _TOKENS_MEMO
+    ref, cache = _TOKENS_MEMO
+    if cache is None or ref() is not df:
+        cache = {}
+        _TOKENS_MEMO = (weakref.ref(df), cache)
+    clave = (col, token)
+    if clave not in cache:
+        cache[clave] = df[col].str.contains(token, na=False)
+    return cache[clave].copy()
 
 
 def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
@@ -463,9 +500,8 @@ def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
     para decir QUIÉN registró el dx y HACE CUÁNTO)."""
     qd, qe = f"q{dx}_n", f"q{estado}_n"
     cond_si = df[qd] == "SI"
-    cond_ing = cond_si & (df[qe].str.contains("INGRES", na=False) |
-                          df[qe].str.contains("SEGUIMIEN", na=False))
-    cond_egr = cond_si & df[qe].str.contains("EGRES", na=False)
+    cond_ing = cond_si & (_tok(df, qe, "INGRES") | _tok(df, qe, "SEGUIMIEN"))
+    cond_egr = cond_si & _tok(df, qe, "EGRES")
     if instrumento:
         instr_ok = _instr_medico(df)
         cond_ing &= instr_ok
@@ -528,7 +564,7 @@ def _egreso_powerbi_bug(form, mes_ini, mes_fin):
     for n in ESTADOS_TODOS:
         col = f"q{n}_n"
         if col in form.columns:
-            m |= form[col].str.contains("EGRES", na=False)
+            m |= _tok(form, col, "EGRES")   # las mismas 29 que recalcula `_estado_dx`
     m &= form["FECHA"].between(mes_ini, mes_fin)
     return set(form.loc[m, "RUN"])
 

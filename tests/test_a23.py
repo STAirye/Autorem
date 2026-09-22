@@ -553,6 +553,69 @@ def test_monitoreo_mixto_no_fusiona_las_atenciones_de_una_sola_actividad():
     assert sorted(d["RUN"]) == sorted(_p(i) for i in (1, 2, 3, 4)), list(d["RUN"])
 
 
+def test_la_cabecera_de_una_atencion_sale_de_SU_grupo_y_conserva_el_tipo():
+    """`_una_fila_por_atencion` ELIGE la cabecera POR POSICIÓN: la del 1er valor no
+    vacío del grupo y, si el grupo entero viene vacío, la de su 1ª fila. Tres cosas
+    que un atajo rompe, y ninguna revienta -- las tres dan un número plausible:
+
+    (a) Una atención con la columna vacía en TODAS sus filas tiene que quedar VACÍA.
+        Con un centinela mal puesto se lleva el valor de OTRA atención: el SECTOR (o
+        el estamento, o la edad) de otro paciente, con cara de dato propio.
+    (b) La fila padre no siempre es la primera. Si el export trae la hija arriba, la
+        cabecera igual tiene que salir de la fila que sí la trae.
+    (c) «La 1ª fila del grupo» es POSICIONAL, no «el primer valor no nulo»: un
+        `groupby().first()` de pandas SALTA los nulos, así que para un grupo vacío que
+        empieza en None y sigue en '' devolvería el '' de la 2ª fila en vez del None
+        de la 1ª. Distinto valor por un grupo sin dato.
+    (d) El ATEN ID de IRIS es NUMÉRICO y tiene que seguir saliendo entero: un
+        683016530.0 parte esa misma atención en dos (es lo que `clave_atencion` evita).
+
+    Va directo sobre la función (no por `cargar_atenciones`): es la unidad, y los
+    tests de arriba ya cubren el camino completo desde el .xlsx."""
+    import pandas as pd
+    from programas.rem_utils import _una_fila_por_atencion
+    d = pd.DataFrame([
+        # at. A: cabecera completa en la 1ª fila (forma Monitoreo normal)
+        {"ATENID": 683016530, "RUN": "11111111-1", "SECTOR": "AZUL", "INSTR": "MEDICO",
+         "ACT": "CONTROL SALA", "DIAG": "J45"},
+        {"ATENID": 683016530, "RUN": None, "SECTOR": None, "INSTR": None,
+         "ACT": "AUTOCUIDADO", "DIAG": None},
+        # at. B: SECTOR vacío en TODAS sus filas -> no puede quedarse con el "AZUL" de A
+        {"ATENID": 683016531, "RUN": "10000013-3", "SECTOR": "", "INSTR": "KINE",
+         "ACT": "KTR", "DIAG": "J44"},
+        {"ATENID": 683016531, "RUN": None, "SECTOR": None, "INSTR": None,
+         "ACT": "ESPIROMETRIA", "DIAG": None},
+        # at. C: la fila PADRE es la segunda
+        {"ATENID": 683016532, "RUN": None, "SECTOR": None, "INSTR": None,
+         "ACT": "CONTROL SALA", "DIAG": None},
+        {"ATENID": 683016532, "RUN": "10000021-1", "SECTOR": "VERDE", "INSTR": "MATRONA",
+         "ACT": "EDUCACION", "DIAG": "J45"},
+        # at. D: SECTOR vacío en todo el grupo, pero None ANTES que '' -> el valor de
+        # la 1ª fila es None, no el '' de la 2ª (un `first()` de pandas se salta el None)
+        {"ATENID": 683016533, "RUN": "10000048-4", "SECTOR": None, "INSTR": "MEDICO",
+         "ACT": "CONTROL SALA", "DIAG": "J45"},
+        {"ATENID": 683016533, "RUN": None, "SECTOR": "", "INSTR": None,
+         "ACT": "KTR", "DIAG": None},
+    ])
+    out = _una_fila_por_atencion(d, log=_quiet)
+    assert len(out) == 4, f"8 filas -> 4 atenciones, no {len(out)}"
+    assert list(out["RUN"]) == ["11111111-1", "10000013-3", "10000021-1", "10000048-4"], \
+        list(out["RUN"])
+    assert out["SECTOR"].iloc[0] == "AZUL"
+    assert str(out["SECTOR"].iloc[1]).strip() == "", \
+        f"la atencion B se llevo el SECTOR de otra atencion: {out['SECTOR'].iloc[1]!r}"
+    assert out["INSTR"].iloc[1] == "KINE"            # la cabecera propia sí se hereda
+    assert out["SECTOR"].iloc[2] == "VERDE" and out["INSTR"].iloc[2] == "MATRONA"
+    assert pd.isna(out["SECTOR"].iloc[3]), \
+        f"(c) el grupo vacio devolvio el '' de su 2a fila en vez del nulo de la 1a: " \
+        f"{out['SECTOR'].iloc[3]!r}"
+    assert str(out["ATENID"].iloc[0]) == "683016530", \
+        f"el ATEN ID numerico se volvio float: {out['ATENID'].iloc[0]!r}"
+    # y las actividades se juntan, sin repetir y en orden
+    assert out["ACT"].iloc[0] == "CONTROL SALA; AUTOCUIDADO", out["ACT"].iloc[0]
+    assert out["DIAG"].iloc[2] == "J45"
+
+
 def test_el_trabajo_perdido_cuenta_igual_la_misma_atencion_en_los_dos_formatos():
     """Ronda 12. La forma PADRE-HIJO del Monitoreo se normalizaba a medias: el ffill de
     la cabecera vivia en el loader y el AND entre actividades en UN consumidor (el A23),

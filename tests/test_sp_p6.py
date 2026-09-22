@@ -266,6 +266,49 @@ def test_la_mascara_de_medico_no_se_filtra_de_una_corrida_a_la_siguiente():
     assert tercera["Depresión (form)"].iloc[0] == "Activo"
 
 
+def test_las_mascaras_de_estado_no_se_filtran_de_una_corrida_a_la_siguiente():
+    """Gemelo del test de arriba, para la caché de `_tok` (máscaras «la columna ESTADO
+    contiene INGRES/SEGUIMIEN/EGRES»). La caché existe porque `_egreso_powerbi_bug`
+    recorre las 29 columnas ESTADO y `_estado_dx` recalcula LAS MISMAS, una por spec —
+    y Brecha_Medico repite la pasada entera.
+
+    Mismo modo de falla y misma trampa: con los dos formularios del mismo largo, una
+    máscara vieja ALINEA por posición y no revienta — deja Activo a quien tiene el
+    ESTADO en blanco. Dos corridas seguidas, mismo largo, ESTADO opuesto."""
+    con_estado = [{"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Médico",
+                   **{_Q[18]: "SI", _Q[19]: "19.- INGRESO"}}]
+    sin_estado = [{"rut": "11111111-1", "fecha": date(2026, 8, 1), "instr": "Médico",
+                   **{_Q[18]: "SI", _Q[19]: ""}}]
+    primera = _poblacion(con_estado, [{"rut": "11111111-1"}])
+    assert primera["Depresión (form)"].iloc[0] == "Activo", "premisa: con INGRESO sí entra"
+    segunda = _poblacion(sin_estado, [{"rut": "11111111-1"}])
+    assert segunda["Depresión (form)"].iloc[0] == "", \
+        "la 2a corrida usó la máscara de ESTADO de la 1a: la caché no se invalidó"
+    tercera = _poblacion(con_estado, [{"rut": "11111111-1"}])
+    assert tercera["Depresión (form)"].iloc[0] == "Activo"
+
+
+def test_la_mascara_cacheada_aguanta_que_el_llamador_la_pise():
+    """`serie &= otra` en pandas MUTA la serie en su lugar (no es como un int). Una memo
+    que entregue el objeto cacheado queda a merced del primer llamador que lo use como
+    destino: la spec siguiente leería una máscara ya intersectada y daría un número
+    plausible y errado, callado (regla 2). Por eso `_tok` y `_instr_medico` devuelven
+    una COPIA — cuesta 0,007 ms contra los 10 ms del `str.contains` que ahorran.
+
+    Se prueba directo sobre las dos memos, no a través de `construir_poblacion`: el
+    día que un llamador nuevo escriba `m &= _tok(...)` este test es el que avisa."""
+    import pandas as pd
+    df = pd.DataFrame({"q19_n": ["INGRESO", "EGRESO", "", "SEGUIMIENTO"],
+                       "INSTR_n": ["MEDICO", "PSICOLOGO", "MEDICO", "MATRONA"]})
+    for pedir, esperado in ((lambda: pob._tok(df, "q19_n", "INGRES"), [True, False, False, False]),
+                            (lambda: pob._instr_medico(df), [True, False, True, False])):
+        primera = pedir()
+        assert list(primera) == esperado, list(primera)
+        primera &= pd.Series([False] * 4)       # el llamador la pisa en su lugar
+        assert list(primera) == [False] * 4, "premisa: el `&=` de pandas sí muta"
+        assert list(pedir()) == esperado, "la memo entregó el objeto cacheado, y lo pisaron"
+
+
 def test_d1_fallback_tgd_pregunta_63():
     """La 91 (TGD no especificado) casi nunca tiene dato -> fallback a la 63, SOLO si
     ninguna TGD específica (83/85/87/89/91) está activa."""

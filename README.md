@@ -223,7 +223,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **323 pruebas** en 17 archivos:
+Datos 100% sintéticos, sin PII. **326 pruebas** en 17 archivos:
 
 ```bash
 python tools/correr_tests.py
