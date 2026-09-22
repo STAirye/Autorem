@@ -135,6 +135,58 @@ Los tres se corren con `PYTHONPATH=<raiz del repo>` (viven fuera de `programas/`
 `equivalencia_cruzar.py` ademas necesita los `catalogos/*.csv.gz` vendorizados). A
 diferencia de los otros archivados, **no tienen rutas absolutas**: corren desde aca.
 
+### `eficiencia-2.0.9/`
+
+La **segunda** ronda de eficiencia sobre `main` (sep-2026), pedida despues de la 2.0.6.
+Estan archivados por la misma razon que los de la 2.0.6 -- son la prueba de los numeros
+del CHANGELOG --, pero la leccion de esta tanda es otra y vale mas que los scripts:
+
+> **Ordenar por lectura del codigo se equivoco TRES veces seguidas.** La lista de
+> hallazgos salio de leer, y el orden que proponia estaba mal las tres veces que se
+> contrasto con un perfil. `perfil_poblacion.py` reordeno la ronda entera; el hallazgo
+> que resulto mas caro (`_ultima_respuesta`) no estaba en NINGUNA de las dos listas de
+> revision, y el que parecia grande (el hallazgo 6) resulto valer 0,28 s.
+
+- `perfil_poblacion.py` - **el que cambio el plan.** Arma inscritos/formulario/ADA
+  sinteticos del tamano del centro (30.000 / 60.000 x 134 columnas / 120.000) y perfila
+  `construir_poblacion` entera, las dos pasadas. Es el que mostro que la 2a pasada de
+  Brecha_Medico era el 41% del total y que `_ultima_respuesta` se comia 0,5 s por pasada.
+  **Ojo:** sus RUN sinteticos NO llevan DV valido, asi que `construir_p6` sobre su salida
+  corta con el guardarrail de `_base_valida` (descarta el 91%, techo 5%). Para medir el P6
+  hay que remapear los RUN con `dv_rut`, como se hizo en la sesion.
+- `equivalencia_brecha.py` - la brecha calculada por los dos caminos (tabla entera vs
+  solo la columna) sobre el mismo frame. Ademas imprime **que columnas cambian de verdad
+  con `exigir_medico`**: son 31 de la tabla, y ninguna es `Estado` ni `¿Activo 12m?`. Esa
+  salida ES la premisa del atajo de `runs_ingresados_sin_filtro_medico`.
+- `equivalencia_colapso.py` - `_una_fila_por_atencion` nueva contra una **copia textual
+  de la 2.0.8**, comparando por `repr` y no por texto (un entero que se vuelve float tiene
+  que saltar), sobre los bordes: grupo con la columna vacia en TODAS sus filas, nulo antes
+  que `''` y al reves, ACT/DIAG vacios en todo el grupo, fila padre que no es la primera,
+  ATEN ID numerico, filas sueltas entre medio. Mas 6 frames grandes al azar.
+- `medir_hallazgo6.py` - instrumenta `norm` para **contar llamadas reales** en `_sala` y
+  `_seccion_g` del A23. Asi se confirmo que eran 47 pasadas sobre el formulario y que solo
+  13 eran recuperables barato.
+- `bench2.py` / `bench3.py` / `bench4.py` - los candidatos de la ronda, cada uno contra su
+  alternativa. `bench4` ademas perfila `_una_fila_por_atencion` y prueba la version
+  vectorizada que quedo.
+- `bench5.py` - el costo del barrido de filas de `marcar_eventos` (lo que el A05 paga UNA
+  VEZ POR TAREA: ingresos y egresos corren los dos sobre el MISMO `ws`).
+- `bench_cell.py` - **un hallazgo DESCARTADO, archivado a proposito.** La hipotesis era
+  que `ws.cell(row,col).value` por celda es el patron lento de openpyxl. Es falso: en modo
+  normal openpyxl ya materializa todas las celdas al cargar, asi que `ws.cell()` es un
+  lookup de diccionario. Medido: 0,33 s contra 0,35 s de `iter_rows(values_only=True)`, y
+  `ws._cells` queda igual en los dos. **No volver a reportarlo.**
+
+Los tres `bench_*` y `medir_hallazgo6` corren desde aca con `PYTHONPATH=<raiz>`.
+`perfil_poblacion.py`, `equivalencia_brecha.py` y `equivalencia_colapso.py` llevan la
+**ruta absoluta de la maquina del autor** en un `sys.path.insert` (vivieron en el
+scratchpad): hay que ajustarla. `equivalencia_brecha.py` ademas importa a
+`perfil_poblacion` por su ruta absoluta del scratchpad.
+
+**Lo que quedo sin hacer**, con su numero medido, esta en el §12 del CLAUDE.md raiz.
+
+### `eficiencia-2.0.6/` (continuacion)
+
 **Lo que midieron de yapa** (el hallazgo que destapo el propio arnes): tras recortar las
 columnas, el costo dominante de `_estado_dx` dejo de ser el `groupby` y paso a ser las
 tres `str.contains` de las mascaras — 0,44 s de los 0,63 s que quedaban —, y una de ellas,

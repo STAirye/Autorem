@@ -10,6 +10,87 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.9] — 2026-09-22
+
+### Cambiado
+
+**Segunda ronda de EFICIENCIA sobre `main`** (decisión del autor, §12). Cinco cambios,
+todos con equivalencia verificada contra la versión anterior. Familia población
+**4,06 s → ~1,0 s**; el colapso de atenciones del Monitoreo admin, hasta **5,5x**.
+
+- **`rem_utils._una_fila_por_atencion`: la cabecera se ELIGE POR POSICIÓN.** El
+  `groupby().agg({col: función Python})` mandaba a pandas por su camino pure-python
+  —una rebanada de Serie por cada par (grupo × columna), 140.007 llamadas a `_chop` en
+  un Monitoreo de 20.000 filas—. Lo que `_primero` calculaba era, en el fondo, una
+  posición: la del 1er valor no vacío del grupo y, si el grupo venía entero vacío, la de
+  su 1ª fila. Eso es un `min()` por grupo sobre enteros (que pandas sí hace en C) más un
+  indexado numpy sobre los valores ORIGINALES. **1,26 s → 0,50 s**, y **2,15 s → 0,39 s
+  (5,5x)** en la forma con más atenciones sueltas, que es la del Monitoreo real.
+  ACT/DIAG siguen con `_juntar`: juntar y deduplicar no es elegir una fila.
+- **`poblacion._tok`: memo por DataFrame de las máscaras de ESTADO.** No era obvio que
+  se repitieran: dentro de una pasada cada columna ESTADO es de UNA spec, pero
+  `_egreso_powerbi_bug` recorre las 29 de `ESTADOS_TODOS` calculando el EGRES de todas
+  —las mismas que `_estado_dx` recalcula una por spec— y Brecha_Medico repite la pasada
+  entera **y además** llama a `_estado_dx` dos veces más por spec, con el mismo dx y
+  estado. Cada máscara se calculaba hasta 4 veces. **2,26 s → 0,87 s** en las dos
+  pasadas.
+- **`poblacion._ultima_respuesta`: recorte de columnas.** Ordenaba y agrupaba las 134
+  columnas del formulario histórico para leer UNA. **0,514 s → 0,019 s (28x).**
+- **Brecha_Medico ya no arma la tabla entera dos veces.** Corría
+  `construir_poblacion` COMPLETA por segunda vez —1,66 s de los 4,06 s de la familia
+  población, el 41%— y de esa tabla consumía UNA columna. Ahora pide solo
+  `¿Ingresado?` sin filtro de estamento (`runs_ingresados_sin_filtro_medico`), y lee
+  `Estado` y `¿Activo 12m?` del `P` que ya existe porque no dependen del toggle.
+- **`rem_sp_p6_poblacion._grid_y_detalle`: `zip` en vez de `iterrows`**, y se cuentan
+  las máscaras demográficas en vez de materializar el subconjunto de filas.
+  `construir_p6` **1,53 s → 0,93 s**.
+- Menores, del mismo perfil: el `map(norm)` de ALERTAS izado fuera de
+  `marcar_demografia.alerta` (3,2x), la guarda `no_vacias` de `cargar_canonico` con
+  corto circuito en vez de normalizar la columna entera, y el `est()` del A23 por
+  `contiene_alguno` en vez de dos `.str.contains` que normalizaban la misma columna dos
+  veces (47 → 34 pasadas sobre el formulario «Otros y Respi»).
+
+### Agregado
+
+- Seis tests. Los cinco primeros son **mutation-verificados**: la implementación se
+  rompió a propósito y cada mutante cae.
+  - `test_a23`: la cabecera de una atención sale de SU grupo (sin centinela se lleva el
+    SECTOR de otro paciente), el respaldo es la 1ª fila **posicional** (un
+    `groupby().first()` de pandas salta los nulos) y el ATEN ID numérico sigue entero.
+  - `test_sp_p6`: las máscaras de ESTADO no se filtran de una corrida a la siguiente; la
+    máscara cacheada aguanta que el llamador la pise; «Madre <5 años» toma la última
+    respuesta **con dato** hasta el corte (contrato que no fijaba ningún test); y **el
+    plegado de edad queda colgado de la persona correcta**.
+  - `test_rescate`: la brecha da el MISMO set por el atajo y armando la tabla entera,
+    con cuatro personas que cubren las dos mitades del filtro base. El mismo test fija
+    la PREMISA: si `Estado` o `¿Activo 12m?` pasan a depender del toggle, revienta ahí.
+
+### Notas
+
+- **Dos memos entregan una COPIA de la máscara** (`_tok` y `_instr_medico`): `serie &=
+  otra` en pandas SÍ muta la Serie en su lugar, así que devolver el objeto cacheado
+  dejaría que el primer llamador lo pise y la spec siguiente leyera una máscara ya
+  intersectada. Copiar una de 60k cuesta 0,007 ms contra los 10 ms del `str.contains`.
+- **El bucle de las 28 specs quedó en UNA función compartida** (`_poner_diagnosticos`),
+  no copiado en los dos lados: lo que Brecha_Medico mide es la DIFERENCIA entre las dos
+  pasadas, y con dos copias del bucle la hoja pasaría a medir la distancia entre dos
+  implementaciones en vez de la del filtro de estamento.
+- **`runs_ingresados_sin_filtro_medico` devuelve un SET y no una columna** a propósito:
+  una Serie alineada a `P` se puede escribir de vuelta en la tabla, y ahí el guardarraíl
+  del P6 (que mira `attrs['exigir_medico']`) ya no la vería.
+- **DESCARTADO, medido:** `ws.cell(row,col).value` por celda NO es lento. En modo normal
+  openpyxl ya materializa todas las celdas al cargar, así que es un lookup de
+  diccionario: 0,33 s contra 0,35 s de `iter_rows(values_only=True)`. No volver a
+  reportarlo (arnés en `docs/evanesced/eficiencia-2.0.9/bench_cell.py`).
+- **Cómo se ordenó el trabajo, que es la lección de la ronda:** ordenar por lectura del
+  código se equivocó **tres veces seguidas**. El hallazgo más caro
+  (`_ultima_respuesta`) no estaba en ninguna de las dos listas de revisión; el que
+  parecía grande valía 0,28 s. El perfil de `construir_poblacion` entera reordenó la
+  ronda. Arneses en `docs/evanesced/eficiencia-2.0.9/`.
+- **Dos cosas encontradas y NO arregladas**, con su motivo, en §12 del CLAUDE.md raíz:
+  `norm(pd.NA)` revienta, y el orden de filas de `Revisar_Clinico` no es determinista
+  entre corridas.
+
 ## [2.0.8] — 2026-09-22
 
 ### Corregido

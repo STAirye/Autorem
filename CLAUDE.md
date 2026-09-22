@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.8** (§9). **329 tests.**
+Versión **2.0.9** (§9). **329 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -187,7 +187,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.8**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.9**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -246,7 +246,8 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §4.
 - **Ronda de EFICIENCIA y REUSO sobre el codebase completo** (decisión del autor,
   sep-2026): la primera revisión de la era 2.0, sobre `main`. No era parte de la
-  revisión de la rama.
+  revisión de la rama. **Dos tandas hechas** (2.0.6 y 2.0.9); lo que quedó abierto,
+  con su número MEDIDO, está más abajo en «Correcciones y mejoras».
 - **El CLI queda CONGELADO** (decisión del autor, sep-2026): no sigue el rediseño
   de la GUI. Quizás vuelva a funcionar más adelante, probablemente no. Consecuencia
   conocida y aceptada: los mensajes cruzados de `validar_iris`/`validar_admin` dicen
@@ -331,10 +332,39 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 - **Generalizar a otros centros:** un config en vez de constantes locales
   (`EXCLUIR_PATOLOGIA`, externos de dotación, sectores…).
 
+- **Eficiencia: lo que quedó de las rondas 2.0.6 y 2.0.9**, con su costo MEDIDO (los
+  arneses están en [docs/evanesced/eficiencia-2.0.9/](docs/evanesced/eficiencia-2.0.9/)).
+  Ninguno urge; van juntos acá para no volver a buscarlos:
+
+  | Qué | Dónde | Medido |
+  |---|---|---|
+  | El A05 barre y normaliza la hoja ENTERA **una vez por tarea** (ingresos y egresos corren los dos sobre el mismo `ws`), y además normaliza todas las columnas ANTES del filtro de mes | `rem_saludmental.marcar_eventos` | ~0,25 s × 2 |
+  | `_sala` y `_seccion_g` normalizan por separado las mismas 11 columnas del MISMO formulario (quedan 34 pasadas donde bastan 23) | `rem_a23_respiratorio` | ~0,20 s |
+  | `RUN` se normaliza 2-3 veces en la carga de atenciones y nunca queda como `RUN_n` | `rem_utils.cargar_atenciones` | ~0,18 s |
+  | `grid()` normaliza el sexo dos veces por fila y clasifica las bandas en Python | `rem_utils.grid` | 0,15 s (×44 en el P6) |
+  | `por_actividad` rehace el mismo `explode` 5 veces | `rem_sm_actividades._ada_eventos` | 0,06 s |
+  | `INSTR` normalizado 3 veces en una función | `a23._estamento_por_funcionario` | ~0,05 s |
+  | máscara `es_agresor` invariante dentro del bucle de reglas | `rem_sp_p6_poblacion._tributarios_violencia` | <0,01 s |
+
+  **Antes de tomar cualquiera de estos, PERFILAR.** En las dos rondas el orden que salía
+  de leer el código estuvo mal las tres veces que se contrastó con un perfil.
+
 **Dev / repo**
 - **Pestaña de Consultas de catálogos** + enchufar `en_rango` en el A23.
 - **Deuda:** `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con dtype mixto);
   pandas 4 lo vuelve error.
+- **`norm(pd.NA)` revienta** con `TypeError: boolean value of NA is ambiguous`, porque
+  `pd.NA != pd.NA` devuelve `NA` y no un bool. Hoy no se alcanza (las columnas que arma
+  `cargar_canonico` entregan `nan` float al iterar), pero el docstring promete «`''` si
+  es None/NaN» y una columna de dtype nullable (`Int64`, `boolean`, un `StringDtype`
+  armado de otra forma) lo tumbaría. Falla ruidoso, que es el modo bueno; lo que está
+  mal es el docstring.
+- **El orden de filas de `Revisar_Clinico` NO es determinista entre corridas.** Dos
+  bloques se arman iterando un `set` (`comorbidos_ges` y `fr_sin_dx`,
+  `rem_sp_p6_poblacion.construir_p6`), y el orden de un set de strings cambia con el
+  hash seed del proceso. El CONTENIDO es siempre el mismo (verificado), pero dos
+  corridas del mismo mes dan planillas que no se pueden diffear — y esa hoja existe
+  para auditar. Se arregla con un `sorted()`.
 
 ---
 
