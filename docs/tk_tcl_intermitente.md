@@ -244,11 +244,19 @@ Con el mecanismo confirmado, A/B/C ya no aplican. Quedan dos candidatos:
 
 | | Qué | Probado | Costo |
 |---|---|---|---|
-| **Pin** (`tcl_std_pin.py`, en un `tests/conftest.py`) | Antes del 1er Tk: 3 handles NUL privados como std de Tcl, un `tkinter.Tcl()` que vive todo el proceso para fijarlos, y se restauran los std reales | repro mínimo: 0/3 contra 2·2·crash. Suite real: **ronda 4 en curso** | ~25 líneas de ctypes, solo Windows; de yapa el ruido `invalid command name` de Tcl se va a NUL |
+| **Pin** (`tcl_std_pin.py`, en un `tests/conftest.py`) | Antes del 1er Tk: 3 handles NUL privados como std de Tcl, un `tkinter.Tcl()` que vive todo el proceso para fijarlos, y se restauran los std reales | repro mínimo: 0/3 contra 2·2·crash. Suite real: **0/8 contra 8/8** (ronda 4) | ~25 líneas de ctypes, solo Windows; de yapa el ruido `invalid command name` de Tcl se va a NUL |
 | `addopts = --capture=sys` en `pytest.ini` | pytest deja de hacer `dup2` sobre los fd | suite real 0/5 | 1 línea, pero ~170 líneas de ruido de teardown de Tcl a la terminal por corrida del archivo GUI |
 
 La app real y el `.exe` **no** están afectados: nada hace `dup2` sobre sus std fd.
 
 ### Ronda 4 — el pin sobre la suite real
 
-*(en curso: `matriz_pytest.py 8 base,pin`, intercaladas; falta también la casa)*
+Trabajo, 2026-09-23: `matriz_pytest.py 8 base,pin`, intercaladas (mismas condiciones
+de máquina para las dos):
+
+| Variante | Corridas con falla |
+|---|---|
+| base | **8/8** (un test distinto cada vez: `init.tcl` «No error», `menu.tcl`, `panedwindow.tcl`) |
+| pin | **0/8** |
+
+p ≈ 0,0002. **El pin arregla la suite real en el PC de trabajo.** Falta la casa (3.9).
