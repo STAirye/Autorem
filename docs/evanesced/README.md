@@ -197,3 +197,22 @@ para esa version y sigue dando 0 diferencias, porque compara contra la 2.0.5.
 Lo que sigue SIN hacer de ese mismo perfil: las otras dos `str.contains` (`INGRES` y
 `SEGUIMIEN`) SI dependen de la spec, asi que no se pueden izar igual — habria que
 precalcularlas por pregunta, que es otro diseno y no estaba pedido.
+
+### `tk_tcl_intermitente/`
+
+El `tk.tcl` intermitente de `test_gui_construccion` (sep-2026). El contexto, las rondas y
+el mecanismo estan en [docs/tk_tcl_intermitente.md](../tk_tcl_intermitente.md); esto son
+sus arneses. **Archivados antes de cerrar**, porque hacia falta correrlos en el PC de la
+casa (Python 3.9) ademas del de trabajo (3.14).
+
+| Script | Que prueba |
+|---|---|
+| `repro_tk_tcl.py` | Ronda 1: etapas S0-S5 (Tk, CTk, App, proceso fresco, paralelo, pytest real). Todo limpio fuera de pytest |
+| `matriz_pytest.py` | Rondas 2 y 4: el archivo real con distintas opciones de pytest (`-s`, `--capture=sys`, el pin) |
+| `handle_std.py` | Descarta que Tcl cierre los std handles al borrar un interprete |
+| `repro_min.py` | Ronda 3: el bug SIN pytest, con `dup2` sobre 0/1/2 |
+| `tcl_std_pin.py` | PROTOTIPO del arreglo: tres NUL privados como canales estandar de Tcl |
+
+Corren desde la raiz del repo. `matriz_pytest.py` con la variante `pin` necesita
+`PYTHONPATH=docs/evanesced/tk_tcl_intermitente` para encontrar `tcl_std_pin`. El fixture de
+`repro_tk_tcl.py` lleva el RUT de ejemplo `11111111-1`.
