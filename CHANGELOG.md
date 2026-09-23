@@ -10,6 +10,54 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.10] — 2026-09-23
+
+### Cambiado
+
+**Ronda de REUSO sobre la 2.0.9** (16ª pasada de revisión, ángulo reuso). Siete puntos
+donde la misma regla vivía en dos lugares, o donde algo recién calculado se volvía a
+calcular. Sin cambio de números: **329 tests** en verde, iguales.
+
+- **`rem_utils.es_medico` + `TOKEN_MEDICO`: un solo criterio de «quién es médico».**
+  Estaba escrito a mano en cuatro lugares con tres ortografías, y ya no se ponían de
+  acuerdo en `regex=` (`poblacion` lo corría por el motor de regex, el A23 no). Es el
+  criterio que decide la población SALA / Sección G del A23 y, vía `exigir_medico`, el
+  `¿Ingresado?` del P6 — y la **Brecha_Medico es por definición la DIFERENCIA entre dos
+  pasadas de ese mismo criterio**: con cuatro copias, el día que RAYEN cambie la
+  etiqueta la brecha pasa a medir el desacuerdo entre implementaciones. `poblacion`
+  aporta solo la memo (`_instr_medico`), no el criterio.
+- **`poblacion._tok` absorbió a `_instr_medico`.** Eran la misma memo (weakref, una
+  ranura, copia al entregar) con la columna y el token clavados: dos globales y dos
+  caminos de invalidación para la misma regla. Ya había mordido — el `.copy()` que
+  evita que un `&=` del llamador corrompa la máscara cacheada nació en `_tok` y hubo
+  que copiarlo a mano al otro. Se fue `_MEDICO_MEMO` y su bloque de comentario.
+- **`poblacion._COLS_DX` se define UNA vez**, junto a `TODAS_LAS_SPECS`, y `_col_dx()`
+  parte de ella. Eran dos derivaciones independientes de la misma lista de 28 columnas
+  separadas por 520 líneas, y alimentan cosas que TIENEN que estar de acuerdo: el orden
+  de columnas de la planilla y los números de `¿Ingresado?` / `¿Pertenece?`. Filtrar
+  una spec en un solo lado dejaba una columna llena en la hoja con un `¿Ingresado?`=NO
+  al lado, callado.
+- **Brecha_Medico ya no recalcula las dos pasadas que acaba de correr.**
+  `runs_ingresados_sin_filtro_medico` corría un `_estado_dx` por spec y tiraba las
+  tablas; el detalle las reconstruía spec por spec (~25) y encima pedía la pasada CON
+  filtro, que ya estaba materializada como columna de `P_med`. Ahora el helper las
+  devuelve (`con_detalle=True`) y el `activo_med` sale de `P_med` — ~50 `_estado_dx` de
+  regalo menos, en la función que existe justamente para no repetir una pasada. La
+  única excepción es `COL_TGD_FALLBACK`, la columna que `_aplicar_fallback_tgd`
+  sobreescribe: esa no es el resultado de su spec y conserva su propia llamada.
+- **`rem_utils.grid(..., bandas_idx=)` y `_banda_efectiva` devuelve el ÍNDICE.** El P6
+  clasificaba la edad en banda, convertía el resultado de vuelta a una edad
+  representativa, y `grid()` la volvía a clasificar para recuperar el mismo índice: dos
+  clasificaciones por (persona × fila del P6), ~30.478 iteraciones duplicadas.
+- **`rem_utils.por_actividad` parte por `SEP_ACTIVIDADES`,** no por un `";"` a mano —
+  el mismo separador con el que `_una_fila_por_atencion` une la celda, como su propio
+  docstring ya decía. Un split desincronizado no falla: deja de partir y devuelve
+  callado el comportamiento de celda unida contra el que esa función existe (A32·F2,
+  `Sin_Consejeria`, `Ctrl_sin_Formulario`).
+- **`_una_fila_por_atencion` no normaliza `RUN` dos veces:** la guarda de pacientes
+  mezclados ya había construido esa Serie, y el bucle por columna la rehacía sobre la
+  columna más grande del frame.
+
 ## [2.0.9] — 2026-09-22
 
 ### Cambiado

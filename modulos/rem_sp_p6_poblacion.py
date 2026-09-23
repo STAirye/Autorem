@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.8
+# Version: 2.0.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -327,15 +327,18 @@ def _base_valida(P, log):
 
 
 def _banda_efectiva(edad, lo, hi):
-    """(edad_para_grid, plegada) — si la banda real cae fuera de [lo,hi], usa
-    el límite de banda más cercano (edad representativa = límite inferior de
-    esa banda) para que `grid()` la clasifique ahí. `edad_para_grid`=None si
-    no hay edad."""
+    """(indice_de_banda, plegada) — si la banda real cae fuera de [lo,hi], usa la
+    banda del límite más cercano. `indice_de_banda`=None si no hay edad.
+
+    Devuelve el ÍNDICE y no una edad representativa: `grid()` lo recibe tal cual por
+    `bandas_idx=`. Antes esto devolvía `BANDAS[folded][0]` (una edad) y `grid()`
+    volvía a pasarla por `_band_idx` para recuperar el mismo índice que acá ya
+    estaba calculado — dos clasificaciones por (persona × fila del P6)."""
     idx = _band_idx(edad, BANDAS)
     if idx is None:
         return None, False
     folded = min(max(idx, lo), hi)
-    return BANDAS[folded][0], folded != idx
+    return folded, folded != idx
 
 
 def _grid_y_detalle(sub, fila, detalle_rows, revisar):
@@ -350,10 +353,12 @@ def _grid_y_detalle(sub, fila, detalle_rows, revisar):
         plegada.append(p)
     # `_edad_grid`/`_plegada` ya no se escriben como columnas de `sub`: eran temporales
     # para el bucle de abajo, y escribirlas obligaba a copiar el frame entero (~60
-    # columnas) en cada una de las ~45 llamadas. `rename`+`assign` devuelven un frame
-    # nuevo sin tocar el del llamador, así que el `sub.copy()` tampoco hace falta.
-    grid_sub = sub.rename(columns={"Sexo": "sexo"}).assign(edad=efectiva)
-    fila_grid = grid(grid_sub, BANDAS, LBL)
+    # columnas) en cada una de las ~45 llamadas. `rename` devuelve un frame nuevo sin
+    # tocar el del llamador, así que el `sub.copy()` tampoco hace falta. Y las bandas
+    # van por `bandas_idx=`: ya están clasificadas acá arriba (ver `_banda_efectiva`),
+    # así que no hay columna 'edad' que armar ni que `grid()` vuelva a clasificar.
+    grid_sub = sub.rename(columns={"Sexo": "sexo"})
+    fila_grid = grid(grid_sub, BANDAS, LBL, bandas_idx=efectiva)
 
     demo_abiertas = set(_mascara_demo(fila))
     for col, flag in DEMO_COLS_MAP.items():

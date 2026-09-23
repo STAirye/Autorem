@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.8
+# Version: 2.0.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -58,7 +58,7 @@ import pandas as pd
 from programas.rem_utils import norm, contiene_alguno, fecha_col, _rango_mes, ArchivoInvalido
 from programas.poblacion import (
     cargar_inscritos, cargar_formulario_sm, construir_poblacion,
-    runs_ingresados_sin_filtro_medico,
+    runs_ingresados_sin_filtro_medico, COL_TGD_FALLBACK,
     ACTIVIDADES_SM_7, TABLA_DX, TODAS_LAS_SPECS, _estado_dx,
 )
 from programas.rem_utils import cargar_atenciones
@@ -195,12 +195,16 @@ def calcular_brecha_medico(insc, form, d_ada, P_med, mes=None, log=print):
     otros dos filtros de la base, `Estado` y `¿Activo 12m?`, no dependen del toggle
     —vienen del Inscritos y de `_flags_actividad`—, así que se leen del `P_med` que ya
     está armado. `insc` y `d_ada` siguen en la firma porque los usa el resto del
-    módulo y para no mover la llamada."""
+    módulo y para no mover la llamada.
+
+    El detalle de abajo (`con_detalle=True`) se arma con las tablas de ESA pasada y con
+    las columnas de `P_med`, sin volver a llamar a `_estado_dx`: las dos pasadas que el
+    detalle necesita ya se corrieron enteras."""
     base_comun = (P_med["Estado"].map(norm) == "ACTIVO") & (P_med["¿Activo 12m?"] == "SI")
     runs_med = set(P_med.loc[base_comun & (P_med["¿Ingresado?"] == "SI"), "Número"])
-    runs_todos = (set(P_med.loc[base_comun, "Número"])
-                  & runs_ingresados_sin_filtro_medico(P_med, form, mes=mes,
-                                                      log=lambda *a, **k: None))
+    ingr_todos, est_todos_por_col = runs_ingresados_sin_filtro_medico(
+        P_med, form, mes=mes, log=lambda *a, **k: None, con_detalle=True)
+    runs_todos = set(P_med.loc[base_comun, "Número"]) & ingr_todos
     brecha_runs = runs_todos - runs_med
     log(f"[rescate] Brecha_Medico: {len(brecha_runs)} persona(s) quedan Ingresado=SI SOLO sin "
         "el filtro de estamento médico (§8.6) -> al debe de control médico del diagnóstico.")
@@ -216,9 +220,19 @@ def calcular_brecha_medico(insc, form, d_ada, P_med, mes=None, log=print):
     for spec in TABLA_DX:
         if not spec["instrumento"]:
             continue   # ya no filtra por estamento (D2/D3): no puede causar brecha
-        est_med = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin, instrumento=True)
-        est_todos = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin, instrumento=False)
-        activo_med = set(est_med.index[est_med["estado"] == "Activo"])
+        # Las dos pasadas ya estan hechas y no se repiten aca: la de SIN filtro viene en
+        # `est_todos_por_col` (la misma que decidio `brecha_runs`), y la CON filtro es la
+        # columna que `construir_poblacion` dejo en `P_med` -- es literalmente el mismo
+        # `_estado_dx(instrumento=True)`. Unica excepcion: la columna del fallback TGD,
+        # que `_aplicar_fallback_tgd` sobreescribe con la pregunta 63, asi que ahi la
+        # columna ya no es el resultado de esta spec y hay que calcularla.
+        est_todos = est_todos_por_col[spec["col"]]
+        if spec["col"] == COL_TGD_FALLBACK:
+            est_med = _estado_dx(form, spec["dx"], spec["estado"], corte, mes_ini, mes_fin,
+                                 instrumento=True)
+            activo_med = set(est_med.index[est_med["estado"] == "Activo"])
+        else:
+            activo_med = set(P_med.loc[P_med[spec["col"]] == "Activo", "Número"])
         dx_label = spec["col"].replace(" (form)", "")
         for run in brecha_runs:
             if run in est_todos.index and est_todos.loc[run, "estado"] == "Activo" and run not in activo_med:

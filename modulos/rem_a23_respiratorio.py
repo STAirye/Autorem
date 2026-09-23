@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.8
+# Version: 2.0.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -42,7 +42,7 @@ from programas.rem_utils import (norm, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any, _rango_mes, filtrar_mes,
                                  _mujer, _hombre,
-                                 grid as _grid, fecha_col, PUEBLO_VACIO,
+                                 grid as _grid, fecha_col, PUEBLO_VACIO, es_medico,
                                  ArchivoInvalido, Path, edad_anios, opcional)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 # cargar_atenciones (IRIS | Monitoreo admin) vive en rem_utils y se reexporta acá.
@@ -472,7 +472,7 @@ def cargar_otros(entrada, log=print):
             "legible, así que no se puede saber qué período cubre.\n\n"
             "Revisa que sea el export correcto y que esté SIN modificar "
             "(una columna de fecha reformateada a mano rompe la lectura).")
-    d["_med"] = d["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
+    d["_med"] = es_medico(d["INSTR"].map(norm))   # criterio unico: rem_utils.TOKEN_MEDICO
     d.attrs["condiciones_incompletas"] = incompletas
     return d, col
 
@@ -493,7 +493,7 @@ def _estamento_por_funcionario(od, aten, log=print):
         par = aten[["PROF", "INSTR"]].dropna()
         tabla.update({norm(p): i for p, i in zip(par["PROF"], par["INSTR"]) if norm(p) and norm(i)})
     od.loc[falta, "INSTR"] = od.loc[falta, "FUNC"].map(lambda f: tabla.get(norm(f), ""))
-    od["_med"] = od["INSTR"].map(norm).str.contains("MEDIC", regex=False, na=False)
+    od["_med"] = es_medico(od["INSTR"].map(norm))   # mismo criterio que al cargar
     quedan = od["INSTR"].map(norm).eq("")
     log(f"[a23] 'Otros Cronicos' sin INSTRUMENTO: estamento por funcionario en "
         f"{int(falta.sum() - quedan.sum())} de {int(falta.sum())} formulario(s)")
@@ -585,7 +585,7 @@ def _sala(idx, edad, aten, otros, estrat):
     gasma = last_val(valid["ASMA"], "ASMA_grav")
     tepoc = last_val(valid["EPOC"], "EPOC_tipo")
 
-    am = aten[aten["INSTR_n"].str.contains("MEDIC", regex=False, na=False)]
+    am = aten[es_medico(aten["INSTR_n"])]
     adx = lambda code: set(am.loc[am["DIAG_n"].str.contains(norm(code), regex=False, na=False), "RUN"])
     edx = (lambda code: set(estrat.index[estrat.str.contains(norm(code), regex=False, na=False)])) \
           if len(estrat) else (lambda code: set())

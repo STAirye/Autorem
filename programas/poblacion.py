@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.8
+# Version: 2.0.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -65,7 +65,7 @@ from programas.rem_utils import (
     norm, fecha_col, cargar_atenciones, cargar_canonico, MAPA_INSCRITOS,
     resolver_columnas, contiene_alguno, gestante_runs, PUEBLO_VACIO,
     OPENPYXL_OK, OPENPYXL_ERR, openpyxl, ArchivoInvalido, verificar_hoja_unica,
-    buscar_col, num_pregunta, encontrar_fila_encabezado, _rango_mes,
+    buscar_col, num_pregunta, encontrar_fila_encabezado, _rango_mes, TOKEN_MEDICO,
 )
 from programas import formatos
 from programas.rem_saludmental import DIAGNOSTICOS_CON_SUBTIPO, verificar_formulario_sm
@@ -128,6 +128,13 @@ TABLA_FR = [
 
 TODAS_LAS_SPECS = TABLA_FR + TABLA_DX
 
+# Las 28 columnas de diagnóstico/factor, en el orden de las specs. UNA sola lista,
+# porque la leen dos consumidores que TIENEN que estar de acuerdo: `_col_dx()` (el
+# orden de columnas de la planilla) y `_ingresado()` / `¿Pertenece?` (los números).
+# Con dos derivaciones, filtrar una spec en un lado dejaba una columna llena en la
+# hoja y un `¿Ingresado?`=NO al lado, callado.
+_COLS_DX = [s["col"] for s in TODAS_LAS_SPECS]
+
 # El DAX de 'Pertenece a PSM' lista 24 columnas, pero el de 'Ingresado' usa 28:
 # faltan las 4 de OH/drogas granulares (Pertenece solo tiene el agregado "OH y
 # Drogas"). Como el reporte 'Poblacion SM' del PowerBI trae Pertenece de PREFILTRO
@@ -148,6 +155,10 @@ _PERTENECE_FALTANTES_EN_DAX = ["OH Perjudicial (form)", "OH Dependiente (form)",
 _TGD_ESPECIFICAS = ["Autismo (form)", "Asperger (form)", "Rett (form)",
                     "Desintegrativo niñez (form)"]
 _Q_TGD_FALLBACK, _E_TGD_FALLBACK = 63, 64
+# La UNICA columna que `_aplicar_fallback_tgd` sobreescribe, o sea la unica cuyo valor
+# en la tabla final NO es el resultado de su propia spec. Quien compare la tabla contra
+# una pasada de `_estado_dx` tiene que saltearla (ver Brecha_Medico).
+COL_TGD_FALLBACK = "TGD (form)"
 
 # Preguntas que se leen del formulario histórico (unión de todo lo de arriba
 # + la 1, "madre de hijo <5", que NO tiene subtipo/estado propio).
@@ -198,7 +209,7 @@ COL_ACTIVIDAD = ["¿Ingresado?", "¿Pertenece? (24 DAX)", "¿Pertenece? (28 real
 
 
 def _col_dx():
-    cols = [s["col"] for s in TODAS_LAS_SPECS]
+    cols = list(_COLS_DX)
     for s in TODAS_LAS_SPECS:
         if s["subtipo_col"]:
             cols.append(s["subtipo_col"])
@@ -416,10 +427,24 @@ def _mes_offset(corte, n_meses):
     return pd.Timestamp(y, m, 1), pd.Timestamp(y, m, calendar.monthrange(y, m)[1])
 
 
-# Mascara "el formulario lo aplico un MEDICO" del ultimo `df` que la pidio. Es lo unico
-# de `_estado_dx` que NO depende del dx ni del estado, y se recalculaba en las 28 specs
-# de cada pasada (mas las de Brecha_Medico): 0.138 s de los 0.425 s que cuestan las
-# mascaras, medido sobre 30k filas.
+# Mascaras "la columna <col> contiene <token>" del ultimo `df` que las pidio: el
+# INSTRUMENTO medico y los tokens de las columnas ESTADO pasan TODOS por aca. Hubo un
+# rato en que el INSTRUMENTO tenia su propia memo, identica salvo por tener la columna y
+# el token clavados: dos globales y dos caminos de invalidacion para la misma regla, y
+# la primera invariante nueva (el `.copy()` de mas abajo) ya nacio en una y hubo que
+# copiarla a mano a la otra. Una sola.
+#
+# QUE se repetia:
+#   - el INSTRUMENTO medico es lo unico de `_estado_dx` que NO depende del dx ni del
+#     estado, y se recalculaba en las 28 specs de cada pasada (mas las de
+#     Brecha_Medico): 0.138 s de los 0.425 s que cuestan las mascaras, sobre 30k filas.
+#   - los tokens de ESTADO no saltan a la vista, porque dentro de una pasada de
+#     `construir_poblacion` cada columna ESTADO pertenece a UNA sola spec -- pero
+#     `_egreso_powerbi_bug` recorre ESTADOS_TODOS y calcula el EGRES de las 29 columnas,
+#     que son EXACTAMENTE las que `_estado_dx` vuelve a calcular una por spec. Entre eso
+#     y Brecha_Medico, cada mascara se calculaba hasta 4 veces sobre el mismo formulario.
+#     Medido sobre 60.000 formularios x 29 columnas: calcular las 29 EGRES dos veces
+#     cuesta 0,629 s contra 0,289 s memoizadas (2,2x), mismo resultado.
 #
 # Memo de UNA sola ranura y por WEAKREF, no un parametro. Las dos cosas a proposito:
 #   - un parametro `instr_ok=` dejaria pasar una mascara calculada sobre OTRO DataFrame,
@@ -431,35 +456,7 @@ def _mes_offset(corte, n_meses):
 #     corrida. `ref()` devuelve None cuando el df murio, nunca un objeto distinto, asi
 #     que una ranura vieja jamas se confunde con el df de ahora.
 # Una ranura basta: dentro de una corrida siempre es el MISMO `form` (construir_poblacion,
-# el fallback TGD y las dos pasadas de Brecha_Medico), y las specs con instrumento=False
-# ni siquiera la piden, asi que no la hacen rebotar.
-_MEDICO_MEMO = (None, None)   # (weakref al df, mascara)
-
-
-def _instr_medico(df):
-    """Mascara booleana 'INSTRUMENTO contiene MEDIC' de `df`, cacheada (ver arriba)."""
-    global _MEDICO_MEMO
-    ref, mascara = _MEDICO_MEMO
-    if mascara is None or ref() is not df:
-        mascara = df["INSTR_n"].str.contains("MEDIC", na=False)
-        _MEDICO_MEMO = (weakref.ref(df), mascara)
-    return mascara.copy()   # ver `_tok`: una mascara compartida se corrompe con un `&=`
-
-
-# Mascaras "la columna ESTADO contiene <token>", del ultimo `form` que las pidio. Mismo
-# mecanismo y mismo por que que `_instr_medico` (weakref, UNA ranura, derivada siempre
-# del `df` que se recibe): ver el bloque de arriba, no se repite aca.
-#
-# QUE se repetia, que no salta a la vista: dentro de una pasada de `construir_poblacion`
-# cada columna ESTADO pertenece a UNA sola spec, asi que parece que no hay repeticion --
-# pero `_egreso_powerbi_bug` recorre ESTADOS_TODOS y calcula el EGRES de las 29 columnas,
-# que son EXACTAMENTE las que `_estado_dx` vuelve a calcular una por spec. Y encima
-# `Brecha_Medico` (§8.6) repite la pasada entera y ademas llama a `_estado_dx` DOS veces
-# mas por spec, con el mismo dx y el mismo estado y solo cambiando `instrumento` -- y las
-# tres mascaras no dependen de ese toggle, asi que esas dos son identicas. Entre todo,
-# cada mascara se calculaba hasta 4 veces sobre el mismo formulario historico.
-# Medido sobre 60.000 formularios x 29 columnas: calcular las 29 EGRES dos veces cuesta
-# 0,629 s contra 0,289 s memoizadas (2,2x), mismo resultado.
+# el fallback TGD y las dos pasadas de Brecha_Medico).
 #
 # OJO, y por eso se devuelve una COPIA: `serie &= otra` en pandas SI muta la Serie en su
 # lugar (comprobado, no es como los `int`), asi que entregar el objeto cacheado dejaria
@@ -471,7 +468,8 @@ _TOKENS_MEMO = (None, None)   # (weakref al df, {(columna, token): mascara})
 
 
 def _tok(df, col, token):
-    """Mascara booleana '`df[col]` contiene `token`', cacheada por DataFrame (ver arriba)."""
+    """Mascara booleana '`df[col]` contiene `token`', cacheada por DataFrame (ver arriba).
+    `regex=False` como `rem_utils.es_medico`: todos los tokens son literales."""
     global _TOKENS_MEMO
     ref, cache = _TOKENS_MEMO
     if cache is None or ref() is not df:
@@ -479,8 +477,17 @@ def _tok(df, col, token):
         _TOKENS_MEMO = (weakref.ref(df), cache)
     clave = (col, token)
     if clave not in cache:
-        cache[clave] = df[col].str.contains(token, na=False)
+        cache[clave] = df[col].str.contains(token, regex=False, na=False)
     return cache[clave].copy()
+
+
+def _instr_medico(df):
+    """Mascara booleana 'el formulario lo aplico un MEDICO' de `df`, memoizada.
+
+    El criterio (que token, con que semantica) NO vive aca: es `rem_utils.TOKEN_MEDICO`,
+    el mismo que usa el A23 via `es_medico`. Este modulo solo le agrega la memo, porque
+    lo pide 28 veces por pasada."""
+    return _tok(df, "INSTR_n", TOKEN_MEDICO)
 
 
 def _estado_dx(df, dx, estado, corte, mes_ini, mes_fin, *, instrumento=True,
@@ -547,12 +554,12 @@ def _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log):
     est63 = _estado_dx(form, _Q_TGD_FALLBACK, _E_TGD_FALLBACK, corte, mes_ini, mes_fin)
     ya_tiene_tgd = P[_TGD_ESPECIFICAS].apply(lambda c: c.isin(["Activo", "Egresado"])).any(axis=1)
     fallback_estado = P["Número"].map(est63["estado"]).fillna("")
-    usa_fallback = (P["TGD (form)"] == "") & ~ya_tiene_tgd & (fallback_estado != "")
+    usa_fallback = (P[COL_TGD_FALLBACK] == "") & ~ya_tiene_tgd & (fallback_estado != "")
     n = int(usa_fallback.sum())
     if n:
         log(f"[poblacion] D1: {n} persona(s) recuperada(s) para «TGD (form)» vía la "
             f"pregunta 63 (fallback; la 91 no tiene columna en el PowerBI actual).")
-    P.loc[usa_fallback, "TGD (form)"] = fallback_estado[usa_fallback]
+    P.loc[usa_fallback, COL_TGD_FALLBACK] = fallback_estado[usa_fallback]
     return P
 
 
@@ -721,9 +728,7 @@ def _ultima_respuesta(form, pregunta, corte):
 # ======================================================================
 # Las 28 columnas de diagnóstico — motor compartido por las DOS pasadas
 # ======================================================================
-_COLS_DX = [s["col"] for s in TODAS_LAS_SPECS]
-
-
+# (`_COLS_DX` se define junto a TODAS_LAS_SPECS, arriba: lo comparte con `_col_dx()`.)
 def _ingresado(P):
     """Máscara booleana `¿Ingresado?`: CUALQUIER dx/factor quedó 'Activo'. Regla en UN
     solo lugar, porque la usan las dos pasadas y su DIFERENCIA es la Brecha_Medico."""
@@ -731,7 +736,7 @@ def _ingresado(P):
 
 
 def _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
-                        con_subtipos=True, divergencias=None):
+                        con_subtipos=True, divergencias=None, por_spec=None):
     """Escribe en `P` las columnas de los 28 diagnósticos/factores ('Activo' /
     'Egresado' / '') y aplica el fallback TGD (D1). Devuelve `P`.
 
@@ -749,6 +754,11 @@ def _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
     `divergencias` = lista donde acumular la auditoría §4.3 (None = no auditar; la
     Brecha no la necesita y así se salta también `_egreso_powerbi_bug`).
 
+    `por_spec` = dict donde dejar `{columna: tabla de _estado_dx}` de ESTA pasada. Para
+    quien además del veredicto necesita el POR QUÉ (Brecha_Medico usa 'instr' y 'fecha'):
+    sin esto volvía a llamar a `_estado_dx` spec por spec sobre el mismo formulario, con
+    los mismos argumentos, para reconstruir las tablas que esta función acababa de tirar.
+
     OJO con el fallback TGD: llama a `_estado_dx` SIN pasarle `instrumento`, o sea que
     la pregunta 63 sigue exigiendo médico aunque `exigir_medico` esté en False. Es el
     comportamiento que había antes de partir esta función en dos y se conserva TAL CUAL
@@ -763,6 +773,8 @@ def _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
                          instrumento=spec["instrumento"] and exigir_medico,
                          subtipo=spec["subtipo"] if con_subtipos else None,
                          subtipo2=spec["subtipo2"] if con_subtipos else None)
+        if por_spec is not None:
+            por_spec[spec["col"]] = est
         P[spec["col"]] = P["Número"].map(est["estado"]).fillna("")
         if con_subtipos and spec["subtipo_col"]:
             P[spec["subtipo_col"]] = P["Número"].map(est.get("subtipo", pd.Series(dtype=object))).fillna("")
@@ -783,7 +795,7 @@ def _poner_diagnosticos(P, form, corte, mes_ini, mes_fin, exigir_medico, log,
     return _aplicar_fallback_tgd(P, form, corte, mes_ini, mes_fin, log)
 
 
-def runs_ingresados_sin_filtro_medico(P, form, mes=None, log=print):
+def runs_ingresados_sin_filtro_medico(P, form, mes=None, log=print, con_detalle=False):
     """Los RUN que quedarían `¿Ingresado?`=SI con el filtro de estamento médico
     APAGADO. USO EXCLUSIVO de Brecha_Medico (§8.6 del plan) — nunca del P6.
 
@@ -802,11 +814,21 @@ def runs_ingresados_sin_filtro_medico(P, form, mes=None, log=print):
     `attrs['exigir_medico']`— ya no la vería. Quedaría un `¿Ingresado?` sin filtro de
     estamento dentro de un `P` que se declara filtrado, que es exactamente el número
     plausible y errado que ese guardarraíl existe para impedir. Un set no se pega por
-    descuido."""
+    descuido.
+
+    `con_detalle=True` devuelve `(runs, {columna: tabla de _estado_dx})` con las tablas
+    de ESTA misma pasada. Es para Brecha_Medico, que después necesita el 'instr' y la
+    'fecha' del formulario que ganó: sin esto las volvía a calcular spec por spec, sobre
+    el mismo formulario y con los mismos argumentos, justo después de que esta función
+    las tirara — ~25 `_estado_dx` de regalo, en la función que existe para no repetir
+    una pasada."""
     ini, fin = _rango_mes(mes)
     Q = pd.DataFrame({"Número": P["Número"].to_numpy()})
-    Q = _poner_diagnosticos(Q, form, fin, ini, fin, False, log, con_subtipos=False)
-    return set(Q.loc[_ingresado(Q), "Número"])
+    por_spec = {} if con_detalle else None
+    Q = _poner_diagnosticos(Q, form, fin, ini, fin, False, log, con_subtipos=False,
+                            por_spec=por_spec)
+    runs = set(Q.loc[_ingresado(Q), "Número"])
+    return (runs, por_spec) if con_detalle else runs
 
 
 # ======================================================================

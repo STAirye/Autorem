@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.9
+# Version: 2.0.10
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,7 +43,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.9"
+VERSION = "2.0.10"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -733,7 +733,10 @@ def _una_fila_por_atencion(d, log=print):
         if c in ("ACT", "DIAG"):
             out[c] = col.groupby(clave, sort=False).agg(_juntar).to_numpy()
             continue
-        lleno = col.map(norm).ne("").to_numpy()
+        # RUN ya viene normalizada de la guarda de arriba (`run`): normalizarla de
+        # nuevo seria una segunda pasada completa sobre la columna mas grande del
+        # frame, y ademas dos definiciones de "vacio" para la misma columna.
+        lleno = (run if c == "RUN" else col.map(norm)).ne("").to_numpy()
         llena = (pd.Series(np.where(lleno, pos, len(d)), index=d.index)
                  .groupby(clave, sort=False).min().to_numpy())
         out[c] = col.to_numpy()[np.where(llena < len(d), llena, primera)]
@@ -967,13 +970,21 @@ def aviso_fuera_de_grid(sub, bandas, casilla, log=print):
             "Ubicar esas filas en el detalle y registrarlas a mano en el REM")
 
 
-def grid(sub, bandas, lbls, con_sexo=True):
+def grid(sub, bandas, lbls, con_sexo=True, bandas_idx=None):
     """Fila de conteos en el ORDEN del template: Ambos·Hombres·Mujeres y luego cada
     banda × sexo (o solo total por banda si con_sexo=False). `sub` = DataFrame con
-    columnas 'sexo' y 'edad'."""
+    columnas 'sexo' y 'edad'.
+
+    `bandas_idx` = secuencia de índices de banda (o None por fila) ya calculados por el
+    llamador, en el orden POSICIONAL de `sub`. Para quien ya clasificó la edad y tendría
+    que convertirla de vuelta a una edad representativa solo para que esta función la
+    volviera a clasificar (el P6: ~45 filas × cada persona). Con `bandas_idx`, la
+    columna 'edad' de `sub` no se lee."""
+    import pandas as pd
     hom = sub["sexo"].map(_hombre)
     muj = sub["sexo"].map(_mujer)
-    bi = sub["edad"].map(lambda x: _band_idx(x, bandas))
+    bi = (sub["edad"].map(lambda x: _band_idx(x, bandas)) if bandas_idx is None
+          else pd.Series(list(bandas_idx), index=sub.index, dtype=object))
     if con_sexo:
         out = {"Ambos": len(sub), "Hombres": _isum(hom), "Mujeres": _isum(muj)}
         for i, l in enumerate(lbls):
@@ -1234,6 +1245,22 @@ def contiene_alguno(serie, subs):
     return m
 
 
+# Token del estamento MEDICO dentro de INSTRUMENTO, ya normalizado. Es el criterio que
+# decide la poblacion SALA / Seccion G del A23 y, via `exigir_medico`, el `¿Ingresado?`
+# del P6 -- y la Brecha_Medico es por definicion la DIFERENCIA entre dos pasadas de este
+# mismo criterio. Estaba escrito a mano en cuatro lugares, con tres ortografias y sin
+# ponerse de acuerdo en `regex=`: si RAYEN cambia la etiqueta (un 'PARAMEDICO' que haya
+# que excluir, una variante nueva), el que la arregle tiene que encontrar UN lugar.
+TOKEN_MEDICO = "MEDIC"
+
+
+def es_medico(serie_norm):
+    """Mascara booleana 'el INSTRUMENTO es de un medico', sobre una serie YA
+    normalizada (regla 4). `programas/poblacion` la memoiza por DataFrame con el
+    mismo token (`_instr_medico`), porque la pide 28 veces por pasada."""
+    return serie_norm.str.contains(TOKEN_MEDICO, regex=False, na=False)
+
+
 def por_actividad(A, mascara):
     """Aplica `mascara(serie_norm) -> Series[bool]` a CADA actividad de la celda
     canónica (partida por `SEP_ACTIVIDADES`) y devuelve el OR por atención.
@@ -1252,7 +1279,11 @@ def por_actividad(A, mascara):
     import pandas as pd
     if not len(A):
         return pd.Series([], dtype=bool, index=A.index)
-    partes = A.astype(str).str.split(";").explode().str.strip()
+    # Por SEP_ACTIVIDADES y no un ";" a mano: es el MISMO separador con el que
+    # `_una_fila_por_atencion` une la celda, y si alguna vez cambia (un nombre de
+    # actividad con ";" adentro), un split desincronizado no falla -- deja de partir
+    # y devuelve callado el comportamiento de celda unida que este docstring describe.
+    partes = A.astype(str).str.split(SEP_ACTIVIDADES.strip()).explode().str.strip()
     return mascara(partes).groupby(level=0).any().reindex(A.index, fill_value=False)
 
 
