@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.10
+# Version: 2.0.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -116,7 +116,20 @@ _RESP_BASE = ["REMA23 Ira Alta", "REMA23 Influenza", "REMA23 Neumonia",
 
 
 def _sino(index, runs):
-    return pd.Series(index.isin(set(runs)), index=index).map({True: "SI", False: "NO"})
+    """Columna 'SI'/'NO' sobre `index`: SI para los RUN que estan en `runs`.
+
+    UNICO lugar donde se escribe ese mapeo (2.0.11). Estaba tres veces en este archivo
+    -- aca, una closure `cs` dentro de `_sala` y una copia inline en el bucle de la
+    Seccion G --, o sea que cambiar la etiqueta (o que un `runs` vacio dejara '' en vez
+    de 'NO') arreglaba una columna y dejaba las otras nueve con el valor viejo: una
+    hoja del A23 con dos vocabularios para el mismo booleano, sin fallar."""
+    return _sino_mask(pd.Series(index.isin(set(runs)), index=index))
+
+
+def _sino_mask(mask):
+    """Gemelo de `_sino` para quien YA tiene la mascara booleana (VDI Respi, que la
+    arma cruzando dos columnas ya calculadas)."""
+    return mask.map({True: "SI", False: "NO"})
 
 
 def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=print):
@@ -276,8 +289,8 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
                 "completo (con las preguntas '¿Padece...?' y su ESTADO, aplicado por "
                 f"médico: {int(od['_med'].sum())} de {len(od)} lo son) y que el RUN venga en "
                 "el mismo formato que en el ADA.")
-        vdi =fer.pop("REMA23 VDI Respi (aten)").eq("SI") & fer["SALA Ingresado"].eq("SI")
-        fer["REMA23 VDI Respi"] = vdi.map({True: "SI", False: "NO"})
+        vdi = fer.pop("REMA23 VDI Respi (aten)").eq("SI") & fer["SALA Ingresado"].eq("SI")
+        fer["REMA23 VDI Respi"] = _sino_mask(vdi)
         om = od[(od["FECHA"] >= ini) & (od["FECHA"] <= fin)]
         cdv = om.sort_values("FECHA").groupby("RUN")["CDV"].last()
         fer["REMA23 Encuesta calidad de vida"] = cdv.reindex(fer.index).fillna("")
@@ -301,7 +314,7 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
                 "umbral de >=2 años (11m29d); para <2 años el umbral es menor",
                 "Revisar la FECHA DE NACIMIENTO de esos RUN en el export"))
         for pref, _lbl in _G_COND:
-            fer["Inasistente " + pref] = pd.Series(fer.index.isin(gflags[pref]), index=fer.index).map({True: "SI", False: "NO"})
+            fer["Inasistente " + pref] = _sino(fer.index, gflags[pref])
         fer.attrs["seccion_g"] = gcounts
         log("[a23] Sección G inasistentes crónicos: " + " · ".join(
             f"{lbl.split()[0]}={d['Total']}" for lbl, d in gcounts.items()))
@@ -600,7 +613,7 @@ def _sala(idx, edad, aten, otros, estrat):
     fq   = adx("E84") | edx("E84") | fv["FQ"]
     ing  = (fv["SBOR"] & lt5) | (fv["ASMA"] - sbor) | (fv["EPOC"] & ge40) | fv["OTRAS"] | fv["O2"] | fv["AV"] | fv["FQ"]
 
-    def cs(runs): return pd.Series(idx.isin(runs), index=idx).map({True: "SI", False: "NO"})
+    def cs(runs): return _sino(idx, runs)   # mismo mapeo que el resto del modulo
     s = pd.DataFrame(index=idx)
     s["SALA Ingresado"] = cs(ing)
     s["SALA SBOR"] = cs(sbor); s["SALA ASMA"] = cs(asma); s["SALA EPOC"] = cs(epoc)

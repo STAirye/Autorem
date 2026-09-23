@@ -10,6 +10,49 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.11] — 2026-09-23
+
+### Cambiado
+
+**Ronda de SIMPLIFICACIÓN sobre la 2.0.10** (17ª pasada de revisión). Los cuatro
+hallazgos de cabecera: en los cuatro, la misma regla estaba escrita dos o tres veces, y
+en dos de ellos la doc ya afirmaba que quedaba una sola copia. Sin cambio de números:
+**329 tests** en verde, iguales.
+
+- **El «no es un .xlsx» del CLI sale de `runner`, no de una copia.** `autorem.py` tenía
+  su propio `_MSG_NO_XLSX` + `_es_error_formato`, **byte a byte** iguales a los de
+  `gui/runner.py` (comparados por AST) — aunque el hallazgo #14 del merge de la 2.0
+  decía que quedaba UNA sola copia. Con dos, el día que `runner` reconozca una excepción
+  nueva o mejore el texto, el CLI se queda con el árbol viejo y un `.html` disfrazado
+  sale por el `raise` crudo de `main_cli` en vez del mensaje amable, que es justo lo que
+  esa rama existe para evitar. Ahora se importan; no cuesta nada, porque `gui.app` ya
+  entra a nivel de módulo. (`CLAUDE.md` §13 apuntaba al símbolo que se fue: ahora cita
+  `runner.es_error_formato`.)
+- **Un solo mapeador `SI`/`NO` en el A23.** Estaba tres veces en el mismo archivo: el
+  helper `_sino`, una closure `cs` dentro de `_sala`, y una copia inline en el bucle de
+  la Sección G. O sea que cambiar la etiqueta arreglaba una columna y dejaba las otras
+  nueve con el valor viejo — una hoja del A23 con dos vocabularios para el mismo
+  booleano, sin fallar. Queda `_sino` (por RUN) + `_sino_mask` (para quien ya tiene la
+  máscara, como VDI Respi).
+- **`estamentos` deja de barrer la hoja dos veces.** `detectar(ws)` copiaba línea por
+  línea el barrido de ancla de `rem_utils.encontrar_fila_encabezado` — mismo tope, mismo
+  `[norm(c.value) for c in ws[r]]`, misma `ANCLA` — y se llamaba DOS líneas antes que
+  él: la hoja se recorría y se normalizaba entera dos veces para responder lo mismo, con
+  dos criterios que podían separarse. Ahora es UNA llamada y el `sin_encabezado`
+  genérico se traduce al mensaje de este reporte (`_MSG_NO_ES_CUPOS`); la categoría
+  sigue siendo `no_estamentos`, que es lo que amarra el test.
+- **`mask_tributa_ada` delega en `contiene_alguno`.** Armaba a mano la misma reducción
+  OR que el helper compartido, que es además el idioma de la regla 4 y lo que ya usan
+  `poblacion`, el rescate y el A23. Escrita aparte, una corrección en `contiene_alguno`
+  no alcanzaba a la máscara que decide **qué tributa a SM** — la que alimentan el
+  Trabajo Perdido y el diálogo de dotación de la GUI.
+
+Lo que esa misma pasada encontró y **no** se tomó (10 hallazgos más: `_PUEBLO_VACIO`
+como alias de un solo uso, la edad desde FNAC calculada de tres formas, `¿Originario o
+Migrante?` derivado con dos reglas distintas entre A23 y `poblacion`, `runs_fr`
+calculado dos veces en `construir_p6`, los cuatro nombres para los dos valores de
+`_rango_mes`…) está anotado en el §12 de [CLAUDE.md](CLAUDE.md).
+
 ## [2.0.10] — 2026-09-23
 
 ### Cambiado

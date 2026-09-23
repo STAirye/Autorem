@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -62,16 +62,19 @@ ANCLA = ["PROFESIONAL", "INSTRUMENTO"]
 MAX_FILAS_HEADER = 40
 
 
-def detectar(ws):
-    """True si la hoja parece el reporte de Utilización de Cupos (fila con
-    'Profesional' e 'Instrumento' en el encabezado)."""
-    tope = min(ws.max_row, MAX_FILAS_HEADER)
-    anc = [norm(t) for t in ANCLA]
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
-        if all(any(t in v for v in vals) for t in anc):
-            return True
-    return False
+# El «¿es este el reporte?» y el «¿dónde está su encabezado?» son LA MISMA pregunta:
+# la fila con PROFESIONAL e INSTRUMENTO. Hasta la 2.0.10 había un `detectar(ws)` que
+# copiaba línea por línea el barrido de `rem_utils.encontrar_fila_encabezado` (mismo
+# tope, mismo `[norm(c.value) for c in ws[r]]`, misma ANCLA) y se llamaba DOS líneas
+# antes que él: la hoja se recorría y se normalizaba entera dos veces para responder lo
+# mismo, y con dos criterios que podían separarse (si `encontrar_fila_encabezado`
+# ampliaba su barrido, la copia seguía rechazando antes). Ahora es UNA llamada, y el
+# 'sin_encabezado' genérico se traduce al mensaje de este reporte.
+_MSG_NO_ES_CUPOS = (
+    "Este archivo no parece el reporte de 'Utilización de Cupos': no "
+    "encontré las columnas 'Profesional' e 'Instrumento'.\n"
+    "Bájalo del Administrativo (Utilización de Cupos), copia la tabla a "
+    "un Excel y guárdalo como .xlsx.")
 
 
 def cargar_estamentos(entrada, log=print):
@@ -85,14 +88,10 @@ def cargar_estamentos(entrada, log=print):
             f"(detalle: {OPENPYXL_ERR})")
     wb = openpyxl.load_workbook(entrada)
     ws = wb.active
-    if not detectar(ws):
-        raise ArchivoInvalido(
-            "no_estamentos",
-            "Este archivo no parece el reporte de 'Utilización de Cupos': no "
-            "encontré las columnas 'Profesional' e 'Instrumento'.\n"
-            "Bájalo del Administrativo (Utilización de Cupos), copia la tabla a "
-            "un Excel y guárdalo como .xlsx.")
-    hidx = encontrar_fila_encabezado(ws, ANCLA, MAX_FILAS_HEADER)
+    try:
+        hidx = encontrar_fila_encabezado(ws, ANCLA, MAX_FILAS_HEADER)
+    except ArchivoInvalido as e:   # 'sin_encabezado' -> el mensaje de ESTE reporte
+        raise ArchivoInvalido("no_estamentos", _MSG_NO_ES_CUPOS) from e
     hn = [norm(ws.cell(row=hidx, column=c).value) for c in range(1, ws.max_column + 1)]
     prof_c = buscar_col(hn, exacto="PROFESIONAL") or buscar_col(hn, tokens=["PROFESIONAL"])
     inst_c = buscar_col(hn, exacto="INSTRUMENTO") or buscar_col(hn, tokens=["INSTRUMENTO"])

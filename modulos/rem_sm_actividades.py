@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.0
+# Version: 2.0.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,6 +48,7 @@ import pandas as pd
 
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
+                                 contiene_alguno as _any,
                                  marcar_demografia, gestante_runs, trans_map,
                                  atenid_multiprofesional, _rango_mes, filtrar_mes, opcional,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
@@ -233,11 +234,14 @@ ADA_TRIBUTAN = [
 
 
 def mask_tributa_ada(A):
-    """A = Serie ACT_n (ya normalizada). True si la actividad tributa a algún REM SM."""
-    m = pd.Series(False, index=A.index)
-    for pat in ADA_TRIBUTAN:
-        m |= _all(A, pat)
-    return m
+    """A = Serie ACT_n (ya normalizada). True si la actividad tributa a algún REM SM.
+
+    Por `contiene_alguno` (2.0.11) y no un OR a mano: es la MISMA reducción, y es el
+    idioma que ya usan poblacion.py, el rescate y el A23 (regla 4). Escrita acá aparte,
+    una corrección en el helper compartido (el `na=`, o la Serie vacía) no alcanzaba a
+    la máscara que decide qué tributa a SM -- la que alimentan el Trabajo Perdido y el
+    diálogo de dotación de la GUI."""
+    return _any(A, ADA_TRIBUTAN)
 
 
 # -- Máscaras del A32, POR ACTIVIDAD -------------------------------------------

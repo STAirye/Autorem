@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.0
+# Version: 2.0.11
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -56,6 +56,14 @@ import programas.rem_saludmental as sm
 # aparte, por collect_submodules('gui.paginas') en autoREM.spec (se descubren en
 # runtime con pkgutil, así que el análisis estático no las ve).
 from gui import app as gui_app
+# El «no es un .xlsx» del CLI (congelado, §12) SALE DE `runner`, no se copia acá: hasta
+# la 2.0.10 este archivo tenía su propio `_MSG_NO_XLSX` + `_es_error_formato`, byte a
+# byte iguales a los de `gui/runner.py`, aunque el hallazgo #14 del merge decía que
+# quedaba UNA sola copia. Con dos, el día que `runner` reconozca una excepción nueva (o
+# mejore el texto), el CLI se queda con el árbol viejo y un .html disfrazado sale por el
+# `raise` crudo de `main_cli` en vez del mensaje amable -- que es justo lo que esa rama
+# existe para evitar. Importarlo no cuesta nada: `gui.app` ya entra acá arriba.
+from gui.runner import es_error_formato as _es_error_formato, _MSG_NO_XLSX
 
 # -- Registro de módulos de tarea --------------------------------------
 from modulos import rem_a05_o_egresos
@@ -132,29 +140,6 @@ def _resumen_texto(resultados, salida):
     if salida:
         texto += f"\n\nGuardado en:\n{salida}"
     return texto
-
-
-# -- Lo único que sobrevive de la GUI 1.x: los usa el CLI (congelado, CLAUDE.md
-#    §12). La interfaz vive en gui/ desde la 2.0.0, y la 1.x quedó congelada en
-#    legacy/autorem_gui_tk_1.9.18.py.gz (plan de la GUI 2.0 §8).
-# RAYEN/IRIS exportan en .xls, .csv, .html y .xlsx; la herramienta lee SOLO .xlsx.
-_MSG_NO_XLSX = (
-    "El archivo no es un Excel .xlsx válido.\n\n"
-    "RAYEN/IRIS entregan varios formatos (.xls antiguo, .csv, .html) y esta "
-    "herramienta lee SOLO .xlsx.\n\n"
-    "Ábrelo en Excel y usa «Guardar como» -> «Libro de Excel (.xlsx)», y carga ese.\n"
-    "(Si un .xlsx te da este error, suele ser un .html/.xls disfrazado: mismo arreglo.)")
-
-
-def _es_error_formato(e):
-    """True si la excepción viene de intentar abrir algo que NO es un .xlsx real
-    (extensión no soportada por openpyxl, o zip corrupto = html/xls disfrazado)."""
-    import zipfile
-    try:
-        from openpyxl.utils.exceptions import InvalidFileException
-    except Exception:   # noqa: BLE001
-        InvalidFileException = ()
-    return isinstance(e, (zipfile.BadZipFile,) + ((InvalidFileException,) if InvalidFileException else ()))
 
 
 # +===================================================================+

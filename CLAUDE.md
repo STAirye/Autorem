@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.10** (§9). **329 tests.**
+Versión **2.0.11** (§9). **329 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -187,7 +187,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.10**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.11**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -349,6 +349,25 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   **Antes de tomar cualquiera de estos, PERFILAR.** En las dos rondas el orden que salía
   de leer el código estuvo mal las tres veces que se contrastó con un perfil.
 
+- **Simplificación: lo que quedó de la ronda 2.0.11** (17ª pasada, ángulo simplificación
+  y reuso sobre el codebase completo). Los cuatro de cabecera se arreglaron en esa
+  versión (ver [CHANGELOG](CHANGELOG.md)); estos diez siguen abiertos. Ninguno cambia un
+  número: son duplicaciones que **se van a separar** cuando alguien toque una de las dos
+  copias. Van juntos acá para no volver a buscarlos:
+
+  | Qué | Dónde |
+  |---|---|
+  | «basenames de uno-o-varios inputs» escrito inline 6 veces en 4 módulos, y `rescate._nombres` ya ES ese helper (con la guarda de DataFrame que a los otros les falta) | `a23:174,177` · `sm_actividades:501,503` · `trabajo_perdido:372` · mover `_nombres` a `rem_utils` |
+  | Edad desde FNAC calculada de **tres** formas (dos con `// 365.25`, una con `.apply` fila a fila); las tres tienen que dar lo mismo, porque una llena la Sección G y otra decide las bandas del P6 | `a23._edad` · `a23._seccion_g` · `poblacion:900` -> un `rem_utils.edad_al()` |
+  | `¿Originario o Migrante?` — MISMA columna de salida, MISMOS tres valores, dos reglas distintas: `contains("CHILEN")` vs `== "CHILENA"`. Una nacionalidad `CHILENO` sale chileno en el A23 y **Migrante** en Ferrada | `a23._origen:345` vs `poblacion:906-911` |
+  | `runs_fr` se arma con un bucle y se vuelve a armar 30 líneas después con `set().union(*[...])`: dos ortografías de la misma unión, la segunda pisa a la primera | `rem_sp_p6_poblacion:615-618` y `:648` |
+  | Cuatro nombres para los dos valores de `_rango_mes` (`fin` muerto tras la línea que lo aliasa; `mes_ini`/`mes_fin` con un uso cada uno) | `poblacion.construir_poblacion:851` |
+  | El `span` de fechas con su guarda contra NaT, copiado idéntico 4 veces (la guarda es lo que se olvida en la 5ª copia) | `a23:155` · `sm_actividades:533` · `trabajo_perdido:361` · `poblacion:409` |
+  | `_PUEBLO_VACIO = PUEBLO_VACIO`, alias privado con UN uso 33 líneas más abajo, en el mismo archivo. El comentario promete una retrocompat que no existe | `rem_utils:1109` |
+  | `g` / `gmask` / `cero`: tres helpers de grilla donde `gmask` sola cubre los tres casos (`sub(None)` ya maneja el vacío), con `BANDAS_A23`/`LBL_A23` repetidas en los tres cuerpos | `a23._tablas_a23:766` |
+  | El filtro base del P6 escrito dos veces en la misma función (`_relevante` vs `f_estado & f_a12m & f_ingr`). Editar una y no la otra deja `Revisar_Administrativo` acusando gente con un criterio que ya no es el del P6 | `rem_sp_p6_poblacion:256` y `:282-285` |
+  | `detectar_formato` / `detectar_formato_filas`: forwarders de una línea a `formatos.detectar_eje*`, misma clase de envoltorio vacío que la ronda 12 borró. Un solo llamador externo (`a05.py:122`) | `rem_saludmental:305,310` |
+
 **Dev / repo**
 - **Pestaña de Consultas de catálogos** + enchufar `en_rango` en el A23.
 - **Deuda:** `rem_utils.grid()` dispara `Pandas4Warning` (`m & muj` con dtype mixto);
@@ -377,5 +396,6 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 - **Excel abierto:** `wb.save()` → `PermissionError`, ya manejado con un mensaje amable.
 - **Formato distinto de `.xlsx`:** la herramienta lee solo `.xlsx`. El HTML disfrazado
   de `.xlsx` típico de RAYEN (`BadZipFile`) y los `.xls` caen en el diálogo «No es un
-  .xlsx» (`_es_error_formato`).
+  .xlsx» (`runner.es_error_formato` + `runner._MSG_NO_XLSX`, **un solo lugar** desde la
+  2.0.11: el CLI los importa de ahí en vez de tener su copia).
 - **`norm()` mapea NaN → `''`**: `nan or ''` es truthy y daba `"NAN"`, inflando flags.
