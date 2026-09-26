@@ -257,6 +257,10 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   textos se revisan junto con él.
 - **Validar la familia población** (§2.1): la brecha `Ingresado` del P6 y el rescate
   contra datos reales.
+- **Actualizar el Python del PC del trabajo a uno con Tcl 9** (decisión del autor,
+  sep-2026): el `tk.tcl` intermitente de los tests es un bug de Tcl 8.6 que Tcl 9 no
+  tiene. Pasos (verificar el Tcl, reinstalar hooks, compilar el `.exe`) en
+  [docs/tk_tcl_intermitente.md](docs/tk_tcl_intermitente.md) §7.
 
 **Módulos**
 - **`rem_a26_domiciliaria`** (A26·A1): las 24 VDI del PADDS por subtipo × visita +

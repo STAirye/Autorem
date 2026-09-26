@@ -121,8 +121,9 @@ Antes de escribir un helper acá, buscarlo en:
 ids únicos, orden declarado, `extras[].despues_de` apuntando a un input real, una sola
 `ancla_salida`, callables invocables) y `tests/test_gui_construccion.py` **arma la ventana de
 verdad** y bombea eventos — es lo que cazó el `after()` desde el hilo. Las dos necesitan
-`customtkinter`; en la corrida completa de `pytest` sale a veces un `tk.tcl` intermitente de
-`test_gui_construccion` (pasa solo, se investiga aparte).
+`customtkinter`; con **Tcl 8.6** sale a veces un `tk.tcl` intermitente en
+`test_gui_construccion`: es un bug de Tcl 8.6 con la captura por fd de pytest, que Tcl 9
+no tiene ([docs/tk_tcl_intermitente.md](../docs/tk_tcl_intermitente.md)).
 
 Convención al escribir estos tests: **no comparar texto plano que ve el usuario** — ver
 [tests/CLAUDE.md](../tests/CLAUDE.md). Si el test necesita el texto, éste vive UNA vez como

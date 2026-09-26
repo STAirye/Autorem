@@ -12,7 +12,9 @@ Version: 2.0.11
 
 > **EN CURSO** — abierto 2026-09-23. **Causa encontrada y reproducida sin pytest**
 > (§6, «El mecanismo»): la captura por fd de pytest cierra los std handles que Tcl
-> tiene anotados, y Windows los reusa. Falta: el arreglo (§7) y confirmarlo en la casa. Lo citan `gui/CLAUDE.md` (Tests) y
+> tiene anotados, y Windows los reusa. **Es un bug de Tcl 8.6 que Tcl 9 ya no tiene**
+> (ronda 6, 2026-09-26): el arreglo de fondo es actualizar el Python del PC del trabajo
+> a uno con Tcl 9 (§7). Lo citan `gui/CLAUDE.md` (Tests) y
 > `docs/review_gui-2.0_pendiente.md` §3.
 
 ## 1. El síntoma
@@ -28,11 +30,15 @@ This probably means that tk wasn't installed properly.
   distintos. Aislado, el test pasa.
 - En **los dos PCs**, con builds muy distintos:
 
-  | | Trabajo | Casa |
-  |---|---|---|
-  | Python | 3.14.3, Python install manager (`pythoncore-3.14-64`) | 3.9, python.org |
-  | Tcl/Tk | 8.6.15 | (anotar al correr el repro) |
-  | Antivirus | Windows Defender | Windows Defender |
+  | | Trabajo | Casa | BOREAS (notebook) |
+  |---|---|---|---|
+  | Python | 3.14.3, Python install manager (`pythoncore-3.14-64`) | 3.9, python.org | 3.14.7 · 3.13.15 · 3.9.13, python.org |
+  | Tcl/Tk | 8.6.15 | 8.6.12 (el de 3.9.13) | **9.0.4** (3.14.7) · 8.6.15 (3.13) · 8.6.12 (3.9) |
+  | Antivirus | Windows Defender | Windows Defender | Windows Defender |
+
+  La casa quedó fuera de servicio el 25-sep (placa/CPU, en reparación). BOREAS la
+  reemplaza: i7-7500U 2c/4t, 6 GB, con los tres Python lado a lado (3.13 y 3.9 sin PATH,
+  en venvs `~/.venvs/autorem-313` / `-39`), lo que permite comparar Tcl en la misma máquina.
 
 ## 2. Las veces que salió (con evidencia)
 
@@ -249,6 +255,27 @@ Con el mecanismo confirmado, A/B/C ya no aplican. Quedan dos candidatos:
 
 La app real y el `.exe` **no** están afectados: nada hace `dup2` sobre sus std fd.
 
+**Desde la ronda 6 hay un tercero, y es el de fondo: Tcl 9.** El bug es de Tcl 8.6;
+con 9.0.4 da 0 fallas incluso leyendo los `.tcl` del disco. Decisión del autor
+(2026-09-26): **actualizar todo el Python del PC del trabajo**. Al hacerlo:
+
+1. Verificar el Tcl que quedó, no suponerlo: `python -c "import tkinter;
+   print(tkinter.Tcl().eval('info patchlevel'))"` tiene que decir `9.x`. El dato de
+   que disponemos: el 3.14.3 del Python install manager trae 8.6.15 y el 3.14.7 del
+   instalador python.org trae 9.0.4 -- no está verificado si la diferencia es el canal
+   o la versión de parche.
+2. Reinstalar los hooks (`python tools/hooks_git.py --instalar`): llevan la ruta
+   absoluta del `python.exe`.
+3. Correr `matriz_pytest.py 5 base` ahí: tiene que dar 0/5 (antes, 8/8). **Este paso es
+   la prueba**, no un trámite: BOREAS no reproduce la falla de la suite ni en 8.6
+   (ronda 7), así que el trabajo es la única máquina donde se ve el arreglo en la suite.
+4. **Compilar el `.exe` y probarlo** (§12, «Cerrar la 2.0 a ojo»): un Tcl 9 cambia lo
+   que PyInstaller empaqueta (las librerías pasan a ir dentro de las DLL). Que la suite
+   pase en BOREAS con Tcl 9 cubre la GUI desde Python, no el bundle.
+
+Con eso el pin y `--capture=sys` sobran. El pin queda como plan B solo si algún PC
+tiene que seguir en 8.6.
+
 ### Ronda 4 — el pin sobre la suite real
 
 Trabajo, 2026-09-23: `matriz_pytest.py 8 base,pin`, intercaladas (mismas condiciones
@@ -260,3 +287,69 @@ de máquina para las dos):
 | pin | **0/8** |
 
 p ≈ 0,0002. **El pin arregla la suite real en el PC de trabajo.** Falta la casa (3.9).
+
+### Ronda 5 — BOREAS con Tcl 9 (2026-09-26, Python 3.14.7, Tcl 9.0.4)
+
+Primera máquina con Tcl 9. Ojo: en Tcl 9 las librerías vienen **dentro de las DLL**
+(`info library` = `//zipfs:/lib/tcl/tcl_library`, montado desde `tcl90.dll` /
+`tcl9tk90.dll`), así que ningún `source` de un `.tcl` pasa por `CreateFileW`.
+
+| Prueba | Resultado |
+|---|---|
+| suite completa (`pytest tests -q`) | 331 passed |
+| `repro_min.py dup2 200` | 0 fallas |
+| `matriz_pytest.py 5 base,pin` | base **0/5** · pin 0/5 |
+
+Deja dos lecturas posibles: zipfs esquiva el bug (no hay handle de archivo que confundir)
+o Tcl 9 lo arregló en `tclWinChan.c`. La ronda 6 las separa.
+
+### Ronda 6 — los tres Tcl en la misma máquina (BOREAS, 2026-09-26)
+
+`repro_min.py dup2 200`, 3 corridas por Tcl. «Tcl 9 disco» = las librerías de Python
+3.14.7 extraídas de `tcl/libtcl9.0.4.zip` / `libtk9.0.4.zip` y forzadas con
+`TCL_LIBRARY`/`TK_LIBRARY` (verificado: `file system $tk_library` -> `native NTFS`).
+
+| Tcl | Fallas por corrida |
+|---|---|
+| 9.0.4, zipfs (ronda 5) | 0 |
+| **9.0.4, leyendo de disco** | **0 · 0 · 0** |
+| 8.6.15 (Python 3.13.15) | 2 · **crash** · 2 |
+| 8.6.12 (Python 3.9.13) | 1 · **crash** · 2 |
+
+- **Lo arregló Tcl 9, no zipfs**: los mismos `.tcl` desde NTFS, con el `dup2` encima,
+  dan 0 de 600.
+- **El bug de 8.6 no es de una máquina**: BOREAS falla igual que el trabajo, crash duro
+  incluido (proceso muerto sin escribir resultado, exit 3).
+- Apareció dos veces `invalid command name "tcl_findLibrary"`, la firma de
+  matplotlib#29119 que el mecanismo predecía para cuando el handle reusado es el del
+  viejo stdin (permisos que calzan, `.tcl` leído vacío). Era predicción; ahora es
+  observación.
+- Los demás mensajes, los de siempre: `init.tcl`, `auto.tcl`, `ttk/ttk.tcl`.
+
+### Ronda 7 — el pin sobre la suite real en Tcl 8.6 (BOREAS)
+
+`matriz_pytest.py 5 base,pin` con los venvs 3.13 (8.6.15, pytest 9.1.1) y 3.9 (8.6.12,
+pytest 8.4.2), intercaladas; y la suite completa en 3.9.
+
+| Tcl | base | pin |
+|---|---|---|
+| 8.6.15 (3.13) | **0/5** | 0/5 |
+| 8.6.12 (3.9) | **0/5** | 0/5 |
+| suite completa 3.9 | 331 passed | |
+
+**En BOREAS la suite real no gatilla el bug, ni en 8.6.** El repro mínimo sí (ronda 6), así
+que el mecanismo está en la máquina; lo que cambia es con cuánta frecuencia la suite le
+achunta a un handle reusado. En el trabajo la suite falla MUCHO más que el repro mínimo
+(8/8 corridas de ~30 ventanas, contra ~1 % por ventana en `repro_min`); acá rinde menos que
+el repro. No se investigó por qué (qué valores reusa Windows depende de todo lo demás que
+el proceso abre y cierra).
+
+Consecuencias:
+- **La ronda 5 no prueba nada sobre la suite con Tcl 9**: si BOREAS no falla ni en 8.6, su
+  0/5 en Tcl 9 no distingue. La evidencia de que Tcl 9 lo arregla es la del repro mínimo
+  (ronda 6: 0/600 contra 1-2 fallas + crash por corrida en 8.6), que sí ejercita el
+  mecanismo.
+- **La prueba definitiva de la suite es en el trabajo** (§7, paso 3): la máquina donde
+  base da 8/8 tiene que dar 0/5 con Tcl 9.
+- Tampoco se pudo confirmar acá el pin sobre la suite real en 3.9 (no hay falla que
+  quitar). Queda la ronda 4 (trabajo, 0/8 contra 8/8) como su única prueba.
