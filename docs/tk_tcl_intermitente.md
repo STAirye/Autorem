@@ -14,7 +14,8 @@ Version: 2.0.11
 > (§6, «El mecanismo»): la captura por fd de pytest cierra los std handles que Tcl
 > tiene anotados, y Windows los reusa. **Es un bug de Tcl 8.6 que Tcl 9 ya no tiene**
 > (ronda 6, 2026-09-26): el arreglo de fondo es actualizar el Python del PC del trabajo
-> a uno con Tcl 9 (§7). Lo citan `gui/CLAUDE.md` (Tests) y
+> a uno con Tcl 9 (§7). **Confirmado en el trabajo** (ronda 8, 2026-09-28): la suite
+> GUI pasó de 8/8 a 0/5. Falta solo el `.exe` con el Python nuevo. Lo citan `gui/CLAUDE.md` (Tests) y
 > `docs/review_gui-2.0_pendiente.md` §3.
 
 ## 1. El síntoma
@@ -369,3 +370,30 @@ Consecuencias:
   base da 8/8 tiene que dar 0/5 con Tcl 9.
 - Tampoco se pudo confirmar acá el pin sobre la suite real en 3.9 (no hay falla que
   quitar). Queda la ronda 4 (trabajo, 0/8 contra 8/8) como su única prueba.
+
+### Ronda 8 — Tcl 9 en el PC del trabajo (2026-09-28): la prueba definitiva
+
+Python 3.14.7 de python.org (Tcl **9.0.4**) instalado AL LADO del 3.14.3 (8.6.15), con
+**las mismas versiones** de customtkinter 6.0.0, pandas 3.0.5, openpyxl 3.1.5, pytest
+9.1.1 y PyInstaller 6.22.2: lo único que cambia es Tcl. Todo corrido con la ruta
+completa del 3.14.7 (`AppData\Local\Programs\Python\Python314\python.exe`), porque el
+`python` del PATH seguía siendo el 3.14.3 — `py --version` decía 3.14.7 y engañaba.
+
+| Prueba | Tcl 8.6.15 (antes, misma máquina) | Tcl 9.0.4 |
+|---|---|---|
+| `repro_min.py dup2 200` × 3 | 2 · 2 · crash | **0 · 0 · 0** |
+| `matriz_pytest.py 5 base` (suite GUI real) | **8/8** (ronda 4) | **0/5** |
+| suite completa (`correr_tests.py`) | ~103 s | **331 passed en 53 s** |
+
+**El arreglo de fondo funciona en la máquina que fallaba.** De yapa, la suite tardó la
+mitad: `test_gui_construccion` bajó de su piso de 74-90 s (tools/CLAUDE.md) a 52 s. No se
+perfiló por qué; si se confirma, los números de «Correr la suite» en tools/CLAUDE.md
+quedan viejos.
+
+**Lo que destapó el cambio de Python (2.0.12):** `hooks_git.py --instalar` con el Python
+nuevo dijo `OK` y dejó cada check **dos veces**, una por intérprete. Al borrar el viejo, su
+línea habría bloqueado todo commit. Corregido y con test en la 2.0.12 (ver CHANGELOG);
+los hooks del trabajo quedaron limpios, en el 3.14.7.
+
+**Pendiente, antes de desinstalar el 3.14.3:** paso 4 de §7 — compilar el `.exe` con el
+3.14.7 y abrirlo (lo hace el autor).
