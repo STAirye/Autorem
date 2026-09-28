@@ -259,11 +259,17 @@ La app real y el `.exe` **no** están afectados: nada hace `dup2` sobre sus std 
 con 9.0.4 da 0 fallas incluso leyendo los `.tcl` del disco. Decisión del autor
 (2026-09-26): **actualizar todo el Python del PC del trabajo**. Al hacerlo:
 
+0. **Instalar el nuevo AL LADO, sin desinstalar el 3.14.3** hasta que el paso 4 pase: es
+   la vuelta atrás si el `.exe` no compila. Las dependencias NO se heredan: en el nuevo
+   van `openpyxl pandas customtkinter pytest pyinstaller` de nuevo. Y mirar a cuál
+   apunta `python` en el PATH (`where python`) antes de creerle a cualquier paso.
 1. Verificar el Tcl que quedó, no suponerlo: `python -c "import tkinter;
    print(tkinter.Tcl().eval('info patchlevel'))"` tiene que decir `9.x`. El dato de
    que disponemos: el 3.14.3 del Python install manager trae 8.6.15 y el 3.14.7 del
-   instalador python.org trae 9.0.4 -- no está verificado si la diferencia es el canal
-   o la versión de parche.
+   instalador python.org trae 9.0.4. **Casi seguro es la versión de parche, no el
+   canal**: el [changelog de 3.14](https://docs.python.org/3/whatsnew/changelog.html)
+   pasa los builds de Windows a Tcl/Tk 9.0.4 a mitad de la serie 3.14 (librerías como
+   `libtcl9.0.4.zip` / `libtk9.0.4.zip`). No se ubicó en qué parche exacto.
 2. Reinstalar los hooks (`python tools/hooks_git.py --instalar`): llevan la ruta
    absoluta del `python.exe`.
 3. Correr `matriz_pytest.py 5 base` ahí: tiene que dar 0/5 (antes, 8/8). **Este paso es
@@ -272,6 +278,16 @@ con 9.0.4 da 0 fallas incluso leyendo los `.tcl` del disco. Decisión del autor
 4. **Compilar el `.exe` y probarlo** (§12, «Cerrar la 2.0 a ojo»): un Tcl 9 cambia lo
    que PyInstaller empaqueta (las librerías pasan a ir dentro de las DLL). Que la suite
    pase en BOREAS con Tcl 9 cubre la GUI desde Python, no el bundle.
+
+   **Es un riesgo real, no un trámite.** [Nuitka#3993](https://github.com/Nuitka/Nuitka/issues/3993):
+   congelar una app tkinter con el 3.14.7 oficial **se rompe** en Nuitka, porque busca
+   `init.tcl` sueltos y encuentra los `.zip` (se sale extrayéndolos y pasando
+   `--tcl-library-dir` / `--tk-library-dir` a mano). autoREM **no usa Nuitka** — compila
+   con PyInstaller (`autoREM.spec`; 6.22.2 en el trabajo al 2026-09-28) —, pero es otro
+   empaquetador tropezando con el mismo cambio, y **no está verificado** que PyInstaller
+   lo maneje. Por eso el `.exe` va apenas pasa el paso 3, y antes de desinstalar el
+   3.14.3. Si falla, el arreglo es del lado de PyInstaller (versión más nueva, o
+   apuntarle las librerías a mano), no cambiar de compilador.
 
 Con eso el pin y `--capture=sys` sobran. El pin queda como plan B solo si algún PC
 tiene que seguir en 8.6.
