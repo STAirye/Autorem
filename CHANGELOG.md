@@ -10,6 +10,37 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.12] — 2026-09-28
+
+### Corregido
+
+**Reinstalar los hooks con otro Python los dejaba duplicados — y al borrar el viejo,
+bloqueaban todo commit.** Salió al pasar el PC del trabajo de 3.14.3 (Tcl 8.6) a 3.14.7
+(Tcl 9), el arreglo de fondo del `tk.tcl` intermitente
+([docs/tk_tcl_intermitente.md](docs/tk_tcl_intermitente.md)). `hooks_git.py --instalar`
+con el Python nuevo imprimió `OK` y dejó cada check **dos veces**, una por intérprete. Con
+los dos instalados no se nota (corre todo dos veces); al desinstalar el viejo, su línea
+falla y el `|| exit 1` frena cualquier commit.
+
+- **Dos caminos al mismo bug en `encadenar`**, y el segundo solo apareció al arreglar el
+  primero:
+  1. Solo reconocía como «vieja» la invocación de ruta absoluta pre-1.9.6 (sin `$REPO`).
+     Una con `$REPO` pero otro `python.exe` no contaba como vieja y quedaba al lado.
+  2. Con la línea nueva YA escrita junto a la vieja (el estado que dejó el paso 1), el
+     `if invocacion in texto: return` decía «ya instalado» y salía sin limpiar.
+  Ahora es vieja cualquier línea del mismo script que no sea la nueva, y «ya instalado»
+  exige además que no quede ninguna vieja.
+- **`instalar_todos` verificaba presencia, no unicidad**: por eso dijo `OK` sobre el hook
+  duplicado. Ahora exige **exactamente una** línea por script y, si no, sale con exit 1
+  mostrando `x0` (falta) o `x2+` (duplicado). Fue esta verificación la que cazó el
+  camino 2.
+- **`tests/test_hooks_git.py`** (5 tests, contra un `git init` temporal: nunca toca los
+  hooks reales): cambio de Python, hook ya duplicado, idempotencia, migración pre-1.9.6 y
+  `exit 0` al final. Mutación: volver a cada una de las dos condiciones viejas tumba
+  exactamente su test.
+
+**334 tests** (329 + 5).
+
 ## [2.0.11] — 2026-09-23
 
 ### Cambiado

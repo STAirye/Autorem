@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.12
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -73,35 +73,37 @@ def encadenar(script, hook="pre-commit", args=""):
     """Encadena `script` (ruta RELATIVA a la raiz del repo) al hook `hook`.
 
     Respeta lo que ya haya en el hook e idempotente: reinstalar no duplica. Si
-    encuentra una invocacion VIEJA del mismo script (ruta absoluta, pre-1.9.6),
-    la REEMPLAZA -- si no, quedarian las dos y la vieja seguiria mirando el
-    arbol equivocado. Devuelve la ruta del hook escrito.
+    encuentra una invocacion VIEJA del mismo script la REEMPLAZA: sea la de ruta
+    absoluta (pre-1.9.6, miraba el arbol equivocado) o la de OTRO interprete
+    (2.0.12: cambiar de Python dejaba las dos, y al borrar el viejo su linea
+    bloqueaba todo commit). Devuelve la ruta del hook escrito.
     """
     hooks = Path(_git("rev-parse", "--git-path", "hooks").strip())   # el .git COMPARTIDO
     hooks.mkdir(parents=True, exist_ok=True)
     destino = hooks / hook
     invocacion = f'"{sys.executable}" "$REPO/{script}"' + (f" {args}" if args else "")
+    nueva = f"{invocacion} || exit 1"
     texto = destino.read_text(encoding="utf-8") if destino.exists() else ""
-
-    if invocacion in texto:
-        print(f"ya instalado: {destino}")
-        return destino
 
     lineas = texto.rstrip("\n").split("\n") if texto.strip() else [_SHEBANG]
     # 'exec' reemplaza el proceso -> nada corre despues; se degrada a invocacion
     # normal para poder encadenar detras.
     lineas = [f"{l[len('exec '):]} || exit 1" if l.startswith("exec ") else l
               for l in lineas]
-    viejas = [l for l in lineas if Path(script).name in l and "$REPO" not in l]
+    viejas = [l for l in lineas if Path(script).name in l and l != nueva]
+    # «Ya instalado» solo si ademas no queda ninguna vieja: con la nueva YA escrita
+    # al lado de la de otro Python, salir aca dejaba las dos (2.0.12).
+    if nueva in lineas and not viejas:
+        print(f"ya instalado: {destino}")
+        return destino
     if viejas:
-        print(f"reemplazo la invocacion vieja (ruta absoluta) de {script}")
-        lineas = [l for l in lineas if l not in viejas]
+        print(f"reemplazo la invocacion vieja de {script}")
     # el 'exit 0' final se saca y se vuelve a poner al final: si no, la linea
     # nueva queda DESPUES del exit (instalada y sin correr nunca).
-    lineas = [l for l in lineas if l.strip() != "exit 0"]
+    lineas = [l for l in lineas if l not in viejas and l != nueva and l.strip() != "exit 0"]
     if _REPO not in lineas:
         lineas.insert(1 if lineas[0].startswith("#!") else 0, _REPO)
-    lineas += [f"{invocacion} || exit 1", "exit 0"]
+    lineas += [nueva, "exit 0"]
 
     destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
     destino.chmod(0o755)
@@ -130,10 +132,12 @@ def instalar_todos():
     faltan = []
     for hook, scripts in ESPERADOS.items():
         texto = (hooks / hook).read_text(encoding="utf-8") if (hooks / hook).exists() else ""
-        faltan += [f"{hook}: {s}" for s in scripts if s not in texto]
+        # UNA vez exacta: presente-y-duplicado tambien es roto (dos interpretes).
+        faltan += [f"{hook}: {s} (x{texto.count(s)})" for s in scripts
+                   if texto.count(s) != 1]
     if faltan:
-        print("\nERROR: estos hooks NO quedaron instalados:\n  " + "\n  ".join(faltan),
-              file=sys.stderr)
+        print("\nERROR: estos hooks NO quedaron bien (x0 = falta, x2+ = duplicado):\n  "
+              + "\n  ".join(faltan), file=sys.stderr)
         return 1
     print(f"\nOK: los 4 checks estan instalados en {hooks}")
     return 0

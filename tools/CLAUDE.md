@@ -113,6 +113,10 @@ python tools/hooks_git.py --instalar
   clon y en cada equipo.
 - Se escriben contra `$REPO` (`git rev-parse --show-toplevel`), así corren bien desde
   los worktrees. Reinstalar migra en el lugar las invocaciones viejas con ruta absoluta.
+- **Llevan la ruta absoluta del `python.exe`** con que se instalaron: **al cambiar de
+  Python hay que reinstalarlos**, o al borrar el viejo bloquean todo commit. Reinstalar
+  reemplaza la línea del intérprete viejo (desde la **2.0.12**; antes quedaban las dos) y
+  la verificación exige una sola línea por script.
 - El pre-commit anti-RUT **salta los binarios** (`.xlsx`, `.gz`). Por eso existe
   `scan_catalogo.py`, y `catalogos_deis.py --slim` se niega a vendorizar un catálogo
   con hallazgos.
