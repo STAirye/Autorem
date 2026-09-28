@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.2
+# Version: 2.0.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -631,13 +631,16 @@ class App(ctk.CTk):
 
         pintar_extras(None)   # los que van "al final", antes del boton Procesar
 
-        log, limpiar = widgets.crear_log(frame, self)
-        self._logs[pantalla["id"]] = log
-
+        # Procesar ANTES que el Registro (2.0.13): pegado a los inputs que acaba de
+        # llenar el usuario. Debajo del log quedaba al fondo de la pagina (feedback del
+        # autor sobre el exe, sep-2026).
         barra_botones = ctk.CTkFrame(frame, fg_color="transparent")
-        barra_botones.pack(fill="x")
+        barra_botones.pack(fill="x", pady=(4, 0))
         btn = ctk.CTkButton(barra_botones, text="Procesar")
         btn.pack(side="left")
+
+        log, limpiar = widgets.crear_log(frame, self)
+        self._logs[pantalla["id"]] = log
 
         def on_procesar():
             limpiar()

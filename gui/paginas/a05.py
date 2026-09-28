@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -27,17 +27,18 @@ con DOS cambios de fondo pedidos explicitamente por el plan:
    el formato SOLO al elegir el archivo (deteccion barata: mira el
    encabezado) y se estrena `widgets.BannerFuente` (SS5.1) para mostrarlo.
 2. `inputs`/`mes`/`carpeta_salida` quedan vacios/False a proposito: TODO en
-   esta pagina (archivo+formato, Periodo, Tareas, Carpeta) vive en `extras`
+   esta pagina (archivo+formato, Periodo, Carpeta) vive en `extras`
    'despues_de': None, en el orden en que deben pintarse -- ninguno es un
    input generico (Periodo NO es el SelectorMes, SS3.1 del plan) y ninguno
    necesita interleave con otro input. La validacion completa (existe el
    archivo, formato reconocido, acuse si es Administrativo, mes valido,
-   >=1 tarea, carpeta valida) vive en `preparar` porque usa `messagebox` y
+   carpeta valida) vive en `preparar` porque usa `messagebox` y
    tiene que correr en el hilo GUI, antes del worker (SS3.3).
 
-`_correr_tareas`/`_resumen_texto`/`TAREAS`/`buscar_tarea` se quedan en
-autorem.py (SS2 del plan: no son GUI, y tests/test_autorem.py los usa) --
-esta pagina los importa en vez de duplicarlos.
+`_correr_tareas`/`_resumen_texto`/`TAREAS` se quedan en autorem.py (SS2 del
+plan: no son GUI, y tests/test_autorem.py los usa) -- esta pagina los importa
+en vez de duplicarlos. Desde la 2.0.13 corre SIEMPRE todas las `TAREAS` (sin
+caja para elegir); `buscar_tarea` queda solo para el CLI congelado.
 """
 
 import customtkinter as ctk
@@ -51,8 +52,8 @@ instrucciones = (
      "     A) IRIS: Formularios RAYEN -> Elije rango de Fecha -> Control de Salud Mental -> Todos los metacampos, Situación TODOS, Estado AMBOS.\n"
      "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
      "2.  Elige el archivo: el formato (IRIS / Administrativo) se detecta solo.\n"
-     "3.  Elige el PERÍODO: archivo completo, o un mes puntual (por FECHA FORMULARIO).\n"
-     "4.  Marca la(s) TAREA(s) y «Procesar» -> «…_procesado.xlsx» con una hoja por tarea.\n"
+     "3.  Elige el PERÍODO: un mes (por FECHA FORMULARIO; parte en el mes anterior) o el archivo completo.\n"
+     "4.  «Procesar» -> «…_procesado.xlsx» con una hoja de Ingresos (N) y otra de Egresos (O).\n"
      "     Tu archivo original NO se modifica.")
 )
 
@@ -185,14 +186,18 @@ def bloque_periodo(frame, pagina):
     parseo, bajo el mismo test que amarra los años a `valida_mes`."""
     caja = widgets.caja_titulada(frame, "Período")
     caja.pack(fill="x", pady=(2, 6))
-    var_periodo = ctk.StringVar(value="todo")
-    ctk.CTkRadioButton(caja, text="Archivo completo", value="todo",
-                       variable=var_periodo).pack(anchor="w", padx=8, pady=(6, 2))
+    # Arranca en «Un mes» = el mes anterior (2.0.13; antes «Archivo completo»): el REM
+    # es mensual, y el export suele traer el año entero. El completo queda para
+    # auditar/re-correr; al elegirlo, el mes se apaga y se IGNORA (no se pierde).
+    # Regla de la GUI (autor, sep-2026): la opcion por defecto va ARRIBA.
+    var_periodo = ctk.StringVar(value="mes")
     fila_mes = ctk.CTkFrame(caja, fg_color="transparent")
-    fila_mes.pack(anchor="w", fill="x", padx=8, pady=(0, 6))
+    fila_mes.pack(anchor="w", fill="x", padx=8, pady=(6, 2))
     ctk.CTkRadioButton(fila_mes, text="Un mes (año / mes):", value="mes",
                        variable=var_periodo).pack(side="left")
     get_mes = widgets.selector_mes(fila_mes, mes_anterior(), etiqueta=None)
+    ctk.CTkRadioButton(caja, text="Archivo completo", value="todo",
+                       variable=var_periodo).pack(anchor="w", padx=8, pady=(0, 6))
 
     def _on_periodo(*_):
         activo = "normal" if var_periodo.get() == "mes" else "disabled"
@@ -208,28 +213,13 @@ def bloque_periodo(frame, pagina):
     return get
 
 
-def bloque_tareas(frame, pagina):
-    from autorem import TAREAS
-    caja = widgets.caja_titulada(frame, "Tareas a ejecutar")
-    caja.pack(fill="x", pady=(2, 6))
-    checks = {}
-    for t in TAREAS:
-        var = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(caja, text=t["nombre"], variable=var).pack(anchor="w", padx=8, pady=2)
-        checks[t["id"]] = var
-
-    def get():
-        return [tid for tid, var in checks.items() if var.get()]
-    return get
-
-
 def bloque_carpeta(frame, pagina):
     return widgets.fila_carpeta_salida(frame)
 
 
 def preparar(ctx, pagina):
     import tkinter.messagebox as messagebox
-    from autorem import buscar_tarea
+    from autorem import TAREAS
 
     archivo = ctx["archivo"]
     entrada = runner.valida_ruta(archivo["ruta"], messagebox)
@@ -267,18 +257,14 @@ def preparar(ctx, pagina):
         if mes is None:
             return None
 
-    tareas_ids = ctx["tareas"]
-    if not tareas_ids:
-        messagebox.showwarning("Sin tareas", "Marca al menos una tarea.")
-        return None
-    seleccionadas = [buscar_tarea(tid) for tid in tareas_ids]
-
     carpeta = runner.valida_carpeta(ctx["carpeta"], messagebox, defecto=entrada.parent)
     if carpeta is None:
         return None
 
     perfil = sm.perfil_por_id(categoria)
-    return {"entrada": entrada, "perfil": perfil, "tareas": seleccionadas,
+    # SIEMPRE las dos (2.0.13): el REM pide N y O juntos, y elegir una sola era solo una
+    # forma de olvidarse la otra. `TAREAS` sigue siendo el registro del CLI congelado.
+    return {"entrada": entrada, "perfil": perfil, "tareas": TAREAS,
            "mes": mes, "carpeta": carpeta}
 
 
@@ -312,7 +298,6 @@ PANTALLA = {
     "extras": [
         {"despues_de": None, "construir": bloque_archivo_formato, "key": "archivo"},
         {"despues_de": None, "construir": bloque_periodo, "key": "periodo"},
-        {"despues_de": None, "construir": bloque_tareas, "key": "tareas"},
         {"despues_de": None, "construir": bloque_carpeta, "key": "carpeta"},
     ],
     "preparar": preparar,

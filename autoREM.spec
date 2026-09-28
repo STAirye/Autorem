@@ -69,6 +69,9 @@ a = Analysis(
     binaries=[],
     datas=[
         ('catalogos', 'catalogos'),                          # incluye maestro_slim.csv.gz para la GUI 2.0
+        # «Ver licencia completa» (Acerca de) la lee de aca si no hay una junto al exe.
+        # Sin esta linea el boton abria «No pude leer ...\_MEI...\LICENSE» (2.0.13).
+        ('LICENSE', '.'),
     ] + _CTK_DATAS,
     # `programas.catalogos` (§14) es una capa compartida que TODAVIA NO tiene
     # consumidor REM: ningun modulo del exe la importa (la GUI 2.0 si, desde el

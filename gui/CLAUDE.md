@@ -48,6 +48,9 @@ compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
 6. Si lee una planilla del usuario, **contrato** en `tests/contratos_fuentes.py` — lo exige
    `check_fuentes` (`CARPETAS` incluye `gui`). Skill `tests-fuentes`.
 7. Header de versión: **`gui/` está en `DIRS_VERSIONADOS`** de `check_version.py`.
+8. **La opción por defecto va ARRIBA** (regla del autor, sep-2026): en un grupo de
+   radios u opciones, la que viene marcada es la primera. Y el default es el caso
+   común — un mes = `mes_anterior()`, no «archivo completo» (A05, 2.0.13).
 
 ## Trampas (todas mordieron de verdad)
 

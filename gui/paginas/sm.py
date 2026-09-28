@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -72,7 +72,11 @@ instrucciones = (
      "\n"
      "¿Solo necesitas los cuestionarios A03·D.3? Marca la casilla de más abajo y NO cargues\n"
      "ni ADA ni Grupal: corre solo esa tabla.\n"
-     "@claude no estan las instruciones de como sacar esos cuestionarios: Son formualrios como el control de salud mental, cada uno con su nombre que creo lo dejamos hardcodeado en alguna parte. Hay que agregarlo en un estilo muy similar al de las instrucciones de como obtener el control de salud mental.")
+     "Los cuestionarios se descargan como formularios, UN Excel por cuestionario:\n"
+     "     A) IRIS: Formularios RAYEN -> Elije rango de Fecha -> <cuestionario> -> Todos los metacampos, Situación TODOS, Estado AMBOS.\n"
+     "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
+     "     <cuestionario> = «Cuestionario para Padres PSC» · «Cuestionario para Adolescentes (PSC-Y) 10 a 14 años» ·\n"
+     "     «Cuestionario de Salud de Goldberg». Cada uno va en SU casilla: si cae en otra, el programa avisa.")
 )
 
 

@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.2
+# Version: 2.0.13
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -38,6 +38,7 @@ solos con una tupla -- se resuelven a mano con `root._apply_appearance_mode()`
 en cada tick (ver la clase).
 """
 
+import datetime
 from pathlib import Path
 
 import customtkinter as ctk
@@ -69,7 +70,13 @@ COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
 # Spinbox Y la guarda de `runner.valida_mes` salen de aca -- el Spinbox acota solo
 # sus flechas, asi que la guarda es la que de verdad rechaza un año tecleado, y las
 # dos tienen que decir lo mismo o el mensaje de error miente.
-ANIO_MIN, ANIO_MAX = 2020, 2100
+#
+# RELATIVO a hoy (2.0.13; antes 2020..2100, dos numeros sin motivo documentado): un
+# techo fijo lejano aceptaba años sin datos posibles, y un piso fijo envejece. Hasta
+# el año en curso (un mes futuro no tiene atenciones) y 5 hacia atras (re-correr un
+# REM viejo). Sigue cazando el tipeo de 2 digitos (26 por 2026), que es a lo que vino.
+ANIO_MAX = datetime.date.today().year
+ANIO_MIN = ANIO_MAX - 5
 
 _AVISO_SIN_MODIFICAR = ((" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: sin abrirlos, editarlos ni re-guardarlos, excepto los que se solicitan explicitamente.\n"
                          "     Un export modificado (cambio de formato, columnas, hojas) puede dar cifras erróneas sin aviso."))

@@ -987,9 +987,7 @@ def test_a05_detecta_el_formato_del_archivo_que_hay_AL_PROCESAR():
         shutil.copy(_fixture_disfrazado(), ruta)
         assert get()["detectar_ahora"]()[1] is not None, "el fixture no reproduce el error"
         shutil.copy(_fixture_iris(), ruta)
-        ctx = {"archivo": get(), "periodo": {"modo": "todo"},
-               "tareas": [t["id"] for t in __import__("autorem").TAREAS],
-               "carpeta": str(_TMP)}
+        ctx = {"archivo": get(), "periodo": {"modo": "todo"}, "carpeta": str(_TMP)}
         dichos.clear()
         assert a05.preparar(ctx, pagina) is not None, (
             f"sigue con el error cacheado del archivo a medio bajar: {dichos}")

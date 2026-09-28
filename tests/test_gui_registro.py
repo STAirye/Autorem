@@ -169,10 +169,23 @@ def test_valida_mes_rechaza_el_rango_no_solo_lo_no_numerico():
         assert valida_mes(malo, mb) is None, f"{malo} deberia rechazarse"
         assert mb.avisos, f"{malo} se rechazo en SILENCIO (sin avisar al usuario)"
 
-    for bueno in ((2026, 1), (2026, 12), (2026, 7), (ANIO_MIN, 1), (ANIO_MAX, 12)):
+    # Con el año de hoy y no un 2026 fijo: el rango es relativo y en 2032 ese 2026 ya
+    # queda fuera. `mes_anterior()` es el default de todo selector: en enero cae en
+    # diciembre del año ANTERIOR, y tiene que seguir adentro.
+    from programas.rem_utils import mes_anterior
+    for bueno in ((ANIO_MAX, 1), (ANIO_MAX, 12), (ANIO_MIN, 1), mes_anterior()):
         mb = _MessageboxFalso()
         assert valida_mes(bueno, mb) == bueno, f"{bueno} es valido y se rechazo"
         assert not mb.avisos, f"{bueno} es valido y aun asi aviso: {mb.avisos}"
+
+
+def test_el_rango_de_anios_es_relativo_a_hoy():
+    """Hasta el año en curso (un mes futuro no tiene atenciones) y 5 hacia atras. Antes
+    era 2020..2100 fijo: aceptaba 2099 y el piso envejecia."""
+    import datetime
+    from gui.widgets import ANIO_MAX, ANIO_MIN
+    assert ANIO_MAX == datetime.date.today().year
+    assert ANIO_MIN == ANIO_MAX - 5
 
 
 def test_el_spinbox_y_la_guarda_de_anio_no_pueden_divergir():

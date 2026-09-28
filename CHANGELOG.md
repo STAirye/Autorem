@@ -10,6 +10,44 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.13] — 2026-09-28
+
+Lo que salió de mirar el `.exe` de verdad, el primero compilado con Python 3.14.7 /
+Tcl 9 (compiló y abrió: PyInstaller 6.22.2 maneja las librerías zipeadas de Tcl 9,
+que era el riesgo anotado en docs/tk_tcl_intermitente.md §7).
+
+### Corregido
+
+- **«Ver licencia completa» (Acerca de) no encontraba la `LICENSE`** en el exe: abría
+  «No pude leer …\_MEI…\LICENSE». `autoREM.spec` nunca la empaquetaba; `about.py` la
+  busca junto al exe (si alguien la copió ahí) y si no, en el bundle, donde no estaba.
+  Ahora va en `datas`. Solo se ve en un exe recompilado.
+
+### Cambiado
+
+- **Procesar va ANTES del Registro, en todas las páginas** (`app._construir_pagina`):
+  pegado a los inputs, no al fondo debajo del log.
+- **A05:**
+  - **Sin la caja «Tareas a ejecutar»**: corre siempre Ingresos y Egresos. Elegir una
+    sola era solo una forma de olvidarse la otra. `autorem.TAREAS`/`buscar_tarea`
+    siguen, para el CLI congelado.
+  - **El período arranca en «Un mes» = el mes anterior**, y esa opción va **arriba**;
+    «Archivo completo» queda debajo, para auditar o re-correr. Regla nueva en
+    `gui/CLAUDE.md` (checklist, punto 8): la opción por defecto va arriba.
+- **El rango de años del selector de mes es relativo a hoy**: del año en curso a 5
+  hacia atrás (antes `2020..2100` fijo, sin motivo documentado: aceptaba 2099 y el
+  piso envejecía). Sigue cazando el tipeo de 2 dígitos, que es a lo que vino. El test
+  de `valida_mes` ya no usa un 2026 fijo (en 2032 quedaría fuera), y prueba que
+  `mes_anterior()` en enero siga adentro.
+
+### Agregado
+
+- **Cómo descargar los cuestionarios A03·D.3** en las instrucciones de SM Actividades
+  (reemplaza una nota pendiente del autor en el texto que se veía en la GUI): la misma
+  ruta que el «Control de Salud Mental», con los tres nombres de formulario de RAYEN.
+
+**335 tests.**
+
 ## [2.0.12] — 2026-09-28
 
 ### Corregido
