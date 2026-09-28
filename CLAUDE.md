@@ -280,6 +280,10 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   hasta recibir la lista de externos).
 
 **Correcciones y mejoras**
+- **Rango de meses** (reportes de 3/6 meses; plan aprobado sep-2026, sin implementar):
+  SM Actividades + TP, después A05. Se corre el motor MENSUAL por mes y se agrega una
+  vez (filtrar el rango entero rompe GESTANTE y los distintos del TP).
+  [docs/rango_meses_plan.md](docs/rango_meses_plan.md).
 - **Demografía del grupal.** El grupal sí trae RUN. Fuente por
   RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
   población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
