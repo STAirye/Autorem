@@ -27,14 +27,6 @@ SmartScreen advierte "editor desconocido", es un exe sin firmar: procesa todo
 **local, no sube nada** (ver [CLAUDE.md](CLAUDE.md) §11). Todas las versiones y
 sus notas están en **[Releases](https://github.com/STAirye/Autorem/releases/latest)**.
 
-> **2.0.17 — LARGE PERFORMANCE FIXES PART 2.** Leer los exports de RAYEN es 3-4 veces más
-> rápido: Actividades SM de agosto pasa de ~40 s a ~13 s, el A23 de ~35 s a ~18 s, y la
-> población (P6 + Rescate) de ~105 s a ~64 s. Mismos resultados, celda por celda.
->
-> **2.0.16 — LARGE PERFORMANCE FIXES.** Cambiar de pantalla ya no congela la ventana:
-> cada página se arma en menos de medio segundo (Acerca de: de ~3,3 s a 0,35 s;
-> Actividades SM: de ~2,6 s a 0,39 s). Detalle en el [CHANGELOG](CHANGELOG.md).
-
 ## Qué cubre hoy
 
 La herramienta es **una sola** (un binario, una versión), y va sumando reportes
@@ -87,6 +79,7 @@ nombre, dirección, teléfono, fecha de nacimiento). **Nunca** se versionan en g
 
 ### Si clonas este repo
 
+Para correr basta con python 3.9, pero para desarrolo se requiere python 3.14.7 con Tcl 9+ o los tests dan errores de tk.tcl.
 Los hooks de git **no se versionan**: viven en `.git/hooks/` de cada clon. Antes del
 primer commit, instálalos:
 
@@ -198,7 +191,7 @@ dinámica agregada) se **rechazan** con un aviso claro.
 > **No sigue el rediseño de la interfaz** (decisión del autor, sep-2026). Funciona, y
 > cubre **solo el A05**; no se le portan los cambios de la GUI, y algún mensaje suyo
 > todavía nombra pestañas que ya no existen. Puede revivir más adelante, probablemente
-> no. Para todo lo demás, usa la interfaz.
+> no, al menos no por el autor original. Para todo lo demás, usa la interfaz.
 
 ```bash
 python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID[,ID2]] [--mes AAAA-MM]
@@ -232,6 +225,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 ## Pruebas
 
 Datos 100% sintéticos, sin PII. **372 pruebas** en 20 archivos:
+Requiere python 3.14.7+ con Tcl 9+
 
 ```bash
 python tools/correr_tests.py
