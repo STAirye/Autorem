@@ -5,7 +5,7 @@ The human author reviewed, modified, and integrated the content.
 Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 Copyright (C) 2026 Simon Tobar
 SPDX-License-Identifier: GPL-3.0-or-later
-Version: 2.0.17
+Version: 2.0.20
 -->
 
 # PDS + CPU — casillas del SA_26 llenadas a mano (agosto 2026)
