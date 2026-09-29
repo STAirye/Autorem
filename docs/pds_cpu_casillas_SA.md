@@ -487,7 +487,7 @@ copias con banner + encabezado están en `refs_tablas/`, vetadas y en el whiteli
 | «Programa Dependencia, PADDS y CPU» | «VDI1 Ingreso PADPDS CPU» | **2023** | `pdscpu_{admin,iris}.xlsx` | A05·J/V · A33·A · A33·B (columnas DS/onco) · P3·A/B |
 | «Zarit Abreviado» | igual | — | `zarit_abreviado_{admin,iris}.xlsx` | A03·D.6/D.6.1 |
 | «Indice de Barthel» | igual | — | `Barthel_{admin,iris}.xlsx` | Solo como **chequeo** (se hace también a usuarios que no son del PDS) |
-| «EMP» (hoy incluye el **EMPAM**; antes era un formulario separado, desde cuándo: por confirmar) | «EMP - Examen de Medicina Preventiva» | — | `emp_{admin,iris}.xlsx` | P5·A/B · chequeo de P3·B `F` |
+| «EMP» (incluye el **EMPAM**: en los reportes aparece así **desde 2021**, porque RAYEN habría redirigido el EMPAM antiguo al EMP nuevo. **No hace falta excepción por fecha**) | «EMP - Examen de Medicina Preventiva» | — | `emp_{admin,iris}.xlsx` | P5·A/B · chequeo de P3·B `F` |
 
 Las actividades (A26·A.1/C, A05·V, A33·B) y las grupales (A27) salen de los exports que
 ya usa el SM: `ATENCIONESDIAGNOSTICOSACTIVIDADES_iris` y `Atenciones_Grupales_iris`.
@@ -515,9 +515,10 @@ Admin va en minúsculas):
 - **Hay nombres repetidos** (`24./25.- Estado Nutricional`, `118./121./125.- Puntaje`,
   `Problema(s) Cuidador` ×3). Hay que leer **por el nombre con su número**, y fallar
   ruidoso si hay ambigüedad.
-- **La numeración puede correrse** entre versiones del formulario desde 2021. Además,
-  el EMPAM se fusionó al EMP. Hay que matchear por el texto después del número y
-  verificarlo contra las cargas históricas.
+- **La numeración puede correrse** entre versiones del formulario desde 2021. Hay que
+  matchear por el texto después del número y verificarlo contra las cargas históricas.
+  El EMPAM **no** es uno de esos casos: en los reportes ya viene dentro del EMP desde
+  2021.
 - **El formulario PDS no existe antes de 2023.** Un mes de 2021 o 2022 da
   `ArchivoInvalido`, no ceros. La detección va por firma de columnas, no por el nombre
   del formulario (que difiere entre IRIS y Admin).
