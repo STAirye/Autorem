@@ -219,10 +219,19 @@ prueba de los números del §1 del plan.
   openpyxl (vacío -> `''`, `#N/A` y solo-espacios -> `''`, fecha a medianoche -> `date`),
   la excepción ante un `.html` disfrazado (`ZipError`) y que el archivo queda liberado tras
   una excepción.
+- `medir_a05.py` - el A05 N+O **sin profiler**, fase por fase (los mismos pasos de
+  `autorem._correr_tareas`), más la alternativa de escribir un libro nuevo `write_only`
+  solo con las hojas de salida. Dio 6,5 s en total (abrir 3,1 · motor 0,8 · guardar 2,3;
+  la alternativa 0,04 s) y con eso el autor **descartó** tocar el A05 (§2.3 del plan).
+  **Bug conocido, archivado como quedó:** la última línea abre `hoy_0.xlsx` en
+  `read_only` para contar hojas y no lo cierra, así que el `finally` revienta con
+  `PermissionError` al borrar el temporal, que **lleva RUT**. En la sesión se borró a mano
+  (`%TEMP%\a05_*`). Si se vuelve a correr, cerrar ese workbook o revisar `%TEMP%` después.
 
-Los tres imprimen solo tiempos, formas y conteos, nunca valores. `perfil_cython.py` y
+Los cuatro imprimen solo tiempos, formas y conteos, nunca valores. `perfil_cython.py` y
 `bench_calamine.py` llevan la **ruta absoluta del repo** en un `sys.path.insert` y leen los
-exports de `Datos madre` en el OneDrive del autor: sin esos archivos no corren.
+exports de `Datos madre` en el OneDrive del autor: sin esos archivos no corren. Lo mismo
+vale para `medir_a05.py`.
 `sonda_calamine.py` corre en cualquier parte.
 
 ### `tk_tcl_intermitente/`

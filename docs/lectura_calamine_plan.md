@@ -18,7 +18,8 @@ Version: 2.0.14
 
 La pregunta de partida fue «¿cuánto acelera Cython el `.exe`?». Se perfiló una corrida
 REAL (agosto 2026, exports de `Datos madre`) y la respuesta fue **~1 %**: el código propio
-es el **2 %** del tiempo de SM Actividades y el **6 %** del A05. El resto es **openpyxl
+es el **2 %** del tiempo de SM Actividades y el **6 %** del A05 (medido aparte, sin
+profiler: el A05 entero son 6,5 s, §2.3). El resto es **openpyxl
 parseando XML en Python puro**. Cython queda descartado.
 
 Después se midió `python-calamine` (lector de `.xlsx` en Rust, **integrado en pandas desde la 2.2**)
@@ -55,9 +56,13 @@ sin profiler.
    en la ruta caliente) y los tests. Ajustar su docstring («TODA lectura read_only pasa
    por acá» deja de ser cierto: pasa a ser «toda lectura openpyxl read_only»).
 3. **No se toca el A05 ni ningún `load_workbook` en modo normal** (`rem_saludmental.abrir_validado`,
-   `poblacion.py:309`, A03, `estamentos`). El A05 edita el workbook y lo guarda entero; su
-   arreglo (escribir un libro nuevo solo con las hojas de salida) cambia cómo se ve la
-   salida y **es decisión aparte del autor**. Queda anotado en §12 (paso 8). Los demás
+   `poblacion.py:309`, A03, `estamentos`). **El A05 queda como está: DESCARTADO por el
+   autor, medido** (2026-09-29, sin profiler, mediana de 3 sobre el formulario real de
+   agosto): **6,5 s** en total = abrir con openpyxl 3,1 s + motor 0,8 s + guardar el libro
+   entero 2,3 s. Escribir un libro nuevo solo con las hojas de salida lo bajaría a ~4,2 s
+   (y la salida perdería la hoja original); sumarle calamine, a ~1 s, pero reescribiendo
+   `marcar_eventos` sobre filas, que es el motor validado en producción. Unos segundos al
+   mes no justifican ninguna de las dos. **No reabrir sin un motivo nuevo.** Los demás
    lectores openpyxl que quedan, en §8.
 4. **Coerción en el adaptador, mínima y explícita:**
    - `float` con `.is_integer()` → `int` (nunca tocar `bool`).
@@ -106,7 +111,7 @@ sin profiler.
 | `tests/test_lectura_calamine.py` | Nuevo (§5). |
 | `requirements.txt` | `python-calamine` con cota (`pip show python-calamine` → `>=<menor instalada>,<1` si es 0.x) y su comentario, como los otros. |
 | `autoREM.spec` | `hiddenimports += ['python_calamine']`. Import con nombre fijo, pero el `.spec` lo lista igual: es la trampa del `gui.app` de la 2.0.0 (tools/CLAUDE.md §11). |
-| `CLAUDE.md` raíz | §1 Dependencias (+calamine); §12: cerrar «Rendimiento de lectura» (va al CHANGELOG) y **agregar** el item del A05 (§2.3) con su número. |
+| `CLAUDE.md` raíz | §1 Dependencias (+calamine); §12: cerrar «Rendimiento de lectura» (va al CHANGELOG, con el A05 descartado del §2.3 y su número). |
 | `programas/CLAUDE.md` | Fila `rem_utils`: la lectura de exports es calamine; `abrir_xlsx_ro` queda para catálogos/escáner. |
 | `tools/CLAUDE.md` §11 | Una línea: el `hiddenimports` de `python_calamine` y por qué. |
 | `README.md` | Línea de dependencias (junto a openpyxl/pandas). |
@@ -201,7 +206,7 @@ veces).
 | `poblacion._leer_formulario_1` | `load_workbook` completo **solo** para `detectar_eje(ws)` y `encontrar_fila_encabezado(ws)`, y después `iter_rows` a una lista | El más claro: termina en una lista de filas igual. Multi-archivo (histórico de años) → paga por cada año. P6 + Rescate |
 | `rem_a03_d3_instrumentos.abrir_validado` | `load_workbook` completo + celdas | En la GUI el A03 va por `procesar_unificado`, que escribe un libro NUEVO: el workbook de entrada solo se lee. Revisar el camino standalone (`salida=`), que sí escribe sobre él |
 | `estamentos.cargar_estamentos` | `load_workbook` completo + bucle `ws.cell` | Solo lectura. Reporte chico: probablemente no se note |
-| `rem_saludmental.abrir_validado` + `marcar_eventos` (A05) | Lee **y escribe** en el mismo workbook | No es solo lectura: es la decisión del §2.3 (salida = libro nuevo), del autor |
+| `rem_saludmental.abrir_validado` + `marcar_eventos` (A05) | Lee **y escribe** en el mismo workbook | **Descartado, medido** (§2.3): 6,5 s por corrida mensual; no se toca |
 
 ## 9. Lo que apareció al implementar
 
