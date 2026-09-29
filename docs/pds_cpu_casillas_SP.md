@@ -26,10 +26,10 @@ del mes. Se generó con la skill `inventario-rem`.
 - El Maestro no trae nada para P3 ni P5. Es esperable: la población en control sale de
   formularios, no de actividades.
 
-**Formularios que usa el equipo** (jefa PDS, sep-2026): Barthel · Zarit · Programa
-Dependencia, PADDS y CPU · EMPA/EMPAM. **En la Serie P aparecen los cuatro**, que en el
-SA faltaban. En RAYEN **un formulario alimenta a otro**: el Barthel llena el «Tipo de
-Dependencia» del formulario PDS.
+**Formularios que usa el equipo** (encargada PDS, sep-2026): Barthel · Zarit ·
+Programa Dependencia, PADDS y CPU · EMPA/EMPAM. **En la Serie P aparecen los cuatro**,
+que en el SA faltaban. En RAYEN **un formulario alimenta a otro** (confirmado): el
+«Indice de Barthel» llena el `5.-` del formulario PDS y el `119.-` del EMP.
 
 ---
 
@@ -38,9 +38,9 @@ Dependencia» del formulario PDS.
 | Hoja · Sección | Qué es | Criterio (Manual) | Fuente RAYEN probable |
 |---|---|---|---|
 | P3 · A, filas 33-47 | Existencia por dependencia, PADDS y CPU | **Barthel**: leve ≥ 60 · moderada 40-55 · severa ≤ 35 (o certificado médico). «En control» = citado, sin abandono | Formulario **Programa Dependencia, PADDS y CPU** (el Barthel lo alimenta) |
-| P3 · B | Cuidadores de las personas del PADDS | Capacitado = **6 sesiones** en el año (nuevo) o **4** (antiguo) · EMPA/EMPAM vigente · Zarit en los últimos **11 m 29 d** · estipendio MDS | Sección **Cuidador** del formulario PDS + atenciones grupales A27 + **EMPA/EMPAM** del cuidador + **Zarit** |
-| P5 · A, filas 16-19 | Mayores de 65 en control por funcionalidad | **EMPAM** (o control de seguimiento) en los últimos 11 m 29 d; funcionalidad por **Barthel** si depende de terceros | **EMPAM**, con su Barthel |
-| P5 · B | Estado nutricional de la misma población | Del EMPAM. En dependencia moderada, grave o total, por apreciación diagnóstica | **EMPAM** |
+| P3 · B | Cuidadores de las personas del PADDS | Capacitado = **6 sesiones** en el año (nuevo) o **4** (antiguo) · EMPA/EMPAM vigente · Zarit en los últimos **11 m 29 d** · estipendio MDS | Bloque **Cuidador** del formulario PDS; el **sexo** sale del Informe Inscritos (por RUT) |
+| P5 · A, filas 16-19 | Mayores de 65 en control por funcionalidad | **EMPAM** (o control de seguimiento) en los últimos 11 m 29 d; funcionalidad por **Barthel** si depende de terceros | **EMP** (`119.- Nivel de Severidad`, que llena el Barthel) |
+| P5 · B | Estado nutricional de la misma población | Del EMPAM. En dependencia moderada, grave o total, por apreciación diagnóstica | **EMP** `24.- Estado Nutricional` (adultos y PM) |
 
 El resto de P3·A (respiratorios, epilepsia, TEA, Parkinson, etc.) y P5·A.1, C, D y E
 quedaron vacíos: son de otros programas.
@@ -50,9 +50,11 @@ quedaron vacíos: son de otros programas.
 > EMPAM y las llena otro equipo. El Manual es explícito: «dependencia grave y total
 > deben ser derivadas al PADDS, **siguiendo bajo control** por las acciones antes
 > descritas para la población de personas mayores». Es decir, **el mismo paciente se
-> cuenta en P3 (PDS) y en P5 (Adulto Mayor)**. El módulo PDS aporta solo una parte de
-> la P5, y hay que saber cómo se consolida el REM del CESFAM antes de escribirla: ¿se
-> suman las planillas de cada equipo o se llena una sola?
+> cuenta en P3 (PDS) y en P5 (Adulto Mayor)**. **Resuelto (autor, sep-2026): las
+> planillas de cada equipo se suman en un consolidador.** Por eso el módulo PDS escribe
+> en la P5 **solo a sus pacientes**, los que tienen el formulario PDS vigente. Si
+> contara a todo mayor de 65 con Barthel grave o total, el consolidador los sumaría dos
+> veces (el Barthel se hace también fuera del PDS).
 
 ---
 
@@ -171,11 +173,11 @@ Fórmulas en `B`, `Q` y las validaciones.
     sesiones por cuidador en las atenciones grupales**, así que el participante tiene
     que venir con RUN.
 - **`F` EMP vigente:** **EMPA** si el cuidador tiene menos de 65 años, **EMPAM** si
-  tiene 65 o más. Es el EMPA/EMPAM que mencionó la jefa.
+  tiene 65 o más. Es el EMPA/EMPAM que mencionó la encargada PDS.
 - **`G` Crónicos en control:** el Manual define a los cuidadores «**sin** examen
   preventivo, ingresado a programa de salud» (con controles al día). La etiqueta de la
-  planilla, en cambio, dice «con condiciones crónicas en control». *(Hay que confirmar
-  si son la misma casilla.)*
+  planilla, en cambio, dice «con condiciones crónicas en control». **Resuelto (autor):
+  vale la etiqueta. Son los cuidadores con crónicos en control, tengan o no EMP.**
 - **`H` / `I`:** reciben o esperan el **estipendio del MDS**. R.1: `H` ≤ total.
 - **`J` Sobrecarga vigente:** tiene una evaluación de sobrecarga (Zarit) en los
   **últimos 11 meses 29 días**.
@@ -195,18 +197,19 @@ solo como chequeo.
 | Columna | Campo |
 |---|---|
 | Universo | `73.- Tiene Cuidador?` = Sí · `74.- Estado Cuidador` vigente · identificado por `80.- Rut Cuidador` |
-| `C`/`D` H/M | ⚠ **No está en el formulario.** Sale del Zarit (`4.- Sexo Cuidador`, con match por RUT) o del Informe Inscritos. Si falta, se avisa |
+| `C`/`D` H/M | ⚠ **No está en el formulario, ni en ningún otro lado de RAYEN** (autor). Sale del **Informe Inscritos** por `80.- Rut Cuidador`; el Zarit `4.-` sirve de chequeo. Un cuidador no inscrito queda sin dato y se avisa |
 | `E` Capacitados | `75.- Cuidador es Capacitado por el Programa`. Chequeo posible: las sesiones A27 del RUT del cuidador (6 si es nuevo, 4 si es antiguo) |
-| `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. OJO: el campo mezcla preventivo y crónico, y la P3·B los separa en `F` y `G` |
-| `G` Crónicos en control | `90.- Cuidador con Condiciones Crónicas en Control en Ce…` |
-| `H` / `I` Estipendio | `25.- Estipendio MIDESO?`. Hay que ver si sus valores distinguen «en espera» |
+| `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. El campo mezcla preventivo y crónico, así que para `F` estricto hay que cruzar el **EMP del cuidador** (por RUT): EMPA si tiene menos de 65, EMPAM si tiene 65 o más |
+| `G` Crónicos en control | `90.- Cuidador con Condiciones Crónicas en Control en Ce…`, independiente del EMP (autor) |
+| `H` Con estipendio | `25.- Estipendio MIDESO?` = **SI**. Sus valores son SI / NO / vacío; **un vacío es «sin dato», no «NO»**, y se cuenta en la LEEME |
+| `I` En espera de estipendio | ⚠ **No tiene fuente en el formulario**, porque `25.-` no tiene un valor «en espera». Junio trae 105, llenados a mano desde otro lado (¿una lista del MDS?). Hasta saberlo, el módulo **la deja vacía y avisa**; no la infiere |
 | `J` Sobrecarga vigente | `88.- Zarit Abreviado del Cuidador` + `89.- Fecha Vigencia Zarit…` (vigente = dentro de los 11 m 29 d) |
 | `K` 65 o más | `82.- Edad Cuidador` o `81.- Fecha Nacimiento Cuidador` al corte |
 | `L` · `M` · `N` | `91.- …ECICEP` · `92.- …Apoyo Intersectorial` · `93.- …Atención Preferente` |
 | `O` / `P` | Pueblo originario y migrante **del cuidador**: no están en el formulario, así que salen de su propia ficha (por `80.- Rut`) |
 
 `E` y `J` al **100 %** (194 de 194) **es correcto**: hubo un operativo con una
-universidad que evaluó y capacitó a todo el universo de cuidadores (jefa PDS, sep-2026).
+universidad que evaluó y capacitó a todo el universo de cuidadores (encargada PDS, sep-2026).
 En otro semestre no hay que esperar un 100 %.
 
 ---
@@ -273,10 +276,10 @@ medir peso y talla, vale la **apreciación diagnóstica** del profesional. Regla
 consistencia: **la P5·B tiene que igualar a la P5·A por rango etario y sexo.** En junio
 calza en las 21 columnas, incluidos pueblos y migrantes.
 
-**Campos RAYEN** (EMP): hay **dos** `24./25.- Estado Nutricional` y, en Admin, además
-`26.- Calificación nutricional según IMC`. Falta saber cuál de los dos aplica a los 65
-o más. Hay que resolverlo con datos reales antes de escribir el lector, y nunca por
-posición.
+**Campos RAYEN** (EMP): **`24.- Estado Nutricional`**, el de adultos y personas mayores
+(autor). El `25.-`, con el mismo nombre, es el **pediátrico** (+2 / +1 / eutrófico / −1 /
+−2) y aquí no se usa. Como los dos se llaman igual, se leen **siempre por el número**. En
+Admin hay además `26.- Calificación nutricional según IMC`; se puede usar como chequeo.
 
 ---
 
@@ -311,11 +314,15 @@ dos hojas.
 2. **Reuso:** la regla de «en control» de la P3 (citación vigente, abandono a los 11 m
    29 d) es la del P6 de SM. Revisar `programas/poblacion.py` antes de escribir nada
    nuevo.
-3. **Preguntas para la jefa PDS:**
-   - ¿Cómo se consolida la P5 del CESFAM con la del Programa del Adulto Mayor?
-   - ¿El formulario «Índice de Barthel» alimenta la sección Barthel del EMP (`119.-`)?
-   - ¿La columna `G` de P3·B es «con crónicos en control» o «sin EMP, pero ingresado a
-     un programa», como la define el Manual? El campo `86.-` mezcla las dos cosas.
-   - `25.- Estipendio MIDESO?`: ¿distingue «recibe» de «en espera» (`H` contra `I`)?
+3. **Resuelto por el autor (sep-2026):**
+   - La P5 se consolida **sumando** las planillas de cada equipo.
+   - El Barthel **sí** llena el `5.-` del formulario PDS y el `119.-` del EMP.
+   - P3·B `G` = crónicos en control, con o sin EMP.
+   - `25.-` Estipendio vale SI / NO / vacío: no existe un valor «en espera».
+   - EMP `24.-` = estado nutricional de adultos y personas mayores (el que usa la P5·B);
+     `25.-` = pediátrico (+2 / +1 / eutrófico / −1 / −2).
+4. **Preguntas que quedan para la encargada PDS:**
+   - P3·B `I` (**en espera de estipendio**): ¿de dónde salen los 105 de junio, si el
+     formulario no lo registra?
    - `28.- Alimentación Enteral?`: ¿equivale a la NED por Ley de alto costo que pide el
-     Manual?
+     Manual? El autor presume que sí.

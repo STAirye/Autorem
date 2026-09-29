@@ -52,11 +52,10 @@ etiquetas de fila y columna se resolvieron a partir de las celdas combinadas.
 | A33 · B | Atenciones CPU por tipo y estamento | **Actividad** `… - CPU` × estamento; las columnas *DS en APS* y *oncológicas* salen del formulario | Sí: 14 actividades |
 | A33 · C / D / E | Talleres, capacitaciones, comités | Comentado: **«No Disponible»** | **Sí**: A33·C (2) y A33·E (6). Contradice al Comentado (ver §6) |
 
-**Formularios que usa el equipo PDS** (lo confirmó la jefa, sep-2026): *Barthel*,
-*Zarit*, *Programa Dependencia, PADDS y CPU*, *EMPA/EMPAM*. En las secciones del SA solo
-aparecen **Zarit** y **Programa Dependencia, PADDS y CPU**. El Barthel y el EMPA/EMPAM
-probablemente alimentan el **SP** (se verá al revisarlo). **Hoy no se descargan todos
-estos formularios**, así que hay que sumarlos a lo que se baja de RAYEN.
+**Formularios que usa el equipo PDS** (lo confirmó la encargada PDS, sep-2026):
+*Barthel*, *Zarit*, *Programa Dependencia, PADDS y CPU*, *EMPA/EMPAM*. En las secciones
+del SA solo aparecen **Zarit** y **Programa Dependencia, PADDS y CPU**. El Barthel y el
+EMP alimentan el **SP**. Los cuatro se bajan desde 2021 (§8).
 
 **Variables transversales** (en todas las secciones, según el Comentado):
 - Pueblo originario: Admisión o Box, «pertenece a pueblo indígena».
@@ -89,10 +88,10 @@ Columnas de input: `L`/`M` 15-19 H/M · `N`/`O` 20-24 · `P`/`Q` 25-44 · `R`/`S
 
 El «Puntaje Total» lo calcula el formulario solo.
 
-> ⚠ **Frontera en 17.** La Ref DEIS dice «mayor a 17» (17 = sin sobrecarga) y el texto
-> RAYEN dice «mayor o igual a 17» (17 = con sobrecarga). Hay que decidir si manda el
-> puntaje o el campo «Estado de sobrecarga». Si no coinciden, **se avisa, no se elige
-> callado**.
+> **Frontera en 17 (resuelto, §7).** La Ref DEIS dice «mayor a 17» y el texto RAYEN
+> dice «mayor o igual a 17». **Manda el campo «Estado de sobrecarga»**, que es lo que se
+> registra, y equivale a ≥ 17. Si el puntaje no coincide con el estado, **se avisa, no
+> se corrige callado**.
 
 ### A03 · D.6.1: Zarit en cuidadores de NANEAS (SA filas 195-201)
 
@@ -161,7 +160,7 @@ INGRESOS; las de causal cuentan EGRESOS.**
 >
 > Sin ingresos DS, la fila 150 no podría superarlos. Lo más probable es que la hayan
 > llenado con el **stock** de pacientes con LPP y no con los ingresos del mes.
-> **Preguntarle a la jefa PDS** antes de programarla.
+> El autor se lo comenta a la encargada PDS. El módulo sigue la regla del Comentado.
 
 ### A05 · V: PADDS (SA filas 367-389)
 
@@ -290,7 +289,7 @@ domicilio»: comparar con `contiene_todos`, nunca por igualdad.
 > ⚠ **`C` (N° de visitas realizadas) quedó VACÍA**, aunque es input. La Ref DEIS la
 > define como «el número de visitas», y no es lo mismo que `D`: una visita con dos
 > estamentos cuenta 1 en `C` y 2 en `D`. Una visita multiprofesional se agrupa por
-> paciente + fecha. **Preguntar si DEIS la exige.**
+> paciente + fecha. **Resuelto (§7): el módulo la llena.**
 
 ---
 
@@ -341,7 +340,7 @@ profesional + TENS · `H` TENS · `I` Facilitador intercultural. Fórmula: `D` =
 > justamente los **participantes** de la A (22 en autocuidado, 14 en cuidados).
 > «Redes» tiene 36 sesiones y **0 ingresos**, y 36 sesiones de autocuidado para 22
 > personas es mucho en un mes. Parece que se copiaron conteos de personas en la tabla
-> de sesiones. **No sirve de oráculo hasta que la jefa PDS lo confirme.**
+> de sesiones. **No sirve de oráculo hasta que la encargada PDS lo confirme.**
 
 ---
 
@@ -378,7 +377,7 @@ Todas las demás filas (12-14, 16-29, 31-34) quedaron en —.
 > cardíaca, ACV-TEC, neurodegenerativas, parálisis cerebral, etc. El SA 2026 usa grupos
 > por órgano. **Para A33·A la fuente es el formulario, no las actividades.** Si algún
 > día se usaran las actividades, haría falta un crosswalk dx → grupo, validado con la
-> jefa.
+> encargada PDS.
 
 ### A33 · B: tipo de atención y actividades (SA filas 39-51)
 
@@ -418,9 +417,10 @@ agosto también es DS. El ingreso de A33·A (80+ M) cae en la banda 70+ M de B·
 Todo quedó en —. El Comentado dice **«No Disponible»** en las tres, o sea que RAYEN no
 las entrega. **Pero el Maestro sí mapea actividades a A33·C** (`Taller Educación
 Usuarios CPU - Presencial/Remota`) **y a A33·E** (6 `Comité Cuidados Paliativos … -
-Modalidad …`). Queda por ver si esas actividades se registran en el CESFAM. Si se
-registran, C y E se pueden sacar de las atenciones aunque el reporte REM de RAYEN no lo
-haga. A33·D (capacitaciones de equipos) no tiene fuente en ningún lado.
+Modalidad …`). **Resuelto (§7):** los talleres CPU hoy no se registran, y si se
+registran irán, casi seguro, como grupales de salud mental, que el módulo no puede
+separar. No hay comités CPU en el Servicio. **Las tres quedan vacías** y se avisa en la
+LEEME. A33·D (capacitaciones de equipos) no tiene fuente en ningún lado.
 
 ---
 
@@ -454,17 +454,29 @@ en el §8):
    actividades de A05·V y A33·B. Es la misma familia de export que ya usa el SM (verificar
    que traiga estos programas).
 4. **Atenciones grupales** con participantes, edad y check de ingreso, para A27·A y B.
-5. **Barthel** y **EMPA/EMPAM**: los usa el equipo y no aparecen en el SA, así que
-   probablemente van al SP.
+5. **Barthel** y **EMP** (con el EMPAM adentro): no aparecen en el SA; alimentan el SP
+   (confirmado).
 
-**Preguntas para la jefa PDS:**
-- A05·J fila 150 (LPP): ¿son ingresos con LPP o el stock de pacientes con LPP?
-- A05·J contra A05·V: ¿los 11 ingresos DS que no están en el PADDS son reales? ¿Qué
-  pacientes DS no entran al PADDS?
-- A26·C `C` (N° de visitas): ¿se deja vacía a propósito?
+**Resuelto por el autor (sep-2026):**
+- **Zarit en 17:** se registra lo que sale de RAYEN, es decir el campo `16.- Estado de
+  Sobrecarga` (Ausencia / Sobrecarga Intensa). **Manda el campo.** Coincide con
+  «≥ 17 = sobrecarga intensa». El puntaje (`15.-`) queda como chequeo: si no calza con
+  el estado, se avisa.
+- **A26·C `C` (N° de visitas):** probablemente la llena el consolidador. **El módulo la
+  llena**, con las visitas únicas (paciente + fecha).
+- **A33·C (talleres CPU):** hoy no se registran. Si se registran, casi seguro que irán
+  como actividades grupales de **salud mental**, y el módulo no puede separarlas. Queda
+  vacía y se avisa en la LEEME.
+- **A33·E (comités CPU):** no hay comités en el Servicio por ahora. Queda vacía.
+- **A05·J 150 (LPP):** el autor se lo comenta a la encargada PDS. **No es pega nuestra
+  auditarlo.** El módulo sigue la regla del Comentado (ingreso + LPP = Sí).
+
+**Preguntas que quedan para la encargada PDS** (son de práctica del programa, no
+bloquean el diseño):
 - A26·A.1: ¿la evaluación del plan (`H`, `J`) se registra solo en la segunda visita?
-- A27·B: ¿de dónde salen 14 y 22?
-- A33·C y E: ¿se registran en RAYEN las actividades de taller y de comité CPU?
+- A27·B: ¿de dónde salen los 14 y 22?
+- A05·J contra A05·V: ¿quiénes son los 11 ingresos DS que no están en el PADDS? (sirve
+  para validar)
 
 **Deuda del Maestro:** el `maestro_slim` no trae las 4 actividades `Educación en grupo -
 Capacitación a cuidadores PADDS - <tema>` que nombra el Comentado. Sus equivalentes
@@ -509,9 +521,14 @@ Admin va en minúsculas):
 **Advertencias para el lector:**
 - ⚠ **El formulario PDS no trae el sexo del cuidador**: solo `80.- Rut`, `81.- Fecha
   Nacimiento` y `82.- Edad`. Las filas del cuidador de la A05·V (y la P3·B `C`/`D`) van
-  por sexo del cuidador. Hay que sacarlo del Zarit (`4.- Sexo Cuidador`, con match por
-  RUT) o del Informe Inscritos. **Si no se encuentra, se avisa. No se usa el sexo del
+  por sexo del cuidador. **RAYEN no lo registra en ningún otro lado** (confirmado por el
+  autor), así que sale del **Informe Inscritos** con match por RUT. El Informe Inscritos
+  ya es input opcional del SM. El `4.- Sexo Cuidador` del Zarit sirve solo de chequeo.
+  **Un cuidador no inscrito queda sin dato y se avisa. Nunca se usa el sexo del
   paciente.**
+- **Formularios que alimentan formularios** (confirmado): el «Indice de Barthel» llena
+  el `5.- Resultado Índice de Barthel` del formulario PDS y el `119.- Nivel de Severidad`
+  del EMP.
 - **Hay nombres repetidos** (`24./25.- Estado Nutricional`, `118./121./125.- Puntaje`,
   `Problema(s) Cuidador` ×3). Hay que leer **por el nombre con su número**, y fallar
   ruidoso si hay ambigüedad.
