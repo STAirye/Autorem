@@ -442,7 +442,8 @@ haga. A33·D (capacitaciones de equipos) no tiene fuente en ningún lado.
 
 ## 7. Lo que falta para diseñar el módulo
 
-**Inputs que hoy no se bajan** (el autor lo confirmó, sep-2026):
+**Inputs** (sep-2026: los formularios ya se están bajando desde 2021; campos exactos
+en el §8):
 1. **Formulario clínico «Programa Dependencia, PADDS y CPU»**, con sus secciones *Sujeto
    de Cuidado*, *Programa de pacientes con dependencia*, *PADDS*, *Cuidador*, *CPU* y
    *Antecedentes personales (LPP)*. Alimenta A05·J, A05·V, A33·A y las columnas DS y
@@ -470,4 +471,58 @@ Capacitación a cuidadores PADDS - <tema>` que nombra el Comentado. Sus equivale
 locales son `AG_Capacitación - Autocuidado del cuidador/a` y parecidas, todas como
 `REM-Gestion`. Revisar contra el Maestro completo antes de concluir que no existen.
 
-**Sigue:** el mismo inventario sobre el **SP** (`SP_26_V1.2 JUNIO 26 PDS.xlsm`).
+**Sigue:** el mismo inventario sobre el **SP** (`SP_26_V1.2 JUNIO 26 PDS.xlsm`), que
+ya está en [pds_cpu_casillas_SP.md](pds_cpu_casillas_SP.md).
+
+---
+
+## 8. Fuentes RAYEN confirmadas (headers, sep-2026)
+
+El autor baja los cuatro formularios **desde 2021** a la carpeta de datos madre (sin
+header, en subcarpetas de `pdscpu/`; el EMP ya estaba en `variables 12m/emp`). Las
+copias con banner + encabezado están en `refs_tablas/`, vetadas y en el whitelist.
+
+| Formulario (nombre Admin) | En IRIS se llama | Existe desde | Refs | Alimenta |
+|---|---|---|---|---|
+| «Programa Dependencia, PADDS y CPU» | «VDI1 Ingreso PADPDS CPU» | **2023** | `pdscpu_{admin,iris}.xlsx` | A05·J/V · A33·A · A33·B (columnas DS/onco) · P3·A/B |
+| «Zarit Abreviado» | igual | — | `zarit_abreviado_{admin,iris}.xlsx` | A03·D.6/D.6.1 |
+| «Indice de Barthel» | igual | — | `Barthel_{admin,iris}.xlsx` | Solo como **chequeo** (se hace también a usuarios que no son del PDS) |
+| «EMP» (hoy incluye el **EMPAM**; antes era un formulario separado, desde cuándo: por confirmar) | «EMP - Examen de Medicina Preventiva» | — | `emp_{admin,iris}.xlsx` | P5·A/B · chequeo de P3·B `F` |
+
+Las actividades (A26·A.1/C, A05·V, A33·B) y las grupales (A27) salen de los exports que
+ya usa el SM: `ATENCIONESDIAGNOSTICOSACTIVIDADES_iris` y `Atenciones_Grupales_iris`.
+
+**Campo de RAYEN por casilla.** La numeración es **la misma en Admin y en IRIS** (en
+Admin va en minúsculas):
+
+| Casilla | Campos |
+|---|---|
+| A03·D.6 filas | Zarit `7.- Condición del paciente` · `15.- Puntaje Total` · `16.- Estado de Sobrecarga` |
+| A03·D.6 columnas | Zarit `3.- Edad Cuidador` · `4.- Sexo Cuidador` (**no** el `SEXO` de la fila, que es el del paciente) |
+| A03·D.6.1 edad NANEAS | Edad del paciente (`EDAD PACIENTE` en IRIS, `Edad de registro formulario` en Admin) |
+| A05·J | PDS `1.- Tipo de Paciente` · `7.- Tipo de Dependencia` · `8.- Estado Dependencia` · `44.- Lesión por Presión` |
+| A05·V persona | PDS `9.- Estado PADDS` (+ la actividad `Ingresos/Egresos del PADDS`) |
+| A05·V cuidador | PDS `73.- Tiene Cuidador?` · `74.- Estado Cuidador` · `79.- Tipo de Ingreso Cuidador PADDS` · `82.- Edad Cuidador` |
+| A33·A | PDS `10.- Estado CPU` · `11.- Enfermedad Oncológica` · `12.- Enfermad No Oncológica` (sic) |
+| A33·B `AT`-`AW` | PDS `7.-` + `8.-` (DS en APS) · `1.-` (oncológicas) |
+
+**Advertencias para el lector:**
+- ⚠ **El formulario PDS no trae el sexo del cuidador**: solo `80.- Rut`, `81.- Fecha
+  Nacimiento` y `82.- Edad`. Las filas del cuidador de la A05·V (y la P3·B `C`/`D`) van
+  por sexo del cuidador. Hay que sacarlo del Zarit (`4.- Sexo Cuidador`, con match por
+  RUT) o del Informe Inscritos. **Si no se encuentra, se avisa. No se usa el sexo del
+  paciente.**
+- **Hay nombres repetidos** (`24./25.- Estado Nutricional`, `118./121./125.- Puntaje`,
+  `Problema(s) Cuidador` ×3). Hay que leer **por el nombre con su número**, y fallar
+  ruidoso si hay ambigüedad.
+- **La numeración puede correrse** entre versiones del formulario desde 2021. Además,
+  el EMPAM se fusionó al EMP. Hay que matchear por el texto después del número y
+  verificarlo contra las cargas históricas.
+- **El formulario PDS no existe antes de 2023.** Un mes de 2021 o 2022 da
+  `ArchivoInvalido`, no ceros. La detección va por firma de columnas, no por el nombre
+  del formulario (que difiere entre IRIS y Admin).
+- **`GENERO` solo existe en IRIS**; en Admin hay solo `Sexo`. La hipótesis de sexo
+  registral contra identidad de género (el descuadre P3/P5 de 65-69 años) solo se
+  puede probar con IRIS.
+- Los refs no tienen contrato todavía: se escribe **junto con el loader** (skill
+  `tests-fuentes`).

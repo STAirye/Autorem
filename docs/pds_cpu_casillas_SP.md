@@ -20,7 +20,9 @@ del mes. Se generó con la skill `inventario-rem`.
 - **Manual REM P 2026 v1.0 (DEIS)**: `OneDrive/REM SM/2026/MANUAL REM  P 2026 Version
   1.0.pdf`. P3 en las págs. 59-70 y P5 en las 91-96. De ahí salen las reglas de este doc.
 - **No hay REM Comentado de la Serie P**, así que el Manual dice **qué** contar, pero no
-  **de qué formulario o campo de RAYEN**. Eso queda marcado *(RAYEN: por confirmar)*.
+  **de qué formulario o campo de RAYEN**. Los campos salen de los headers de los
+  formularios (`refs_tablas/`, sep-2026). La tabla de formularios y las advertencias
+  del lector están en el [§8 del doc SA](pds_cpu_casillas_SA.md#8-fuentes-rayen-confirmadas-headers-sep-2026).
 - El Maestro no trae nada para P3 ni P5. Es esperable: la población en control sale de
   formularios, no de actividades.
 
@@ -115,12 +117,22 @@ y las validaciones.
   - **R.6:** total = Σ rango etario.
 - **R.4:** escribir **0 explícito** en Migrantes.
 
-*(RAYEN: por confirmar)* Se probaría con el formulario **Programa Dependencia, PADDS y
-CPU** vigente al corte: «Tipo de Dependencia», «Tipo de Paciente», «Lesión por
-Presión», «Estado PADDS», «Estado CPU» y «Enfermedad (No) Oncológica». Faltan por
-ubicar los campos de demencia, institucionalización (¿alerta ELEAM?) y NED. **La regla
-de «2 VDI anuales» se cruza con la A26·A.1**: quien está en el PADDS sin 2 VDI no
-debería contar.
+**Campos RAYEN** (formulario PDS, el último vigente al corte por paciente):
+
+| Filas | Campos |
+|---|---|
+| 33-36 | `1.- Tipo de Paciente` (onco / no onco) · `7.- Tipo de Dependencia` · `8.- Estado Dependencia` (para saber si sigue en el programa) |
+| 37 / 43 | `44.- Lesión por Presión` |
+| 38-40 | `9.- Estado PADDS` |
+| 41 | `21.- Demencia?` |
+| 42 | `22.- Institucionalizado?` (en la P5 el EMP trae aparte `84.- Adulto Mayor Institucionalizado`) |
+| 44 | `28.- Alimentación Enteral?`. OJO: el Manual pide *indicación desde especialidad por la Ley de alto costo*, que es más estricto; confirmar si el campo lo cubre |
+| 45-47 | `10.- Estado CPU` · `11.- Enfermedad Oncológica` · `12.- Enfermad No Oncológica` (sic) |
+| «En control» | `143.- Fecha próximo control` (citación vigente, abandono a los 11 m 29 d) |
+
+`5.- Resultado Índice de Barthel` viene dentro del mismo formulario: es la severidad que
+copió el Barthel. Se cruza contra `7.-` y se avisa si difieren. **La regla de «2 VDI
+anuales» se cruza con la A26·A.1**: quien está en el PADDS sin 2 VDI no debería contar.
 
 **Estructura que ya se ve:** el bloque *Atención domiciliaria* (38-44) repite el bloque
 *Dependencia severa* (35-37): **todas las personas con DS de junio estaban en el
@@ -176,6 +188,23 @@ Fórmulas en `B`, `Q` y las validaciones.
 > Nota: el Manual menciona también «cuidadores capacitados **con apoyo monetario**»,
 > pero la planilla V1.2 no tiene esa columna. El Manual quedó atrás de la planilla.
 
+**Campos RAYEN.** **Toda la P3·B sale del bloque Cuidador del formulario PDS**, así que
+no hace falta contar sesiones en la A27 ni cruzar el EMP del cuidador. Los dos quedan
+solo como chequeo.
+
+| Columna | Campo |
+|---|---|
+| Universo | `73.- Tiene Cuidador?` = Sí · `74.- Estado Cuidador` vigente · identificado por `80.- Rut Cuidador` |
+| `C`/`D` H/M | ⚠ **No está en el formulario.** Sale del Zarit (`4.- Sexo Cuidador`, con match por RUT) o del Informe Inscritos. Si falta, se avisa |
+| `E` Capacitados | `75.- Cuidador es Capacitado por el Programa`. Chequeo posible: las sesiones A27 del RUT del cuidador (6 si es nuevo, 4 si es antiguo) |
+| `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. OJO: el campo mezcla preventivo y crónico, y la P3·B los separa en `F` y `G` |
+| `G` Crónicos en control | `90.- Cuidador con Condiciones Crónicas en Control en Ce…` |
+| `H` / `I` Estipendio | `25.- Estipendio MIDESO?`. Hay que ver si sus valores distinguen «en espera» |
+| `J` Sobrecarga vigente | `88.- Zarit Abreviado del Cuidador` + `89.- Fecha Vigencia Zarit…` (vigente = dentro de los 11 m 29 d) |
+| `K` 65 o más | `82.- Edad Cuidador` o `81.- Fecha Nacimiento Cuidador` al corte |
+| `L` · `M` · `N` | `91.- …ECICEP` · `92.- …Apoyo Intersectorial` · `93.- …Atención Preferente` |
+| `O` / `P` | Pueblo originario y migrante **del cuidador**: no están en el formulario, así que salen de su propia ficha (por `80.- Rut`) |
+
 `E` y `J` al **100 %** (194 de 194) **es correcto**: hubo un operativo con una
 universidad que evaluó y capacitó a todo el universo de cuidadores (jefa PDS, sep-2026).
 En otro semestre no hay que esperar un 100 %.
@@ -212,9 +241,18 @@ originarios H/M · `X`/`Y` Migrantes H/M · `Z`/`AA` ELEAM H/M.
   **contenidos** en el conteo por edad y sexo.
 - **R.1/R.2:** escribir **0 explícito** en Migrantes y en Pueblos originarios.
 
-*(RAYEN: por confirmar)* En el SA, la A05·K/L leen el Barthel como **sección del
-formulario EMP** (EMPAM). Falta ver si el formulario «Índice de Barthel» aparte, que
-usa la jefa, llena esa sección o va por otro lado.
+**Campos RAYEN** (formulario **EMP**, que hoy incluye el EMPAM):
+
+| Qué | Campos |
+|---|---|
+| Vigencia | `1.- Fecha Vigencia` · `2.- Estado del Examen` · `78.- Estado del paciente` / `79.- Motivo de estado EGRESO` |
+| EFAM (filas 12-14) | `89.- Resultado EFAM Parte A` · `92.- Resultado EFAM Parte B` |
+| Barthel (filas 16-19) | `118.- Puntaje` · **`119.- Nivel de Severidad`**. Es el mismo «Nivel de Severidad» del formulario «Indice de Barthel» (`12.-`), que probablemente lo alimenta. `121.-` y `125.-` también se llaman «Puntaje»: se leen **siempre con el número** |
+| ELEAM (`Z`/`AA`) | `84.- Adulto Mayor Institucionalizado` |
+| Seguimiento | `131.- Fecha Próximo Control` |
+
+El Barthel suelto se hace también a usuarios que **no** son del PDS. Para la P5 manda
+el EMP, y el Barthel suelto queda como chequeo.
 
 ---
 
@@ -234,6 +272,11 @@ estado nutricional del EMPAM. En dependencia moderada, grave o total, cuando no 
 medir peso y talla, vale la **apreciación diagnóstica** del profesional. Regla de
 consistencia: **la P5·B tiene que igualar a la P5·A por rango etario y sexo.** En junio
 calza en las 21 columnas, incluidos pueblos y migrantes.
+
+**Campos RAYEN** (EMP): hay **dos** `24./25.- Estado Nutricional` y, en Admin, además
+`26.- Calificación nutricional según IMC`. Falta saber cuál de los dos aplica a los 65
+o más. Hay que resolverlo con datos reales antes de escribir el lector, y nunca por
+posición.
 
 ---
 
@@ -259,17 +302,20 @@ dos hojas.
 
 ## 6. Lo que falta para diseñar el módulo
 
-1. **Exports de formularios** (como en el SA): Programa Dependencia, PADDS y CPU (con la
-   sección Cuidador) · Zarit · **Barthel** · **EMP/EMPA/EMPAM** (el del cuidador para
-   P3·B `F`, el de la persona mayor para P5). Además, **atenciones grupales con el RUN
-   del participante**, para contar las sesiones por cuidador (P3·B `E`).
+1. **Exports de formularios:** ✅ se están bajando desde 2021 (PDS, Zarit, Barthel,
+   EMP), con los refs vetados. Lo que queda abierto, con el detalle en el §8 del doc SA:
+   - el **sexo del cuidador** no está en el formulario PDS;
+   - hay **nombres de campo duplicados**;
+   - el formulario PDS **no existe antes de 2023**;
+   - `GENERO` **solo aparece en IRIS**.
 2. **Reuso:** la regla de «en control» de la P3 (citación vigente, abandono a los 11 m
    29 d) es la del P6 de SM. Revisar `programas/poblacion.py` antes de escribir nada
    nuevo.
 3. **Preguntas para la jefa PDS:**
    - ¿Cómo se consolida la P5 del CESFAM con la del Programa del Adulto Mayor?
-   - ¿El formulario «Índice de Barthel» alimenta la sección Barthel del EMPAM?
+   - ¿El formulario «Índice de Barthel» alimenta la sección Barthel del EMP (`119.-`)?
    - ¿La columna `G` de P3·B es «con crónicos en control» o «sin EMP, pero ingresado a
-     un programa», como la define el Manual?
-   - ¿Qué campos del formulario PDS dan demencia, NED, apoyo monetario, intersector y
-     atención preferente?
+     un programa», como la define el Manual? El campo `86.-` mezcla las dos cosas.
+   - `25.- Estipendio MIDESO?`: ¿distingue «recibe» de «en espera» (`H` contra `I`)?
+   - `28.- Alimentación Enteral?`: ¿equivale a la NED por Ley de alto costo que pide el
+     Manual?

@@ -76,6 +76,20 @@ SENSITIVE_PII/
 !refs_tablas/Otros_cronicos_iris.xlsx
 !refs_tablas/Pacientes_Inasistentes_iris.xlsx
 !refs_tablas/Utilizacion_cupos_admin.xlsx
+# PDS + CPU (sep-2026, docs/pds_cpu_casillas_*.md): formularios clinicos
+# 'Programa Dependencia, PADDS y CPU' (IRIS: 'VDI1 Ingreso PADPDS CPU'), 'Zarit
+# Abreviado', 'Indice de Barthel' y 'EMP' (trae el EMPAM). BANNER + ENCABEZADO via
+# tools/limpiar_refs.py; escaneados sin hallazgos (0 RUT, 0 correos, 0 telefonos) y
+# banner revisado enmascarado (solo formulario, anio y mes; sin 'GENERADO PARA').
+# Los crudos traen nombre/RUN/direccion/telefono del paciente Y del cuidador.
+!refs_tablas/Barthel_admin.xlsx
+!refs_tablas/Barthel_iris.xlsx
+!refs_tablas/emp_admin.xlsx
+!refs_tablas/emp_iris.xlsx
+!refs_tablas/pdscpu_admin.xlsx
+!refs_tablas/pdscpu_iris.xlsx
+!refs_tablas/zarit_abreviado_admin.xlsx
+!refs_tablas/zarit_abreviado_iris.xlsx
 
 # --- Catálogos oficiales DEIS/MINSAL (catalogos/) — SÍ versionados, en bloque ---
 # Otra naturaleza que refs_tablas/: no son "ejemplos anonimizados" sino DATOS
