@@ -10,19 +10,50 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
-## [2.0.15] — 2026-09-29
+## [2.0.17] — 2026-09-29
 
-Lectura de exports con `python-calamine`, plan en [docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md).
-Pendiente de revisión ciega antes de mergear.
+**LARGE PERFORMANCE FIXES PART 2.** Lectura de exports con `python-calamine`, plan en
+[docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md). Se implementó en la rama
+`lectura-calamine` como **2.0.15** (ese número nunca llegó a `main`: la 2.0.16 se mergeó
+antes, así que al mergear se re-bumpeó a 2.0.17). Pasó una **revisión ciega**
+([docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md)) sobre los datos reales de
+agosto: **todas las salidas idénticas** (A05, SM + TP + A03, A23, P6 + Rescate, mes y
+rango de 3 meses; la única celda distinta es la versión en la LEEME), los caminos de
+error iguales en 340/342 combinaciones (las 2 restantes, declaradas: abajo) y ningún
+archivo tomado tras un error.
+
+| Corrida real (agosto) | antes | ahora |
+|---|---|---|
+| SM Actividades | ~40 s | **~13 s** |
+| A23 | ~35 s | **~18 s** |
+| P6 + Rescate | ~105 s | **~64 s** |
+| A05 | ~6,5 s | ~6,5 s (no se toca) |
 
 ### Cambiado
 
-- **`filas_xlsx`, `primeras_filas` y `verificar_hoja_unica` leen con calamine** (Rust)
+- **`filas_xlsx` y `verificar_hoja_unica` leen con calamine** (Rust)
   vía `rem_utils._hojas_calamine`; todos los módulos pandas lo heredan por
   `cargar_canonico`, que ya no llama `verificar_hoja_unica` (leer ya verifica: un solo
   parseo por archivo). Medido sobre los exports reales de agosto, contra la referencia
   openpyxl y **0 celdas distintas por `repr`** en los tres: ADA 2026 (4,0 M celdas)
   12,3 s → 3,4 s; Informe Inscritos (5,1 M) 16,8 s → 3,4 s; Formulario PSM 1,1 s → 0,3 s.
+- **`primeras_filas` se queda en openpyxl `read_only`** (hallazgo de la revisión ciega):
+  calamine parsea la hoja ENTERA aunque se le pidan 30 filas, y la detección al elegir un
+  archivo (y al apretar Procesar en el A05) pasaba de 0,9 s a 2,0 s en el ADA. Misma
+  salida que las primeras filas de `filas_xlsx`, verificado por `repr` sobre los exports
+  reales.
+- **Memoria** (medido en el PC del trabajo, 15,7 GB): el adaptador lee fila a fila con
+  `iter_rows` y **reusa cada string por valor** (calamine crea un objeto por celda donde
+  openpyxl reusaba el de su tabla compartida). ADA: pico 558 → **387 MB**, retenido
+  361 → **149 MB** (openpyxl: 192 / 191), por +0,3 s. SM de agosto entero: pico 447 MB,
+  retenido 138 MB. Dos trampas de `iter_rows` con test: se salta las columnas vacías de la
+  izquierda, y hace `PanicException` en Rust sobre una hoja vacía (RAYEN siempre trae dos).
+- **El error de un no-`.xlsx` lleva solo el NOMBRE del archivo** (revisión ciega): la
+  versión de la rama ponía la ruta completa, con la carpeta de OneDrive del usuario, en el
+  diálogo y en el log.
+- `leer_xlsx` con datos en dos hojas pasa a fallar como `modificado` (los 2 DIFF de la
+  revisión ciega): es la regla de hoja de abajo, y `leer_xlsx` no tiene llamadores de
+  producción.
 - **Regla de hoja: la hoja CON DATOS** (calamine no conoce la «activa»): 0 →
   `sin_datos`, más de 1 → `modificado`. Para RAYEN es lo mismo; un export con la activa
   vacía y datos en otra ahora se lee en vez de fallar.
@@ -46,7 +77,63 @@ Pendiente de revisión ciega antes de mergear.
 ### Archivado
 
 - `docs/evanesced/lectura-calamine/` (arneses de la medición: bench, sonda, perfil de
-  Cython y medición del A05).
+  Cython y medición del A05, más los de la memoria y la paridad de `iter_rows`), y los dos
+  informes de la revisión ciega en `revision_ciega/`.
+
+**366 tests** en 20 archivos.
+
+## [2.0.16] — 2026-09-29
+
+(2.0.15 la tomó la rama `lectura-calamine`, sin mergear a la fecha.)
+
+### Corregido
+
+- **Las páginas tardaban segundos en construirse por un trinquete de layout, no por
+  Tk.** `widgets.etiqueta_envolvente` nacía pidiendo el ancho de su texto SIN partir
+  (1619 px en una ventana de 920); dentro de un `CTkScrollableFrame` eso ensanchaba al
+  padre, y su propio `<Configure>` la partía a `ancho - 20`, el padre se encogía a lo que
+  pedían sus hijos, y otra vuelta: ~110 vueltas por etiqueta, cada una re-maquetando la
+  página entera (2.204 redibujos en `acerca_de`). Ahora nace con `wraplength=300`
+  (`_WRAP_INICIAL`), que solo vive hasta el primer `<Configure>` del padre. **Estado
+  final idéntico** (wraplength de cada etiqueta tras construir y tras agrandar/achicar la
+  ventana, a escala 1.0 y 1.5), salvo las etiquetas de cajas que nacen escondidas, que
+  quedan en 300 en vez de 0 hasta que la caja se muestra — y ahí se ajustan (test).
+
+  | Página | 2.0.2 (Tcl 8.6) | 2.0.14 (Tcl 9) | 2.0.16 |
+  |---|---|---|---|
+  | `acerca_de` | 7105 ms | ~3300 ms | **354 ms** |
+  | `sm_actividades` | 5753 ms | ~2600 ms | **389 ms** |
+  | `a23_respiratorio` | 1813 ms | ~770 ms | 259 ms |
+  | `a05` | 1090 ms | ~700 ms | 232 ms |
+
+  El diagnóstico de 2.0.2 («el costo es Tk puro, no hay trabajo que sacar del hilo») era
+  cierto pero incompleto: el Tk era autoinfligido. **Leer archivos no pesaba nada**
+  (0,03 s de todo `about.py`), que era la hipótesis de partida. Con esto el generador
+  planeado en el §12 del CLAUDE.md probablemente sobra: queda para decidir mirando la
+  ventana. Arneses en `docs/evanesced/gui-trinquete-2.0.16/`.
+- **La suite baja de ~47 s a ~30 s** (`test_gui_construccion` de ~46 s a ~20 s), por lo
+  mismo. Lo remedido de `tools/correr_tests.py` con Tcl 9 (y lo descartado midiendo:
+  hilos de BLAS y prioridad de procesos) está en `docs/evanesced/suite-2.0.14/`.
+
+### Agregado
+
+- `test_las_etiquetas_envolventes_no_hacen_trinquete` (cuenta los `<Configure>` del
+  padre: el código viejo da 402 para una etiqueta) y
+  `test_una_etiqueta_envolvente_en_una_caja_escondida_se_ajusta_al_mostrarla` (el valor
+  inicial no puede quedar pegado).
+- **Plan de lectura con `python-calamine`** ([docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md)):
+  medido sobre exports reales, 5-6× más rápido con 0 celdas distintas; Cython descartado
+  (el código propio es el 2-6 % de una corrida); el A05 medido sin profiler (6,5 s) y
+  descartado por el autor. Más el prompt reutilizable de **revisión ciega**
+  ([docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md)). Arneses en
+  `docs/evanesced/lectura-calamine/`.
+
+### Cambiado
+
+- `gui/CLAUDE.md`: su contador de tests estaba desfasado (decía 56, hay 63) — es un
+  subconteo que `check_version` no vigila.
+
+**358 tests** en 19 archivos.
 
 ## [2.0.14] — 2026-09-28
 

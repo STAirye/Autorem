@@ -966,6 +966,62 @@ def test_las_etiquetas_envolventes_caben_en_su_caja_con_el_dpi_escalado():
         ctk.set_widget_scaling(previa)
 
 
+def test_las_etiquetas_envolventes_no_hacen_trinquete():
+    """2.0.16: dentro de un `CTkScrollableFrame` (donde viven TODAS las paginas) el ancho
+    del padre lo fijan sus hijos. La etiqueta nacia pidiendo su texto SIN partir, cada
+    <Configure> la partia a `ancho - 20`, el padre se encogia y otra vuelta: ~110 vueltas
+    por etiqueta, cada una re-maquetando la pagina entera (acerca_de tardaba 3,3 s en
+    construirse, casi todo esto). Se cuentan los <Configure> del padre."""
+    if SIN_DISPLAY:
+        return
+    from gui import widgets
+    app = ctk.CTk()
+    app.geometry("920x600")
+    try:
+        pagina = ctk.CTkScrollableFrame(app)
+        pagina.pack(fill="both", expand=True)
+        caja = ctk.CTkFrame(pagina)
+        caja.pack(fill="x")
+        eventos = []
+        caja.bind("<Configure>", lambda e: eventos.append(e.width), add="+")
+        lbl = widgets.etiqueta_envolvente(caja, "palabra " * 400)
+        lbl.pack(fill="x", padx=8)
+        _bombear(app)
+        assert len(eventos) < 15, (
+            f"{len(eventos)} <Configure> del padre para UNA etiqueta: volvio el trinquete "
+            f"(anchos: {eventos[:6]} ... {eventos[-3:]})")
+        assert lbl._label.winfo_reqwidth() <= caja.winfo_width()
+        assert lbl.cget("wraplength") == lbl._reverse_widget_scaling(caja.winfo_width() - 20)
+    finally:
+        _cerrar(app)
+
+
+def test_una_etiqueta_envolvente_en_una_caja_escondida_se_ajusta_al_mostrarla():
+    """El `wraplength` inicial de `etiqueta_envolvente` (el corte del trinquete) vive solo
+    hasta el primer <Configure> del padre. Las cajas que nacen escondidas (cuestionarios
+    del SM, estamentos, dotacion, el banner) lo reciben recien al mostrarse: tienen que
+    quedar al ancho de la caja, no en el valor de partida."""
+    if SIN_DISPLAY:
+        return
+    from gui import widgets
+    app = ctk.CTk()
+    app.geometry("920x600")
+    try:
+        pagina = ctk.CTkScrollableFrame(app)
+        pagina.pack(fill="both", expand=True)
+        caja = ctk.CTkFrame(pagina)          # SIN pack: escondida
+        lbl = widgets.etiqueta_envolvente(caja, "palabra " * 400)
+        lbl.pack(fill="x", padx=8)
+        _bombear(app)
+        assert lbl.cget("wraplength") == widgets._WRAP_INICIAL, "el padre recibio <Configure> escondido: el test no prueba nada"
+        caja.pack(fill="x")
+        _bombear(app)
+        assert caja.winfo_width() > widgets._WRAP_INICIAL + 100
+        assert lbl.cget("wraplength") == lbl._reverse_widget_scaling(caja.winfo_width() - 20)
+    finally:
+        _cerrar(app)
+
+
 def _fixture_admin():
     """Export ADMINISTRATIVO minimo (encabezado en la fila 9, banner arriba)."""
     p = _TMP / "admin_min.xlsx"

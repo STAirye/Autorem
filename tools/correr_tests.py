@@ -46,6 +46,23 @@ formula predice las tres corridas de arriba. Dos consecuencias:
 El piso duro son esos 74 s de la GUI corriendo sola: no hay reparto que lo
 baje. Para ganar mas hay que hacer la GUI mas barata, no sumar procesos.
 
+REMEDIDO en 2.0.14 (sep-2026, Python 3.14 + Tcl 9, mismo PC): todo bajo a la
+mitad y la penalizacion por competencia DESAPARECIO.
+
+    3 procesos (esto)              47 s   (46,6 / 47,3; dos corridas)
+    test_gui_construccion solo    ~46 s   <- el wall ES la GUI
+    los otros dos procesos         24 s y 32 s, y quedan ociosos
+
+Descartado midiendo (docs/evanesced/suite-2.0.14/): limitar los hilos de BLAS a
+1 por proceso y bajarle la prioridad a los procesos no-Tk dan lo mismo (ruido).
+La conclusion de arriba queda en pie y mas fuerte: la unica palanca es que la
+GUI cueste menos. Una corrida suelta de 84 s fue ruido del PC (no se repitio en
+cuatro corridas): comparar tiempos siempre con al menos dos corridas.
+
+2.0.16: esa palanca era una linea. El trinquete de layout de
+`widgets.etiqueta_envolvente` (gui/CLAUDE.md) era casi todo el costo de construir
+una pagina; cortado, test_gui_construccion bajo de ~46 s a ~20 s y la suite a ~30 s.
+
 NO reemplaza a `pytest`: para depurar un test suelto se sigue usando pytest
 directo, que da el traceback ordenado. Esto es para la pasada completa.
 
@@ -64,7 +81,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 TESTS = RAIZ / "tests"
 
-# Version: 2.0.3
+# Version: 2.0.17
 
 # Costo relativo de cada archivo (segundos de la corrida secuencial de 2.0.2).
 # Solo ORDENA el reparto: un archivo que no este aca entra con PESO_NUEVO y el

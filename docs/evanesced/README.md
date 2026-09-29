@@ -228,11 +228,87 @@ prueba de los números del §1 del plan.
   `PermissionError` al borrar el temporal, que **lleva RUT**. En la sesión se borró a mano
   (`%TEMP%\a05_*`). Si se vuelve a correr, cerrar ese workbook o revisar `%TEMP%` después.
 
-Los cuatro imprimen solo tiempos, formas y conteos, nunca valores. `perfil_cython.py` y
+**Después de la implementación** (rama `lectura-calamine`, cerrada en la **2.0.17**):
+
+- `revision_ciega/informe_fase1.md` y `informe_fase2.md` - el informe del primer uso de
+  [docs/revision_ciega_prompt.md](../revision_ciega_prompt.md): la fase ciega (todas las
+  salidas reales idénticas; 2 DIFF declarados de `leer_xlsx`) y la des-cegada (4 efectos
+  colaterales y lo que ninguna corrida cubrió). Sin valores de celda por diseño.
+- `pf_paridad.py` - el hallazgo que la revisión dejó pasar de largo y se midió después:
+  `primeras_filas` con calamine parseaba la hoja entera (ADA 0,9 -> 2,0 s). Mide la
+  versión vuelta a openpyxl y su paridad por `repr` con `filas_xlsx`. Corre con
+  `cwd` = la raíz del árbol a medir.
+- `memoria_calamine.py` - pico (`PeakWorkingSetSize`) y retenido de leer los exports
+  reales, main contra la rama, cada escenario en un proceso nuevo. **Ojo:** la primera
+  corrida dio 0 MB en todo porque faltaba declarar `restype`/`argtypes` de las llamadas a
+  Windows (el handle se truncaba a 32 bits y la llamada fallaba callada); el archivado ya
+  lo trae arreglado y ahora falla ruidoso.
+- `sonda_iter_rows.py` - `iter_rows` arranca en la fila 1 pero en la COLUMNA del primer
+  dato (`sheet.start[1]`): hay que rellenar a la izquierda.
+- `memoria_variantes.py` - hoy / fila a fila / fila a fila + strings reusados, con hash de
+  todas las celdas para exigir salida idéntica. Fila a fila solo no baja el pico (es la
+  hoja del lado de Rust); reusar strings sí (558 -> 387 MB). La primera corrida reventó
+  con `PanicException` de Rust en las hojas vacías: de ahí la guarda.
+- `paridad_iter_rows.py` - el adaptador nuevo contra una copia textual del viejo
+  (`to_python`), por `repr` y por tipo, en los tres exports reales y un sintético con
+  datos desde C3 y hojas vacías: 0 diferencias.
+
+Llevan las mismas rutas absolutas que los de arriba (`RAIZ`/`RAMA` y `Datos madre`); el
+worktree `lectura-calamine` al que apuntan desaparece al cerrarse la rama.
+
+Los cuatro primeros imprimen solo tiempos, formas y conteos, nunca valores. `perfil_cython.py` y
 `bench_calamine.py` llevan la **ruta absoluta del repo** en un `sys.path.insert` y leen los
 exports de `Datos madre` en el OneDrive del autor: sin esos archivos no corren. Lo mismo
 vale para `medir_a05.py`.
 `sonda_calamine.py` corre en cualquier parte.
+
+### `suite-2.0.14/`
+
+La remedición de `tools/correr_tests.py` tras pasar a Tcl 9 (sep-2026). La suite había
+bajado sola de 103 s a **~47 s**, y el wall pasó a ser **exactamente**
+`test_gui_construccion` corriendo solo (~46 s).
+
+- `variantes_suite.py` - el mismo reparto que `correr_tests.py` (importa su `repartir`),
+  en cuatro variantes: base, `OPENBLAS/OMP/MKL/NUMEXPR_NUM_THREADS=1`, los procesos no-Tk
+  con `BELOW_NORMAL_PRIORITY_CLASS`, y las dos cosas. Las cuatro dieron 47,7-49,9 s:
+  **ni la sobresuscripción de hilos de BLAS ni la prioridad explican nada**. Se escribió
+  para explicar una corrida de 84 s que después **no se repitió** (ruido del PC): la
+  lección es comparar siempre con al menos dos corridas.
+
+Lleva la **ruta absoluta del repo** en `RAIZ`. Solo Windows (`BELOW_NORMAL_PRIORITY_CLASS`).
+
+### `gui-trinquete-2.0.16/`
+
+Por qué construir una página costaba segundos (sep-2026). La hipótesis de partida del
+autor era «lee archivos»; el perfil dijo que no (0,03 s de todo `about.py`) y la cadena
+de experimentos llegó al **trinquete de layout** de `widgets.etiqueta_envolvente`,
+arreglado en la **2.0.16**. En el orden en que se corrieron:
+
+- `perfil_acerca_de.py` - pared + cProfile de `mostrar("acerca_de")`, cronometrando cada
+  bloque de `about.py`. Mostró que el costo estaba entero en una cascada de Tk colgada de
+  `CTkScrollbar._draw` -> `update_idletasks` (112 veces) y 2.201 `_update_dimensions_event`.
+- `scroll_diferido.py` - **hipótesis DESCARTADA, archivada a propósito:** diferir el
+  `set` del scrollbar hasta el final no baja nada (y el SM empeora). El scrollbar era
+  dónde se disparaba el layout, no por qué.
+- `cascada_wrap.py` - la prueba: sin el `bind("<Configure>")` de las etiquetas,
+  acerca_de 3,3 s -> 0,14 s. Reconfigurar solo si el ancho cambia NO sirve (mismos
+  conteos): el ancho cambia de verdad en cada vuelta.
+- `trinquete_wrap.py` - la secuencia de anchos que ve cada etiqueta: arranca en 1619 px
+  (el texto sin partir) y baja de a pocos px hasta ~300 antes de saltar a 920. Ahí se ve
+  el trinquete.
+- `fix_wrap.py` - el arreglo candidato (wraplength inicial 1 y 300) contra hoy, en 5
+  páginas, a escala 1.0 y 1.5, comparando el wraplength FINAL de cada etiqueta tras
+  construir y tras agrandar/achicar la ventana. Lo único distinto: etiquetas de cajas que
+  nacen escondidas (0 hoy, 300 con el arreglo, hasta mostrarse). **Ojo:** archivado como
+  quedó tras la última corrida, recortado a SM y A05 a escala 1.0 para ver QUÉ etiquetas
+  diferían; la corrida completa (5 páginas × 2 escalas) era el mismo script con las
+  tuplas originales de páginas y escalas.
+- `medir_paginas.py` - el bloqueo de cada página con el arreglo puesto: la tabla del
+  CHANGELOG de la 2.0.16.
+
+Todos llevan la **ruta absoluta del repo** en un `sys.path.insert` y abren ventanas de
+verdad (necesitan display). Los números de esa sesión tienen ruido: corrían en paralelo
+con la revisión ciega de `lectura-calamine`.
 
 ### `tk_tcl_intermitente/`
 

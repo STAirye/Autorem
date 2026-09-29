@@ -27,6 +27,14 @@ SmartScreen advierte "editor desconocido", es un exe sin firmar: procesa todo
 **local, no sube nada** (ver [CLAUDE.md](CLAUDE.md) §11). Todas las versiones y
 sus notas están en **[Releases](https://github.com/STAirye/Autorem/releases/latest)**.
 
+> **2.0.17 — LARGE PERFORMANCE FIXES PART 2.** Leer los exports de RAYEN es 3-4 veces más
+> rápido: Actividades SM de agosto pasa de ~40 s a ~13 s, el A23 de ~35 s a ~18 s, y la
+> población (P6 + Rescate) de ~105 s a ~64 s. Mismos resultados, celda por celda.
+>
+> **2.0.16 — LARGE PERFORMANCE FIXES.** Cambiar de pantalla ya no congela la ventana:
+> cada página se arma en menos de medio segundo (Acerca de: de ~3,3 s a 0,35 s;
+> Actividades SM: de ~2,6 s a 0,39 s). Detalle en el [CHANGELOG](CHANGELOG.md).
+
 ## Qué cubre hoy
 
 La herramienta es **una sola** (un binario, una versión), y va sumando reportes
@@ -223,14 +231,14 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **364 pruebas** en 20 archivos:
+Datos 100% sintéticos, sin PII. **366 pruebas** en 20 archivos:
 
 ```bash
 python tools/correr_tests.py
 ```
 
-Reparte los archivos en 3 procesos y tarda ~103 s, contra ~194 s de `pytest` a secas
-(la ventana de Tk se lleva la mitad de la suite ella sola y no se paraleliza). Si
+Reparte los archivos en 3 procesos y tarda ~30 s (2.0.16), contra ~60-90 s de `pytest`
+a secas (la ventana de Tk se lleva buena parte de la suite y no se paraleliza). Si
 prefieres el camino directo, `python -m pytest -q` sigue funcionando.
 
 Cada archivo corre solo también, con su propio runner, que es lo cómodo para mirar

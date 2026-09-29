@@ -71,7 +71,16 @@ compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
   corrida.
 - **`CTkScrollableFrame` redefine `grid`/`grid_remove`/`lift`** (operan sobre su
   `_parent_frame`) pero **no** `tkraise`.
-- **Construir una página cuesta SEGUNDOS, y no hay hilo que lo salve.** Perfilado (2.0.1): `sm_actividades` = 8,4 s, de los cuales **7,1 s son `_tkinter.tkapp.call`** — 101.700 llamadas a Tk. No es I/O ni imports, así que **no hay trabajo puro que mandar a un worker**; y los widgets de Tk solo existen en el hilo del `mainloop` (un intérprete Tcl por hilo), así que crearlos afuera es la trampa de arriba. La salida es **cooperativa**: `App._precargar_tick` arma UNA página por tick de `after`, con `widgets.barra_precarga` al pie. Tres cosas que no se pueden soltar — las páginas se construyen **escondidas** (`grid_remove`; `_construir_pagina` hace `grid()`, y una página mapeada revive el bug del Tab), la barra se repinta con `update_idletasks` **antes** de cada construcción (si no muestra la página anterior durante todo el bloqueo), y `_al_cerrar` **cancela** el tick pendiente. **Hoy la precarga viene APAGADA** (`precargar=False` por defecto): junta los bloqueos al arranque y la ventana se ve rota mientras tanto (el autor la probo y la llamo «VERY JARRING»). Se enciende cuando `_construir_pagina` ceda el control entre paso y paso -- el plan, con las mediciones, esta en el §12 del CLAUDE.md raiz.
+- **El trinquete de `etiqueta_envolvente` (2.0.16): una etiqueta que pide su texto SIN
+  partir, dentro de un `CTkScrollableFrame`, ensancha al padre, y el `<Configure>` que
+  la parte a `ancho - 20` lo vuelve a encoger -- ~110 vueltas por etiqueta, cada una
+  re-maquetando la página entera.** Era casi todo lo del párrafo siguiente (acerca_de
+  3,3 s -> 0,35 s). Se corta naciendo con `wraplength=_WRAP_INICIAL`; lo amarran
+  `test_las_etiquetas_envolventes_no_hacen_trinquete` y el de la caja escondida. **Una
+  etiqueta nueva que se ajuste al ancho del padre va por `etiqueta_envolvente`**: una
+  copia a mano con su propio `bind("<Configure>")` revive el trinquete.
+- *(Diagnóstico de 2.0.2, cierto pero incompleto: el costo era Tk, pero Tk
+  autoinfligido por el trinquete de arriba.)* **Construir una página cuesta SEGUNDOS, y no hay hilo que lo salve.** Perfilado (2.0.1): `sm_actividades` = 8,4 s, de los cuales **7,1 s son `_tkinter.tkapp.call`** — 101.700 llamadas a Tk. No es I/O ni imports, así que **no hay trabajo puro que mandar a un worker**; y los widgets de Tk solo existen en el hilo del `mainloop` (un intérprete Tcl por hilo), así que crearlos afuera es la trampa de arriba. La salida es **cooperativa**: `App._precargar_tick` arma UNA página por tick de `after`, con `widgets.barra_precarga` al pie. Tres cosas que no se pueden soltar — las páginas se construyen **escondidas** (`grid_remove`; `_construir_pagina` hace `grid()`, y una página mapeada revive el bug del Tab), la barra se repinta con `update_idletasks` **antes** de cada construcción (si no muestra la página anterior durante todo el bloqueo), y `_al_cerrar` **cancela** el tick pendiente. **Hoy la precarga viene APAGADA** (`precargar=False` por defecto): junta los bloqueos al arranque y la ventana se ve rota mientras tanto (el autor la probo y la llamo «VERY JARRING»). Se enciende cuando `_construir_pagina` ceda el control entre paso y paso -- el plan, con las mediciones, esta en el §12 del CLAUDE.md raiz.
 
 **Posición y agrupación: es un DATO, nunca el orden en que corrió algo**
 
@@ -120,7 +129,8 @@ Antes de escribir un helper acá, buscarlo en:
 
 ## Tests
 
-**56 tests** (`def test_`: 26 + 30). `tests/test_gui_registro.py` amarra el CONTRATO (claves,
+**63 tests** (`def test_`: 30 + 33; este subconteo NO lo vigila `check_version`, y
+estaba desfasado en 56 hasta la 2.0.16). `tests/test_gui_registro.py` amarra el CONTRATO (claves,
 ids únicos, orden declarado, `extras[].despues_de` apuntando a un input real, una sola
 `ancla_salida`, callables invocables) y `tests/test_gui_construccion.py` **arma la ventana de
 verdad** y bombea eventos — es lo que cazó el `after()` desde el hilo. Las dos necesitan

@@ -10,9 +10,10 @@ Version: 2.0.14
 
 # Plan — Lectura de exports con `python-calamine`
 
-> **PENDIENTE** — plan aprobado 2026-09-29, sin implementar. Escrito para una sesión
-> fría (Sonnet). Al cerrarlo: header «LISTO Y MERGEADO» arriba (CLAUDE.md §0 regla 7),
-> nunca borrarlo.
+> **LISTO Y MERGEADO** — 2026-09-29, implementado en la rama `lectura-calamine` (como
+> 2.0.15) y mergeado como **2.0.17**, tras la revisión ciega. Se conserva como registro:
+> lo citan CHANGELOG.md y docs/evanesced/README.md. Lo que cambió respecto del plan
+> (`primeras_filas` sigue en openpyxl, memoria) está en §9.
 
 ## 1. Qué y por qué (medido, no supuesto)
 
@@ -225,6 +226,21 @@ Implementado en la rama `lectura-calamine` (2.0.15), 2026-09-29.
 - **`tools/correr_tests.py` revienta con `UnicodeEncodeError` (cp1252)** al imprimir la
   salida de un grupo que falla con un carácter `�`; oculta QUÉ test falló. Con
   `PYTHONIOENCODING=utf-8 python -m pytest tests` se ve. No se tocó (fuera de alcance).
+
+**Tras la revisión ciega** (2026-09-29, informes en
+`docs/evanesced/lectura-calamine/revision_ciega/`), antes del merge:
+
+- **`primeras_filas` vuelve a openpyxl `read_only`**, contra la decisión §2.1 de este plan:
+  calamine parsea la hoja ENTERA aunque se le pida `nrows=30`, y la detección al elegir un
+  archivo pasaba de 0,9 s a 2,0 s (ADA). El plan asumió que `nrows` cortaba temprano; no
+  se midió hasta después. Misma salida por `repr`.
+- **Memoria**, que el plan no miraba: el pico del ADA era 558 MB contra 192 de openpyxl.
+  Con `iter_rows` + strings reusados: 387 MB de pico, 149 retenidos.
+- El error de no-`.xlsx` llevaba la ruta completa (con el usuario de OneDrive): ahora
+  solo el nombre.
+- Las dos deudas de arriba (`groupby().last()` y el `UnicodeEncodeError` de
+  `correr_tests`) pasaron al §12 del CLAUDE.md, para que no queden enterradas en un plan
+  cerrado.
 - El test de cierre del archivo (§3) quedó como archivo REAL truncado: la guarda
   `is_zipfile` lo corta antes de abrir con calamine, así que prueba que el archivo queda
   libre, no un `finally` propio de calamine.
