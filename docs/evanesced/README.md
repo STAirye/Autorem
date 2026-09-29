@@ -234,6 +234,21 @@ exports de `Datos madre` en el OneDrive del autor: sin esos archivos no corren. 
 vale para `medir_a05.py`.
 `sonda_calamine.py` corre en cualquier parte.
 
+### `suite-2.0.14/`
+
+La remedición de `tools/correr_tests.py` tras pasar a Tcl 9 (sep-2026). La suite había
+bajado sola de 103 s a **~47 s**, y el wall pasó a ser **exactamente**
+`test_gui_construccion` corriendo solo (~46 s).
+
+- `variantes_suite.py` - el mismo reparto que `correr_tests.py` (importa su `repartir`),
+  en cuatro variantes: base, `OPENBLAS/OMP/MKL/NUMEXPR_NUM_THREADS=1`, los procesos no-Tk
+  con `BELOW_NORMAL_PRIORITY_CLASS`, y las dos cosas. Las cuatro dieron 47,7-49,9 s:
+  **ni la sobresuscripción de hilos de BLAS ni la prioridad explican nada**. Se escribió
+  para explicar una corrida de 84 s que después **no se repitió** (ruido del PC): la
+  lección es comparar siempre con al menos dos corridas.
+
+Lleva la **ruta absoluta del repo** en `RAIZ`. Solo Windows (`BELOW_NORMAL_PRIORITY_CLASS`).
+
 ### `tk_tcl_intermitente/`
 
 El `tk.tcl` intermitente de `test_gui_construccion` (sep-2026). El contexto, las rondas y
