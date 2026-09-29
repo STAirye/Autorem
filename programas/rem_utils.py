@@ -214,11 +214,20 @@ def _celda_openpyxl(v):
     return v
 
 
-def _hojas_calamine(entrada, max_filas=None):
+def _hojas_calamine(entrada):
     """[(nombre, filas)] de TODAS las hojas de un .xlsx, leidas con python-calamine
     (Rust, 5-6x mas rapido que openpyxl en los exports reales, 0 celdas distintas).
-    Filas = tuplas del MISMO ancho, grilla desde A1 (`skip_empty_area=False`: los indices
-    de fila del banner de RAYEN no se corren). `max_filas` corta temprano.
+    Filas = tuplas del MISMO ancho, grilla desde A1: los indices de fila del banner de
+    RAYEN no se corren.
+
+    MEMORIA (medido tras la revision ciega, ADA real de 24 MB): fila a fila con
+    `iter_rows` y cada string REUSADO por valor (`unicos`). calamine crea un objeto por
+    celda, donde openpyxl reusaba el de su tabla de strings compartidos: sin esto el pico
+    era 558 MB (openpyxl: 192) y lo retenido 361 MB. Asi: 387 MB de pico, 149 retenidos,
+    por +0,3 s. El resto del pico es la hoja cargada del lado de Rust: no se puede evitar.
+    Dos trampas de `iter_rows`: se salta las COLUMNAS vacias de la izquierda (arranca en
+    `start[1]`, no en A; se rellena) y hace `PanicException` en Rust sobre una hoja
+    VACIA (`start` es None) -- y RAYEN siempre trae dos.
 
     Un no-.xlsx (.html disfrazado, .xls) levanta `zipfile.BadZipFile`, la misma excepcion
     de siempre para `runner.es_error_formato`: sin la guarda, calamine LEERIA un .xls.
@@ -228,16 +237,27 @@ def _hojas_calamine(entrada, max_filas=None):
     import zipfile
     from python_calamine import CalamineWorkbook
     if not zipfile.is_zipfile(entrada):
-        raise zipfile.BadZipFile(f"No es un .xlsx (no es un zip): {entrada}")
+        # Solo el NOMBRE: la ruta completa lleva la carpeta de OneDrive con el usuario, y
+        # este texto termina en el dialogo y en el log (revision ciega, 2.0.15).
+        raise zipfile.BadZipFile(f"No es un .xlsx (no es un zip): {Path(str(entrada)).name}")
+    unicos = {}
+
+    def celda(v):
+        v = _celda_openpyxl(v)
+        return unicos.setdefault(v, v) if type(v) is str else v
+
     wb = CalamineWorkbook.from_path(str(entrada))
     try:
         hojas = []
         for nombre in wb.sheet_names:
-            crudas = wb.get_sheet_by_name(nombre).to_python(skip_empty_area=False,
-                                                            nrows=max_filas)
-            ancho = max((len(f) for f in crudas), default=0)
-            hojas.append((nombre, [tuple(map(_celda_openpyxl, f)) + ("",) * (ancho - len(f))
-                                   for f in crudas]))
+            hoja = wb.get_sheet_by_name(nombre)
+            if hoja.start is None:   # vacia: iter_rows haria panic
+                hojas.append((nombre, []))
+                continue
+            izq = ("",) * hoja.start[1]
+            filas = [izq + tuple(map(celda, f)) for f in hoja.iter_rows()]
+            ancho = max((len(f) for f in filas), default=0)
+            hojas.append((nombre, [f + ("",) * (ancho - len(f)) for f in filas]))
         return hojas
     finally:
         wb.close()
@@ -281,8 +301,23 @@ def filas_hoja(ws, max_filas=None):
 
 def primeras_filas(entrada, n):
     """Las primeras `n` filas de la hoja con datos (ver `filas_xlsx`; [] si ninguna).
-    Para las detecciones BARATAS (formato del A05, cruce ADA<->Grupal)."""
-    hojas = _con_datos(_hojas_calamine(entrada, n))
+    Para las detecciones BARATAS (formato del A05, cruce ADA<->Grupal).
+
+    Con openpyxl read_only y NO con calamine, a proposito (revision ciega, 2.0.15):
+    calamine parsea la hoja ENTERA aunque se le pidan 30 filas, y esto corre al elegir
+    un archivo y al apretar Procesar en el A05 -- con calamine el ADA pasaba de 0,9 s a
+    2,0 s. Mismo resultado que las primeras `n` de `filas_xlsx`: `None` -> `''` (lo que
+    entrega calamine; RAYEN ya escribe `''`) y la misma regla de hoja."""
+    import zipfile
+    if not zipfile.is_zipfile(entrada):   # mismo error que `_hojas_calamine`
+        raise zipfile.BadZipFile(f"No es un .xlsx (no es un zip): {Path(str(entrada)).name}")
+    wb = abrir_xlsx_ro(entrada)
+    try:
+        hojas = [(ws.title, [tuple("" if v is None else v for v in f)
+                             for f in filas_hoja(ws, n)]) for ws in wb.worksheets]
+    finally:
+        wb.close()
+    hojas = _con_datos(hojas)
     return hojas[0][1] if hojas else []
 
 

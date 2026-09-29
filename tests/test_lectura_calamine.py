@@ -105,6 +105,35 @@ def test_no_xlsx(tmp_path):
     assert ai.value.categoria == "no_legible"
 
 
+def test_la_grilla_arranca_en_A1_aunque_los_datos_empiecen_en_C3(tmp_path):
+    """Las dos trampas de `iter_rows` de calamine (2.0.17): se salta las COLUMNAS vacias de
+    la izquierda (hay que rellenarlas o todo indice de columna se corre) y hace
+    `PanicException` en Rust sobre una hoja vacia (RAYEN siempre trae dos)."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["C3"] = "banner"
+    ws["C5"], ws["D5"], ws["E5"] = "RUN", "FECHA", 2.5
+    ws["C6"], ws["D6"] = "r1", 5
+    wb.create_sheet("vacia1"); wb.create_sheet("vacia2")
+    p = tmp_path / "c3.xlsx"
+    wb.save(p)
+    got = filas_xlsx(p)
+    ref = [tuple("" if v is None else v for v in f) for f in _referencia(p)[0]]
+    assert [tuple(map(repr, f)) for f in got] == [tuple(map(repr, f)) for f in ref]
+    assert got[2][2] == "banner" and got[4][2:5] == ("RUN", "FECHA", 2.5)
+
+
+def test_el_error_de_no_xlsx_no_lleva_la_carpeta(tmp_path):
+    """La ruta completa lleva la carpeta de OneDrive con el nombre del usuario, y el texto
+    termina en el dialogo y en el log (revision ciega, 2.0.17): solo el nombre."""
+    falso = tmp_path / "Formulario_Rayen.xlsx"
+    falso.write_text("<html><body>x</body></html>")
+    for leer in (filas_xlsx, lambda p: primeras_filas(p, 5)):
+        with pytest.raises(zipfile.BadZipFile) as ex:
+            leer(falso)
+        assert falso.name in str(ex.value) and str(tmp_path) not in str(ex.value)
+
+
 def test_primeras_filas(tmp_path):
     p = _libro(tmp_path / "f.xlsx", ("H", [[i, "a"] for i in range(20)]))
     assert primeras_filas(p, 5) == filas_xlsx(p)[:5]
