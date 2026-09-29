@@ -45,6 +45,16 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   (`'  Club de adulto mayor…'`) — tercera pérdida aceptada, documentada en
   `_hojas_calamine` y tolerada SOLO esa en el test: `norm()` los recorta igual.
 
+### Cambiado
+
+- **`refs_tablas/SA_26_V1.2.xlsm` reemplazada por la plantilla VACÍA recién descargada.**
+  La versionada desde el 2026-07-09 era un SA de Salud Mental LLENO de algún mes (2.438
+  números en A03·D.3, A04, A05, A06, A19a, A26 y A32; nadie sabía de dónde venía). Se
+  verificó antes de reemplazar: mismas hojas en el mismo orden, mismas celdas
+  bloqueadas (fórmulas y rótulos), y la única celda editable con número es el código de
+  establecimiento de la hoja NOMBRE, que trae la plantilla misma. Ningún código lee el
+  SA (el P6 lee el SP).
+
 **372 tests** en 20 archivos.
 
 ## [2.0.19] — 2026-09-29
