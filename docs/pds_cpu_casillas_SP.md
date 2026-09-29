@@ -10,6 +10,58 @@ Version: 2.0.20
 
 # PDS + CPU — casillas del SP_26 llenadas a mano (corte junio 2026)
 
+> **ESTADO AL 2026-09-29 (fin del día). Reunión con la encargada PDS el 2026-09-30 en
+> la mañana.** Este bloque es el punto de entrada del módulo PDS + CPU. El inventario
+> está completo; el **plan del módulo todavía no está escrito**.
+>
+> **Hecho (commiteado):**
+> - Inventario del SA (agosto) → [pds_cpu_casillas_SA.md](pds_cpu_casillas_SA.md). Su
+>   §8 tiene los formularios, el campo RAYEN de cada casilla y las advertencias.
+> - Inventario del SP (junio) → este doc, con las reglas del Manual P, los
+>   indicadores PADDS (§5.1) y el Drive del equipo (§5.2).
+> - 8 refs de formularios (PDS, Zarit, Barthel, EMP, en Admin e IRIS) vetados y en el
+>   whitelist. Todavía **sin contrato**: va junto con el loader (skill `tests-fuentes`).
+> - Skill `inventario-rem` (`.claude/skills/inventario-rem/`).
+>
+> **Pendiente, en orden:**
+> 1. **Ref del Drive PDS.** Espera a que el equipo diga qué pestañas se usan de verdad.
+>    - `refs_tablas/Drive_PDS_heads.xlsx` es una copia **sin fotos ni el comentario con
+>      autor**, que pasó el escáner de PII sin hallazgos. Sigue **ignorada** por git.
+>    - Antes del whitelist: el autor borra los comentarios de `Vacunacion 2025` (filas
+>      con fecha y texto libre, `B44` incluida), se recorta a las pestañas en uso y se
+>      repite la revisión enmascarada.
+>    - Después: agregar `drive` a `DENY_NOMBRE` en `tools/limpiar_refs.py`, con un
+>      comentario («Drive llenado a mano, varias tablas por pestaña, revisado a mano»)
+>      y el header del `.py` a la versión actual. Sin eso, `test_refs_tablas` falla.
+>      Luego el whitelist en `.gitignore` y el commit.
+>    - **`refs_tablas/Drive 2_heads.xlsx` (el original) sigue ahí, ignorado, con 2 fotos
+>      y 1 comentario con el nombre de su autor.** Sacarlo de `refs_tablas/` cuando la
+>      copia limpia esté commiteada.
+>    - `Datos madre/PAD/Drive 2 anonim.xlsx` (OneDrive) conserva **1 correo real** (fila
+>      98) y **nombres de médicos** (`VDI MÉDICA`). Queda local, no circula.
+> 2. **Preguntas para la encargada PDS** (ninguna bloquea el diseño):
+>    - `28.- Alimentación Enteral?`: ¿equivale a la NED por Ley de alto costo? (§6)
+>    - A26·A.1: ¿la evaluación del plan se registra solo en la segunda visita? (doc SA §7)
+>    - A27·B: ¿de dónde salen los 14 y 22 sesiones? (doc SA §7)
+>    - A05·J contra A05·V: ¿quiénes son los 11 DS que no están en el PADDS? (doc SA §7)
+>    - Qué pestañas del Drive se usan (punto 1).
+>    - Revisar los **pesos** de los indicadores: la tabla transcrita suma 95 % (§5.1).
+> 3. **Escribir el plan del módulo**, autocontenido para implementar en otra sesión.
+>    Decisiones que ya están tomadas y el plan tiene que respetar:
+>    - Las casillas se ubican por **encabezado**, nunca por coordenada.
+>    - Los campos del formulario se leen por **nombre con su número**.
+>    - La P5 lleva **solo pacientes PDS**, porque el consolidador suma las planillas.
+>    - La A26·C `C` y la A33·C/D/E: la primera la llena el módulo; la A33·C/D/E queda
+>      vacía con aviso.
+>    - El sexo del cuidador sale de Inscritos, o del override del Drive.
+>    - El Drive funciona como override y fuente de avisos.
+>    - Un mes anterior a 2023 da `ArchivoInvalido`.
+>    - Revisar el reuso de `programas/poblacion.py` para la regla «en control».
+> 4. Los scripts de trabajo de esta sesión (el generador del inventario, los
+>    extractores) viven en el scratchpad. Al cerrar la rama, se archivan en
+>    `docs/evanesced/` según la regla 7 de CLAUDE.md. La versión reutilizable ya es la
+>    skill.
+
 Continúa [pds_cpu_casillas_SA.md](pds_cpu_casillas_SA.md). Es la **Serie P**, o sea
 **población en control**: un stock al corte semestral (junio y diciembre), no eventos
 del mes. Se generó con la skill `inventario-rem`.
@@ -202,7 +254,7 @@ solo como chequeo.
 | `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. **El indicador 4 del programa (§5.1) define `F` como «preventivo vigente O controles al día»**, que es exactamente lo que registra el campo 86: se lee directo. El EMP del cuidador (por RUT: EMPA si tiene menos de 65, EMPAM si tiene 65 o más) queda como chequeo |
 | `G` Crónicos en control | `90.- Cuidador con Condiciones Crónicas en Control en Ce…`, independiente del EMP (autor) |
 | `H` Con estipendio | `25.- Estipendio MIDESO?` = **SI**. Sus valores son SI / NO / vacío; **un vacío es «sin dato», no «NO»**, y se cuenta en la LEEME |
-| `I` En espera de estipendio | ⚠ **No tiene fuente en el formulario**, porque `25.-` no tiene un valor «en espera». Junio trae 105, llenados a mano desde otro lado (¿una lista del MDS?). Hasta saberlo, el módulo **la deja vacía y avisa**; no la infiere |
+| `I` En espera de estipendio | **No está en el formulario** (`25.-` solo trae SI/NO). Sale del **Drive PDS**, `ESTIPENDIO = ESPERA` (§5.2). Si no hay Drive, el módulo la deja vacía y avisa |
 | `J` Sobrecarga vigente | `88.- Zarit Abreviado del Cuidador` + `89.- Fecha Vigencia Zarit…` (vigente = dentro de los 11 m 29 d) |
 | `K` 65 o más | `82.- Edad Cuidador` o `81.- Fecha Nacimiento Cuidador` al corte |
 | `L` · `M` · `N` | `91.- …ECICEP` · `92.- …Apoyo Intersectorial` · `93.- …Atención Preferente` |
@@ -338,6 +390,56 @@ años**: la P3·B pasó de la fila 45 a la 52, y la A26·C de las filas 67-75 a 
 
 ---
 
+## 5.2 El Drive del equipo PDS (override y fuente de avisos)
+
+Es una planilla de Google Drive, llenada a mano por el equipo PDS. Es el input más
+difícil de automatizar: tiene ~22 pestañas, **los nombres de las pestañas funcionan
+como nombres de tabla**, y hay pestañas con **varias tablas** (`Electrodependientes`
+tiene 4). Su rol en el módulo: **override** de lo que RAYEN no trae o trae mal, y
+**fuente de avisos** cuando no coincide con los formularios. El autor está definiendo
+con el equipo qué pestañas se usan de verdad (sep-2026).
+
+**Pestaña `PDS 2026`** (el padrón): 203 pacientes y 58 columnas, **una fila por
+paciente**. Perfil sacado de una copia anonimizada; no se versiona ningún dato.
+
+| Qué | Columnas | Valores |
+|---|---|---|
+| Condiciones | `GASTROSTOMIA` · `DEMENCIA` · `Paliativo oncologico` · `Paliativo NO oncologico` · `NANEAS` | SI / NO (`No` también) |
+| Transversales | `P. ORIGINARIO` · `MIGRANTE` · `sector` (AZUL/ROJO/VERDE) · `PREVISION` | SI / NO |
+| **Estipendio** | `ESTIPENDIO` | `CONCEDIDA` · `SI` · **`ESPERA`** · `NO` · `REVISAR` · `no postulable` |
+| Dependencia | `DEPENDENCIA` | GRAVE / MODERADO / TOTAL (categorías del Barthel) |
+| Cuidador | `SEXO` (**col 39**, la 2ª de ese nombre) · `EMPA/EMPAM/PSCV CUIDADORES` (texto libre) · `VIGENCIA EXAMEN` · `ZARIT` | `VIGENCIA EXAMEN`: SI / NO / NO APLICA / SIN REGISTRO |
+| Checks | `ELECTRODEPENDIENTE` · `IRA / ERA` · `CUP` · `PAÑALES` · `BARTHEL` · `CONSENTIMIENTO INFORMADO` · `Capacitacion` · `plan` · `ACTA` | VERDADERO / FALSO / vacío |
+| Contactos | `PRIMER CONTACTO ENF` · `SEGUNDO CONTACTO ENF` | 1 / vacío |
+| VDI | `VDI MÉDICA` · `VDI NUTRICIONISTA` · … · `VDI PSICOLOGIA PACIENTE` | Fechas, texto y números mezclados |
+
+**Qué resuelve:**
+- **P3·B `I` (en espera de estipendio):** `ESTIPENDIO = ESPERA`. Es el dato que el
+  formulario PDS no tiene (`25.-` solo trae SI/NO). Con esto se cierra esa pregunta.
+- **El sexo del cuidador** (col 39): override del cruce con el Informe Inscritos.
+- **NED:** la saca la pestaña `NED` del original (rutificada). `GASTROSTOMIA` **no**
+  equivale a NED (autor).
+
+**Quirks que el lector tiene que aguantar:**
+1. **Nombres de columna duplicados o casi iguales:** `SEXO` ×2 (col 12 = paciente, col
+   39 = cuidador), `sector`/`SECTOR`, `PREVISION`/`prevision`. La col 34 no tiene
+   encabezado. **Se lee por orden y columnas vecinas, y con una firma que falle ruidoso
+   si el orden cambia.**
+2. **Categorías sucias:** `NO`/`No`, `F`/`f`, `FONASAB`/`ONASA B`/`Fonasa B`,
+   `BAJOPESO`, `SIN REGSITRO`, `PACAM` con `???`/`C`/`N/C`. Se normalizan con un mapa
+   explícito, y **lo que no está en el mapa va a avisos**, no a una categoría adivinada.
+3. **Valores en la columna equivocada:** `ZARIT` trae `BAJO PESO`/`SOBREPESO`, que son
+   estados nutricionales. Va a avisos para el equipo.
+4. **En las columnas `VDI <profesional>`, un número es un error de digitación**. Por
+   ejemplo, `45163` es el serial de Excel del 24-ago-2023. **No se reinterpreta como
+   fecha en silencio: va a avisos.** El texto de `VDI MÉDICA` son nombres de médicos:
+   no se lee ni se copia a ninguna salida.
+5. En los checks, **el vacío es «sin dato»**, no FALSO.
+6. El Drive trae RUT, nombre, dirección y teléfono, y **nunca entra al repo**. En
+   `refs_tablas/` va a quedar solo el encabezado, con las pestañas que se usen.
+
+---
+
 ## 6. Lo que falta para diseñar el módulo
 
 1. **Exports de formularios:** ✅ se están bajando desde 2021 (PDS, Zarit, Barthel,
@@ -357,7 +459,7 @@ años**: la P3·B pasó de la fila 45 a la 52, y la A26·C de las filas 67-75 a 
    - EMP `24.-` = estado nutricional de adultos y personas mayores (el que usa la P5·B);
      `25.-` = pediátrico (+2 / +1 / eutrófico / −1 / −2).
 4. **Preguntas que quedan para la encargada PDS:**
-   - P3·B `I` (**en espera de estipendio**): ¿de dónde salen los 105 de junio, si el
-     formulario no lo registra?
+   - ~~P3·B `I`: ¿de dónde salen los 105 «en espera»?~~ **Resuelto:** el Drive PDS,
+     `ESTIPENDIO = ESPERA` (§5.2).
    - `28.- Alimentación Enteral?`: ¿equivale a la NED por Ley de alto costo que pide el
      Manual? El autor presume que sí.
