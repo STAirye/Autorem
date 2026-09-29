@@ -127,7 +127,7 @@ gui/              la GUI (customtkinter)      -> gui/CLAUDE.md
 catalogos/        CIE-10 / ENO / GES + maestro_slim, que shippea el exe (§14)
 refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
-.claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes
+.claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes · inventario-rem
 legacy/           monolitos viejos + la GUI 1.x congelada (.py.gz; no se importan)
 tests/            pruebas automáticas        -> tests/CLAUDE.md
 docs/             planes y contexto por módulo
@@ -218,7 +218,7 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 | **Salud Mental** | A05 N/O · A03 D.3 · Actividades (A04·A06·A19a·A26·A27·A32) · Trabajo perdido | ✅ (REM de agosto 2026 hecho completo con la herramienta) |
 | **Salud Mental — población** | SP·P6 A.1 + Rescate de inasistentes, vía `programas/poblacion.py` | 🚧 en validación (§2.1) |
 | **Respiratorio** | A23 (indicadores · SALA · Secciones G y H · tablas por sección) | 🚧 IRIS ✅ · Monitoreo Admin parcial · falta formulario admin y afinar A/I-espiro/O |
-| **Dependencia / Domiciliaria** | `rem_a26_domiciliaria` (A26·A1) | 📌 anotado, sin implementar (§12) |
+| **Dependencia (PDS) + Cuidados Paliativos (CPU)** | A03·D.6 · A05·J/V · A26·A.1/C · A27 · A33 · P3 · P5 | 📌 inventariado (docs/pds_cpu_casillas_*.md), sin implementar (§12) |
 | Cardiovascular · SSyR · otros | — | pendiente |
 
 ---
@@ -263,9 +263,14 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   [docs/tk_tcl_intermitente.md](docs/tk_tcl_intermitente.md) §7.
 
 **Módulos**
-- **`rem_a26_domiciliaria`** (A26·A1): las 24 VDI del PADDS por subtipo × visita +
-  planes de cuidado a usuario y cuidador. Su punto de entrada es `EXCLUIR_SMISH` del
-  Trabajo Perdido. Base: página «Dependencia» del PowerBI + `poblacion.py`.
+- **Módulo PDS + CPU** (antes anotado como `rem_a26_domiciliaria`, que se quedaba
+  corto): toca **A03·D.6, A05·J/V, A26·A.1/C, A27·A/B, A33, P3·A/B y P5·A/B**. El
+  inventario con los valores reales de agosto (SA) y junio (SP), las reglas del
+  Comentado y del Manual P, y los formularios que faltan bajar está en
+  [docs/pds_cpu_casillas_SA.md](docs/pds_cpu_casillas_SA.md) y
+  [docs/pds_cpu_casillas_SP.md](docs/pds_cpu_casillas_SP.md) (skill `inventario-rem`).
+  Su punto de entrada es `EXCLUIR_SMISH` del Trabajo Perdido. Base: página
+  «Dependencia» del PowerBI + `poblacion.py`.
 - **Delta P(m) − P(m−1) → A05 N/O** (fase 4 del plan P6): portar el
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarlo. **P y A no calzan banda
   por banda** porque tienen algunos diagnósticos distintos, casillas protegidas
