@@ -199,7 +199,7 @@ solo como chequeo.
 | Universo | `73.- Tiene Cuidador?` = Sí · `74.- Estado Cuidador` vigente · identificado por `80.- Rut Cuidador` |
 | `C`/`D` H/M | ⚠ **No está en el formulario, ni en ningún otro lado de RAYEN** (autor). Sale del **Informe Inscritos** por `80.- Rut Cuidador`; el Zarit `4.-` sirve de chequeo. Un cuidador no inscrito queda sin dato y se avisa |
 | `E` Capacitados | `75.- Cuidador es Capacitado por el Programa`. Chequeo posible: las sesiones A27 del RUT del cuidador (6 si es nuevo, 4 si es antiguo) |
-| `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. El campo mezcla preventivo y crónico, así que para `F` estricto hay que cruzar el **EMP del cuidador** (por RUT): EMPA si tiene menos de 65, EMPAM si tiene 65 o más |
+| `F` EMP vigente | `86.- Control Preventivo o Crónico vigente del Cuidador` + `87.- Fecha…`. **El indicador 4 del programa (§5.1) define `F` como «preventivo vigente O controles al día»**, que es exactamente lo que registra el campo 86: se lee directo. El EMP del cuidador (por RUT: EMPA si tiene menos de 65, EMPAM si tiene 65 o más) queda como chequeo |
 | `G` Crónicos en control | `90.- Cuidador con Condiciones Crónicas en Control en Ce…`, independiente del EMP (autor) |
 | `H` Con estipendio | `25.- Estipendio MIDESO?` = **SI**. Sus valores son SI / NO / vacío; **un vacío es «sin dato», no «NO»**, y se cuenta en la LEEME |
 | `I` En espera de estipendio | ⚠ **No tiene fuente en el formulario**, porque `25.-` no tiene un valor «en espera». Junio trae 105, llenados a mano desde otro lado (¿una lista del MDS?). Hasta saberlo, el módulo **la deja vacía y avisa**; no la infiere |
@@ -300,6 +300,41 @@ de conteo: el total por banda calza. Hipótesis: la P3 (formulario PDS) y la P5 
 género. Es el mismo problema que dieron los TRANS en el SM (1.5.5). Revisarlo cuando
 estén los exports; el módulo tiene que tomar el sexo de **una sola fuente** para las
 dos hojas.
+
+---
+
+## 5.1 Indicadores del programa PADDS (output posible del módulo)
+
+Fuente: la pestaña `INDICADORES` del Drive del equipo PDS. Está como imagen, así que va
+transcrita. La tabla original cita las **celdas del REM 2023**; abajo van traducidas a
+las secciones del SA/SP 2026. **Otra prueba de que las coordenadas se corren entre
+años**: la P3·B pasó de la fila 45 a la 52, y la A26·C de las filas 67-75 a las 64-69.
+
+| # | Indicador | Numerador / denominador (REM 2023, según la tabla) | En el REM 2026 | Meta | Esperado jun · dic | Peso |
+|---|---|---|---|---|---|---|
+| 1 | % de personas con plan de cuidado integral elaborado y evaluado en el período | A26 F38:40 + G38:41 / P3 C35 | A26·A.1 `G` + `H` (filas 38-40, acumulado del período) / P3·A fila 38 total | 90 % | 45 % · 90 % | 30 % |
+| 2 | Promedio de visitas de tratamiento y procedimiento a personas bajo control en el programa | A26 C67, 68, 74, 75 / P3 C35 | A26·C **`C` (N° de visitas)**, filas DS / P3·A fila 38 | 6 | 3 · 6 | 5 % |
+| 3 | % de personas con DS **sin** lesiones por presión | (P3 C35 − C39) / C35 | (P3·A 38 − 43) / 38 | 92 % | 92 % · 92 % | 20 % |
+| 4 | % de cuidadores con **examen preventivo vigente o controles al día** (OOTT MINSAL) | P3 F45 / B45 | P3·B `F52` / `B52` | 80 % | 40 % · 80 % | 5 % |
+| 5 | % de personas con indicación de NED que reciben atención nutricional en domicilio | A26 C72 / P3 C40 | A26·C `U` (Atención nutricional a personas con NED) / P3·A fila 44 | 100 % | 50 % · 100 % | 5 % |
+| 6 | % de cuidadores evaluados con Zarit en el período | P3 J45 / B45 | P3·B `J52` / `B52` | 90 % | 45 % · 90 % | 20 % |
+| 7 | % de cuidadores capacitados en el período | P3 E45 / B45 | P3·B `E52` / `B52` | 90 % | 45 % · 90 % | 10 % |
+
+**Qué sale de esto:**
+- **El indicador 2 usa la A26·C `C` (N° de visitas)**, que el llenado manual de agosto
+  dejó vacía (doc SA §3). Es una razón más para que el módulo la llene.
+- **El indicador 4 define la P3·B `F` como «preventivo vigente O controles al día»**,
+  que es justo lo que registra el campo `86.- Control Preventivo o Crónico vigente del
+  Cuidador`. Es decir, **para el programa, `F` se lee directo del campo 86**, sin
+  cruzarlo con el EMP. Eso corrige la nota del §2. Queda un solapamiento con `G`
+  (crónicos en control): los dos incluyen a los cuidadores con crónicos al día.
+- **El indicador 5 usa la A26·C `U`**, que también quedó vacía en agosto.
+- **Los pesos suman 95 %**: 30 + 5 + 20 + 5 + 5 + 20 + 10. Puede ser un error de la
+  tabla o de la transcripción. Revisarlo contra la imagen.
+- Con la P3 de junio: ind. 3 = (194 − 18) / 194 = **90,7 %** (meta 92) · ind. 4 =
+  124 / 194 = **63,9 %** (esperado 40) · ind. 6 y 7 = **100 %** (el operativo con la
+  universidad). Los indicadores 1, 2 y 5 necesitan la A26 acumulada del período, no un
+  mes suelto.
 
 ---
 
