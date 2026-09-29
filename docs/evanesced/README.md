@@ -198,6 +198,33 @@ Lo que sigue SIN hacer de ese mismo perfil: las otras dos `str.contains` (`INGRE
 `SEGUIMIEN`) SI dependen de la spec, asi que no se pueden izar igual — habria que
 precalcularlas por pregunta, que es otro diseno y no estaba pedido.
 
+### `lectura-calamine/`
+
+La medición que dio origen a [docs/lectura_calamine_plan.md](../lectura_calamine_plan.md)
+(sep-2026). Empezó como «¿cuánto acelera Cython el exe?» y terminó en «Cython nada, el
+lector de `.xlsx` todo». Archivados **antes** de implementar, por pedido del autor: son la
+prueba de los números del §1 del plan.
+
+- `perfil_cython.py` - cProfile de SM Actividades y A05 sobre agosto 2026 REAL, con el
+  `tottime` repartido por origen (código propio / openpyxl / pandas / builtins C). Dio
+  código propio = 2 % (SM) y 6 % (A05): el techo de Cython. **Ojo:** el profiler infla los
+  absolutos ~2,5× (ADA 31 s con profiler, 12 s sin él); valen las proporciones.
+- `bench_calamine.py` - openpyxl (`verificar_hoja_unica` + `filas_xlsx`) contra
+  `python-calamine` sobre ADA, Inscritos y Formulario PSM reales: tiempo + comparación
+  celda a celda. La primera versión normalizaba tipos y dio 0 diferencias; la segunda cuenta
+  aparte las celdas iguales **solo tras normalizar**, y eso destapó el `int`->`float` (una
+  columna entera por archivo). **Lección: una comparación que normaliza esconde justo lo que
+  rompe un join.**
+- `sonda_calamine.py` - la API de calamine sobre un `.xlsx` SINTÉTICO: tipo por tipo contra
+  openpyxl (vacío -> `''`, `#N/A` y solo-espacios -> `''`, fecha a medianoche -> `date`),
+  la excepción ante un `.html` disfrazado (`ZipError`) y que el archivo queda liberado tras
+  una excepción.
+
+Los tres imprimen solo tiempos, formas y conteos, nunca valores. `perfil_cython.py` y
+`bench_calamine.py` llevan la **ruta absoluta del repo** en un `sys.path.insert` y leen los
+exports de `Datos madre` en el OneDrive del autor: sin esos archivos no corren.
+`sonda_calamine.py` corre en cualquier parte.
+
 ### `tk_tcl_intermitente/`
 
 El `tk.tcl` intermitente de `test_gui_construccion` (sep-2026). El contexto, las rondas y
