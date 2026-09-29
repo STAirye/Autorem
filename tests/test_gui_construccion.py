@@ -477,6 +477,35 @@ def test_la_salida_por_defecto_de_poblacion_va_junto_al_inscritos():
         f"({snap}) -- el ancla_salida no se esta respetando")
 
 
+def test_resolver_ctx_arma_meses_del_rango_para_sm():
+    """docs/rango_meses_plan.md §4.4/§6.6: `sm_actividades` declara `rango_meses`
+    (no `mes`), y `_resolver_ctx` arma `ctx['meses']` (la lista inclusiva) + sintetiza
+    `ctx['mes'] = meses[0]` para quien todavia lo espera sin rango (el nombre del A03)."""
+    if SIN_DISPLAY:
+        return
+    from gui.app import _resolver_ctx
+    from gui.registro import cargar_registro
+
+    pantalla = next(p for p in cargar_registro() if p["id"] == "sm_actividades")
+    ada = _TMP / "ada_rango.xlsx"
+    ada.write_bytes(_fixture_iris().read_bytes())
+    grupal = _TMP / "grupal_rango.xlsx"
+    grupal.write_bytes(_fixture_iris().read_bytes())
+    # ADA y Grupal son OBLIGATORIOS acá (a03.incluir=False -> nunca es la corrida
+    # solo-cuestionarios, _ada_grupal_obligatorio): sin los dos, _resolver_ctx aborta
+    # con un messagebox.showwarning REAL (no mockeado en este test) que se queda
+    # esperando un click que nunca llega -- el hang que cazó la 1ª versión de este test.
+    getters = {"ada": lambda: [str(ada)], "grupal": lambda: [str(grupal)], "inscritos": lambda: "",
+              "multiprofesional": lambda: "", "maestro": lambda: "",
+              "a03": lambda: {"incluir": False, "instrumentos": {}}}
+    pantalla = dict(pantalla, extras=[])   # sin extras: no necesitamos Dotacion/A03 aca
+    ctx = _resolver_ctx(pantalla, getters, None, lambda: str(_TMP),
+                        get_rango=lambda: ((2026, 1), (2026, 3)))
+    assert ctx is not None, "_resolver_ctx rechazo un rango valido"
+    assert ctx["meses"] == [(2026, 1), (2026, 2), (2026, 3)]
+    assert ctx["mes"] == (2026, 1), "no sintetizo ctx['mes'] = meses[0] (Desde)"
+
+
 def test_un_opcional_con_la_ruta_mal_tecleada_se_avisa_al_apretar_procesar():
     """Ronda 12: un input OPCIONAL de un archivo no validaba que la ruta existiera (solo
     los obligatorios), asi que una ruta mal tecleada reventaba al ABRIRLA -- a mitad de

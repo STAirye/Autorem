@@ -312,6 +312,58 @@ def test_acepta_el_maestro_ya_cargado_y_no_lo_relee():
     assert len(E) == 1 and E.iloc[0]["num_rem"].upper() == "REM-GESTION", E.attrs
 
 
+# ======================================================================
+# Rango de meses (docs/rango_meses_plan.md §4.3, §6)
+# ======================================================================
+def test_rango_distintos_no_se_triplican():
+    """§6.2 del plan: el mismo RUN a saco roto en 3 meses -> 'pacientes afectados' = 1
+    en el rango (nunique sobre TODO el período), no 3; 'N atenciones' SÍ suma 3."""
+    ada = _mk_ada([
+        _a("AG_Alta programa salud mental", "JUAN", run="1-1", fecha="10/07/2026"),
+        _a("AG_Alta programa salud mental", "JUAN", run="1-1", fecha="10/08/2026"),
+        _a("AG_Alta programa salud mental", "JUAN", run="1-1", fecha="10/09/2026"),
+    ])
+    meses = [(2026, 7), (2026, 8), (2026, 9)]
+    E = tp.procesar_rango(ada, maestro=_mk_maestro(_MAESTRO), meses=meses, log=_quiet)
+    assert len(E) == 3
+
+    def valor(etiqueta):
+        r = E.attrs["tablas"]["TP_Resumen"]
+        return int(r.loc[r["Indicador"].str.contains(etiqueta), "Valor"].iloc[0])
+    assert valor("pacientes afectados") == 1
+    assert valor("saco roto") == 3
+
+    pm = E.attrs["tablas"]["Por_Mes"]
+    assert list(pm["Mes"]) == ["2026-07", "2026-08", "2026-09"]
+    assert list(pm[tp._COL_POR_MES]) == [1, 1, 1]
+
+
+def test_rango_mes_vacio_en_medio_falla_nombrandolo():
+    """§6.3 del plan, gemelo del TP: `exigir_cada_mes` falla POR MES aunque el rango
+    completo (jul + sep) tenga datos."""
+    ada = _mk_ada([
+        _a("AG_Alta programa salud mental", "JUAN", fecha="10/07/2026"),
+        _a("AG_Alta programa salud mental", "JUAN", fecha="10/09/2026"),
+    ])
+    try:
+        tp.procesar_rango(ada, maestro=_mk_maestro(_MAESTRO),
+                          meses=[(2026, 7), (2026, 8), (2026, 9)], log=_quiet)
+        assert False, "debió levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "08/2026" in str(e), str(e)
+
+
+def test_rango_un_solo_mes_igual_a_procesar():
+    """§6.4 del plan: con un solo mes, `procesar_rango` da lo mismo que `procesar`."""
+    ada = _mk_ada([_a("AG_Alta programa salud mental", "JUAN", fecha="10/07/2026")])
+    maestro = _mk_maestro(_MAESTRO)
+    E1 = tp.procesar(ada, maestro=maestro, mes=(2026, 7), log=_quiet)
+    E2 = tp.procesar_rango(ada, maestro=maestro, meses=[(2026, 7)], log=_quiet)
+    assert len(E1) == len(E2) == 1
+    assert E1.attrs["mes"] == E2.attrs["mes"] == (2026, 7)
+    assert "Por_Mes" not in E2.attrs["tablas"]
+
+
 # -- El merge de la GUI 2.0 (1.9.17): las auditorias sobre la forma CANONICA ------
 
 def test_control_sm_no_se_arma_con_tokens_de_dos_actividades():

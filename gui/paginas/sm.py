@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.13
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -69,6 +69,9 @@ instrucciones = (
      "El export puede venir del AÑO COMPLETO: se filtra el mes que elijas (por FECHA ATENCIÓN,\n"
      "hacia atrás desde el último día del mes). ADA cuenta por atención; grupal por asistencia.\n"
      "Para el flag GESTANTE se necesita una ventana de 3 MESES -> carga el ADA de al menos los últimos 3 meses. Si se carga menos, quedara incompleto.\n"
+     "\n"
+     "Para un reporte de 3 o 6 meses, elige Desde/Hasta: el total es la suma de los meses,\n"
+     "y la hoja Por_Mes los separa (un mes suelto = Desde igual a Hasta, igual que antes).\n"
      "\n"
      "¿Solo necesitas los cuestionarios A03·D.3? Marca la casilla de más abajo y NO cargues\n"
      "ni ADA ni Grupal: corre solo esa tabla.\n"
@@ -160,7 +163,7 @@ def _ada_grupal_obligatorio(getters):
 def bloque_dotacion_sm(frame, pagina):
     import modulos.rem_sm_actividades as smact
     dialogos.bloque_dotacion(frame, "sm", get_ada=lambda: pagina.get("ada"),
-                             get_mes=pagina.mes, log=pagina.log, mask=smact.mask_tributa_ada)
+                             get_periodo=pagina.meses, log=pagina.log, mask=smact.mask_tributa_ada)
     return None   # Dotacion vive en `preparar` (SS3.3), no aporta nada a ctx
 
 
@@ -224,7 +227,7 @@ def preparar(ctx, pagina):
     # y filtra por mes ACA (una vez) y se pasa `d` ya listo al worker en vez
     # de releerlo -- "Esto BLOQUEA la GUI y no hay como evitarlo" (comentario
     # original, sigue siendo cierto tal cual).
-    d, tabla_dot = dialogos.dotacion_ada(pagina.root, "sm", ctx["ada"], ctx["mes"], pagina.log,
+    d, tabla_dot = dialogos.dotacion_ada(pagina.root, "sm", ctx["ada"], ctx["meses"], pagina.log,
                                          messagebox, mask=smact.mask_tributa_ada)
     if d is None:
         return None
@@ -238,12 +241,18 @@ def correr(ctx, log):
     import modulos.rem_a03_d3_instrumentos as screening
     import programas.estamentos as estam
     from gui.runner import slim_por_defecto
-    from programas.rem_utils import rutas_libres, escribir_atomico
+    from programas.rem_utils import rutas_libres, escribir_atomico, etiqueta_periodo
 
-    y, m = ctx["mes"]
+    y, m = ctx["mes"]                      # A03: sigue siendo UN mes, no filtra por período (§2.7 del plan)
+    # SM/TP: el RANGO completo (docs/rango_meses_plan.md). `ctx.get("meses")` puede
+    # faltar en un ctx armado a mano fuera de `_resolver_ctx` (tests): cae a un rango
+    # de un solo mes, igual que hoy.
+    meses = ctx.get("meses") or [(y, m)]
+    etiqueta_archivo = etiqueta_periodo(meses).replace("-", "_").replace(" a ", "-")
     carpeta = ctx["carpeta"]
     a03 = ctx["a03"]
-    res = {"mes": (y, m), "solo_a03": ctx["solo_a03"], "salida": None,
+    res = {"mes": meses[0] if len(meses) == 1 else etiqueta_periodo(meses),
+           "solo_a03": ctx["solo_a03"], "salida": None,
            "salida_a03": None, "n_tp": None, "n_a03": None, "por_inst_a03": None,
            "E": None, "fallo_tp": None, "fallo_a03": None, "avisos_a03": []}
 
@@ -251,8 +260,8 @@ def correr(ctx, log):
     # alguno ya existe, todos llevan el mismo `(n)` (ver rem_utils.rutas_libres).
     salidas = {}
     if not ctx["solo_a03"]:
-        salidas["sm"] = carpeta / f"REM_SM_actividades_{y}_{m:02d}.xlsx"
-        salidas["tp"] = carpeta / f"REM_SM_trabajo_perdido_{y}_{m:02d}.xlsx"
+        salidas["sm"] = carpeta / f"REM_SM_actividades_{etiqueta_archivo}.xlsx"
+        salidas["tp"] = carpeta / f"REM_SM_trabajo_perdido_{etiqueta_archivo}.xlsx"
     if a03["incluir"] and a03["instrumentos"]:
         salidas["a03"] = carpeta / f"REM_A03_D3_{y}_{m:02d}.xlsx"
     salidas = dict(zip(salidas, rutas_libres(*salidas.values())))
@@ -274,9 +283,9 @@ def correr(ctx, log):
             with opcional("maestro"):
                 dfm = cargar_maestro(maestro)
 
-        E = smact.procesar(ctx["ada"], grupal=ctx["grupal"], inscritos=inscritos,
-                           multiprofesional=multiprofesional, mes=(y, m), log=log,
-                           d=ctx["d"], dotacion_tabla=ctx["tabla_dot"])
+        E = smact.procesar_rango(ctx["ada"], grupal=ctx["grupal"], inscritos=inscritos,
+                                 multiprofesional=multiprofesional, meses=meses, log=log,
+                                 d=ctx["d"], dotacion_tabla=ctx["tabla_dot"])
         E.attrs.setdefault("avisos", []).extend(runner.avisos_descartados(ctx))   # opcionales omitidos
         # Temporal + rename (rem_utils.escribir_atomico): un corte no deja un .xlsx roto.
         escribir_atomico(salida, lambda p: smact.escribir(E, p))
@@ -289,8 +298,8 @@ def correr(ctx, log):
         # no debe tumbar el SM, que ya se guardo arriba.
         try:
             import modulos.rem_sm_trabajo_perdido as tpmod
-            Etp = tpmod.procesar(ctx["ada"], maestro=maestro, mes=(y, m), log=log,
-                                 d=ctx["d"], dfm=dfm)
+            Etp = tpmod.procesar_rango(ctx["ada"], maestro=maestro, meses=meses, log=log,
+                                       d=ctx["d"], dfm=dfm)
             # Los opcionales omitidos van tambien a la LEEME del TP: el Maestro que se
             # descarto es justo el que ESTE reporte iba a usar (ronda 12).
             Etp.attrs.setdefault("avisos", []).extend(runner.avisos_descartados(ctx))
@@ -364,10 +373,20 @@ def _por_instrumento(res):
     return " (" + " · ".join(f"{k}: {v}" for k, v in por_inst.items()) + ")"
 
 
+def _etiqueta_mes(res):
+    """'2026-08' (un mes, tupla) o '2026-01 a 2026-06' (rango, ya viene como texto de
+    `etiqueta_periodo`) para el resumen. `res['mes']` es lo que arma `correr()`."""
+    mes = res["mes"]
+    if isinstance(mes, str):
+        return mes
+    y, m = mes
+    return f"{y}-{m:02d}"
+
+
 def resumen(res):
-    y, m = res["mes"]
+    periodo = _etiqueta_mes(res)
     if res["solo_a03"]:
-        return (f"Listo. A03·D.3 {y}-{m:02d}: {res['n_a03']} aplicaciones"
+        return (f"Listo. A03·D.3 {periodo}: {res['n_a03']} aplicaciones"
                 f"{_por_instrumento(res)}.{widgets.texto_avisos(res.get('avisos_a03'))}\n\n"
                 f"Guardado en:\n{res['salida_a03']}")
     E = res["E"]
@@ -382,7 +401,7 @@ def resumen(res):
         a03txt = (f"\nA03·D.3: {widgets.NO_SE_GENERO} ({res['fallo_a03']}). Ningún archivo "
                   f"REM_A03_D3 de esta carpeta es de esta corrida.")
     avisos = list(E.attrs.get("avisos") or []) + list(res.get("avisos_a03") or [])
-    return (f"Listo. REM SM Actividades {y}-{m:02d}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
+    return (f"Listo. REM SM Actividades {periodo}.\n{len(E)} eventos en el detalle.{tptxt}{a03txt}\n\n"
             f"{rtxt}{widgets.texto_avisos(avisos)}\n\nGuardado en:\n{res['salida']}")
 
 
@@ -413,7 +432,11 @@ PANTALLA = {
          "obligatorio": False,
          "titulo_dialogo": "Maestro de Actividades - catálogo RAYEN para clasificar el trabajo perdido"},
     ],
-    "mes": True,
+    # "mes": False, no True: la pagina usa el RANGO de meses (docs/rango_meses_plan.md),
+    # no el SelectorMes puntual -- pero la clave sigue DECLARADA (en False) porque
+    # tests/test_gui_registro.py::test_claves_obligatorias la exige en TODA pantalla.
+    "mes": False,
+    "rango_meses": True,
     "carpeta_salida": True,
     "extras": [
         {"despues_de": "ada", "construir": widgets.bloque_banner_fuente},

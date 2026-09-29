@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.11
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -96,8 +96,10 @@ def _forzar_utf8_stdout():
 def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
     """Carga el workbook UNA vez (validando contra `perfil`), cada tarea agrega
     su hoja, y guarda UN solo «…_procesado.xlsx». Devuelve (resultados, salida).
-    `mes`=(año,mes) filtra por FECHA FORMULARIO; None = archivo completo.
-    `carpeta`=dónde guardar; None = junto al archivo de entrada (comportamiento clásico)."""
+    `mes`=(año,mes) filtra por FECHA FORMULARIO (el CLI congelado, §12, solo pasa
+    esta forma); una LISTA de (año,mes) filtra por un RANGO (docs/rango_meses_plan.md
+    Fase 2 — la GUI); None = archivo completo. `carpeta`=dónde guardar; None = junto
+    al archivo de entrada (comportamiento clásico)."""
     wb, ws = sm.abrir_validado(entrada, perfil)
     resultados = []
     for tarea in tareas:
@@ -106,6 +108,8 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
         resultados.append((tarea, res))
 
     from programas import cobertura
+    from programas.rem_utils import etiqueta_periodo
+    es_rango = isinstance(mes, list)
     avisos = []
     if perfil.get("disclaimer"):
         avisos.append((
@@ -113,9 +117,14 @@ def _correr_tareas(tareas, entrada, perfil, log=print, mes=None, carpeta=None):
             f"perfil {perfil['nombre']} no trae esas columnas",
             "Usar el formato IRIS si se necesitan esos flags"))
     cobertura.escribir_hoja(wb, [t["id"] for t in tareas],
-                            {"mes": mes, "archivos": [entrada.name]}, avisos=avisos)
+                            {"mes": etiqueta_periodo(mes) if es_rango else mes,
+                             "archivos": [entrada.name]}, avisos=avisos)
 
-    sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""   # mes elegido -> …_procesado_2026_07.xlsx
+    # mes/rango elegido -> …_procesado_2026_07.xlsx / …_procesado_2026_01-2026_06.xlsx
+    if es_rango:
+        sufijo = "_" + etiqueta_periodo(mes).replace("-", "_").replace(" a ", "-")
+    else:
+        sufijo = f"_{mes[0]}_{mes[1]:02d}" if mes else ""
     destino = Path(carpeta) if carpeta else entrada.parent
     # Nunca pisa una salida anterior: `… (1).xlsx` (ver rem_utils.rutas_libres).
     from programas.rem_utils import rutas_libres, escribir_atomico

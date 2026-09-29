@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.0
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -101,7 +101,8 @@ import pandas as pd
 
 from programas.rem_utils import (norm, cargar_atenciones, cargar_maestro, maestro_rem_map,
                                  _rango_mes, filtrar_mes, contiene_todos, contiene_alguno,
-                                 por_actividad, clave_atencion)
+                                 por_actividad, clave_atencion, mes_anterior,
+                                 exigir_cada_mes, etiqueta_periodo)
 from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
@@ -343,6 +344,24 @@ def _por_funcionario(E):
     return pd.DataFrame(filas).sort_values("N a saco roto", ascending=False, ignore_index=True)
 
 
+_COL_POR_MES = ("Atenciones a saco roto (los DISTINTOS de TP_Resumen/Por_Funcionario "
+               "NO se suman entre meses: ver esa hoja para el período completo)")
+
+
+def _tabla_por_mes(E, meses):
+    """Hoja `Por_Mes` (auditoría, docs/rango_meses_plan.md §4.3): conteo de ATENCIONES
+    a saco roto por mes (columna `fecha` de `E`). La advertencia de que los
+    funcionarios/pacientes DISTINTOS no se pueden sumar entre columnas va en el propio
+    encabezado de la columna (no hay otra fila para ponerla: `escribir()` solo hace
+    `to_excel`)."""
+    filas = []
+    for y, m in meses:
+        ini, fin = _rango_mes((y, m))
+        n = int(((E["fecha"] >= ini) & (E["fecha"] <= fin)).sum())
+        filas.append({"Mes": f"{y:04d}-{m:02d}", _COL_POR_MES: n})
+    return pd.DataFrame(filas)
+
+
 def procesar(ada, maestro=None, mes=None, log=print, d=None, dfm=None):
     """Standalone: carga el ADA (+ Maestro opcional) y analiza. `ada` = ruta o lista.
     `maestro` = 'Maestro de Actividades' (opcional; sin él, todo por heurística).
@@ -350,7 +369,23 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None, dfm=None):
     UNA sola vez cuando lo comparte con el módulo de actividades), y `dfm` = el Maestro
     ya cargado, su gemelo: el Maestro completo de RAYEN son 8,6 MB y ~12 s de parseo, y
     la GUI ya lo tiene que abrir ANTES de escribir nada para poder preguntar «¿seguir sin
-    él?» si no sirve (ronda 12: lo abría, botaba el resultado, y acá se abría de nuevo)."""
+    él?» si no sirve (ronda 12: lo abría, botaba el resultado, y acá se abría de nuevo).
+
+    Caso particular de UN solo mes de `procesar_rango` (docs/rango_meses_plan.md)."""
+    m = mes if mes is not None else mes_anterior()
+    return procesar_rango(ada, maestro=maestro, meses=[m], log=log, d=d, dfm=dfm)
+
+
+def procesar_rango(ada, maestro=None, meses=None, log=print, d=None, dfm=None):
+    """Como `procesar`, pero para un RANGO de meses (docs/rango_meses_plan.md §4.3).
+    A diferencia de SM Actividades, acá NO hay reglas ancladas al mes (`analizar` es por
+    atención, `auditar_atenciones` también): filtrar por el RANGO ENTERO es equivalente
+    a concatenar mensuales, y es justo lo que da bien los DISTINTOS (`nunique` de
+    TP_Resumen / Por_Actividad / Por_Funcionario, §3 del plan). El fail loud sigue
+    siendo POR MES (`rem_utils.exigir_cada_mes`): filtrar solo por [ini, fin] del rango
+    entero únicamente falla si el rango COMPLETO queda vacío, y un mes vacío en el medio
+    pasaría callado. Con un solo mes, el resultado es igual al de `procesar(mes=meses[0])`
+    (sin la hoja `Por_Mes`)."""
     from pathlib import Path
     d = cargar_atenciones(ada, log=log) if d is None else d
     rem_map = None
@@ -358,10 +393,12 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None, dfm=None):
         dfm = cargar_maestro(maestro) if dfm is None else dfm
         rem_map = maestro_rem_map(dfm)
         log(f"[tp] Maestro: {len(rem_map)} actividades clasificadas por RAYEN")
-    ini, fin = _rango_mes(mes)
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
     log(f"[tp] ADA: {len(d)} atenciones ({span})")
+    exigir_cada_mes(d, meses, "el ADA (Atenciones Diarias Ambulatorias)")
+    ini, _ = _rango_mes(meses[0])
+    _, fin = _rango_mes(meses[-1])
     E = analizar(d, ini, fin, rem_map=rem_map, log=log)
     if maestro is None:
         E.attrs["avisos"].append((
@@ -369,10 +406,13 @@ def procesar(ada, maestro=None, mes=None, log=print, d=None, dfm=None):
             "sin 'Maestro de Actividades' -> clasificacion por heuristica (menos "
             "precisa que el Maestro)",
             "Cargar el Maestro de Actividades, o dejar el slim embebido en el exe"))
+    if len(meses) > 1:
+        E.attrs["tablas"]["Por_Mes"] = _tabla_por_mes(E, meses)
     fuentes = [Path(p).name for p in (ada if isinstance(ada, (list, tuple)) else [ada])]
     if maestro is not None:
         fuentes.append(Path(maestro).name)
     E.attrs["fuentes"] = fuentes
+    E.attrs["mes"] = etiqueta_periodo(meses) if len(meses) > 1 else meses[0]
     return E
 
 

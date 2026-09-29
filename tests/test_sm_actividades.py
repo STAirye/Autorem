@@ -609,6 +609,77 @@ def test_a32_no_se_arma_con_tokens_de_actividades_distintas():
         ("A32F2", "Llamadas Telefónicas"), ("A32F1", "Videollamadas")},         sorted(set(zip(a32["casilla"], a32["sub"])))
 
 
+# ======================================================================
+# Rango de meses (docs/rango_meses_plan.md §4.2, §6)
+# ======================================================================
+def test_rango_es_suma_de_mensuales_y_gestante_no_se_filtra_de_una():
+    """El test principal del plan (§6.1): el rango == la suma de cada mes por
+    separado, y la trampa de GESTANTE (§3 del plan) no se cuela -- si alguien
+    volviera a filtrar el ADA por el rango ENTERO en vez del bucle mensual, G
+    quedaría marcada gestante también en enero (el control prenatal es de marzo),
+    y este test lo detectaría."""
+    meses = [(2026, 1), (2026, 2), (2026, 3)]
+    ada = _mk_ada([
+        {"run": "G", "id": "G1", "fecha": date(2026, 1, 10), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "sexo": "Mujer", "edad": 25},
+        {"run": "A", "id": "A1", "fecha": date(2026, 1, 15), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "sexo": "Hombre", "edad": 30},
+        {"run": "B", "id": "B1", "fecha": date(2026, 2, 5), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "sexo": "Mujer", "edad": 40},
+        {"run": "G", "id": "G2", "fecha": date(2026, 3, 1), "act": "Control Prenatal  ;",
+         "instr": "Matron(a)", "sexo": "Mujer", "edad": 25},
+        {"run": "C", "id": "C1", "fecha": date(2026, 3, 10), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "sexo": "Hombre", "edad": 20},
+    ])
+    E = sm.procesar_rango(ada, meses=meses, log=_quiet, dotacion_tabla=_SIN_DOTACION)
+    assert _n(E, "A06") == 4   # G(ene) + A(ene) + B(feb) + C(mar)
+
+    total = sum(_n(sm.procesar(ada, mes=m, log=_quiet, dotacion_tabla=_SIN_DOTACION), "A06")
+               for m in meses)
+    assert total == _n(E, "A06") == 4
+
+    # la trampa: en enero, G NO lleva la marca (su ventana es nov-2025..ene-2026,
+    # el control prenatal de marzo queda FUERA)
+    ev_g_ene = E[(E["run"] == "G") & (E["mes"] == "2026-01")]
+    assert len(ev_g_ene) == 1
+    assert bool(ev_g_ene["dem_gestante"].iloc[0]) is False
+
+    pm = E.attrs["tablas"]["Por_Mes"]
+    assert pm["Total"].tolist() == E.attrs["tablas"]["SM_Resumen"]["Total mes"].tolist()
+    assert set(pm.columns) >= {"Casilla", "Qué se registra", "2026-01", "2026-02", "2026-03", "Total"}
+
+
+def test_rango_un_solo_mes_igual_a_procesar():
+    """§6.4 del plan: con un solo mes, `procesar_rango` da las mismas tablas que
+    `procesar` y sin hoja Por_Mes."""
+    ada = _mk_ada([{"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": "Controles Salud Mental  ;",
+                    "instr": "Médico", "sexo": "Mujer", "edad": 30}])
+    E1 = sm.procesar(ada, mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
+    E2 = sm.procesar_rango(ada, meses=[(2026, 7)], log=_quiet, dotacion_tabla=_SIN_DOTACION)
+    assert len(E1) == len(E2)
+    assert E1.attrs["mes"] == E2.attrs["mes"] == (2026, 7)
+    assert "Por_Mes" not in E2.attrs["tablas"]
+    t1, t2 = E1.attrs["tablas"]["SM_Resumen"], E2.attrs["tablas"]["SM_Resumen"]
+    assert t1["Total mes"].tolist() == t2["Total mes"].tolist()
+
+
+def test_rango_mes_vacio_en_medio_falla_nombrandolo():
+    """§6.3 del plan: un mes vacío en el medio del rango falla nombrándolo, aunque
+    el resto del rango tenga datos."""
+    ada = _mk_ada([
+        {"run": "A", "id": "1", "fecha": date(2026, 1, 15), "act": "Controles Salud Mental  ;",
+         "instr": "Médico", "sexo": "Hombre", "edad": 30},
+        {"run": "C", "id": "2", "fecha": date(2026, 3, 10), "act": "Controles Salud Mental  ;",
+         "instr": "Psicólogo(a)", "sexo": "Hombre", "edad": 20},
+    ])
+    try:
+        sm.procesar_rango(ada, meses=[(2026, 1), (2026, 2), (2026, 3)], log=_quiet,
+                          dotacion_tabla=_SIN_DOTACION)
+        assert False, "debió levantar ArchivoInvalido"
+    except ArchivoInvalido as e:
+        assert "02/2026" in str(e), str(e)
+
+
 def test_a32f2_tributa_no_es_trabajo_perdido():
     """`mask_tributa_ada` es la fuente unica de 'que tributa': si no las reconoce,
     las F2 vuelven a caer como trabajo perdido aunque la casilla ya las cuente."""

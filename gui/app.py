@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.13
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -46,6 +46,12 @@ EL CONTRATO PANTALLA (lo que expone cada modulo de gui/paginas/*.py):
         # carpeta de salida por defecto. Sin el se usa el primer input cargado,
         # que es el orden en que estan ESCRITOS aca -- ver `_resolver_ctx`.
         "mes": True,                   # muestra SelectorMes
+        "rango_meses": True,           # muestra SelectorRangoMeses (docs/rango_meses_plan.md);
+                                       # deja ctx["meses"] (lista). Va EN VEZ de "mes" para la
+                                       # pantalla que lo usa (SM Actividades) -- esa igual declara
+                                       # "mes": False para el contrato de gui.registro (claves
+                                       # obligatorias), y `_resolver_ctx` sintetiza ctx["mes"] =
+                                       # meses[0] para quien todavia lo espera sin rango (A03).
         "carpeta_salida": True,        # muestra CarpetaSalida
         "extras": [                    # opcional, ver SS3.1 del plan
             {"despues_de": "ada", "construir": fn, "key": "tabla_dot"},
@@ -157,10 +163,11 @@ class Pagina:
     pasarse cosas entre construccion y post-corrida (p.ej. un BannerFuente
     que arma un extra y actualiza `al_completar`, ver A23/SM)."""
 
-    def __init__(self, app, getters, get_mes_celda, log, datos):
+    def __init__(self, app, getters, get_mes_celda, get_rango_celda, log, datos):
         self.root = app
         self._getters = getters
         self._get_mes_celda = get_mes_celda   # celda mutable: ver nota en _construir_pagina
+        self._get_rango_celda = get_rango_celda   # idem, para pantalla["rango_meses"]
         self.log = log
         self.datos = datos   # dict COMPARTIDO por TODAS las Pagina de esta pantalla
 
@@ -183,8 +190,15 @@ class Pagina:
         getter = self._get_mes_celda[0]
         return getter() if getter else None
 
+    def meses(self):
+        """((a1,m1),(a2,m2)) CRUDO del SelectorRangoMeses de la pagina (docs/
+        rango_meses_plan.md), o None si no tiene uno (pantalla["rango_meses"] es
+        False) o si algo de lo tecleado no son numeros. Perezoso, igual que `mes()`."""
+        getter = self._get_rango_celda[0]
+        return getter() if getter else None
 
-def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
+
+def _resolver_ctx(pantalla, getters, get_mes, get_carpeta, get_rango=None):
     """Valida los inputs/mes/carpeta y arma el `ctx` PLANO que ve el worker
     (SS3.2). Funcion libre (sin `self`) para poder testearla con getters
     falsos, sin ventana real (mismo criterio que SS11 del plan para
@@ -240,6 +254,18 @@ def _resolver_ctx(pantalla, getters, get_mes, get_carpeta):
         if mes is None:
             return None
         ctx["mes"] = mes
+
+    if get_rango:
+        # docs/rango_meses_plan.md §4.4: ctx["meses"] es la lista INCLUSIVE del rango.
+        # Sin selector de mes puntual propio, se sintetiza ctx["mes"] = meses[0] (el
+        # "Desde") para quien todavia lo espera sin rango (p.ej. el nombre del A03 en
+        # gui/paginas/sm.py, que NO filtra por período: §2.7 del plan).
+        meses = runner.valida_rango_meses(get_rango(), messagebox)
+        if meses is None:
+            return None
+        ctx["meses"] = meses
+        if not get_mes:
+            ctx["mes"] = meses[0]
 
     for extra in pantalla.get("extras", []):
         key = extra.get("key")
@@ -551,11 +577,12 @@ class App(ctk.CTk):
         get_mes = [None]   # celda mutable: un extra "despues_de" un input puede
                            # necesitar pagina.mes() antes de que el SelectorMes
                            # exista (se pinta despues de los inputs, SS4 del plan)
+        get_rango = [None]   # idem, para pantalla["rango_meses"] (docs/rango_meses_plan.md)
         datos = {"ruta_inicial": self.ruta_inicial}   # scratch COMPARTIDO por las Pagina
                      # (p.ej. un BannerFuente que arma un extra y usa `al_completar`)
 
         def pagina_ctx():
-            return Pagina(self, getters, get_mes, self._log_de(pantalla["id"]), datos)
+            return Pagina(self, getters, get_mes, get_rango, self._log_de(pantalla["id"]), datos)
 
         def pintar_extras(despues_de):
             for extra in pantalla.get("extras", []):
@@ -629,6 +656,9 @@ class App(ctk.CTk):
         if pantalla.get("mes"):
             get_mes[0] = widgets.selector_mes(frame, mes_anterior())
 
+        if pantalla.get("rango_meses"):
+            get_rango[0] = widgets.selector_rango_meses(frame, mes_anterior())
+
         pintar_extras(None)   # los que van "al final", antes del boton Procesar
 
         # Procesar ANTES que el Registro (2.0.13): pegado a los inputs que acaba de
@@ -652,7 +682,7 @@ class App(ctk.CTk):
             banner_previo = datos.get("banner_fuente")
             if banner_previo is not None:
                 banner_previo.ocultar()
-            ctx = _resolver_ctx(pantalla, getters, get_mes[0], get_carpeta)
+            ctx = _resolver_ctx(pantalla, getters, get_mes[0], get_carpeta, get_rango[0])
             if ctx is None:
                 return
             if pantalla.get("preparar"):

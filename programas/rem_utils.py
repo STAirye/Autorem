@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.13
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -43,7 +43,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.13"
+VERSION = "2.0.14"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -1059,6 +1059,40 @@ def filtrar_mes(d, ini, fin, fuente, col="FECHA"):
         f"No hay filas de {ini:%m/%Y} en {fuente}.\n\n"
         f"El archivo cargado cubre {d[col].min():%m/%Y} a {d[col].max():%m/%Y}.\n\n"
         "Revisa el mes/año elegido, o carga el export que cubra ese período.")
+
+
+def meses_del_rango(desde, hasta):
+    """Lista [(año, mes), ...] INCLUSIVE entre `desde` y `hasta` (cada uno (año, mes)).
+    Un mes suelto = desde == hasta -> lista de 1. ValueError si desde > hasta (la GUI
+    valida antes con un mensaje propio; esto es la red para quien llame directo)."""
+    (ya, ma), (yb, mb) = desde, hasta
+    ini, fin = ya * 12 + (ma - 1), yb * 12 + (mb - 1)
+    if ini > fin:
+        raise ValueError(f"'Desde' ({ya:04d}-{ma:02d}) es posterior a 'Hasta' ({yb:04d}-{mb:02d})")
+    return [(m // 12, m % 12 + 1) for m in range(ini, fin + 1)]
+
+
+def etiqueta_periodo(meses):
+    """'2026-07' si `meses` (lista de (año,mes), como devuelve `meses_del_rango`) trae
+    uno solo, '2026-01 a 2026-06' si trae varios. Fuente única para el log, la LEEME, el
+    resumen y (con un `.replace('-', '_').replace(' a ', '-')` en el llamador) los
+    nombres de archivo."""
+    if len(meses) == 1:
+        y, m = meses[0]
+        return f"{y:04d}-{m:02d}"
+    (ya, ma), (yb, mb) = meses[0], meses[-1]
+    return f"{ya:04d}-{ma:02d} a {yb:04d}-{mb:02d}"
+
+
+def exigir_cada_mes(d, meses, fuente, col="FECHA"):
+    """Corre `filtrar_mes` para CADA mes de `meses` (descartando el resultado): sirve
+    para fallar ruidoso POR MES en un módulo que filtra `d` por el RANGO entero de una
+    sola pasada (Trabajo Perdido, §3 de docs/rango_meses_plan.md) — ahí filtrar solo por
+    [ini_rango, fin_rango] únicamente falla si el rango COMPLETO queda vacío, y un mes
+    vacío en el medio del rango pasaría callado."""
+    for mes in meses:
+        ini, fin = _rango_mes(mes)
+        filtrar_mes(d, ini, fin, fuente, col=col)
 
 
 def mes_de_celda(v):

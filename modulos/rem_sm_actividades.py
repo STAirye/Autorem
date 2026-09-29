@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.11
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -53,7 +53,8 @@ from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_can
                                  atenid_multiprofesional, _rango_mes, filtrar_mes, opcional,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
                                  BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col,
-                                 ArchivoInvalido, aviso_fuera_de_grid, por_actividad)
+                                 ArchivoInvalido, aviso_fuera_de_grid, por_actividad,
+                                 meses_del_rango, etiqueta_periodo)
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 from programas import dotacion          # separación interno/externo (docs/dotacion_externos_plan.md)
 from programas import cobertura         # categorías de aviso (PENDIENTE/OMITIDO) para la hoja LEEME
@@ -106,7 +107,7 @@ MAPA_GRUPAL = {
 }
 
 _EV_COLS = ["casilla", "sub", "run", "id", "estamento", "funcionario", "edad", "sexo",
-            "fecha", "actividad", "fuente", "externo", "tabula_en"]
+            "fecha", "actividad", "fuente", "externo", "tabula_en", "mes"]
 
 
 def cargar_grupal(entrada, log=print):
@@ -419,7 +420,7 @@ def _tabla_a32f2(E):
     return pd.DataFrame(filas)
 
 
-def _tabla_resumen(E, ini):
+def _tabla_resumen(E, etiqueta):
     def n(cas, sub=None):
         s = E[E["casilla"] == cas]
         if sub is not None:
@@ -438,42 +439,46 @@ def _tabla_resumen(E, ini):
         ("A32 · F2", "Controles SM remotos", n("A32F2")),
     ]
     df = pd.DataFrame(filas, columns=["Casilla", "Qué se registra", "Total mes"])
-    df.attrs["mes"] = f"{ini:%Y-%m}"
+    df.attrs["mes"] = etiqueta
     return df
 
 
-def _tabla_externos_delta(E, ini):
+def _tabla_externos_delta(E, etiqueta):
     """1 fila por casilla: Total (todo E) · Externos · REM (E[en_rem]). Reusa
     `_tabla_resumen` sobre los dos subconjuntos (docs/dotacion_externos_plan.md
     §4.4, fase 1) — ambas llamadas emiten SIEMPRE las mismas filas/orden, así
     que se alinean por posición sin necesidad de merge."""
-    total = _tabla_resumen(E, ini)
-    rem = _tabla_resumen(E[E["en_rem"]], ini)
+    total = _tabla_resumen(E, etiqueta)
+    rem = _tabla_resumen(E[E["en_rem"]], etiqueta)
     out = total[["Casilla", "Total mes"]].rename(columns={"Total mes": "Total"})
     out["REM"] = rem["Total mes"].values
     out["Externos"] = out["Total"] - out["REM"]
     return out[["Casilla", "Total", "Externos", "REM"]]
 
 
-def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print, d=None,
-            dotacion_tabla=None, modulo="sm"):
-    """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
-    `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
-    `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
-    Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0). `inscritos`
-    = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0).
-    `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
-    A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
-    sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga).
-    `dotacion_tabla` = tabla interno/externo YA resuelta (dict de `dotacion.cargar()`,
-    normalmente actualizada por el diálogo de la GUI ANTES de llamar acá); si es
-    None, se carga del caché (`~/.autorem/dotacion.json`) tal cual está — este
-    módulo NO abre ningún diálogo (eso es responsabilidad de la GUI, que corre en
-    el hilo de Tk, no en este worker). Ver docs/dotacion_externos_plan.md."""
+def _tabla_por_mes(E, resumen):
+    """Hoja `Por_Mes` (docs/rango_meses_plan.md §4.2.5): filas = las de SM_Resumen
+    (mismo orden, fijo), una columna por mes + `Total`. `Total` tiene que calzar con
+    la columna de SM_Resumen (lo amarra el test): SM cuenta por ATENCIÓN, y una
+    atención cae en un solo mes, así que los conteos SUMAN (§3 del plan). `E` ya
+    trae las columnas `mes` y `en_rem` (las pone `_eventos_mes` / `_tablas`)."""
+    meses = sorted(E["mes"].unique())
+    df = resumen[["Casilla", "Qué se registra"]].copy()
+    for m in meses:
+        sub = E[(E["mes"] == m) & E["en_rem"]]
+        df[m] = _tabla_resumen(sub, m)["Total mes"].values
+    df["Total"] = resumen["Total mes"].values
+    return df
+
+
+def _cargar(ada, grupal=None, inscritos=None, multiprofesional=None, log=print, d=None,
+           dotacion_tabla=None):
+    """CARGA compartida por todos los meses de una corrida (docs/rango_meses_plan.md
+    §4.2.1): ADA + demografía por atención + TRANS (Inscritos) + grupal + tabla de
+    dotación — nada de esto depende del mes. Devuelve un dict que `_eventos_mes` y
+    `_tablas` consumen. Los OPCIONALES van PRIMERO (ronda 12): si uno no sirve, la GUI
+    pregunta «¿seguir sin él?» ANTES del trabajo pesado (el ADA y el grupal)."""
     from pathlib import Path
-    # Los OPCIONALES, PRIMERO (ronda 12): si uno no sirve, la GUI pregunta «¿seguir sin
-    # él?» y re-corre, así que la pregunta tiene que llegar ANTES del trabajo pesado (el
-    # ADA, el grupal y las tablas), no después. Se usan más abajo, donde toca.
     tmap = None
     if inscritos is not None:
         # Invalido -> OpcionalInvalido: la GUI pregunta si seguir sin el (ronda 11; antes
@@ -505,13 +510,11 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     fuentes = [Path(p).name for p in (ada if isinstance(ada, (list, tuple)) else [ada])]
     if grupal is not None:
         fuentes += [Path(p).name for p in (grupal if isinstance(grupal, (list, tuple)) else [grupal])]
-    ini, fin = _rango_mes(mes)
-    # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.
-    ini3 = ini - pd.DateOffset(months=2)
-    gset = gestante_runs(d, ini3, fin)
-    d["dem_gestante"] = d["RUN"].isin(gset)
-    # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita), ya
-    # cargado y validado arriba.
+
+    # TRANS: requiere el padrón de Inscritos (GÉNERO con selección explícita). NO
+    # depende del mes -> se marca UNA vez sobre `d` completo (a diferencia de
+    # dem_gestante, que SÍ depende del mes y se calcula por mes en `_eventos_mes`,
+    # sin pisar `d`).
     if tmap is not None:
         gen = d["RUN"].map(tmap)                       # M/F/X por RUN (NaN si no TRANS)
         d["dem_trans_m"] = gen.eq("M")
@@ -534,12 +537,51 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         avisos.append(("Columnas TRANS (A06/A32)", "EN 0",
                         "no se cargo el 'Informe Inscritos y Adscritos' (opcional)",
                         "Cargar el 'Informe Inscritos y Adscritos' si se necesita el flag TRANS"))
+
     span = (f"{d['FECHA'].min():%Y-%m-%d}..{d['FECHA'].max():%Y-%m-%d}"
             if d["FECHA"].notna().any() else "sin fechas")
-    log(f"[sm] ADA: {len(d)} atenciones ({span}) | mes reporte {ini:%Y-%m}")
+
+    g = None
+    if grupal is not None:
+        g = cargar_grupal(grupal, log=log)
+    else:
+        log("[sm] sin reporte grupal -> A06 psicosocial / A19a grupal / A27 = 0")
+        avisos.append(("A06 psicosocial / A19a grupal / A27", "EN 0",
+                        "no se cargo el reporte 'Atenciones Grupales'",
+                        "Cargar 'Atenciones Grupales'"))
+
+    if not tabla_dot.get("funcionarios"):
+        log("[dotacion] AVISO: la tabla de dotacion esta VACIA (nunca se clasifico a nadie, o "
+            "se cancelo el dialogo) -> NINGUNA atencion se separo; el total INCLUYE posibles "
+            "externos sin revisar.")
+        avisos.append(("Separacion interno/externo (dotacion)", cobertura.PENDIENTE,
+                        "la tabla de dotacion esta vacia: nunca se clasifico a nadie (o se "
+                        "cancelo el dialogo) -> ninguna atencion se separo del REM",
+                        "Abrir 'Revisar dotacion...' y clasificar al equipo"))
+
+    return {"d": d, "g": g, "span": span, "multi": multi, "tabla_dot": tabla_dot,
+            "multiprofesional_cargado": multiprofesional is not None,
+            "fuentes": fuentes, "avisos": avisos}
+
+
+def _eventos_mes(carga, mes, log=print):
+    """Eventos del ADA + grupal para UN mes: TODAS las reglas ancladas al mes
+    (GESTANTE con su ventana de 3 meses, `filtrar_mes`, Asiste=SI del grupal) corren
+    EXACTAMENTE igual que en un `procesar()` de un solo mes (docs/rango_meses_plan.md
+    §2). `carga` = el dict de `_cargar`, compartido entre TODOS los meses de la corrida:
+    nunca se pisa `carga['d']` con la marca de gestante de este mes -- se calcula sobre
+    una COPIA (`dm`), o el mes 2 heredaría la marca del mes 1. Devuelve (E_mes, avisos_mes)."""
+    d, g = carga["d"], carga["g"]
+    avisos = []
+    ini, fin = _rango_mes(mes)
+    # Gestante (patrón PowerBI): ventana de 3 meses terminando en el mes reportado.
+    ini3 = ini - pd.DateOffset(months=2)
+    gset = gestante_runs(d, ini3, fin)
+    log(f"[sm] ADA: {len(d)} atenciones ({carga['span']}) | mes reporte {ini:%Y-%m}")
     # Fail loud (§3): el ADA sin NINGUNA atención del mes es archivo/mes equivocado,
     # no un mes de cero actividad. Va sobre la FUENTE; que una casilla dé 0 es legítimo.
-    dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)")
+    dm = filtrar_mes(d, ini, fin, "el ADA (Atenciones Diarias Ambulatorias)").copy()
+    dm["dem_gestante"] = dm["RUN"].isin(gset)
     log(f"[sm] atenciones en el mes: {len(dm)}")
     if d["FECHA"].notna().any() and d["FECHA"].min() > ini3:
         log(f"[sm] GESTANTES usa ventana de 3 meses (desde {ini3:%Y-%m}), pero el ADA "
@@ -550,8 +592,7 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                         "Cargar el ADA de los ultimos 3 meses"))
     Ea = _ada_eventos(dm)
 
-    if grupal is not None:
-        g = cargar_grupal(grupal, log=log)
+    if g is not None:
         # El mes se guarda (archivo de otro período = error); Asiste=SI se aplica
         # DESPUÉS y sí puede dejar 0 (mes con talleres pero nadie asistió: legítimo).
         gm = filtrar_mes(g, ini, fin, "el reporte 'Atenciones Grupales'")
@@ -580,10 +621,6 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         log(f"[sm] Grupal: {len(g)} filas | mes {ini:%Y-%m} + Asiste=SI -> {len(gm)} asistencias")
         Eg = _grupal_eventos(gm)
     else:
-        log("[sm] sin reporte grupal -> A06 psicosocial / A19a grupal / A27 = 0")
-        avisos.append(("A06 psicosocial / A19a grupal / A27", "EN 0",
-                        "no se cargo el reporte 'Atenciones Grupales'",
-                        "Cargar 'Atenciones Grupales'"))
         Eg = _empty_ev()
 
     E = pd.concat([Ea, Eg], ignore_index=True)
@@ -596,10 +633,20 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
             "sin_datos",
             f"El ADA trae {len(dm)} atención(es) de {ini:%m/%Y}, pero NINGUNA tributa a "
             "una casilla de Salud Mental (A04, A06, A19a, A26, A27, A32)"
-            + (", y el reporte grupal tampoco aporta asistencias" if grupal is not None else "")
+            + (", y el reporte grupal tampoco aporta asistencias" if g is not None else "")
             + ".\n\nTodo el REM SM saldría en 0. Revisa que el ADA sea el export COMPLETO "
             "del centro (no filtrado por otro programa) y que esté SIN modificar.")
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
+    E["mes"] = f"{ini:%Y-%m}"   # arma `Por_Mes` y queda en SM_Detalle para auditar
+    return E, avisos
+
+
+def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
+    """Marca dotación (interno/externo) sobre el E CONCATENADO (todos los meses de la
+    corrida) y arma las tablas de salida + los avisos que dependen del PERÍODO completo
+    (composición profesional A26, dotación, fuera-de-grid). `avisos` se muta con lo
+    nuevo. `etiqueta` = período para `attrs['mes']` de cada tabla (`_tabla_resumen`)."""
+    tabla_dot, multi = carga["tabla_dot"], carga["multi"]
 
     # Separación interno/externo (docs/dotacion_externos_plan.md): marcar, no
     # borrar (§1.4) — el detalle conserva TODAS las filas; solo las tablas de
@@ -610,20 +657,20 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
     E["tabula_en"] = E["en_rem"].map({True: "AMBAS", False: "SOLO_TOTAL"})
 
     # Composición profesional de A26 (opcional): Monitoreo Multiprofesional.
-    # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del mes.
-    # Debe CUBRIR el mes reportado (bajarlo del año completo sirve). Si no coincide con
-    # ninguna VDI del mes, probablemente es de otro período -> avisamos RUIDOSO (fail loud).
-    if multiprofesional is not None:
+    # OJO: el reporte NO se filtra por mes; se cruza por ATEN ID con las VDI del
+    # período. Debe CUBRIR el período reportado (bajarlo del año completo sirve). Si no
+    # coincide con ninguna VDI, probablemente es de otro período -> aviso RUIDOSO.
+    if carga["multiprofesional_cargado"]:
         log(f"[sm] Multiprofesional: {len(multi)} atenciones con 2+ profesionales en el padrón")
         a26_ids = set(E.loc[E["casilla"] == "A26", "id"])
         if a26_ids and not (a26_ids & multi):
             log("[sm] el Monitoreo Multiprofesional NO coincide con NINGUNA de las "
-                f"{len(a26_ids)} VDI de A26 del mes -> parece de OTRO período. A26 saldría "
-                "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el mes.")
+                f"{len(a26_ids)} VDI de A26 del período -> parece de OTRO período. A26 saldría "
+                "TODO 'Un Profesional' (subcuenta). Revisa que el reporte cubra el período.")
             avisos.append(("A26 (composicion profesional)", "SUBCONTADO",
                             "el 'Monitoreo Multiprofesional' no coincide con ninguna VDI "
-                            "del mes (parece de otro periodo)",
-                            "Revisar que el reporte cubra el mes reportado"))
+                            "del período (parece de otro periodo)",
+                            "Revisar que el reporte cubra el período reportado"))
     else:
         avisos.append(("A26 (composicion profesional)", "SIN DESGLOSAR",
                         "no se cargo 'Monitoreo Multiprofesional' (opcional)",
@@ -671,14 +718,6 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                             f"{', '.join(ests_omit)} - {len(om_rows)} atenciones cuentan al REM "
                             "sin revision individual (funcionarios quedan 'desconocido')",
                             "Revisar 'Revisar dotacion...' si se quiere clasificar a mano"))
-    if not tabla_dot.get("funcionarios"):
-        log("[dotacion] AVISO: la tabla de dotacion esta VACIA (nunca se clasifico a nadie, o "
-            "se cancelo el dialogo) -> NINGUNA atencion se separo; el total INCLUYE posibles "
-            "externos sin revisar.")
-        avisos.append(("Separacion interno/externo (dotacion)", cobertura.PENDIENTE,
-                        "la tabla de dotacion esta vacia: nunca se clasifico a nadie (o se "
-                        "cancelo el dialogo) -> ninguna atencion se separo del REM",
-                        "Abrir 'Revisar dotacion...' y clasificar al equipo"))
 
     Erem = E[E["en_rem"]]
     # BANDAS_A04 y BANDAS_A06 cubren el mismo rango (0-200): una sola pasada basta.
@@ -686,11 +725,9 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
                               log=log)
     if _av:
         avisos.append(_av)
-    E.attrs["avisos"] = avisos
-    E.attrs["fuentes"] = fuentes
-    E.attrs["tablas"] = {
-        "SM_Resumen": _tabla_resumen(Erem, ini),
-        "Externos_Delta": _tabla_externos_delta(E, ini),
+    return {
+        "SM_Resumen": _tabla_resumen(Erem, etiqueta),
+        "Externos_Delta": _tabla_externos_delta(E, etiqueta),
         "A04_Consultas_Medicas": _tabla_a04(Erem),
         "A06_Controles": _tabla_a06(Erem),
         "A19a_Consejerias_Fam": _tabla_a19a(Erem),
@@ -699,9 +736,72 @@ def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, 
         "A32_F1_Acciones_Remotas": _tabla_a32f1(Erem),
         "A32_F2_Controles_Remotos": _tabla_a32f2(Erem),
     }
+
+
+def procesar(ada, grupal=None, inscritos=None, multiprofesional=None, mes=None, log=print, d=None,
+            dotacion_tabla=None, modulo="sm"):
+    """Devuelve el DataFrame de EVENTOS (detalle largo, auditable) con
+    `.attrs['tablas']` = {nombre_hoja: DataFrame} listas para el template SA_26.
+    `ada` = export de atenciones (ruta o lista). `grupal` = export de Atenciones
+    Grupales (opcional; sin él, A06 grupal / A19a grupal / A27 salen 0). `inscritos`
+    = 'Informe Inscritos y Adscritos' (opcional; sin él, TRANS sale 0).
+    `multiprofesional` = 'Monitoreo Multiprofesional' (opcional; sin él, las VDI de
+    A26 se asumen mono-profesional). `d` = ADA ya cargado (para leer el archivo UNA
+    sola vez cuando el mismo ADA lo comparten varios reportes; si es None, se carga).
+    `dotacion_tabla` = tabla interno/externo YA resuelta (dict de `dotacion.cargar()`,
+    normalmente actualizada por el diálogo de la GUI ANTES de llamar acá); si es
+    None, se carga del caché (`~/.autorem/dotacion.json`) tal cual está — este
+    módulo NO abre ningún diálogo (eso es responsabilidad de la GUI, que corre en
+    el hilo de Tk, no en este worker). Ver docs/dotacion_externos_plan.md.
+
+    Caso particular de UN solo mes de `procesar_rango` (docs/rango_meses_plan.md):
+    `_cargar` + `_eventos_mes` + `_tablas`, sin la hoja `Por_Mes`."""
+    ini, _fin = _rango_mes(mes)
+    carga = _cargar(ada, grupal=grupal, inscritos=inscritos, multiprofesional=multiprofesional,
+                    log=log, d=d, dotacion_tabla=dotacion_tabla)
+    E, avisos_mes = _eventos_mes(carga, (ini.year, ini.month), log)
+    avisos = list(carga["avisos"]) + avisos_mes
+    tablas = _tablas(E, carga, avisos, f"{ini:%Y-%m}", log=log, modulo=modulo)
+    E.attrs["avisos"] = avisos
+    E.attrs["fuentes"] = carga["fuentes"]
+    E.attrs["tablas"] = tablas
     E.attrs["mes"] = (ini.year, ini.month)
     log("[sm] resumen: " + " · ".join(
-        f"{r['Casilla']}={r['Total mes']}" for _, r in E.attrs["tablas"]["SM_Resumen"].iterrows()))
+        f"{r['Casilla']}={r['Total mes']}" for _, r in tablas["SM_Resumen"].iterrows()))
+    return E
+
+
+def procesar_rango(ada, grupal=None, inscritos=None, multiprofesional=None, meses=None, log=print,
+                   d=None, dotacion_tabla=None, modulo="sm"):
+    """Como `procesar`, pero para un RANGO de meses (docs/rango_meses_plan.md).
+    `meses` = lista de `(año, mes)` INCLUSIVE (`rem_utils.meses_del_rango`). Corre el
+    motor MENSUAL (`_eventos_mes`) una vez por mes y agrega UNA vez al final -- nunca
+    filtra el ADA por el rango entero (rompe GESTANTE, ver el plan §3). Con un solo mes,
+    el resultado es IDÉNTICO al de `procesar(mes=meses[0])`: mismo archivo, mismos
+    números, sin la hoja `Por_Mes`. Si un mes del rango falla (`ArchivoInvalido`), se
+    re-levanta nombrándolo («en 03/2026: <mensaje original>») y no sigue con los demás."""
+    carga = _cargar(ada, grupal=grupal, inscritos=inscritos, multiprofesional=multiprofesional,
+                    log=log, d=d, dotacion_tabla=dotacion_tabla)
+    partes, avisos = [], list(carga["avisos"])
+    for mes in meses:
+        try:
+            E_mes, avisos_mes = _eventos_mes(carga, mes, log)
+        except ArchivoInvalido as e:
+            y, m = mes
+            raise ArchivoInvalido(e.categoria, f"En {m:02d}/{y}: {e}") from e
+        partes.append(E_mes)
+        avisos.extend(avisos_mes)
+    E = pd.concat(partes, ignore_index=True)
+    etiqueta = etiqueta_periodo(meses)
+    tablas = _tablas(E, carga, avisos, etiqueta, log=log, modulo=modulo)
+    if len(meses) > 1:
+        tablas["Por_Mes"] = _tabla_por_mes(E, tablas["SM_Resumen"])
+    E.attrs["avisos"] = avisos
+    E.attrs["fuentes"] = carga["fuentes"]
+    E.attrs["tablas"] = tablas
+    E.attrs["mes"] = etiqueta if len(meses) > 1 else meses[0]
+    log("[sm] resumen: " + " · ".join(
+        f"{r['Casilla']}={r['Total mes']}" for _, r in tablas["SM_Resumen"].iterrows()))
     return E
 
 

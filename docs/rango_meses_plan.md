@@ -10,10 +10,9 @@ Version: 2.0.13
 
 # Plan — Rango de meses (reportes de 3 / 6 meses)
 
-> **PLAN APROBADO, SIN IMPLEMENTAR** — 2026-09-28. Escrito para una sesión fría
-> (Sonnet): las decisiones de §2 están **cerradas**, no se re-discuten. Si algo del
-> código no calza con lo que dice acá, es una divergencia: anotarla en §8 y preguntar,
-> no improvisar.
+> **LISTO Y MERGEADO** — 2026-09-29, implementado en 2.0.14 (Fase 1: SM Actividades +
+> Trabajo Perdido · Fase 2: A05). Se conserva como registro: las divergencias
+> encontradas al implementar están en §8, y el CHANGELOG lo cita.
 
 ## 1. Qué y por qué
 
@@ -226,5 +225,52 @@ mensajes («No hay formularios de 07/2026», `:570-580`).
 
 ## 8. Divergencias encontradas al implementar
 
-*(vacío: anotar acá cualquier cosa del código que no calce con este plan, con la
-decisión que se tomó y por qué)*
+**Fase 1 (SM Actividades + Trabajo Perdido), 2026-09-28:**
+
+1. **`sm_actividades` sigue declarando `"mes": False`, no lo saca** (el plan decía
+   "en vez de 'mes'"). `tests/test_gui_registro.py::test_claves_obligatorias` exige la
+   clave `"mes"` en TODA `PANTALLA` — sacarla rompe el contrato. Se dejó en `False`
+   (no pinta `SelectorMes`) junto con `"rango_meses": True`. `_resolver_ctx` sintetiza
+   `ctx["mes"] = meses[0]` cuando la pantalla solo declara `rango_meses`, para quien
+   todavía espera un mes suelto sin tocar su código.
+2. **`ctx["mes"]` convive con `ctx["meses"]` en `gui/paginas/sm.py::correr()`**: el
+   A03·D.3 no filtra por período (§2.7) y su nombre de archivo sigue siendo
+   `REM_A03_D3_{y}_{m:02d}.xlsx` con UN mes (el "Desde" del rango, vía el `ctx["mes"]`
+   sintetizado). SM/TP usan `ctx.get("meses") or [(y, m)]` (compat con un `ctx` armado
+   a mano sin `"meses"`, como en varios tests). No estaba resuelto en el plan cómo
+   coexistían los dos.
+3. **`dialogos.bloque_dotacion`**: su parámetro `get_mes` pasó a `get_periodo` y
+   `dotacion_ada`/`_dotacion_ada` aceptan `mes` como `(año,mes)` O como LISTA (rango):
+   `_periodo_filtrar` y `_valida_periodo` despachan por la FORMA (una lista, o una
+   tupla de dos tuplas, es un rango). No se creó una función aparte para no duplicar
+   la lógica de "abrir el diálogo de dotación", que hoy solo usa SM.
+4. **`Por_Mes` del Trabajo Perdido**: la advertencia "los distintos NO se suman entre
+   meses" (§4.3 del plan) quedó en el propio ENCABEZADO de la columna
+   (`tp._COL_POR_MES`), no en una fila de nota aparte — `escribir()` solo hace
+   `to_excel`, sin lugar para una nota suelta.
+5. **Un test existente se actualizó**: `test_gui_registro.py::
+   test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero` mockeaba
+   `smact.procesar`/`tpmod.procesar`; ahora `correr()` siempre llama a
+   `procesar_rango`/`tpmod.procesar_rango` (un mes suelto es un rango de 1), así que el
+   test mockea esas dos en su lugar. Es el único test pre-existente que necesitó tocarse.
+
+**Fase 2 (A05), 2026-09-28:**
+
+6. **`autorem._correr_tareas` (orquestación compartida GUI/CLI) aprendió a aceptar
+   `mes` como LISTA**, además de la tupla `(año,mes)` que ya usaba el CLI congelado.
+   El plan no lo mencionaba porque `_correr_tareas` no aparece en su §5, pero es el
+   único punto donde la salida del A05 (nombre de archivo `_2026_01-2026_06`, y el
+   "Período reportado" de la LEEME) se arma — sin tocarlo, el A05 de la GUI no podía
+   usar rango. El CLI (que solo pasa una tupla) queda exactamente igual.
+7. **Columna `Mes`**: se agregó justo antes de `Fila_Origen` (después de `Trans`), no
+   especificado en el plan. Mismo criterio que SM Actividades (columnas de auditoría
+   al final).
+8. **Hoja `Por_Mes` del A05**: se llama `f"{hoja_salida}_Por_Mes"` (`A05_Egresos_Por_Mes`
+   / `A05_Ingresos_Por_Mes`), porque egresos e ingresos comparten UN workbook
+   (`…_procesado.xlsx`, una hoja por tarea) y los dos nombres tienen que ser
+   distintos.
+9. **Dos tests existentes se ajustaron**: `test_iris_equivalencia_v12` (compara la
+   salida contra el monolito v1.2, que no tiene columna `Mes`: se descarta antes de
+   comparar) y `test_el_periodo_del_a05_es_el_selector_mes_compartido` (ahora
+   `test_..._selector_rango_meses_compartido`: `bloque_periodo` pasó a llamar
+   `widgets.selector_rango_meses`, que a su vez reusa `selector_mes` por dentro).

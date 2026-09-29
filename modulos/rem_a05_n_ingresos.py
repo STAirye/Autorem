@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.8.2
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -57,13 +57,14 @@ _CFG = dict(
 
 def agregar_hoja(wb, ws, perfil, log=print, mes=None):
     """Agrega la hoja de ingresos al workbook ya abierto (NO guarda). `mes`=(año,mes)
-    filtra por FECHA FORMULARIO; None = archivo completo."""
+    o una LISTA de (año,mes) (rango, docs/rango_meses_plan.md); None = archivo
+    completo."""
     return sm.marcar_eventos(wb, ws, perfil, log=log, mes=mes, **_CFG)
 
 
 def procesar(entrada, salida, perfil=sm.PERFIL_IRIS, log=print, mes=None):
-    """Conveniencia standalone: abre + valida + marca + guarda. `mes`=(año,mes) o
-    None (todo el archivo)."""
+    """Conveniencia standalone: abre + valida + marca + guarda. `mes`=(año,mes), una
+    LISTA (rango) o None (todo el archivo)."""
     wb, ws = sm.abrir_validado(entrada, perfil)
     res = agregar_hoja(wb, ws, perfil, log=log, mes=mes)
     wb.save(salida)

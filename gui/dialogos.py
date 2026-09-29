@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -174,6 +174,22 @@ def _barra_aplicar(top, tabla, checks, texto_cerrar, pady):
                  ).pack(side="right", padx=6)
 
 
+def _periodo_filtrar(d, mes, fuente):
+    """Filtra `d` al PERÍODO. `mes` = `(año, mes)` de un solo mes, o una LISTA de
+    `(año, mes)` (rango, `rem_utils.meses_del_rango`): con rango se exige POR MES
+    (`exigir_cada_mes`, docs/rango_meses_plan.md §4.4 — la pregunta de dotación es
+    "quién trabajó en el período", no por mes) y se filtra por el rango ENTERO.
+    """
+    from programas.rem_utils import filtrar_mes, exigir_cada_mes, _rango_mes
+    if isinstance(mes, list):
+        exigir_cada_mes(d, mes, fuente)
+        ini, _fin = _rango_mes(mes[0])
+        _ini, fin = _rango_mes(mes[-1])
+    else:
+        ini, fin = _rango_mes(mes)
+    return filtrar_mes(d, ini, fin, fuente)
+
+
 def dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
     """Ver `_dotacion_ada`. Si ya hay una ventana de dotacion en curso (un click que
     quedo encolado y se despacho dentro de ella, ver `_DOTACION_ABIERTA`) no hace
@@ -185,7 +201,8 @@ def dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False
 
 
 def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=False):
-    """Carga el ADA, lo filtra al `mes` y abre el dialogo de dotacion.
+    """Carga el ADA, lo filtra al `mes` (un solo mes o un RANGO, ver `_periodo_filtrar`)
+    y abre el dialogo de dotacion.
 
     `mask(serie_act_norm)` -> booleana con las filas que TRIBUTAN al REM de
     ese modulo; sin ella se preguntaria por gente cuyo trabajo no entra a
@@ -195,7 +212,7 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
 
     Devuelve (d, tabla) -- `d` es el ADA YA cargado, para que quien procese
     despues no lo relea. (None, None) si el archivo no se pudo leer."""
-    from programas.rem_utils import cargar_atenciones, filtrar_mes, _rango_mes
+    from programas.rem_utils import cargar_atenciones
     # Esto BLOQUEA la GUI y no hay como evitarlo: el dialogo que viene despues
     # es Tk y tiene que correr en este hilo (mandarlo a un worker revienta). Lo
     # que si se puede es que no PAREZCA colgada -- cursor de espera + repintar
@@ -214,8 +231,7 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
         pass
     try:
         d = cargar_atenciones(ada, log=log)
-        ini, fin = _rango_mes(mes)
-        dm = filtrar_mes(d, ini, fin, "el ADA (ATENCIONES/DIAGNOSTICOS/ACTIVIDADES)")
+        dm = _periodo_filtrar(d, mes, "el ADA (ATENCIONES/DIAGNOSTICOS/ACTIVIDADES)")
     except Exception as e:   # noqa: BLE001
         from gui.runner import manejar_error
         manejar_error(e, log, messagebox)
@@ -253,13 +269,28 @@ def _dotacion_ada(root, modulo, ada, mes, log, messagebox, mask=None, todos=Fals
     return d, tabla
 
 
-def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
+def _valida_periodo(crudo, messagebox):
+    """`crudo` = lo que devuelve `pagina.mes()` (`(a,m)`) o `pagina.meses()`
+    (`((a1,m1),(a2,m2))`, docs/rango_meses_plan.md): valida con `valida_mes` /
+    `valida_rango_meses` según la FORMA (un rango es una tupla de DOS tuplas; un mes
+    es una tupla de dos int). Devuelve `(año,mes)` | lista de `(año,mes)` | None."""
+    from gui.runner import valida_mes, valida_rango_meses
+    if crudo is None:
+        return None
+    if isinstance(crudo[0], (tuple, list)):
+        return valida_rango_meses(crudo, messagebox)
+    return valida_mes(crudo, messagebox)
+
+
+def bloque_dotacion(parent, modulo, get_ada, get_periodo, log, mask=None):
     """Cuadro informativo + 'Precargar dotación…' y 'Revisar dotación…'.
     Reutilizable por cualquier modulo con el mismo problema (hoy solo SM).
 
-    VA DEBAJO de los selectores de archivo: necesita el ADA cargado y el mes
-    elegido para tener algo que mostrar. `get_ada`/`get_mes` son los getters
-    de la pagina; `mask` filtra a lo que tributa a ese REM."""
+    VA DEBAJO de los selectores de archivo: necesita el ADA cargado y el período
+    elegido para tener algo que mostrar. `get_ada`/`get_periodo` son los getters
+    CRUDOS de la pagina (`pagina.mes` o `pagina.meses`, según la pantalla use un mes
+    puntual o un rango -- `_valida_periodo` los distingue); `mask` filtra a lo que
+    tributa a ese REM."""
     import tkinter.messagebox as messagebox
     from gui.widgets import caja_titulada, etiqueta_envolvente, COLOR_AVISO
     caja = caja_titulada(parent, "Dotación (separar funcionarios externos)")
@@ -279,13 +310,12 @@ def bloque_dotacion(parent, modulo, get_ada, get_mes, log, mask=None):
         if not ada:
             messagebox.showwarning(
                 "Falta el ADA", "Primero carga el archivo de Atenciones / Diagnósticos / "
-                "Actividades y elige el mes; recién ahí puedo mostrarte los funcionarios.")
+                "Actividades y elige el período; recién ahí puedo mostrarte los funcionarios.")
             return
-        from gui.runner import valida_mes
-        mes = valida_mes(get_mes(), messagebox)   # rango incluido: `_rango_mes` de
-        if mes is None:                           # mas abajo revienta con un mes 13
+        periodo = _valida_periodo(get_periodo(), messagebox)   # mes 13, etc: se corta aca
+        if periodo is None:
             return
-        dotacion_ada(parent.winfo_toplevel(), modulo, ada, mes, log, messagebox,
+        dotacion_ada(parent.winfo_toplevel(), modulo, ada, periodo, log, messagebox,
                      mask=mask, todos=True)
 
     barra = ctk.CTkFrame(caja, fg_color="transparent")

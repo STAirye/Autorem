@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.14
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -269,8 +269,11 @@ def escribir_hoja(wb, modulo_id, contexto=None, avisos=(), nombre="LEEME"):
     fila(f"REM: {d['rem']}")
     mes = contexto.get("mes")
     mes_txt = f"{mes[0]}-{mes[1]:02d}" if isinstance(mes, (tuple, list)) and len(mes) == 2 else (mes or "(no especificado)")
+    # Rango de meses (docs/rango_meses_plan.md §4.2.5): la etiqueta la distingue por
+    # forma ('2026-01 a 2026-06' trae ' a '), sin un flag aparte que sincronizar.
+    etiqueta_campo = "Período reportado" if isinstance(mes, str) and " a " in mes else "Mes reportado"
     generado = contexto.get("generado") or datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    fila(f"Mes reportado: {mes_txt}     Generado: {generado}")
+    fila(f"{etiqueta_campo}: {mes_txt}     Generado: {generado}")
     archivos = contexto.get("archivos")
     if archivos:
         fila("Entradas: " + " - ".join(str(a) for a in archivos))

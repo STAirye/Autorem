@@ -179,6 +179,37 @@ def test_valida_mes_rechaza_el_rango_no_solo_lo_no_numerico():
         assert not mb.avisos, f"{bueno} es valido y aun asi aviso: {mb.avisos}"
 
 
+def test_valida_rango_meses_rechaza_desde_posterior_a_hasta():
+    """docs/rango_meses_plan.md §6.6: además de los malos de `valida_mes` en cada
+    extremo, un rango rechaza cuando 'Desde' es posterior a 'Hasta'."""
+    from gui.runner import valida_rango_meses
+    mb = _MessageboxFalso()
+    assert valida_rango_meses(((2026, 7), (2026, 3)), mb) is None
+    assert mb.avisos, "Desde > Hasta se rechazo en SILENCIO"
+
+
+def test_valida_rango_meses_rechaza_lo_mismo_que_valida_mes():
+    from gui.runner import valida_rango_meses
+    from gui.widgets import ANIO_MIN
+
+    for malo in (None, ((2026, 13), (2026, 7)), ((ANIO_MIN - 1, 1), (2026, 7)),
+                 ((2026, 7), (2026, 0))):
+        mb = _MessageboxFalso()
+        assert valida_rango_meses(malo, mb) is None, f"{malo} deberia rechazarse"
+        assert mb.avisos, f"{malo} se rechazo en SILENCIO"
+
+
+def test_valida_rango_meses_ok_devuelve_los_meses_inclusive():
+    from gui.runner import valida_rango_meses
+    mb = _MessageboxFalso()
+    assert valida_rango_meses(((2026, 1), (2026, 3)), mb) == [(2026, 1), (2026, 2), (2026, 3)]
+    assert not mb.avisos
+    # un mes suelto (Desde == Hasta) es el default: se comporta igual que hoy.
+    mb = _MessageboxFalso()
+    assert valida_rango_meses(((2026, 7), (2026, 7)), mb) == [(2026, 7)]
+    assert not mb.avisos
+
+
 def test_el_rango_de_anios_es_relativo_a_hoy():
     """Hasta el año en curso (un mes futuro no tiene atenciones) y 5 hacia atras. Antes
     era 2020..2100 fijo: aceptaba 2099 y el piso envejecia."""
@@ -288,9 +319,9 @@ def test_sm_no_pisa_salidas_y_el_resumen_dice_lo_que_no_se_genero():
     atomico, atomicos = ru.escribir_atomico, []
     parches = [(ru, "escribir_atomico",
                 lambda s, fn: (atomicos.append(Path(s).name), atomico(s, fn))[1]),
-               (smact, "procesar", lambda *_a, **_k: E),
+               (smact, "procesar_rango", lambda *_a, **_k: E),
                (smact, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
-               (tpmod, "procesar", lambda *_a, **_k: pd.DataFrame()),
+               (tpmod, "procesar_rango", lambda *_a, **_k: pd.DataFrame()),
                (ru, "cargar_maestro", lambda *_a, **_k: None),   # el Maestro de mentira
                (tpmod, "escribir", lambda _E, salida: Path(salida).write_bytes(b"nuevo")),
                (screening, "procesar_unificado", a03_falla),
@@ -576,14 +607,15 @@ def test_el_preview_de_cruce_lee_el_encabezado_con_el_criterio_del_loader():
         ru.indice_encabezado = previo
 
 
-def test_el_periodo_del_a05_es_el_selector_mes_compartido():
+def test_el_periodo_del_a05_es_el_selector_rango_meses_compartido():
     """La caja Periodo del A05 tenia su propia copia de los dos Spinbox y del
     parseo, fuera del test que amarra los años a `valida_mes`. Ahora usa
-    `widgets.selector_mes`."""
+    `widgets.selector_rango_meses` (docs/rango_meses_plan.md Fase 2), que a su vez
+    reusa `widgets.selector_mes` -- mismos Spinbox, mismo test de años."""
     import inspect
     from gui.paginas import a05
     fuente = inspect.getsource(a05.bloque_periodo)
-    assert "widgets.selector_mes(" in fuente, "el A05 no usa selector_mes"
+    assert "widgets.selector_rango_meses(" in fuente, "el A05 no usa selector_rango_meses"
     assert "ttk.Spinbox(" not in fuente, "el A05 volvio a armar sus Spinbox a mano"
     assert "int(" not in inspect.getsource(a05.preparar), "el A05 volvio a parsear el mes a mano"
 

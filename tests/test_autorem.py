@@ -136,7 +136,12 @@ def test_iris_equivalencia_v12():
         out_new = _TMP / "new.xlsx"; egresos.procesar(iris, out_new, log=_quiet)
     finally:
         sm.LIMPIAR_NOMBRE_PATOLOGIA = prev
-    assert _dump(out_new, "A05_Egresos") == _dump(out_ref, "A05_Egresos")
+    # v1.2 tampoco trae la columna 'Mes' (docs/rango_meses_plan.md, Fase 2): se saca
+    # antes de comparar, mismo criterio que el nombre de patología de arriba.
+    nuevo = _dump(out_new, "A05_Egresos")
+    i_mes = nuevo[0].index("Mes")
+    nuevo = [fila[:i_mes] + fila[i_mes + 1:] for fila in nuevo]
+    assert nuevo == _dump(out_ref, "A05_Egresos")
 
 
 def test_nombre_patologia_y_exclusion():
@@ -330,6 +335,66 @@ def test_filtro_mes():
         assert False, "debió levantar ArchivoInvalido por mes vacío"
     except sm.ArchivoInvalido as e:
         assert e.categoria == "mes_vacio"
+
+
+def _iris_fecha_fixture_rango():
+    """Export IRIS con FECHA FORMULARIO: 2 egresos en 07/2026, 1 en 08/2026, 1 en
+    09/2026 (docs/rango_meses_plan.md, Fase 2)."""
+    p = _TMP / "iris_fecha_rango.xlsx"
+    if p.exists():
+        return p
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio de Salud", None]); ws.append(["Filtros: bla", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "FECHA FORMULARIO", "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO",
+               "20.- TIPO DE DEPRESIÓN"])
+    ws.append(["11111111-1", 45, "Mujer", "06/07/2026", "SI", "EGRESO ALTA", "Depresión Moderada"])
+    ws.append(["22222222-2", 30, "Hombre", "20/07/2026", "SI", "EGRESO ALTA", "Depresión Severa"])
+    ws.append(["33333333-3", 60, "Mujer", "05/08/2026", "SI", "EGRESO ALTA", "Depresión Leve"])
+    ws.append(["44444444-4", 50, "Hombre", "10/09/2026", "SI", "EGRESO ALTA", "Depresión Leve"])
+    wb.save(p)
+    return p
+
+
+def test_rango_de_meses_a05_union_de_los_meses_sueltos():
+    """docs/rango_meses_plan.md §6.7: el A05 con rango == unión de los meses sueltos
+    (mismas filas de evento), y trae la hoja Por_Mes (que un mes suelto no trae)."""
+    fx = _iris_fecha_fixture_rango()
+    meses = [(2026, 7), (2026, 8), (2026, 9)]
+    out_rango = _TMP / "a05_rango.xlsx"
+    egresos.procesar(fx, out_rango, log=_quiet, mes=meses)
+    ruts_rango = {r[0] for r in _dump(out_rango, "A05_Egresos")[1:]}
+    assert ruts_rango == {"11111111-1", "22222222-2", "33333333-3", "44444444-4"}
+
+    ruts_sueltas = set()
+    out_suelto = None
+    for m in meses:
+        out_suelto = _TMP / f"a05_suelto_{m[1]}.xlsx"
+        egresos.procesar(fx, out_suelto, log=_quiet, mes=m)
+        ruts_sueltas |= {r[0] for r in _dump(out_suelto, "A05_Egresos")[1:]}
+    assert ruts_rango == ruts_sueltas
+
+    wb = openpyxl.load_workbook(out_rango)
+    assert "A05_Egresos_Por_Mes" in wb.sheetnames
+    filas = list(wb["A05_Egresos_Por_Mes"].iter_rows(values_only=True))
+    assert filas[0] == ("Tipo_Egreso", "2026-07", "2026-08", "2026-09", "Total")
+    fila_alta = next(f for f in filas[1:] if f[0] == "Alta")
+    assert fila_alta == ("Alta", 2, 1, 1, 4)
+
+    wb_suelto = openpyxl.load_workbook(out_suelto)   # el último mes suelto (septiembre)
+    assert "A05_Egresos_Por_Mes" not in wb_suelto.sheetnames
+
+
+def test_rango_de_meses_a05_mes_vacio_en_medio_falla_nombrandolo():
+    """§6.7 del plan: un mes vacío en el medio del rango falla nombrándolo."""
+    from programas.rem_utils import meses_del_rango
+    fx = _iris_fecha_fixture_rango()   # jul, ago, sep -> falta octubre
+    meses = meses_del_rango((2026, 7), (2026, 10))
+    try:
+        egresos.procesar(fx, _TMP / "a05_rango_vacio.xlsx", log=_quiet, mes=meses)
+        assert False, "debió levantar ArchivoInvalido"
+    except sm.ArchivoInvalido as e:
+        assert e.categoria == "mes_vacio" and "10/2026" in str(e), str(e)
 
 
 def test_export_sin_filas_falla_en_la_fuente():

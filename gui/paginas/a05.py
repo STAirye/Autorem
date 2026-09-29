@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.13
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -52,7 +52,8 @@ instrucciones = (
      "     A) IRIS: Formularios RAYEN -> Elije rango de Fecha -> Control de Salud Mental -> Todos los metacampos, Situación TODOS, Estado AMBOS.\n"
      "     B) RAYEN: Herramientas -> Informe Estadístico -> Impresión Formularios Clínicos -> Reporte Administrativo.\n"
      "2.  Elige el archivo: el formato (IRIS / Administrativo) se detecta solo.\n"
-     "3.  Elige el PERÍODO: un mes (por FECHA FORMULARIO; parte en el mes anterior) o el archivo completo.\n"
+     "3.  Elige el PERÍODO: meses Desde/Hasta (por FECHA FORMULARIO; parte en el mes anterior en los\n"
+     "     dos -- un mes suelto es Desde igual a Hasta) o el archivo completo.\n"
      "4.  «Procesar» -> «…_procesado.xlsx» con una hoja de Ingresos (N) y otra de Egresos (O).\n"
      "     Tu archivo original NO se modifica.")
 )
@@ -180,28 +181,30 @@ def bloque_archivo_formato(frame, pagina):
 
 
 def bloque_periodo(frame, pagina):
-    """Caja 'Periodo' propia de A05: archivo completo vs. un mes puntual (por
-    FECHA FORMULARIO). NO es el SelectorMes generico de la pagina (SS3.1 del
-    plan), pero el año/mes SI es `widgets.selector_mes`: mismos Spinbox, mismo
-    parseo, bajo el mismo test que amarra los años a `valida_mes`."""
+    """Caja 'Periodo' propia de A05: archivo completo vs. un RANGO de meses (por
+    FECHA FORMULARIO, docs/rango_meses_plan.md Fase 2 -- un mes suelto es
+    Desde==Hasta, el comportamiento de siempre). NO es el SelectorRangoMeses
+    generico de la pagina (SS3.1 del plan), pero el widget SI es
+    `widgets.selector_rango_meses`: mismos Spinbox, mismo parseo, bajo el mismo
+    test que amarra los años a `valida_mes`."""
     caja = widgets.caja_titulada(frame, "Período")
     caja.pack(fill="x", pady=(2, 6))
-    # Arranca en «Un mes» = el mes anterior (2.0.13; antes «Archivo completo»): el REM
-    # es mensual, y el export suele traer el año entero. El completo queda para
-    # auditar/re-correr; al elegirlo, el mes se apaga y se IGNORA (no se pierde).
-    # Regla de la GUI (autor, sep-2026): la opcion por defecto va ARRIBA.
+    # Arranca en «Meses» = el mes anterior en los DOS extremos (2.0.13; antes «Archivo
+    # completo»): el REM es mensual, y el export suele traer el año entero. El completo
+    # queda para auditar/re-correr; al elegirlo, los Spinbox se apagan y se IGNORAN (no
+    # se pierden). Regla de la GUI (autor, sep-2026): la opcion por defecto va ARRIBA.
     var_periodo = ctk.StringVar(value="mes")
     fila_mes = ctk.CTkFrame(caja, fg_color="transparent")
     fila_mes.pack(anchor="w", fill="x", padx=8, pady=(6, 2))
-    ctk.CTkRadioButton(fila_mes, text="Un mes (año / mes):", value="mes",
+    ctk.CTkRadioButton(fila_mes, text="Meses (desde / hasta):", value="mes",
                        variable=var_periodo).pack(side="left")
-    get_mes = widgets.selector_mes(fila_mes, mes_anterior(), etiqueta=None)
+    get_meses = widgets.selector_rango_meses(fila_mes, mes_anterior())
     ctk.CTkRadioButton(caja, text="Archivo completo", value="todo",
                        variable=var_periodo).pack(anchor="w", padx=8, pady=(0, 6))
 
     def _on_periodo(*_):
         activo = "normal" if var_periodo.get() == "mes" else "disabled"
-        for spin in get_mes.spinboxes:
+        for spin in get_meses.spinboxes:
             spin.configure(state=activo)
     var_periodo.trace_add("write", _on_periodo)
     _on_periodo()
@@ -209,7 +212,7 @@ def bloque_periodo(frame, pagina):
     def get():
         if var_periodo.get() != "mes":
             return {"modo": "todo"}
-        return {"modo": "mes", "mes": get_mes()}   # (año, mes) o None si no son numeros
+        return {"modo": "mes", "meses": get_meses()}   # ((a1,m1),(a2,m2)) o None
     return get
 
 
@@ -251,10 +254,10 @@ def preparar(ctx, pagina):
         return None
 
     periodo = ctx["periodo"]
-    mes = None
+    meses = None
     if periodo["modo"] == "mes":
-        mes = runner.valida_mes(periodo["mes"], messagebox)   # None (no son numeros) incluido
-        if mes is None:
+        meses = runner.valida_rango_meses(periodo["meses"], messagebox)
+        if meses is None:
             return None
 
     carpeta = runner.valida_carpeta(ctx["carpeta"], messagebox, defecto=entrada.parent)
@@ -265,7 +268,7 @@ def preparar(ctx, pagina):
     # SIEMPRE las dos (2.0.13): el REM pide N y O juntos, y elegir una sola era solo una
     # forma de olvidarse la otra. `TAREAS` sigue siendo el registro del CLI congelado.
     return {"entrada": entrada, "perfil": perfil, "tareas": TAREAS,
-           "mes": mes, "carpeta": carpeta}
+           "meses": meses, "carpeta": carpeta}
 
 
 def correr(ctx, log):
@@ -273,8 +276,11 @@ def correr(ctx, log):
     perfil = ctx["perfil"]
     if perfil.get("disclaimer"):
         log(perfil["disclaimer"]); log("")
+    # `_correr_tareas` acepta un mes suelto (tupla, el CLI congelado) o un RANGO
+    # (lista, docs/rango_meses_plan.md); `ctx["meses"]` ya viene validado como lista
+    # (o None = archivo completo) desde `preparar`.
     resultados, salida = _correr_tareas(ctx["tareas"], ctx["entrada"], perfil, log,
-                                        mes=ctx["mes"], carpeta=ctx["carpeta"])
+                                        mes=ctx["meses"], carpeta=ctx["carpeta"])
     return {"resultados": resultados, "salida": salida}
 
 

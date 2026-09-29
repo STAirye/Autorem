@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -150,6 +150,30 @@ def valida_mes(mes, messagebox):
             f"Escribe el año completo (2026, no 26).")
         return None
     return mes
+
+
+def valida_rango_meses(rango, messagebox):
+    """Valida el `((a1,m1),(a2,m2))` de `widgets.selector_rango_meses`. Cada extremo
+    pasa por `valida_mes` (mismos mensajes) y además exige `desde <= hasta`. Devuelve
+    la lista de meses INCLUSIVE (`rem_utils.meses_del_rango`) o None (avisa con
+    messagebox). Sin tope de largo (docs/rango_meses_plan.md §4.4: el autor pide 3 o
+    6 meses, y 12 es legítimo)."""
+    if rango is None:
+        messagebox.showwarning("Período inválido", "Año y mes deben ser números, en los dos extremos.")
+        return None
+    desde, hasta = rango
+    desde = valida_mes(desde, messagebox)
+    if desde is None:
+        return None
+    hasta = valida_mes(hasta, messagebox)
+    if hasta is None:
+        return None
+    if (desde[0], desde[1]) > (hasta[0], hasta[1]):
+        messagebox.showwarning("Período inválido",
+                               '"Desde" es posterior a "Hasta".')
+        return None
+    from programas.rem_utils import meses_del_rango
+    return meses_del_rango(desde, hasta)
 
 
 def valida_carpeta(ruta, messagebox, defecto=None):

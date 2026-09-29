@@ -10,6 +10,46 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.14] — 2026-09-28
+
+Rango de meses (reportes de 3/6 meses), plan aprobado en [docs/rango_meses_plan.md](docs/rango_meses_plan.md):
+SM Actividades + Trabajo Perdido + A05, con su GUI. No es un módulo nuevo (`Z`):
+precedente, la hoja LEEME fue `1.8.3`.
+
+### Agregado
+
+- **SM Actividades y Trabajo Perdido corren por RANGO de meses** (`procesar_rango` en
+  ambos módulos): el motor MENSUAL corre una vez por mes y se agrega una sola vez al
+  final — nunca se filtra el ADA por el rango entero, porque rompe la ventana de
+  GESTANTE (3 meses) y los DISTINTOS del Trabajo Perdido. Salida: las tablas de
+  siempre con el total del rango, más una hoja `Por_Mes` (con 2+ meses; un mes
+  suelto se comporta idéntico a hoy, sin esa hoja).
+- **A05 (Egresos/Ingresos) acepta el mismo rango**: `marcar_eventos` filtra por una
+  LISTA de meses (`ym in meses`), agrega la columna `Mes` al detalle largo y una hoja
+  `<hoja>_Por_Mes` con el conteo por tipo × mes. El CLI congelado (§12) sigue pasando
+  un mes suelto tal cual: firma compatible, sin tocarlo.
+- **`rem_utils.meses_del_rango` / `etiqueta_periodo` / `exigir_cada_mes`**: la lista
+  inclusiva de un rango, su etiqueta para log/LEEME/resumen/nombre de archivo, y el
+  fail-loud POR MES para módulos que filtran el rango entero de una sola pasada (el
+  Trabajo Perdido, donde SÍ corresponde filtrar así: no hay reglas ancladas al mes).
+- **Un mes vacío en medio del rango falla RUIDOSO, nombrándolo** (`ArchivoInvalido`
+  con «en 03/2026: …» en SM, o el mes en el mensaje en A05/TP) — no sigue con los
+  demás. Un rango de 6 meses al que le faltan 3 es el número plausible-pero-mal que
+  el REM no perdona.
+- **Widget `Desde/Hasta`** (`widgets.selector_rango_meses`, reusa `selector_mes` dos
+  veces) + `runner.valida_rango_meses`. SM Actividades lo usa como su selector de
+  período (antes «mes», ahora «rango_meses» en su `PANTALLA`); el A05 lo reemplaza
+  dentro de su propia caja «Período» («Meses (desde/hasta)» arriba, «Archivo
+  completo» abajo).
+
+### Cambiado
+
+- `gui/dialogos.dotacion_ada`/`bloque_dotacion` aceptan un mes puntual O un rango
+  (por la FORMA: una lista es un rango) — el diálogo de dotación de SM pregunta
+  «quién trabajó en el período», no por mes.
+
+**356 tests** en 19 archivos.
+
 ## [2.0.13] — 2026-09-28
 
 Lo que salió de mirar el `.exe` de verdad, el primero compilado con Python 3.14.7 /

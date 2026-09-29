@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.13
+# Version: 2.0.14
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -294,6 +294,30 @@ def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
         except ValueError:
             return None
     get.spinboxes = (spin_anio, spin_mes)
+    return get
+
+
+def selector_rango_meses(parent, defecto):
+    """Fila 'Desde [año][mes]' + 'Hasta [año][mes]' (docs/rango_meses_plan.md §4.4):
+    reusa `selector_mes` DOS VECES (etiquetas «Desde»/«Hasta»), así los `from_`/`to`
+    de los Spinbox siguen saliendo de ANIO_MIN/ANIO_MAX -- lo amarra
+    `test_el_spinbox_y_la_guarda_de_anio_no_pueden_divergir` (que mira el código FUENTE
+    de `selector_mes`, y ese no cambia). `defecto` = (año,mes) inicial para LOS DOS
+    extremos: un mes suelto (desde == hasta) es el default, y se comporta idéntico a
+    un mes puntual (§2.1 del plan). Devuelve get() -> ((a1,m1),(a2,m2)) o None si algo
+    de lo tecleado no son números."""
+    fila = ctk.CTkFrame(parent, fg_color="transparent")
+    fila.pack(fill="x", pady=(4, 4))
+    get_desde = selector_mes(fila, defecto, etiqueta="Desde (año / mes):")
+    get_hasta = selector_mes(fila, defecto, etiqueta="Hasta (año / mes):")
+
+    def get():
+        d, h = get_desde(), get_hasta()
+        return (d, h) if d is not None and h is not None else None
+    # Los 4 Spinbox juntos (Desde año/mes + Hasta año/mes): el A05 los apaga/prende
+    # en bloque al alternar «Meses» vs «Archivo completo» (mismo patron que
+    # selector_mes.spinboxes, que ya usa esa pagina).
+    get.spinboxes = get_desde.spinboxes + get_hasta.spinboxes
     return get
 
 
