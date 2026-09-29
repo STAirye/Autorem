@@ -249,6 +249,39 @@ bajado sola de 103 s a **~47 s**, y el wall pasó a ser **exactamente**
 
 Lleva la **ruta absoluta del repo** en `RAIZ`. Solo Windows (`BELOW_NORMAL_PRIORITY_CLASS`).
 
+### `gui-trinquete-2.0.16/`
+
+Por qué construir una página costaba segundos (sep-2026). La hipótesis de partida del
+autor era «lee archivos»; el perfil dijo que no (0,03 s de todo `about.py`) y la cadena
+de experimentos llegó al **trinquete de layout** de `widgets.etiqueta_envolvente`,
+arreglado en la **2.0.16**. En el orden en que se corrieron:
+
+- `perfil_acerca_de.py` - pared + cProfile de `mostrar("acerca_de")`, cronometrando cada
+  bloque de `about.py`. Mostró que el costo estaba entero en una cascada de Tk colgada de
+  `CTkScrollbar._draw` -> `update_idletasks` (112 veces) y 2.201 `_update_dimensions_event`.
+- `scroll_diferido.py` - **hipótesis DESCARTADA, archivada a propósito:** diferir el
+  `set` del scrollbar hasta el final no baja nada (y el SM empeora). El scrollbar era
+  dónde se disparaba el layout, no por qué.
+- `cascada_wrap.py` - la prueba: sin el `bind("<Configure>")` de las etiquetas,
+  acerca_de 3,3 s -> 0,14 s. Reconfigurar solo si el ancho cambia NO sirve (mismos
+  conteos): el ancho cambia de verdad en cada vuelta.
+- `trinquete_wrap.py` - la secuencia de anchos que ve cada etiqueta: arranca en 1619 px
+  (el texto sin partir) y baja de a pocos px hasta ~300 antes de saltar a 920. Ahí se ve
+  el trinquete.
+- `fix_wrap.py` - el arreglo candidato (wraplength inicial 1 y 300) contra hoy, en 5
+  páginas, a escala 1.0 y 1.5, comparando el wraplength FINAL de cada etiqueta tras
+  construir y tras agrandar/achicar la ventana. Lo único distinto: etiquetas de cajas que
+  nacen escondidas (0 hoy, 300 con el arreglo, hasta mostrarse). **Ojo:** archivado como
+  quedó tras la última corrida, recortado a SM y A05 a escala 1.0 para ver QUÉ etiquetas
+  diferían; la corrida completa (5 páginas × 2 escalas) era el mismo script con las
+  tuplas originales de páginas y escalas.
+- `medir_paginas.py` - el bloqueo de cada página con el arreglo puesto: la tabla del
+  CHANGELOG de la 2.0.16.
+
+Todos llevan la **ruta absoluta del repo** en un `sys.path.insert` y abren ventanas de
+verdad (necesitan display). Los números de esa sesión tienen ruido: corrían en paralelo
+con la revisión ciega de `lectura-calamine`.
+
 ### `tk_tcl_intermitente/`
 
 El `tk.tcl` intermitente de `test_gui_construccion` (sep-2026). El contexto, las rondas y

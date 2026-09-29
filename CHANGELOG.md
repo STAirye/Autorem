@@ -10,6 +10,59 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.16] — 2026-09-29
+
+(2.0.15 la tomó la rama `lectura-calamine`, sin mergear a la fecha.)
+
+### Corregido
+
+- **Las páginas tardaban segundos en construirse por un trinquete de layout, no por
+  Tk.** `widgets.etiqueta_envolvente` nacía pidiendo el ancho de su texto SIN partir
+  (1619 px en una ventana de 920); dentro de un `CTkScrollableFrame` eso ensanchaba al
+  padre, y su propio `<Configure>` la partía a `ancho - 20`, el padre se encogía a lo que
+  pedían sus hijos, y otra vuelta: ~110 vueltas por etiqueta, cada una re-maquetando la
+  página entera (2.204 redibujos en `acerca_de`). Ahora nace con `wraplength=300`
+  (`_WRAP_INICIAL`), que solo vive hasta el primer `<Configure>` del padre. **Estado
+  final idéntico** (wraplength de cada etiqueta tras construir y tras agrandar/achicar la
+  ventana, a escala 1.0 y 1.5), salvo las etiquetas de cajas que nacen escondidas, que
+  quedan en 300 en vez de 0 hasta que la caja se muestra — y ahí se ajustan (test).
+
+  | Página | 2.0.2 (Tcl 8.6) | 2.0.14 (Tcl 9) | 2.0.16 |
+  |---|---|---|---|
+  | `acerca_de` | 7105 ms | ~3300 ms | **354 ms** |
+  | `sm_actividades` | 5753 ms | ~2600 ms | **389 ms** |
+  | `a23_respiratorio` | 1813 ms | ~770 ms | 259 ms |
+  | `a05` | 1090 ms | ~700 ms | 232 ms |
+
+  El diagnóstico de 2.0.2 («el costo es Tk puro, no hay trabajo que sacar del hilo») era
+  cierto pero incompleto: el Tk era autoinfligido. **Leer archivos no pesaba nada**
+  (0,03 s de todo `about.py`), que era la hipótesis de partida. Con esto el generador
+  planeado en el §12 del CLAUDE.md probablemente sobra: queda para decidir mirando la
+  ventana. Arneses en `docs/evanesced/gui-trinquete-2.0.16/`.
+- **La suite baja de ~47 s a ~30 s** (`test_gui_construccion` de ~46 s a ~20 s), por lo
+  mismo. Lo remedido de `tools/correr_tests.py` con Tcl 9 (y lo descartado midiendo:
+  hilos de BLAS y prioridad de procesos) está en `docs/evanesced/suite-2.0.14/`.
+
+### Agregado
+
+- `test_las_etiquetas_envolventes_no_hacen_trinquete` (cuenta los `<Configure>` del
+  padre: el código viejo da 402 para una etiqueta) y
+  `test_una_etiqueta_envolvente_en_una_caja_escondida_se_ajusta_al_mostrarla` (el valor
+  inicial no puede quedar pegado).
+- **Plan de lectura con `python-calamine`** ([docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md)):
+  medido sobre exports reales, 5-6× más rápido con 0 celdas distintas; Cython descartado
+  (el código propio es el 2-6 % de una corrida); el A05 medido sin profiler (6,5 s) y
+  descartado por el autor. Más el prompt reutilizable de **revisión ciega**
+  ([docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md)). Arneses en
+  `docs/evanesced/lectura-calamine/`.
+
+### Cambiado
+
+- `gui/CLAUDE.md`: su contador de tests estaba desfasado (decía 56, hay 63) — es un
+  subconteo que `check_version` no vigila.
+
+**358 tests** en 19 archivos.
+
 ## [2.0.14] — 2026-09-28
 
 Rango de meses (reportes de 3/6 meses), plan aprobado en [docs/rango_meses_plan.md](docs/rango_meses_plan.md):

@@ -22,7 +22,7 @@ Se carga al trabajar en `tools/`. Los `§N` son las anclas del [CLAUDE.md raíz]
 | `scan_catalogo.py` | Escáner de PII antes de versionar un catálogo. |
 | `limpiar_refs.py` | Deja en **banner + encabezado** lo que entra a `refs_tablas/` (libro nuevo, escaneado antes de escribirse). Skill `limpiar-refs`; lo vigila `tests/test_refs_tablas.py`. |
 | `slim_maestro.py` | Genera el Maestro de Actividades slim comprimido. |
-| `correr_tests.py` | **La suite completa en 3 procesos**, un archivo por proceso: ~47 s (2.0.14, Tcl 9; en 2.0.2 eran 194 s -> 103 s). No reemplaza a `pytest` (para depurar un test suelto, pytest directo da mejor traceback). El reparto es por ARCHIVO y **no** por test suelto a propósito -> ver abajo. |
+| `correr_tests.py` | **La suite completa en 3 procesos**, un archivo por proceso: ~30 s (2.0.16; 47 s en 2.0.14 con Tcl 9; en 2.0.2 eran 194 s -> 103 s). No reemplaza a `pytest` (para depurar un test suelto, pytest directo da mejor traceback). El reparto es por ARCHIVO y **no** por test suelto a propósito -> ver abajo. |
 
 **¿Por qué el check anti-RUT y `hooks_git.py` son archivos separados?** Porque son
 cosas distintas: uno **revisa**, el otro **instala**. Hasta 1.9.5 cada uno de los 3
@@ -33,8 +33,14 @@ nunca. `hooks_git.py` es la fuente única de esa lógica.
 ## Correr la suite: por qué 3 procesos y no `xdist -n auto`
 
 ```bash
-python tools/correr_tests.py        # ~47 s (2.0.14)
+python tools/correr_tests.py        # ~30 s (2.0.16)
 ```
+
+> **2.0.16:** se cortó el trinquete de layout de `widgets.etiqueta_envolvente`
+> (gui/CLAUDE.md) y `test_gui_construccion` bajó de ~46 s a **~20 s**: la suite entera
+> queda en **~30 s** y el wall ya no es la GUI sino el proceso más cargado del resto.
+> Era exactamente la palanca que decía el párrafo de abajo — «abaratar la GUI» —, y
+> costó una línea.
 
 > **Remedido en 2.0.14** (Python 3.14 + Tcl 9, mismo PC): 3 procesos = **~47 s**, y
 > el wall **es** `test_gui_construccion` solo (~46 s); los otros dos procesos terminan

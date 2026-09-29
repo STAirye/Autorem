@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.14** (§9). **356 tests.**
+Versión **2.0.16** (§9). **358 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -187,7 +187,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.14**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.16**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -294,8 +294,18 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   (SM agosto: ~29 s de lectura -> ~5 s).
   [docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md); revisión ciega después
   con [docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md).
-- **Destrabar la GUI durante la carga de una página** (2.0.2; el autor lo probó y lo
-  llamó «VERY JARRING»). Construir una página **bloquea el hilo de la GUI varios
+- **Destrabar la GUI durante la carga de una página: CAUSA ENCONTRADA Y CORTADA en
+  2.0.16 — falta mirarla con ojos humanos.** Casi todo el costo NO era Tk intrínseco:
+  era un **trinquete de layout** en `widgets.etiqueta_envolvente` (~110 re-maquetados
+  de la página entera por etiqueta). Remedido tras el arreglo (mediana de 3, ventana
+  1180×820): `sm_actividades` **389 ms** · `acerca_de` **354 ms** · `a23` 259 · `a05` 232
+  · `sp_p6` 215 · `inicio` 6. Con eso, **el generador de abajo probablemente sobra**, y
+  la precarga (todas las páginas ≈ 1,5 s) quizás se pueda encender tal cual: decisión
+  del autor, después de mirar la ventana. Lo de abajo es el diagnóstico de 2.0.2, y se
+  conserva porque su premisa («no hay trabajo que sacar del hilo, es Tk puro») era
+  cierta pero incompleta: el Tk era autoinfligido.
+
+  (2.0.2; el autor lo probó y lo llamó «VERY JARRING».) Construir una página **bloquea el hilo de la GUI varios
   segundos**, y mientras tanto Windows no puede repintar: la ventana se ve ROTA — sin
   sidebar, con el texto del Inicio a medio dibujar y pedazos de la página que se está
   armando. Pasa igual con el `.exe` y con `python -m gui.app`, o sea **no es empaquetado**.

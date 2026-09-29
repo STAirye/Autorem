@@ -59,6 +59,10 @@ La conclusion de arriba queda en pie y mas fuerte: la unica palanca es que la
 GUI cueste menos. Una corrida suelta de 84 s fue ruido del PC (no se repitio en
 cuatro corridas): comparar tiempos siempre con al menos dos corridas.
 
+2.0.16: esa palanca era una linea. El trinquete de layout de
+`widgets.etiqueta_envolvente` (gui/CLAUDE.md) era casi todo el costo de construir
+una pagina; cortado, test_gui_construccion bajo de ~46 s a ~20 s y la suite a ~30 s.
+
 NO reemplaza a `pytest`: para depurar un test suelto se sigue usando pytest
 directo, que da el traceback ordenado. Esto es para la pasada completa.
 
@@ -77,7 +81,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 TESTS = RAIZ / "tests"
 
-# Version: 2.0.14
+# Version: 2.0.16
 
 # Costo relativo de cada archivo (segundos de la corrida secuencial de 2.0.2).
 # Solo ORDENA el reparto: un archivo que no este aca entra con PESO_NUEVO y el

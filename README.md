@@ -27,6 +27,10 @@ SmartScreen advierte "editor desconocido", es un exe sin firmar: procesa todo
 **local, no sube nada** (ver [CLAUDE.md](CLAUDE.md) §11). Todas las versiones y
 sus notas están en **[Releases](https://github.com/STAirye/Autorem/releases/latest)**.
 
+> **2.0.16 — LARGE PERFORMANCE FIXES.** Cambiar de pantalla ya no congela la ventana:
+> cada página se arma en menos de medio segundo (Acerca de: de ~3,3 s a 0,35 s;
+> Actividades SM: de ~2,6 s a 0,39 s). Detalle en el [CHANGELOG](CHANGELOG.md).
+
 ## Qué cubre hoy
 
 La herramienta es **una sola** (un binario, una versión), y va sumando reportes
@@ -223,7 +227,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **356 pruebas** en 19 archivos:
+Datos 100% sintéticos, sin PII. **358 pruebas** en 19 archivos:
 
 ```bash
 python tools/correr_tests.py

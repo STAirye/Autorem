@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.16
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -82,6 +82,13 @@ _AVISO_SIN_MODIFICAR = ((" Carga los archivos TAL COMO los descargas de RAYEN/IR
                          "     Un export modificado (cambio de formato, columnas, hojas) puede dar cifras erróneas sin aviso."))
 
 
+# Ancho de partida de `etiqueta_envolvente` (ver su docstring: el trinquete). Medido
+# contra 1 px: los dos cortan el trinquete, pero 300 construye mas rapido (con 1 cada
+# palabra es una linea hasta el primer <Configure>) y se ve decente si un padre tarda
+# en recibirlo. Vive aca UNA vez: el test lo importa.
+_WRAP_INICIAL = 300
+
+
 def etiqueta_envolvente(parent, text, **kwargs):
     """CTkLabel que AJUSTA su wraplength al ancho de `parent` en cada resize,
     en vez de desbordar horizontalmente (feedback del autor, sep-2026: prefiere
@@ -93,7 +100,16 @@ def etiqueta_envolvente(parent, text, **kwargs):
     `CTkLabel.configure(wraplength=)` lo vuelve a escalar (`_apply_widget_scaling`).
     Sin des-escalarlo, con Windows al 150% el texto pedia 1.5x el ancho de su caja
     y se cortaba por la derecha -- incluido el mensaje del BannerFuente, o sea un
-    color sin su leyenda completa (SS5.1 del plan, regla 1). Al 100% no se nota."""
+    color sin su leyenda completa (SS5.1 del plan, regla 1). Al 100% no se nota.
+
+    OJO CON EL TRINQUETE (2.0.16): nace con un `wraplength` CHICO. Sin el, la etiqueta
+    pedia el ancho de su texto SIN partir (1619 px en una ventana de 920), eso ensanchaba
+    al padre, y cada <Configure> la partia a `ancho - 20`, el padre se encogia a lo que
+    pedian sus hijos, y otra vuelta: ~110 vueltas por etiqueta, cada una re-maquetando la
+    pagina ENTERA. Era casi todo el costo de construir una pagina (acerca_de 3,3 s ->
+    0,36 s; sm_actividades 2,6 s -> 0,34 s). El valor inicial solo vive hasta el primer
+    <Configure> del padre, que llega cuando el padre se muestra por primera vez."""
+    kwargs.setdefault("wraplength", _WRAP_INICIAL)
     lbl = ctk.CTkLabel(parent, text=text, justify="left", anchor="w", **kwargs)
     parent.bind("<Configure>", lambda e: lbl.configure(
         wraplength=lbl._reverse_widget_scaling(max(e.width - 20, 50))), add="+")
