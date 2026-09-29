@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.17
+# Version: 2.0.18
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.17"
+VERSION = "2.0.18"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -592,9 +592,15 @@ def cargar_canonico(entrada, resolver, requeridas, no_vacias=(), solo_iris=None,
             # Antes del mensaje generico: si el archivo es claramente el OTRO
             # reporte del par ADA/grupal, decirlo. Solo se consulta cuando ya
             # falla -> cero riesgo de falso positivo sobre un archivo valido.
+            # Con el encabezado ubicado como lo ubica el preview (`indice_encabezado`),
+            # NO la fila 0: esa es el banner de RAYEN, y el del Grupal no trae ninguna
+            # firma -> un Grupal en la casilla del ADA daba el «no reconozco» generico
+            # (el ADA en la del Grupal si se acusaba: su banner si las trae). 2.0.18.
             if espera:
                 from programas import formatos
-                formatos.verificar_cruce(hdr, espera, nombre)
+                hc = indice_encabezado(todas)
+                formatos.verificar_cruce(list(todas[hc]) if hc is not None else hdr,
+                                         espera, nombre)
             raise ArchivoInvalido(
                 "sin_columnas",
                 f"No reconozco el archivo:\n«{nombre}»\n\n"

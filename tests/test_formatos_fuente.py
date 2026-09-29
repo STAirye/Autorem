@@ -281,6 +281,23 @@ def test_parece_reporte_sin_evidencia_no_acusa():
     assert formatos.parece_reporte(["COLUMNA A", "COLUMNA B"]) is None
 
 
+@pytest.mark.parametrize("ref,cargar", [
+    ("Atenciones_Grupales_iris.xlsx", "ada"),
+    ("ATENCIONESDIAGNOSTICOSACTIVIDADES_iris.xlsx", "grupal"),
+])
+def test_los_exports_reales_cruzados_se_acusan_en_las_dos_direcciones(ref, cargar):
+    """Con los encabezados REALES de refs_tablas/, no con una lista armada a mano: la
+    guarda miraba la fila 0 (el banner de RAYEN). El del ADA trae firmas y el del Grupal
+    no, asi que un Grupal en la casilla del ADA salia como «no reconozco las columnas»
+    en vez de «cruzaste los archivos» (2.0.18, lo vio el autor probando el exe)."""
+    from programas.rem_utils import cargar_atenciones
+    from modulos.rem_sm_actividades import cargar_grupal
+    ruta = RAIZ / "refs_tablas" / ref
+    with pytest.raises(ArchivoInvalido) as ex:
+        (cargar_atenciones if cargar == "ada" else cargar_grupal)(ruta, log=lambda *a: None)
+    assert ex.value.categoria == "cruzados"
+
+
 def test_verificar_cruce_solo_dispara_al_reves():
     ada = ["ATEN ID", "DIAGNOSTICOS", "ALERTAS ADMINISTRATIVAS"]
     formatos.verificar_cruce(ada, "ada", "x.xlsx")          # el esperado: no levanta

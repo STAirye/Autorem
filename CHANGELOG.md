@@ -10,6 +10,22 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.18] — 2026-09-29
+
+Lo que salió de probar el exe de la 2.0.17 (el autor, en el PC del trabajo).
+
+### Corregido
+
+- **Un Grupal en la casilla del ADA daba el «no reconozco las columnas» genérico** en vez
+  de «cruzaste los archivos». `cargar_canonico`, cuando no encuentra las columnas, le
+  pasaba a `formatos.verificar_cruce` la **fila 0** del export, que es el banner de RAYEN:
+  el del ADA trae palabras que lo delatan y el del Grupal no, así que el cruce se acusaba
+  en una dirección y en la otra no. Ahora usa el encabezado ubicado con
+  `indice_encabezado`, el mismo criterio del preview de la página. Test con los
+  encabezados REALES de `refs_tablas/`, en las dos direcciones.
+
+**367 tests** en 20 archivos.
+
 ## [2.0.17] — 2026-09-29
 
 **LARGE PERFORMANCE FIXES PART 2.** Lectura de exports con `python-calamine`, plan en
