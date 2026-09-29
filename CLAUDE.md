@@ -90,7 +90,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 1. Dependencias
 
-- **Runtime:** `openpyxl` + `pandas`. `tkinter` viene con el Python de Windows.
+- **Runtime:** `openpyxl` (escribir) + `python-calamine` (leer los exports) + `pandas`. `tkinter` viene con el Python de Windows.
   La GUI (2.0, desde sep-2026): `customtkinter`.
 - **Build:** `PyInstaller` (§11). Todo se empaqueta en el `.exe`, así que sumar deps
   no cuesta: prima **minimizar líneas de código**.
@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.14** (§9). **356 tests.**
+Versión **2.0.15** (§9). **362 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -187,7 +187,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.14**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.15**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -288,12 +288,11 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
   población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
   dos: un «sin dato» contado como NO subcuenta callado. La cobertura va a la LEEME.
-- **Rendimiento de lectura: MEDIDO, plan aprobado sep-2026, sin implementar.** La
-  lectura es ~95 % de la corrida (openpyxl), el código propio 2-6 % (Cython descartado:
-  ~1 %). `python-calamine` lee los exports reales 5-6× más rápido con 0 celdas distintas
-  (SM agosto: ~29 s de lectura -> ~5 s).
-  [docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md); revisión ciega después
-  con [docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md).
+- **Rendimiento de lectura: implementado en la rama `lectura-calamine` (2.0.15), falta la
+  revisión ciega y el merge.** Detalle y números en el [CHANGELOG](CHANGELOG.md) y en
+  [docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md); revisión ciega con
+  [docs/revision_ciega_prompt.md](docs/revision_ciega_prompt.md). Al mergear, este ítem
+  se borra de acá.
 - **Destrabar la GUI durante la carga de una página** (2.0.2; el autor lo probó y lo
   llamó «VERY JARRING»). Construir una página **bloquea el hilo de la GUI varios
   segundos**, y mientras tanto Windows no puede repintar: la ventana se ve ROTA — sin

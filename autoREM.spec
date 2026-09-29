@@ -83,7 +83,7 @@ a = Analysis(
     # tools/ que viaja en el exe -- el resto son utilitarios de desarrollo. Va como
     # hiddenimport porque el import es PEREZOSO (dentro de la funcion), asi que el
     # analisis estatico de PyInstaller no lo ve. tools/__init__.py existe por esto.
-    hiddenimports=['programas.catalogos', 'tools.scan_catalogo'] + _PAGINAS,
+    hiddenimports=['programas.catalogos', 'tools.scan_catalogo', 'python_calamine'] + _PAGINAS,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -37,13 +37,14 @@ Contenido:
 import contextlib
 import re
 import sys
+from datetime import date, datetime
 from pathlib import Path   # reexport de conveniencia para los módulos
 
 # -- Versión del proyecto (fuente única de verdad) --
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.14"
+VERSION = "2.0.15"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -200,9 +201,58 @@ def encontrar_fila_encabezado(ws, ancla, max_filas=60):
 
 
 # -- Lectura + clasificación de reportes (compartido; usado por módulos pandas) --
+def _celda_openpyxl(v):
+    """Coercion MINIMA calamine -> openpyxl (2.0.15): un float entero vuelve a int
+    (calamine da `12345.0` donde openpyxl da `12345`, y `str()` cambiaria la clave de un
+    ATEN ID) y un `date` a `datetime` a medianoche. Nada mas: en particular NO `''` ->
+    None, porque RAYEN ya escribe las celdas vacias como `''`."""
+    t = type(v)
+    if t is float and v.is_integer():
+        return int(v)
+    if t is date:
+        return datetime(v.year, v.month, v.day)
+    return v
+
+
+def _hojas_calamine(entrada, max_filas=None):
+    """[(nombre, filas)] de TODAS las hojas de un .xlsx, leidas con python-calamine
+    (Rust, 5-6x mas rapido que openpyxl en los exports reales, 0 celdas distintas).
+    Filas = tuplas del MISMO ancho, grilla desde A1 (`skip_empty_area=False`: los indices
+    de fila del banner de RAYEN no se corren). `max_filas` corta temprano.
+
+    Un no-.xlsx (.html disfrazado, .xls) levanta `zipfile.BadZipFile`, la misma excepcion
+    de siempre para `runner.es_error_formato`: sin la guarda, calamine LEERIA un .xls.
+    El libro se cierra siempre (OneDrive, CLAUDE.md §13).
+    Perdidas conocidas y aceptadas: celda de error (#N/A) y string de solo espacios salen
+    `''` (0 casos en los exports reales; las fija tests/test_lectura_calamine.py)."""
+    import zipfile
+    from python_calamine import CalamineWorkbook
+    if not zipfile.is_zipfile(entrada):
+        raise zipfile.BadZipFile(f"No es un .xlsx (no es un zip): {entrada}")
+    wb = CalamineWorkbook.from_path(str(entrada))
+    try:
+        hojas = []
+        for nombre in wb.sheet_names:
+            crudas = wb.get_sheet_by_name(nombre).to_python(skip_empty_area=False,
+                                                            nrows=max_filas)
+            ancho = max((len(f) for f in crudas), default=0)
+            hojas.append((nombre, [tuple(map(_celda_openpyxl, f)) + ("",) * (ancho - len(f))
+                                   for f in crudas]))
+        return hojas
+    finally:
+        wb.close()
+
+
+def _con_datos(hojas):
+    """Las hojas [(nombre, filas)] que traen ALGUN valor no vacio."""
+    return [(n, f) for n, f in hojas
+            if any(v not in (None, "") for fila in f for v in fila)]
+
+
 def abrir_xlsx_ro(entrada):
     """`load_workbook(read_only=True, data_only=True)` con la <dimension> de CADA
-    hoja descartada. TODA lectura read_only del proyecto pasa por aca.
+    hoja descartada. Toda lectura openpyxl read_only pasa por aca (catalogos, el
+    escaner de PII, tests); los EXPORTS del usuario se leen con `_hojas_calamine`.
 
     POR QUE (sep-2026): en modo read_only openpyxl ACOTA `iter_rows` a la
     <dimension> que declara el propio .xlsx (`max_row`/`max_column` salen de ahi;
@@ -230,14 +280,10 @@ def filas_hoja(ws, max_filas=None):
 
 
 def primeras_filas(entrada, n):
-    """Las primeras `n` filas (ver `filas_hoja`) de la hoja activa: abrir con
-    `abrir_xlsx_ro`, leer y cerrar. Para las detecciones BARATAS (formato del A05,
-    cruce ADA<->Grupal), que no necesitan el archivo entero."""
-    wb = abrir_xlsx_ro(entrada)
-    try:
-        return filas_hoja(wb.active, n)
-    finally:
-        wb.close()
+    """Las primeras `n` filas de la hoja con datos (ver `filas_xlsx`; [] si ninguna).
+    Para las detecciones BARATAS (formato del A05, cruce ADA<->Grupal)."""
+    hojas = _con_datos(_hojas_calamine(entrada, n))
+    return hojas[0][1] if hojas else []
 
 
 def indice_encabezado(filas, ancla=None, max_scan=40):
@@ -263,21 +309,19 @@ def indice_encabezado(filas, ancla=None, max_scan=40):
 
 
 def filas_xlsx(entrada):
-    """TODAS las filas (tuplas de valores) de la hoja activa de un .xlsx. ROBUSTO a la
-    'dimension' rota o ausente de los exports copy-paste / de BD: lee con
-    `abrir_xlsx_ro`, que la descarta (hasta 1.9.17 NO lo era: la respetaba y truncaba en
-    silencio -- ver alla). Hoja sin NINGUNA fila -> ArchivoInvalido."""
-    wb = abrir_xlsx_ro(entrada)
-    try:
-        filas = filas_hoja(wb.active)
-    finally:
-        wb.close()
-    if not filas:   # hoja SIN ninguna fila (ni encabezado): filas[hi] seria IndexError
+    """TODAS las filas (tuplas de valores) de la HOJA CON DATOS de un .xlsx, leidas con
+    calamine (`_hojas_calamine`; desde 2.0.15, antes la hoja activa con openpyxl).
+    ROBUSTO a la 'dimension' rota o ausente: calamine no la usa para acotar. Ninguna hoja
+    con datos -> ArchivoInvalido('sin_datos'); mas de una -> ('modificado', ver
+    `verificar_hoja_unica`), asi que leer ya verifica."""
+    hojas = _con_datos(_hojas_calamine(entrada))
+    if not hojas:   # ni encabezado: filas[hi] seria IndexError
         raise ArchivoInvalido(
             "sin_datos",
             "La hoja del archivo esta completamente vacia (ni siquiera trae el "
             "encabezado).\n\nVuelve a descargar el export desde RAYEN/IRIS.")
-    return filas
+    _exigir_una_hoja([n for n, _ in hojas])
+    return hojas[0][1]
 
 
 def leer_xlsx(entrada, ancla=None, max_scan=40):
@@ -359,16 +403,13 @@ def verificar_hoja_unica(entrada):
     (típicamente se le agregó una tabla dinámica) y sus resultados no son confiables
     -> levanta ArchivoInvalido. Robusta a la 'dimension' rota igual que leer_xlsx
     (`abrir_xlsx_ro`): con la <dimension> respetada, una hoja extra con datos FUERA
-    de lo que declara la etiqueta pasaba por vacia."""
-    wb = abrir_xlsx_ro(entrada)
-    try:   # read_only deja el .xlsx ABIERTO hasta close(): sin finally, un export a
-        # medio sincronizar que revienta a mitad de la lectura quedaba bloqueado
-        # (OneDrive no lo termina de bajar, el usuario no lo puede reemplazar).
-        con_datos = [ws.title for ws in wb.worksheets
-                     if any(any(v not in (None, "") for v in row)
-                            for row in ws.iter_rows(values_only=True))]
-    finally:
-        wb.close()
+    de lo que declara la etiqueta pasaba por vacia. Desde 2.0.15 sobre calamine: verificar
+    = parsear todo (~0,2 s en el formulario); `cargar_canonico` ya no la llama, porque
+    `filas_xlsx` verifica al leer."""
+    _exigir_una_hoja([n for n, _ in _con_datos(_hojas_calamine(entrada))])
+
+
+def _exigir_una_hoja(con_datos):
     if len(con_datos) > 1:
         raise ArchivoInvalido(
             "modificado",
@@ -499,8 +540,7 @@ def cargar_canonico(entrada, resolver, requeridas, no_vacias=(), solo_iris=None,
     for e in (entrada if isinstance(entrada, (list, tuple)) else [entrada]):
         nombre = Path(str(e)).name
         try:
-            verificar_hoja_unica(e)      # rechaza exports modificados (datos en >1 hoja)
-            todas = filas_xlsx(e)
+            todas = filas_xlsx(e)        # ya rechaza exports modificados (datos en >1 hoja)
         except ArchivoInvalido as ai:    # p.ej. 'modificado' -> agrega el nombre del archivo
             raise ArchivoInvalido(ai.categoria, f"Archivo «{nombre}»:\n\n{ai}") from ai
         except Exception as ex:          # openpyxl/zip/etc. -> no es un .xlsx legible

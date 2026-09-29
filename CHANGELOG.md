@@ -10,6 +10,44 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.15] — 2026-09-29
+
+Lectura de exports con `python-calamine`, plan en [docs/lectura_calamine_plan.md](docs/lectura_calamine_plan.md).
+Pendiente de revisión ciega antes de mergear.
+
+### Cambiado
+
+- **`filas_xlsx`, `primeras_filas` y `verificar_hoja_unica` leen con calamine** (Rust)
+  vía `rem_utils._hojas_calamine`; todos los módulos pandas lo heredan por
+  `cargar_canonico`, que ya no llama `verificar_hoja_unica` (leer ya verifica: un solo
+  parseo por archivo). Medido sobre los exports reales de agosto, contra la referencia
+  openpyxl y **0 celdas distintas por `repr`** en los tres: ADA 2026 (4,0 M celdas)
+  12,3 s → 3,4 s; Informe Inscritos (5,1 M) 16,8 s → 3,4 s; Formulario PSM 1,1 s → 0,3 s.
+- **Regla de hoja: la hoja CON DATOS** (calamine no conoce la «activa»): 0 →
+  `sin_datos`, más de 1 → `modificado`. Para RAYEN es lo mismo; un export con la activa
+  vacía y datos en otra ahora se lee en vez de fallar.
+- Coerción mínima en el adaptador: float entero → int (si no, `str()` cambia la clave del
+  ATEN ID y los cruces dan 0 callados) y `date` → `datetime`. `''` no se toca (RAYEN ya
+  escribe las vacías como `''`).
+- **Pérdidas aceptadas** (0 casos en los exports reales, fijadas con un test): celda de
+  error (`#N/A`) y string de solo espacios salen `''`.
+- Los no-`.xlsx` siguen cayendo en el diálogo «No es un .xlsx» (guarda `is_zipfile`).
+- `autoREM.spec` lista `python_calamine` en `hiddenimports`; `check_fuentes` vigila
+  `_hojas_calamine`.
+- El A05 **no se toca** (descartado, medido: 6,5 s por corrida).
+
+### Corregido
+
+- **A23: la demografía tomaba la última fila aunque estuviera en blanco.** `groupby.last()`
+  salta NA, pero RAYEN escribe las celdas vacías como `''`, no como vacío, así que una
+  última atención sin fecha de nacimiento o nacionalidad pisaba el dato de las anteriores.
+  Lo destapó la migración (los fixtures de openpyxl traían `None`).
+
+### Archivado
+
+- `docs/evanesced/lectura-calamine/` (arneses de la medición: bench, sonda, perfil de
+  Cython y medición del A05).
+
 ## [2.0.14] — 2026-09-28
 
 Rango de meses (reportes de 3/6 meses), plan aprobado en [docs/rango_meses_plan.md](docs/rango_meses_plan.md):

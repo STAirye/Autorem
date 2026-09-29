@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.11
+# Version: 2.0.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -224,8 +224,13 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
             "esté SIN modificar.")
 
     # fila más reciente por RUN (una sola pasada: instrumento + demografía).
-    # De toda la historia, no del mes. groupby.last() = último no-nulo por columna.
-    dem = d.sort_values("FECHA").groupby("RUN").last()
+    # De toda la historia, no del mes. groupby.last() = último no-nulo por columna, y
+    # RAYEN escribe la celda vacía como '' (no None): sin pasarla a NA, la demografía
+    # salía de la última fila aunque estuviera en blanco (lo destapó la 2.0.15).
+    dem = d.sort_values("FECHA")
+    cd = [c for c in ("SEXO", "SECTOR", "NACION", "PUEBLO", "FNAC", "ANOS") if c in dem]
+    dem[cd] = dem[cd].replace("", pd.NA)
+    dem = dem.groupby("RUN").last()
     fer["Última atención (instrumento)"] = dem["INSTR"].reindex(fer.index).fillna("")
     # NO se emite el nombre del paciente: §8 = el único identificador en la salida es
     # el RUN (=RUT-DV), que basta para trazar la fila a la ficha. No reañadir NOMBRES/APAT/AMAT.

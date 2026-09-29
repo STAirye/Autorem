@@ -418,29 +418,24 @@ def test_verificar_hoja_unica_ve_datos_fuera_de_la_dimension(tmp_path):
     assert ex.value.categoria == "modificado"
 
 
-def test_verificar_hoja_unica_cierra_el_archivo_aunque_la_lectura_reviente(monkeypatch):
-    """read_only deja el .xlsx ABIERTO hasta `close()`. Sin `finally`, un export a medio
-    sincronizar por OneDrive que revienta a mitad de la lectura quedaba bloqueado
-    mientras el dialogo de error seguia abierto."""
-    import programas.rem_utils as ru
-    cerrado = []
-
-    class HojaRota:
-        title = "Hoja1"
-
-        def iter_rows(self, **_kw):
-            raise EOFError("zip truncado")
-
-    class LibroFalso:
-        worksheets = [HojaRota()]
-
-        def close(self):
-            cerrado.append(True)
-
-    monkeypatch.setattr(ru, "abrir_xlsx_ro", lambda _e: LibroFalso())
-    with pytest.raises(EOFError):
-        ru.verificar_hoja_unica("export.xlsx")
-    assert cerrado, "el workbook quedo abierto tras la excepcion"
+def test_verificar_hoja_unica_cierra_el_archivo_aunque_la_lectura_reviente(tmp_path):
+    """Un export a medio sincronizar por OneDrive (.xlsx TRUNCADO) revienta la lectura y
+    el archivo tiene que quedar libre: el usuario lo reemplaza mientras el dialogo de
+    error sigue abierto. Archivo REAL, no un mock: la prueba es que `os.replace` funcione
+    despues de la excepcion (en Windows falla con PermissionError si quedo abierto)."""
+    import os
+    import zipfile
+    import openpyxl
+    ok = tmp_path / "ok.xlsx"
+    wb = openpyxl.Workbook()
+    wb.active.append(["a", "b"])
+    wb.save(ok)
+    roto = tmp_path / "export.xlsx"
+    roto.write_bytes(ok.read_bytes()[:len(ok.read_bytes()) // 2])
+    from programas.rem_utils import verificar_hoja_unica
+    with pytest.raises(zipfile.BadZipFile):
+        verificar_hoja_unica(roto)
+    os.replace(roto, tmp_path / "movido.xlsx")   # PermissionError = quedo abierto
 
 
 def test_deteccion_a05_con_dimension_rota(tmp_path):

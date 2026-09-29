@@ -105,7 +105,7 @@ Instala **y verifica** cuatro checks de pre-commit:
 ## Requisitos
 
 - **Python 3.9 o superior** (el entorno del autor corre 3.9.13).
-- **openpyxl** (lectura/escritura .xlsx), **pandas** (los módulos data-heavy: A23,
+- **openpyxl** (escritura .xlsx), **python-calamine** (lectura de los exports), **pandas** (los módulos data-heavy: A23,
   Actividades, población) y **customtkinter** (la interfaz). Instalar con:
 
   ```bash
@@ -223,7 +223,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **356 pruebas** en 19 archivos:
+Datos 100% sintéticos, sin PII. **362 pruebas** en 20 archivos:
 
 ```bash
 python tools/correr_tests.py

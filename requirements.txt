@@ -22,6 +22,10 @@
 # vuelve error (CLAUDE.md §12, "Deuda"). Sin el tope, un `pip install` el dia que salga
 # pandas 4 deja la herramienta reventando en la grilla edad x sexo, que es la salida.
 openpyxl>=3.1,<4
+# python-calamine: LECTURA de los exports (rem_utils._hojas_calamine), lector de .xlsx en
+# Rust, 5-6x mas rapido que openpyxl (docs/lectura_calamine_plan.md). openpyxl queda
+# para escribir y para los catalogos. Probado con 0.8.2; tope en 1 por ser 0.x.
+python-calamine>=0.8,<1
 pandas>=2.0,<4
 customtkinter>=5.2
 #

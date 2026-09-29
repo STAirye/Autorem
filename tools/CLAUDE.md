@@ -162,6 +162,9 @@ pyinstaller --clean autoREM.spec
   con su `FUENTES.json`) y el `hiddenimports` de `programas.catalogos`. Los datos no son
   imports, y PyInstaller no los sigue solo. **Si cambia lo que shippea el exe, se edita
   el `.spec` y se commitea.**
+- **`python_calamine` va en el `hiddenimports`** del `.spec` (2.0.15): el import es
+  perezoso (dentro de `rem_utils._hojas_calamine`), y sin él el exe nace sin lector de
+  exports. Tras compilar, buscarlo en `build/autoREM/warn-autoREM.txt`: no debe figurar.
 - Sin el Maestro slim en el bundle, el Trabajo Perdido corre en heurística y lo avisa
   en el log. Sin `catalogos/`, `catalogos.cargar()` tira `FileNotFoundError`.
 - **`--clean` → `PermissionError [WinError 5]`** sobre `build/`: es el atributo

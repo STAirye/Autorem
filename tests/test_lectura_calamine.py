@@ -1,0 +1,111 @@
+# -*- coding: utf-8 -*-
+# This code was generated with the assistance of Claude Sonnet 5.5 (Anthropic).
+# The human author reviewed, modified, and integrated the code.
+#
+# Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
+# Copyright (C) 2026 Simon Tobar
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Lectura de exports con python-calamine (docs/lectura_calamine_plan.md): tipos
+exactos, perdidas aceptadas, paridad con la referencia openpyxl, regla de hoja y no-xlsx."""
+import sys
+import zipfile
+from datetime import date, datetime, time
+from pathlib import Path
+
+import openpyxl
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _aislar_cache   # noqa: E402,F401  (PRIMERO: nunca tocar el ~/.autorem real)
+
+from programas.rem_utils import (ArchivoInvalido, abrir_xlsx_ro, cargar_canonico,   # noqa: E402
+                                 filas_hoja, filas_xlsx, primeras_filas)
+
+RAIZ = Path(__file__).resolve().parent.parent
+
+
+def _libro(ruta, *hojas):
+    """hojas = [(nombre, [fila, ...]), ...]; escrito con openpyxl."""
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for nombre, filas in hojas:
+        ws = wb.create_sheet(nombre)
+        for f in filas:
+            ws.append(f)
+    wb.save(ruta)
+    return ruta
+
+
+def test_tipos_exactos(tmp_path):
+    fila = [1, 2.5, 10000000, True, datetime(2026, 8, 1), datetime(2026, 8, 1, 13, 5),
+            time(13, 5), "0123", "ñandú"]
+    got = filas_xlsx(_libro(tmp_path / "t.xlsx", ("H", [fila])))[0]
+    esperado = [(int, 1), (float, 2.5), (int, 10000000), (bool, True),
+                (datetime, datetime(2026, 8, 1)), (datetime, datetime(2026, 8, 1, 13, 5)),
+                (time, time(13, 5)), (str, "0123"), (str, "ñandú")]
+    for v, (tipo, val) in zip(got, esperado):
+        assert type(v) is tipo and v == val, (v, tipo)
+
+
+def test_perdidas_aceptadas_quedan_fijas(tmp_path):
+    """Pin de un comportamiento CONOCIDO de calamine (no un requisito): celda de error y
+    string de solo espacios salen ''. Si un cambio de version lo mueve, que se note."""
+    got = filas_xlsx(_libro(tmp_path / "p.xlsx", ("H", [["#N/A", "  ", "x"]])))[0]
+    assert got[0] == "" and got[1] == "" and got[2] == "x"
+
+
+def _referencia(ruta):
+    """Filas de la unica hoja con datos, por el camino openpyxl de siempre."""
+    wb = abrir_xlsx_ro(ruta)
+    try:
+        hojas = [filas_hoja(ws) for ws in wb.worksheets]
+    finally:
+        wb.close()
+    return [h for h in hojas if any(v not in (None, "") for f in h for v in f)]
+
+
+def test_paridad_con_openpyxl_en_refs_tablas():
+    revisados = 0
+    for ruta in sorted((RAIZ / "refs_tablas").glob("*.xlsx")):
+        ref = _referencia(ruta)
+        if len(ref) != 1:
+            continue
+        nuevo = filas_xlsx(ruta)
+        assert len(nuevo) == len(ref[0]), f"{ruta.name}: distinto n de filas"
+        for i, (fn, fr) in enumerate(zip(nuevo, ref[0])):
+            fr = tuple("" if v is None else v for v in fr)
+            fr += ("",) * (len(fn) - len(fr))
+            fn += ("",) * (len(fr) - len(fn))
+            for j, (a, b) in enumerate(zip(fn, fr)):
+                assert repr(a) == repr(b), f"{ruta.name} fila {i} col {j}: {a!r} vs {b!r}"
+        revisados += 1
+    assert revisados, "refs_tablas/ no trae ningun .xlsx comparable"
+
+
+def test_regla_de_hojas(tmp_path):
+    with pytest.raises(ArchivoInvalido) as ex:
+        filas_xlsx(_libro(tmp_path / "v.xlsx", ("H", [])))
+    assert ex.value.categoria == "sin_datos"
+    with pytest.raises(ArchivoInvalido) as ex:
+        filas_xlsx(_libro(tmp_path / "d.xlsx", ("A", [["x"]]), ("B", [["y"]])))
+    assert ex.value.categoria == "modificado"
+    # datos en una hoja que NO es la activa (la activa es la 1a, vacia): se leen
+    assert filas_xlsx(_libro(tmp_path / "n.xlsx", ("Vacia", []), ("Datos", [["ok"]]))) == [("ok",)]
+
+
+def test_no_xlsx(tmp_path):
+    from gui import runner
+    falso = tmp_path / "Formulario_Rayen.xlsx"
+    falso.write_text("<html><body>x</body></html>")
+    with pytest.raises(zipfile.BadZipFile) as ex:
+        primeras_filas(falso, 5)
+    assert runner.es_error_formato(ex.value)
+    with pytest.raises(ArchivoInvalido) as ai:
+        cargar_canonico(falso, lambda h: {}, ["RUN"])
+    assert ai.value.categoria == "no_legible"
+
+
+def test_primeras_filas(tmp_path):
+    p = _libro(tmp_path / "f.xlsx", ("H", [[i, "a"] for i in range(20)]))
+    assert primeras_filas(p, 5) == filas_xlsx(p)[:5]
+    assert len(primeras_filas(p, 5)) == 5

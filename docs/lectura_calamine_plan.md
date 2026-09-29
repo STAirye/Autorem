@@ -211,3 +211,24 @@ veces).
 ## 9. Lo que apareció al implementar
 
 (La sesión que implemente anota acá lo que no calzó con el plan.)
+
+Implementado en la rama `lectura-calamine` (2.0.15), 2026-09-29.
+
+- **Un test destapó un bug del código, no del fixture** (§4 paso 3): `test_a23::test_demografia`.
+  `a23.procesar` toma la demografía con `groupby("RUN").last()`, que salta NA pero no `''`;
+  RAYEN escribe las vacías como `''`, así que una última atención con la fecha de
+  nacimiento en blanco pisaba el dato de las anteriores. Arreglado en `a23.procesar`
+  (`''` → NA solo en SEXO/SECTOR/NACION/PUEBLO/FNAC/ANOS), sin coerción `''`→`None` en el
+  adaptador. **Ojo:** otros `groupby().last()` (`poblacion.py:532,724`, a23 `:295,:596,:674`)
+  tienen la misma forma y la suite no los tocó; no se cambiaron (deuda: revisar si sus
+  columnas pueden venir `''` en la última fila).
+- **`tools/correr_tests.py` revienta con `UnicodeEncodeError` (cp1252)** al imprimir la
+  salida de un grupo que falla con un carácter `�`; oculta QUÉ test falló. Con
+  `PYTHONIOENCODING=utf-8 python -m pytest tests` se ve. No se tocó (fuera de alcance).
+- El test de cierre del archivo (§3) quedó como archivo REAL truncado: la guarda
+  `is_zipfile` lo corta antes de abrir con calamine, así que prueba que el archivo queda
+  libre, no un `finally` propio de calamine.
+- Medido (ADA 2026, sin profiler): `filas_xlsx` 3,4 s (criterio ≤ 4 s) con la coerción
+  celda a celda; Inscritos 3,4 s; PSM 0,3 s; 0 celdas distintas por `repr` en los tres.
+- `bump` rechazó 2.0.15 porque el CHANGELOG ya tenía mi entrada: se bumpeó con el
+  encabezado en `[WIP]` y se restauró.

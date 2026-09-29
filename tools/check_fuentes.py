@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.15
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -25,7 +25,8 @@ lo corre al commitear, sobre lo que el commit toca:
 
   1. Funciones tocadas = las que el diff STAGED cambia (por rango de lineas).
   2. Un LECTOR (llama directo a leer_xlsx / cargar_canonico / load_workbook /
-     abrir_xlsx_ro / read_excel / read_csv / primeras_filas / filas_hoja) tocado y
+     abrir_xlsx_ro / read_excel / read_csv / primeras_filas / filas_hoja /
+     filas_xlsx / _hojas_calamine) tocado y
      SIN contrato en tests/contratos_fuentes.py -> BLOQUEA. Se arregla con la skill
      `tests-fuentes`: escribir su contrato (o exentarlo aca, con motivo).
   3. Corre SOLO los contratos cuyas funciones (`cubre`) toco el commit, o cuya
@@ -57,10 +58,11 @@ RAIZ = Path(__file__).resolve().parent.parent
 # prioridad); cuando pase, sumarlo aca y escribirles su contrato.
 CARPETAS = ("programas", "modulos", "gui")
 LECTORES = {"cargar_canonico", "leer_xlsx", "load_workbook", "abrir_xlsx_ro", "read_excel",
-            "read_csv", "primeras_filas", "filas_hoja", "filas_xlsx"}
+            "read_csv", "primeras_filas", "filas_hoja", "filas_xlsx", "_hojas_calamine"}
 # Primitivas compartidas por TODOS los lectores: tocar una corre todos los contratos.
 TRANSVERSALES = {f"programas/rem_utils.py::{f}" for f in (
     "abrir_xlsx_ro", "filas_hoja", "filas_xlsx", "leer_xlsx", "primeras_filas",
+    "_hojas_calamine",
     "verificar_hoja_unica", "indice_encabezado", "encabezado_por_columnas",
     "cargar_canonico", "_una_fila_por_atencion", "exigir_filas", "exigir_filas_ws",
     "resolver_columnas", "fecha_col", "filtrar_mes")}
