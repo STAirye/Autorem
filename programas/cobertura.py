@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.20
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -62,20 +62,16 @@ SIN_REGISTRO = "SIN REGISTRO"     # el 0 es CORRECTO: nadie usa el canal de regi
 COBERTURA = {
     "sm_actividades": {
         "rem": "SA_26 - Salud Mental (A04 / A06 / A19a / A26 / A27 / A32)",
-        "cubre": ["A04-A24", "A06-A.1", "A19a-A.3", "A26-A", "A27", "A32-F"],
+        "cubre": ["A04-A24", "A06-A.1", "A06-A.2", "A19a-A.3", "A26-A", "A27", "A32-F"],
         "no_cubre": [
-            # OJO: hasta sep-2026 esta linea decia "no hay reporte ni formulario en
-            # RAYEN que las registre". Es FALSO y se comprobo contra el Maestro: hay
-            # 6 actividades mapeadas a REM-A06 A.2/A.3 ('Consultorias de salud mental
-            # adulto/infanto adolescente (Individual)', sus 'Teleconsultorias', y los
-            # 'Casos revisados'). El problema no es que no exista la actividad: es que
-            # el centro no la usa, asi que el ADA sale vacio de A.2. Distincion que le
-            # importa al usuario: no es imposible, es accionable.
-            ("A06-A.2 Consultorias de Salud Mental", MANUAL,
-             "La actividad SI existe en RAYEN (6 variantes mapeadas a A06 A.2/A.3), "
-             "pero en este centro no se registra con ella -> no hay nada que contar",
-             "Contarlas a mano; si se empieza a registrar la actividad de RAYEN, "
-             "autoREM puede tabularlas"),
+            # A06-A.2 se tabula desde 2.0.20 (hasta ahi era MANUAL entera). Queda afuera
+            # solo la demencia: el N° de consultorias (C/D) sale INFERIDO y lo avisa un
+            # REVISAR de la corrida, no esta tabla.
+            ("A06-A.2 Personas con sospecha / diagnostico de demencia (cols. AT-AU)",
+             MANUAL,
+             "Es una clasificacion DIAGNOSTICA, y la columna DIAGNOSTICO de RAYEN no "
+             "distingue CONFIRMADO de SOSPECHA: separarlas seria adivinar",
+             "Llenarlas a mano"),
             ("A05 ingresos / egresos", FUERA,
              "Los cubre otro modulo del exe", "Usar la pestana A05"),
             ("A03-H Tamizaje (PSC-17, PHQ-9...)", FUERA,

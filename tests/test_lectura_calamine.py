@@ -64,20 +64,40 @@ def _referencia(ruta):
     return [h for h in hojas if any(v not in (None, "") for f in h for v in f)]
 
 
+def _sin_cola(filas):
+    """`filas` sin las filas completamente vacias del final."""
+    filas = list(filas)
+    while filas and all(v in (None, "") for v in filas[-1]):
+        filas.pop()
+    return filas
+
+
 def test_paridad_con_openpyxl_en_refs_tablas():
     revisados = 0
     for ruta in sorted((RAIZ / "refs_tablas").glob("*.xlsx")):
         ref = _referencia(ruta)
         if len(ref) != 1:
             continue
-        nuevo = filas_xlsx(ruta)
-        assert len(nuevo) == len(ref[0]), f"{ruta.name}: distinto n de filas"
-        for i, (fn, fr) in enumerate(zip(nuevo, ref[0])):
+        # Las filas VACIAS del final no cuentan: openpyxl entrega las que solo traen
+        # formato (el catalogo ENO: 57 con dato + 70 vacias) y calamine no. Lo que se
+        # exige es que no falte ni cambie ninguna fila CON dato (2.0.20: fallaba solo
+        # en el arbol del autor, por un .xlsx local sin versionar).
+        nuevo, fref = _sin_cola(filas_xlsx(ruta)), _sin_cola(ref[0])
+        assert len(nuevo) == len(fref), f"{ruta.name}: distinto n de filas"
+        for i, (fn, fr) in enumerate(zip(nuevo, fref)):
             fr = tuple("" if v is None else v for v in fr)
             fr += ("",) * (len(fn) - len(fr))
             fn += ("",) * (len(fr) - len(fn))
             for j, (a, b) in enumerate(zip(fn, fr)):
-                assert repr(a) == repr(b), f"{ruta.name} fila {i} col {j}: {a!r} vs {b!r}"
+                # Perdida conocida (la misma familia que «solo espacios -> ''»): en un
+                # texto que el .xlsx no marca `xml:space="preserve"`, calamine recorta los
+                # espacios del BORDE (el Maestro real: '  Club de adulto mayor...').
+                # `norm()` los recorta igual, asi que ninguna comparacion cambia. Solo se
+                # tolera ESO; cualquier otra diferencia falla.
+                # (Solo el blanco de XML: el \xa0 de RAYEN NO se recorta, y `str.strip()` si.)
+                borde = (isinstance(a, str) and isinstance(b, str) and a != b
+                         and a == b.strip(" \t\r\n"))
+                assert borde or repr(a) == repr(b), f"{ruta.name} fila {i} col {j}: {a!r} vs {b!r}"
         revisados += 1
     assert revisados, "refs_tablas/ no trae ningun .xlsx comparable"
 

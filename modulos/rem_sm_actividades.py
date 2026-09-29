@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.20
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -33,7 +33,8 @@ Fuentes (mensuales; el export puede venir del AÑO COMPLETO -> se filtra el mes)
 
 Reglas: mes = FECHA ATENCIÓN (hacia atrás desde el último día del mes). SENAME se
 excluye solo (es un string aparte: 'Control Salud Mental a Paciente SENAME' — ellos
-hacen su propio REM). A05 y las Consultorías A06·A.2 quedan fuera (módulo/manual).
+hacen su propio REM). A05 queda fuera (otro módulo). Las Consultorías A06·A.2 entran
+desde 2.0.20, con el N° de consultorías INFERIDO de las fechas (aviso REVISAR).
 
 Separación interno/externo (docs/dotacion_externos_plan.md): el ADA trae atenciones
 de funcionarios que NO son de la dotación (p.ej. la sala AIDIA), que no deben
@@ -80,6 +81,10 @@ DEM_A06 = [("Beneficiarios", "_total"), ("SENAME", "dem_sename"),
            ("Cuidadores demencia", "dem_cuidador")]
 DEM_A26 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
+# A06·A.2 (cols. AP-AS). Las de demencia (AT sospecha / AU diagnostico) NO: la columna
+# DIAGNOSTICO de RAYEN no distingue CONFIRMADO de SOSPECHA -> MANUAL (cobertura.py).
+DEM_A06A2 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
+             ("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez")]
 DEM_A32 = [("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
            ("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("Demencia", "dem_demencia")]
@@ -231,6 +236,10 @@ ADA_TRIBUTAN = [
     # PERDIDO (fue asi como se descubrio el bug de `ctrl_rem`, mas abajo).
     "salud mental por llamadas",                                           # A32F2
     "salud mental por videollamada",                                       # A32F2
+    # A06·A.2 (2.0.20). «consultorias de salud mental» cubre tambien las TELEconsultorias.
+    "consultorias de salud mental",                                        # A06A2
+    "casos revisados consultoria salud mental",                            # A06A2
+    "casos revisados teleconsultoria salud mental",                        # A06A2
 ]
 
 
@@ -267,11 +276,28 @@ def _ctrl_remoto(s):
     return _all(s, "controles", "salud mental por")
 
 
+def _a2(A, tele, patron):
+    """A06·A.2, POR ACTIVIDAD: «consultorias de salud mental adulto» es subcadena de la
+    TELEconsultoria, asi que presencial = el patron SIN «teleconsultoria» en la misma
+    actividad. Infanto/Adulto sale del NOMBRE de la actividad, nunca de la edad: 15-19
+    puede ir en cualquiera de las dos (decision del autor, 2.0.20)."""
+    return por_actividad(A, lambda s: _all(s, patron) & (_all(s, "teleconsultoria") if tele
+                                                         else ~_all(s, "teleconsultoria")))
+
+
 def _ada_eventos(dm):
     """Eventos del ADA (mes filtrado). Conteo por ATEN ID: dedup (casilla,sub,id)."""
     if dm.empty:
         return _empty_ev()
     A, I = dm["ACT_n"], dm["INSTR_n"]
+    # A06·A.2: sub = «<presencial|tele>|<Adulto|Infanto|Caso>». La consultoria es UNA
+    # reunion, pero la ficha se registra por PACIENTE (una actividad por caso revisado).
+    a2 = [("A06A2", f"{mod}|{g}", _a2(A, mod == "tele", pat))
+          for mod in ("presencial", "tele")
+          for g, pat in (("Adulto", "consultorias de salud mental adulto"),
+                         ("Infanto", "consultorias de salud mental infanto"),
+                         ("Caso", "casos revisados teleconsultoria salud mental" if mod == "tele"
+                          else "casos revisados consultoria salud mental"))]
     # Las cinco del A32 van `por_actividad` (ver arriba): sus tokens parten el nombre de
     # UNA actividad, y sobre la celda canónica el AND los tomaba de actividades DISTINTAS.
     # Las dos direcciones, medidas (2.0.0):
@@ -292,7 +318,7 @@ def _ada_eventos(dm):
         ("A32F1", "Mensajería de Texto", por_actividad(A, lambda s: _remotas(s) & _all(s, "mensaj"))),
         ("A32F2", "Llamadas Telefónicas", por_actividad(A, lambda s: _ctrl_remoto(s) & _llamada(s))),
         ("A32F2", "Videollamadas", por_actividad(A, lambda s: _ctrl_remoto(s) & _all(s, "videollamada"))),
-    ]
+    ] + a2
     partes = [_ev(dm, m, c, s, "ATENID", "ANOS_AT", "INSTR", "ADA", "PROF") for c, s, m in specs]
     partes = [p for p in partes if p is not None]
     E = pd.concat(partes, ignore_index=True) if partes else _empty_ev()
@@ -334,6 +360,45 @@ def _tabla_a06(E):
     pg = E[E["casilla"] == "A06PG"]
     filas.append({"Profesional": "Intervención Psicosocial Grupal",
                   **_grid(pg, BANDAS_A06, LBL_A06), **_demcols(pg, DEM_A06)})
+    return pd.DataFrame(filas)
+
+
+def _casos_a2(s):
+    """CASOS REVISADOS de A06·A.2: un caso = (RUN, dia, modalidad) distinto. Si a un
+    paciente se le registro la «Consultoria ... adulto» Y el «Casos revisados ...»,
+    es UN caso, no dos."""
+    if s.empty:
+        return s
+    return s.assign(_dia=_dia(s), _mod=s["sub"].astype(str).str.split("|").str[0]
+                    ).drop_duplicates(["run", "_dia", "_mod"])
+
+
+def _dia(s):
+    """Fecha sin hora. `pd.to_datetime` porque un E vacio trae `fecha` como object."""
+    return pd.to_datetime(s["fecha"]).dt.normalize()
+
+
+def _consultorias_a2(s, grupo):
+    """N° de consultorias de un grupo (Adulto/Infanto) = FECHAS DISTINTAS de registro.
+    INFERIDO, nunca afirmado (decision del autor): la reunion es una sola pero la ficha
+    se escribe por paciente, a veces otro dia -> tiende a SOBREestimar. Por eso
+    `_tablas` deja SIEMPRE un aviso REVISAR cuando hay alguna."""
+    return int(_dia(s[s["sub"].astype(str).str.endswith("|" + grupo)]).nunique())
+
+
+def _tabla_a06a2(E):
+    """A06·A.2 (consultorias RECIBIDAS en APS), forma del SA_26: fila 30 presencial,
+    fila 31 tele. C/D = N° de consultorias (INFERIDO, ver `_consultorias_a2`); E..AO =
+    casos revisados por banda x sexo; AP..AS = demografia. AT/AU (demencia) = MANUAL."""
+    filas = []
+    for mod, etiqueta in (("presencial", "Consultorías de Salud Mental"),
+                          ("tele", "Teleconsultorías de Salud Mental")):
+        s = E[(E["casilla"] == "A06A2") & E["sub"].astype(str).str.startswith(mod + "|")]
+        casos = _casos_a2(s)
+        filas.append({"Actividad": etiqueta,
+                      "N° consultorías Infanto Adolescente (INFERIDO)": _consultorias_a2(s, "Infanto"),
+                      "N° consultorías Adulto (INFERIDO)": _consultorias_a2(s, "Adulto"),
+                      **_grid(casos, BANDAS_A06, LBL_A06), **_demcols(casos, DEM_A06A2)})
     return pd.DataFrame(filas)
 
 
@@ -430,6 +495,8 @@ def _tabla_resumen(E, etiqueta):
         ("A04 · A24", "Consultas médicas SM (médico)", n("A04")),
         ("A06 · A.1", "Controles Salud Mental (todos los estamentos)", n("A06")),
         ("A06 · A.1", "Intervención Psicosocial Grupal", n("A06PG")),
+        ("A06 · A.2", "Casos revisados en consultorías SM (presencial + tele)",
+         len(_casos_a2(E[E["casilla"] == "A06A2"]))),
         ("A19a · 97", "Consejería familiar — problema SM (ADA+Grupal)", n("A19a", "97")),
         ("A19a · 99", "Consejería familiar — demencia (ADA+Grupal)", n("A19a", "99")),
         ("A26 · A.30/31", "VDI familia con problema SM", n("A26")),
@@ -720,6 +787,26 @@ def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
                             "Revisar 'Revisar dotacion...' si se quiere clasificar a mano"))
 
     Erem = E[E["en_rem"]]
+    # A06·A.2: el N° de consultorias (C/D) es INFERIDO de las fechas -> REVISAR SIEMPRE
+    # que haya alguna (decision del autor: nunca un numero asumido, callado).
+    a2 = Erem[Erem["casilla"] == "A06A2"]
+    if len(a2):
+        sub = a2["sub"].astype(str)
+        n_c = sum(_consultorias_a2(a2[sub.str.startswith(m + "|")], g)
+                  for m in ("presencial", "tele") for g in ("Infanto", "Adulto"))
+        solo_caso = len(set(_casos_a2(a2)["_dia"]) - set(_dia(a2[~sub.str.endswith("|Caso")])))
+        log(f"[sm] A06-A.2: {len(_casos_a2(a2))} caso(s) revisado(s), {n_c} consultoria(s) "
+            "INFERIDAS de las fechas de registro (revisar antes de copiar C/D)")
+        avisos.append((
+            "A06-A.2 N° de consultorias (columnas C/D)", "REVISAR",
+            f"{n_c} consultoria(s) INFERIDAS de las fechas distintas de registro, no "
+            "registradas como tales: la consultoria es una reunion pero la ficha se escribe "
+            "por paciente, y una escrita otro dia suma una consultoria que no existio "
+            "(tiende a SOBREESTIMAR). Dos el mismo dia cuentan como una"
+            + (f". {solo_caso} dia(s) con solo 'Casos revisados' (sin adulto/infanto) no "
+               "entran a C/D" if solo_caso else ""),
+            "Confirmar contra el registro de las consultorias antes de copiar C/D; los "
+            "casos revisados (E en adelante) si son un conteo directo"))
     # BANDAS_A04 y BANDAS_A06 cubren el mismo rango (0-200): una sola pasada basta.
     _av = aviso_fuera_de_grid(Erem, BANDAS_A04, "Columnas por sexo / edad (todas las secciones)",
                               log=log)
@@ -730,6 +817,7 @@ def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
         "Externos_Delta": _tabla_externos_delta(E, etiqueta),
         "A04_Consultas_Medicas": _tabla_a04(Erem),
         "A06_Controles": _tabla_a06(Erem),
+        "A06_A2_Consultorias": _tabla_a06a2(Erem),
         "A19a_Consejerias_Fam": _tabla_a19a(Erem),
         "A26_VDI_SM": _tabla_a26(Erem, multi),
         "A27_Educacion_Prev": _tabla_a27(Erem),

@@ -10,6 +10,43 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.20] — 2026-09-29
+
+### Agregado
+
+- **A06·A.2 Consultorías de Salud Mental** (SM Actividades), hasta ahora `MANUAL` entera.
+  Hoja `A06_A2_Consultorias` con la forma del SA_26 (fila 30 presencial, fila 31 tele) y
+  una fila en `SM_Resumen`. Reglas del autor:
+  - La consultoría es UNA reunión pero la FCE se registra **por paciente**: un **caso
+    revisado** = (RUN, día, modalidad) distinto — la «Consultoría …» y el «Casos
+    revisados …» del mismo paciente el mismo día son un caso, no dos.
+  - **Infanto / Adulto sale del NOMBRE de la actividad, nunca de la edad**: el tramo
+    15-19 cabe en las dos.
+  - **El N° de consultorías (C/D) es INFERIDO** de las fechas distintas de registro, y
+    deja SIEMPRE un aviso **REVISAR** en la LEEME cuando hay alguna: una ficha escrita
+    otro día suma una fecha, así que tiende a SOBREestimar.
+  - Demencia sospecha / diagnóstico (AT/AU) sigue `MANUAL`: la columna DIAGNÓSTICO de
+    RAYEN no distingue confirmado de sospecha.
+  - Sale aunque dé 0 (pedido del autor), sin REVISAR si no hay nada que inferir.
+
+  Las 6 actividades entran a `ADA_TRIBUTAN`: **traían «mental» y el Trabajo Perdido las
+  acusaba como saco roto**. En agosto real: 3 casos revisados, 1 consultoría infanto + 1
+  adulto inferidas; el resto de `SM_Resumen` idéntico a la versión anterior.
+
+### Corregido
+
+- **`test_paridad_con_openpyxl_en_refs_tablas` fallaba en el árbol del autor** (no en un
+  clon limpio): recorre TODO `.xlsx` de `refs_tablas/`, incluidos dos locales sin
+  versionar (el catálogo ENO y el Maestro completo), y destapó dos diferencias de
+  calamine que las 2.0.17 no vio porque su suite corrió en un worktree sin esos archivos.
+  Ninguna pierde datos: (1) openpyxl entrega las filas VACÍAS del final que solo traen
+  formato (ENO: 57 con dato + 70) y calamine no — el test ya no las cuenta; (2) calamine
+  recorta los blancos de XML del borde de un texto no marcado `xml:space="preserve"`
+  (`'  Club de adulto mayor…'`) — tercera pérdida aceptada, documentada en
+  `_hojas_calamine` y tolerada SOLO esa en el test: `norm()` los recorta igual.
+
+**372 tests** en 20 archivos.
+
 ## [2.0.19] — 2026-09-29
 
 ### Agregado

@@ -680,6 +680,58 @@ def test_rango_mes_vacio_en_medio_falla_nombrandolo():
         assert "02/2026" in str(e), str(e)
 
 
+_A2_REALES = ["Consultorías de salud mental adulto (Individual).",
+              "Consultorías de salud mental infanto adolescente (Individual).",
+              "Teleconsultorías de salud mental adulto (Individual).",
+              "Teleconsultorías de salud mental infanto adolescente (Individual).",
+              "Casos revisados consultoria salud mental (Individual)",
+              "Casos revisados teleconsultoria salud mental (Individual)"]
+
+
+def test_a06a2_consultorias_casos_y_numero_inferido():
+    """2.0.20 (decisiones del autor): la consultoria es UNA reunion pero la ficha va por
+    PACIENTE; Infanto/Adulto sale del NOMBRE de la actividad (15-19 cabe en las dos); el
+    N° de consultorias = fechas distintas, INFERIDO, con aviso REVISAR obligatorio; un
+    paciente con «Consultoria» + «Casos revisados» el mismo dia es UN caso."""
+    ad, inf, tad, _, caso, _ = _A2_REALES
+    E, t = _run([
+        {"run": "A", "id": "1", "fecha": date(2026, 7, 3), "act": ad, "sexo": "Mujer", "edad": 17},
+        {"run": "B", "id": "2", "fecha": date(2026, 7, 3), "act": ad, "sexo": "Hombre", "edad": 40},
+        {"run": "A", "id": "3", "fecha": date(2026, 7, 3), "act": caso, "sexo": "Mujer", "edad": 17},
+        {"run": "C", "id": "4", "fecha": date(2026, 7, 10), "act": inf, "sexo": "Hombre", "edad": 17},
+        {"run": "D", "id": "5", "fecha": date(2026, 7, 12), "act": tad, "sexo": "Mujer", "edad": 30},
+    ])
+    a2 = t["A06_A2_Consultorias"]
+    pres = a2[a2["Actividad"] == "Consultorías de Salud Mental"].iloc[0]
+    tele = a2[a2["Actividad"] == "Teleconsultorías de Salud Mental"].iloc[0]
+    assert pres["N° consultorías Adulto (INFERIDO)"] == 1, "A y B el mismo dia = UNA reunion"
+    assert pres["N° consultorías Infanto Adolescente (INFERIDO)"] == 1
+    assert pres["Ambos"] == 3, "A (consultoria + caso el mismo dia) cuenta UNA vez"
+    assert pres["15-19 M"] == 1 and pres["15-19 H"] == 1, "15-19 en adulto Y en infanto"
+    assert tele["N° consultorías Adulto (INFERIDO)"] == 1 and tele["Ambos"] == 1
+    assert _n(E, "A06") == 0, "una consultoria no es un control de SM"
+    assert any(a[0].startswith("A06-A.2") and a[1] == "REVISAR" for a in E.attrs["avisos"])
+
+
+def test_a06a2_sale_aunque_sea_cero_y_sin_revisar():
+    """El autor: la seccion se reporta aunque de 0. Sin registros no hay nada que
+    inferir, asi que tampoco hay REVISAR."""
+    E, t = _run([{"run": "A", "id": "1", "fecha": date(2026, 7, 3),
+                  "act": "Controles Salud Mental  ;", "instr": "Médico", "sexo": "Hombre",
+                  "edad": 40}])   # algo que tribute: un ADA sin nada de SM falla en la fuente
+    a2 = t["A06_A2_Consultorias"]
+    assert len(a2) == 2 and int(a2.select_dtypes("number").to_numpy().sum()) == 0
+    assert not any(a[0].startswith("A06-A.2") for a in E.attrs["avisos"])
+
+
+def test_a06a2_tributa_no_es_trabajo_perdido():
+    """Las 6 actividades del Maestro para A06·A.2 traen «mental»: si no tributan, el
+    Trabajo Perdido las acusa como saco roto."""
+    import pandas as pd
+    from programas.rem_utils import norm
+    assert sm.mask_tributa_ada(pd.Series([norm(a) for a in _A2_REALES])).all()
+
+
 def test_a32f2_tributa_no_es_trabajo_perdido():
     """`mask_tributa_ada` es la fuente unica de 'que tributa': si no las reconoce,
     las F2 vuelven a caer como trabajo perdido aunque la casilla ya las cuente."""
