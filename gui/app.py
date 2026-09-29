@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.19
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -45,7 +45,9 @@ EL CONTRATO PANTALLA (lo que expone cada modulo de gui/paginas/*.py):
         # `ancla_salida` (opcional, un input por pantalla): ESE input fija la
         # carpeta de salida por defecto. Sin el se usa el primer input cargado,
         # que es el orden en que estan ESCRITOS aca -- ver `_resolver_ctx`.
-        "mes": True,                   # muestra SelectorMes
+        "mes": True,                   # muestra SelectorMes; "p" = el corte de un P
+                                       # (P junio / P final / Personalizado,
+                                       # `widgets.selector_corte_p`), para TODO P
         "rango_meses": True,           # muestra SelectorRangoMeses (docs/rango_meses_plan.md);
                                        # deja ctx["meses"] (lista). Va EN VEZ de "mes" para la
                                        # pantalla que lo usa (SM Actividades) -- esa igual declara
@@ -653,7 +655,9 @@ class App(ctk.CTk):
         # autorem.py (orden puramente cosmetico, sin efecto funcional).
         get_carpeta = widgets.fila_carpeta_salida(frame) if pantalla.get("carpeta_salida") else None
 
-        if pantalla.get("mes"):
+        if pantalla.get("mes") == "p":   # corte de un P: junio / final / personalizado
+            get_mes[0] = widgets.selector_corte_p(frame, mes_anterior())
+        elif pantalla.get("mes"):
             get_mes[0] = widgets.selector_mes(frame, mes_anterior())
 
         if pantalla.get("rango_meses"):

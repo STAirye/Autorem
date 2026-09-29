@@ -10,6 +10,20 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.19] — 2026-09-29
+
+### Agregado
+
+- **Corte de un P: «P junio» / «P final» / «Personalizado»** (pedido del autor, para
+  TODO P). `widgets.selector_corte_p`: P junio = 30/06 del año en curso (la ventana de 12
+  meses cae sola en jul(año-1)..jun(año)); P final = 31/12 del año **anterior** (el P de
+  diciembre se tabula en enero); Personalizado = el selector de mes de siempre, prendido
+  solo en esa opción. Misma interfaz que `selector_mes`: una página lo pide con
+  `"mes": "p"` en su `PANTALLA` (hoy SP·P6 + Rescate; checklist 9 de gui/CLAUDE.md para
+  los que vengan). La lógica de la población no cambia: sigue siendo un corte a fin de mes.
+
+**369 tests** en 20 archivos.
+
 ## [2.0.18] — 2026-09-29
 
 Lo que salió de probar el exe de la 2.0.17 (el autor, en el PC del trabajo).

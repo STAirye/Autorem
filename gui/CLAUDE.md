@@ -51,6 +51,9 @@ compartida y el CLI congelado. La GUI 1.x quedó congelada comprimida en
 8. **La opción por defecto va ARRIBA** (regla del autor, sep-2026): en un grupo de
    radios u opciones, la que viene marcada es la primera. Y el default es el caso
    común — un mes = `mes_anterior()`, no «archivo completo» (A05, 2.0.13).
+9. **Todo P** (SP·P6 hoy, los que vengan) declara **`"mes": "p"`**, no `True`: muestra
+   `widgets.selector_corte_p` (P junio = 30/06 del año en curso · P final = 31/12 del año
+   ANTERIOR · Personalizado), con la misma interfaz que `selector_mes` (2.0.19).
 
 ## Trampas (todas mordieron de verdad)
 
@@ -129,7 +132,7 @@ Antes de escribir un helper acá, buscarlo en:
 
 ## Tests
 
-**63 tests** (`def test_`: 30 + 33; este subconteo NO lo vigila `check_version`, y
+**65 tests** (`def test_`: 30 + 35; este subconteo NO lo vigila `check_version`, y
 estaba desfasado en 56 hasta la 2.0.16). `tests/test_gui_registro.py` amarra el CONTRATO (claves,
 ids únicos, orden declarado, `extras[].despues_de` apuntando a un input real, una sola
 `ancla_salida`, callables invocables) y `tests/test_gui_construccion.py` **arma la ventana de

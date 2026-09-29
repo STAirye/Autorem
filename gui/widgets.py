@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.17
+# Version: 2.0.19
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -310,6 +310,46 @@ def selector_mes(parent, mes_defecto, etiqueta="Mes a reportar (año / mes):"):
         except ValueError:
             return None
     get.spinboxes = (spin_anio, spin_mes)
+    return get
+
+
+def cortes_p(hoy):
+    """Los cortes fijos de un P (2.0.19, pedido del autor): «P junio» = 30/06 del año en
+    curso (la ventana de 12 meses cae sola en jul(año-1)..jun(año)) y «P final» =
+    31/12 del año ANTERIOR (el P de diciembre se tabula en enero, ya en el año nuevo).
+    Aparte para testearlo sin Tk."""
+    return {"junio": (hoy.year, 6), "final": (hoy.year - 1, 12)}
+
+
+def selector_corte_p(parent, mes_defecto, hoy=None):
+    """Corte de un P (TODO P, no solo el P6): «P junio» / «P final» / «Personalizado».
+    Misma interfaz que `selector_mes` (get() -> (año, mes) o None), asi el shell no
+    distingue: una pagina lo pide con `"mes": "p"` en su PANTALLA. «Personalizado» es el
+    `selector_mes` de siempre, prendido solo en esa opcion. La opcion por defecto va
+    ARRIBA (gui/CLAUDE.md, checklist 8)."""
+    import tkinter as tk
+    from datetime import date
+    cortes = cortes_p(hoy or date.today())
+    caja = ctk.CTkFrame(parent, fg_color="transparent")
+    caja.pack(fill="x", pady=(4, 4))
+    ctk.CTkLabel(caja, text="Corte del P:").pack(anchor="w")
+    var = tk.StringVar(value="junio")
+    textos = {"junio": "P junio (corte 30/06/%d)" % cortes["junio"][0],
+              "final": "P final (corte 31/12/%d)" % cortes["final"][0],
+              "otro": "Personalizado (año / mes):"}
+    for clave, texto in textos.items():
+        ctk.CTkRadioButton(caja, text=texto, variable=var, value=clave,
+                           command=lambda: _prender()).pack(anchor="w", padx=(12, 0), pady=1)
+    get_mes = selector_mes(caja, mes_defecto, etiqueta=None)
+
+    def _prender():
+        for s in get_mes.spinboxes:
+            s.configure(state="normal" if var.get() == "otro" else "disabled")
+    _prender()
+
+    def get():
+        return cortes.get(var.get()) or get_mes()
+    get.opcion = var
     return get
 
 

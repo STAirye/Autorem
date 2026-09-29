@@ -996,6 +996,32 @@ def test_las_etiquetas_envolventes_no_hacen_trinquete():
         _cerrar(app)
 
 
+def test_el_selector_del_P_da_junio_final_y_personalizado():
+    """2.0.19, pedido del autor: todo P elige su corte entre «P junio» (30/06 del año en
+    curso), «P final» (31/12 del año ANTERIOR: el P de diciembre se tabula en enero) y
+    «Personalizado» (el selector de mes de siempre, prendido solo en esa opcion)."""
+    if SIN_DISPLAY:
+        return
+    from datetime import date
+    from gui import widgets
+    app = ctk.CTk()
+    try:
+        get = widgets.selector_corte_p(app, (2026, 8), hoy=date(2027, 1, 15))
+        assert get() == (2027, 6), "el default (arriba) es P junio"
+        get.opcion.set("final")
+        assert get() == (2026, 12), "P final es diciembre del año ANTERIOR"
+        get.opcion.set("otro")
+        assert get() == (2026, 8), "Personalizado devuelve lo del selector de mes"
+    finally:
+        _cerrar(app)
+
+
+def test_la_pagina_de_poblacion_usa_el_selector_del_P():
+    """Todo P usa el corte de P (`"mes": "p"`), no el selector de mes pelado."""
+    from gui.paginas import poblacion
+    assert poblacion.PANTALLA["mes"] == "p"
+
+
 def test_una_etiqueta_envolvente_en_una_caja_escondida_se_ajusta_al_mostrarla():
     """El `wraplength` inicial de `etiqueta_envolvente` (el corte del trinquete) vive solo
     hasta el primer <Configure> del padre. Las cajas que nacen escondidas (cuestionarios

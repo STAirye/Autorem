@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.19
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -147,7 +147,7 @@ PANTALLA = {
          "ancla_salida": True,
          "titulo_dialogo": "Elige el 'Informe Inscritos y Adscritos'"},
     ],
-    "mes": True,
+    "mes": "p",   # corte de un P: P junio / P final / Personalizado (2.0.19)
     "carpeta_salida": True,
     "correr": correr,
     "resumen": resumen,
