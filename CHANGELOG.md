@@ -10,6 +10,26 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.23] — 2026-10-01
+
+### Cambiado
+
+- **SP·P6 + Rescate el doble de rápido con historial largo** (medido con formulario SM y
+  ADA 2021..2026-09 + Inscritos): **91 s → 46 s**, y el pico de RAM **1,6 GB → 716 MB**.
+  - **El formulario SM histórico pasa a calamine.** `poblacion._leer_formulario_1` era el
+    último lector que abría el export con `openpyxl.load_workbook` COMPLETO (sin
+    `read_only`, porque detectaba eje y encabezado sobre la hoja), y además lo leía
+    entero otra vez en `verificar_hoja_unica`. Ahora `filas_xlsx` (que ya exige la hoja
+    única) + `formatos.detectar_eje_filas` + `encontrar_fila_encabezado`, que acepta
+    también la lista de filas. **19 s → 1,9 s.** Verificado contra los datos reales: las
+    14.489 filas salen idénticas en las 68 columnas que consume el cálculo.
+  - **`PSM_Poblacion` lleva solo a quien PERTENECE a SM**, con el criterio amplio
+    (`¿Pertenece? (28 real)`: algún dx/factor con dato, Activo o Egresado, de cuando sea;
+    decisión del autor). Antes volcaba el Inscritos entero: 55k filas × 55 columnas, la
+    mayoría sin nada de SM. Escritura **29,5 s → 1,7 s**. El cálculo y el Rescate siguen
+    sobre la `P` completa.
+  - Lo que queda (~30 s) es leer y normalizar el ADA, igual que en el A23.
+
 ## [2.0.22] — 2026-10-01
 
 ### Corregido

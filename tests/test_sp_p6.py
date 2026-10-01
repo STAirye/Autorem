@@ -790,6 +790,18 @@ def test_desfase_de_fechas_queda_en_el_leeme_del_p6():
     assert "2026-08" in texto and "2026-02" in texto, "el desfase debe quedar en el LEEME"
 
 
+def test_psm_poblacion_solo_lleva_a_quien_pertenece_a_sm():
+    """2.0.23: la hoja PSM_Poblacion no vuelca a TODO el Inscritos (55k filas), solo a
+    quien pertenece a SM con el criterio amplio (algun dx/factor con dato, de cuando sea)."""
+    P = _poblacion([_ING_FEB], [{"rut": "11111111-1"}, {"rut": "22222222-2"}],
+                   [_sm("11111111-1")])
+    assert len(P) == 2
+    salida = _TMP / "p6_pertenece.xlsx"
+    p6mod.escribir(P, _p6(P), salida)
+    ws = openpyxl.load_workbook(salida)["PSM_Poblacion"]
+    assert [r[0] for r in ws.iter_rows(min_row=2, values_only=True)] == ["11111111-1"]
+
+
 def test_fuente_vacia_tras_el_corte_falla_en_la_fuente():
     """Ronda 9 (bug recurrente de c38a8cc, variante "tiene filas pero ninguna sirve"):
     un formulario o un ADA con TODAS las filas posteriores al corte, o sin UNA fecha

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.10
+# Version: 2.0.23
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -64,7 +64,7 @@ import pandas as pd
 from programas.rem_utils import (
     norm, fecha_col, cargar_atenciones, cargar_canonico, MAPA_INSCRITOS,
     resolver_columnas, contiene_alguno, gestante_runs, PUEBLO_VACIO,
-    OPENPYXL_OK, OPENPYXL_ERR, openpyxl, ArchivoInvalido, verificar_hoja_unica,
+    ArchivoInvalido, filas_xlsx,
     buscar_col, num_pregunta, encontrar_fila_encabezado, _rango_mes, TOKEN_MEDICO,
 )
 from programas import formatos
@@ -298,26 +298,18 @@ def _leer_formulario_1(entrada, log):
     """Un archivo del histórico -> DataFrame (RUN, FECHA cruda, INSTR, q<N> por
     cada pregunta de QUESTIONS). Reusa la detección de encabezado/identidad de
     `formatos`/`rem_saludmental` (perfil IRIS): mismo export que el A05."""
-    if not OPENPYXL_OK:
-        raise ImportError(f"Falta 'openpyxl' (pip install openpyxl). Detalle: {OPENPYXL_ERR}")
     nombre = Path(str(entrada)).name
-    verificar_hoja_unica(entrada)
-    # NO read_only: detectar_eje/encontrar_fila_encabezado usan ws[r] / ws.cell(),
-    # que el modo read-only de openpyxl no soporta (mismo patrón que
-    # rem_saludmental.abrir_validado). El costo de memoria es aceptable: es el
-    # mismo tipo de archivo que ya procesa el A05, un mes/año a la vez.
-    wb = openpyxl.load_workbook(entrada, data_only=True)
-    ws = wb.active
-    if formatos.detectar_eje(ws) != "iris":
-        wb.close()
+    # calamine (2.0.23): hasta aca era un load_workbook COMPLETO por año (19 s y ~1 GB con
+    # 2021..2026) mas otra lectura entera de `verificar_hoja_unica`. `filas_xlsx` ya
+    # exige la hoja unica, y la deteccion de eje/encabezado corre sobre las filas.
+    filas = filas_xlsx(entrada)
+    if formatos.detectar_eje_filas(filas[:formatos.MAX_FILAS_HEADER]) != "iris":
         raise ArchivoInvalido(
             "no_iris",
             f"Archivo «{nombre}»:\n\nEl histórico de 'Control de Salud Mental' debe "
             "venir en formato IRIS (no el Reporte Administrativo): trae columnas que "
             "el Administrativo no tiene y que este módulo necesita.")
-    header_idx = encontrar_fila_encabezado(ws, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
-    filas = list(ws.iter_rows(values_only=True))
-    wb.close()
+    header_idx = encontrar_fila_encabezado(filas, formatos.ANCLA_IRIS, formatos.MAX_FILAS_HEADER)
     headers = list(filas[header_idx - 1])
     headers_n = [norm(h) for h in headers]
     verificar_formulario_sm(headers, nombre)   # por CONTENIDO (regla 5), mismo que el A05

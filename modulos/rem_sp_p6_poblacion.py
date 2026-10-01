@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.10
+# Version: 2.0.23
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -754,7 +754,10 @@ def escribir(P, resultado, salida):
         # pero tiene que quedar ESCRITO en la planilla, no solo en el log de la corrida.
         cobertura.escribir_hoja(xw.book, "sp_p6_poblacion", {"mes": resultado.get("mes")},
                                 avisos=P.attrs.get("avisos", ()))
-        P.to_excel(xw, index=False, sheet_name="PSM_Poblacion")
+        # Solo quien PERTENECE a SM (criterio amplio: algun dx/factor con dato, Activo o
+        # Egresado, de cuando sea; decision del autor, 2.0.23). `P` trae a TODO el
+        # Inscritos (55k filas, 30 s de escritura) y la gran mayoria nunca paso por SM.
+        P[P["¿Pertenece? (28 real)"].eq("SI")].to_excel(xw, index=False, sheet_name="PSM_Poblacion")
         escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
         resultado["grid"].to_excel(xw, index=False, sheet_name="P6_A1")
         resultado["detalle"].to_excel(xw, index=False, sheet_name="P6_Detalle")

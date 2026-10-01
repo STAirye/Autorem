@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.22
+# Version: 2.0.23
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.22"
+VERSION = "2.0.23"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -185,11 +185,17 @@ def encontrar_fila_encabezado(ws, ancla, max_filas=60):
     un `modo` que decia CUAL de los tres habia acertado; sin fallbacks era la constante
     'ancla', y se saco en la ronda 12 junto con los envoltorios `fila_encabezado_admin`
     y los `_fila_encabezado` del A03 y de estamentos: la unica diferencia entre formatos
-    es QUE ancla se pasa, y eso ya lo dice `formatos.ANCLA`.)"""
-    tope = min(ws.max_row, max_filas)
+    es QUE ancla se pasa, y eso ya lo dice `formatos.ANCLA`.)
+
+    `ws` puede ser tambien la LISTA de filas ya leidas (`filas_xlsx`, 2.0.23)."""
+    if isinstance(ws, list):
+        filas = ws[:max_filas]
+    else:
+        filas = [[c.value for c in ws[r]] for r in range(1, min(ws.max_row, max_filas) + 1)]
+    tope = len(filas)
     ancla_n = [norm(t) for t in ancla]
-    for r in range(1, tope + 1):
-        vals = [norm(c.value) for c in ws[r]]
+    for r, fila in enumerate(filas, 1):
+        vals = [norm(v) for v in fila]
         if all(any(tok in v for v in vals) for tok in ancla_n):
             return r
     raise ArchivoInvalido(
