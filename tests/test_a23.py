@@ -320,6 +320,51 @@ def test_fecha_col_avisa_ilegibles():
     assert msgs2 == []                                # serie limpia: silencio
 
 
+def test_fecha_col_lee_las_dos_formas_de_rayen_sin_invertir():
+    """2.0.22: el texto se parsea por ESTRUCTURA. Antes 'AAAA/MM/DD' (Admin) con dia <= 12
+    pasaba por dayfirst y salia con dia y mes invertidos, callado."""
+    import pandas as pd
+    from datetime import datetime
+    from programas.rem_utils import fecha_col
+    msgs = []
+    s = pd.Series(["2026/09/03 10:30", "03/09/2026", "03-09-2026 10:30:15", "2026.09.03",
+                   datetime(2026, 9, 3)], dtype=object)
+    out = fecha_col(s, log=msgs.append)
+    assert [t.date() for t in out] == [datetime(2026, 9, 3).date()] * 5
+    assert out.iloc[0].hour == 10 and out.iloc[2].second == 15
+    assert msgs == []
+
+
+def test_fecha_col_otro_formato_se_lee_y_se_avisa():
+    """Error handler: si RAYEN cambia la forma, se cae a la via lenta y se AVISA."""
+    import pandas as pd
+    from programas.rem_utils import fecha_col
+    msgs = []
+    out = fecha_col(pd.Series(["03/09/2026", "3 sept 2026"]), log=msgs.append)
+    assert out.notna().all()
+    assert len(msgs) == 1 and "3 sept 2026" in msgs[0]
+
+
+def test_detalle_a23_solo_lleva_los_run_con_algun_si(tmp_path):
+    """2.0.22: el detalle no vuelca a todo RUN de la historia, solo a los que tienen algun
+    SI; las tablas copy-paste no cambian (solo cuentan SI)."""
+    import openpyxl
+    import pandas as pd
+    fer = pd.DataFrame({"RUN": ["A", "B", "C"], "Edad": [40, 40, 40],
+                        "Sexo": ["Mujer"] * 3, "Pertenece a SALA": ["SI", "NO", "NO"],
+                        "¿Atendido 1 mes?": ["NO", "SI", "NO"]})
+    for c in ("REMA23 Morbi respiratoria", "REMA23 Control SALA Med (act)",
+              "REMA23 Control SALA Kine (act)", "REMA23 Seguimiento Eu",
+              "REMA23 Seguimiento Kine", "REMA23 Educación Antitabaco", "REMA23 Autocuidado",
+              "REMA23 Inhaloterapia", "REMA23 Edu Integral Sala", "REMA23 Vida Saludable",
+              "REMA23 Otras"):
+        fer[c] = "NO"
+    fer.attrs["seccion_h"] = pd.DataFrame({"Profesional": ["TOTAL"], "Total": [0]})  # (rompia el .any de pandas)
+    a23.escribir(fer, tmp_path / "a.xlsx")
+    ws = openpyxl.load_workbook(tmp_path / "a.xlsx")["A23_Detalle"]
+    assert [r[0] for r in ws.iter_rows(min_row=2, values_only=True)] == ["A", "B"]
+
+
 def test_cargar_inasistentes_avisa_fecha_ilegible():
     """El loader NSP usa fecha_col y REENVÍA el log: una FECHA HORA CITA ilegible
     se avisa (no cae callada fuera del filtro de mes). Verifica la propagación."""

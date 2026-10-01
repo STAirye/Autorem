@@ -10,6 +10,34 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.22] — 2026-10-01
+
+### Corregido
+
+- **Fechas en texto `AAAA/MM/DD` (formato Admin) con día ≤ 12 salían con día y mes
+  INVERTIDOS**, callado: `rem_utils.fecha_col` parseaba con `dayfirst=True` +
+  `format="mixed"`, y `2026/09/03` se leía 9 de marzo. Afecta a todo lo que pasa por
+  `fecha_col` en formato Admin (NSP del A23, Otros Crónicos, grupal del SM, histórico SM y
+  Fecha Pasivación de la familia población). Ahora el texto se parsea por ESTRUCTURA en
+  las dos formas de RAYEN (`DD/MM/AAAA` IRIS, `AAAA/MM/DD` Admin, hora opcional), el
+  mismo criterio que `mes_de_celda`. **Error handler:** un texto con otra forma (RAYEN
+  cambió el formato) se lee igual por la vía lenta y se AVISA en el log con un ejemplo.
+
+### Cambiado
+
+- **A23 más rápido con historial largo** (medido con ADA + Otros + NSP 2021..2026-09 y la
+  Estratificación): **69 s → 47 s**.
+  - `fecha_col` vectorizada: antes caía a `dateutil` celda por celda (la carga del NSP,
+    9 s → 3,5 s).
+  - `A23_Detalle` lleva **solo los RUN con algún SI** (indicador del mes, SALA o
+    inasistente G). Antes volcaba a todo RUN de la historia cargada: 32k filas × 53
+    columnas para 6k atendidos en el mes (decisión del autor: el A23 reporta el mes, no
+    es un reporte de población). Escritura **21 s → 4 s**; las tablas copy-paste no
+    cambian (solo cuentan SI). Con eso pasar a `xlsxwriter` ya no vale la pena.
+  - Lo que queda (~32 s) es leer y normalizar las 562k filas del ADA. Un caché de los
+    años cerrados se **descartó** (decisión del autor): dejaría RUTs fuera de la carpeta
+    de los exports.
+
 ## [2.0.21] — 2026-10-01
 
 ### Corregido

@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.21
+# Version: 2.0.22
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.21"
+VERSION = "2.0.22"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -674,20 +674,47 @@ def cargar_canonico(entrada, resolver, requeridas, no_vacias=(), solo_iris=None,
     return d, col0
 
 
+# Las dos formas de fecha en TEXTO de RAYEN: 'AAAA/MM/DD' (Admin) y 'DD/MM/AAAA'
+# (IRIS), con '-', '/' o '.', y hora opcional 'HH:MM[:SS]'.
+_FECHA_RAYEN = (r"^\s*(?:(?P<y1>\d{4})[-/.](?P<m1>\d{1,2})[-/.](?P<d1>\d{1,2})"
+                r"|(?P<d2>\d{1,2})[-/.](?P<m2>\d{1,2})[-/.](?P<y2>\d{4}))"
+                r"(?:[ T]+(?P<H>\d{1,2}):(?P<M>\d{2})(?::(?P<S>\d{2}))?)?\s*$")
+
+
 def fecha_col(serie, log=print, etiqueta="fecha"):
     """to_datetime robusto que AVISA las fechas ilegibles en vez de callarlas.
     Un texto no vacío que no se puede parsear queda NaT y saldría del filtro por
     mes en SILENCIO (subconteo con número plausible); acá se cuenta y se loguea
     (regla fail-loud del proyecto). Devuelve la serie parseada (datetime)."""
     import pandas as pd
-    # format="mixed": la columna mezcla datetime YA parseados por openpyxl (celdas con
-    # formato fecha) con texto "DD/MM/YYYY" (celdas como texto) -> sin esto pandas
-    # avisa "Could not infer format" y cae a dateutil elemento-por-elemento igual,
-    # pero con warning. Explícito = mismo resultado, sin el ruido (pandas>=2.0).
-    parsed = pd.to_datetime(serie, errors="coerce", dayfirst=True, format="mixed")
     # vacío legítimo = nulo real, o texto en blanco / centinela -> NO es "ilegible".
     vacio = serie.isna() | serie.astype(str).str.strip().isin(
         ("", "nan", "NaN", "NaT", "None", "<NA>"))
+    # La columna mezcla datetime YA parseados (celdas con formato fecha) con TEXTO. El
+    # texto se parsea por ESTRUCTURA, vectorizado, en las dos formas de RAYEN (2.0.22):
+    # antes iba entero a format="mixed" + dayfirst, que (a) caia a dateutil celda por
+    # celda (6 s en un NSP 2021..2026) y (b) leia 'AAAA/MM/DD' con dia <= 12 al REVES
+    # ('2026/09/03' -> 9 de marzo), callado. Es el mismo criterio que `mes_de_celda`.
+    texto = serie.map(lambda v: isinstance(v, str)) & ~vacio
+    parsed = pd.to_datetime(serie.where(~texto), errors="coerce")
+    if texto.any():
+        p = serie[texto].str.extract(_FECHA_RAYEN)
+        partes = pd.DataFrame({"year": p["y1"].fillna(p["y2"]), "month": p["m1"].fillna(p["m2"]),
+                               "day": p["d1"].fillna(p["d2"]), "hour": p["H"].fillna(0),
+                               "minute": p["M"].fillna(0), "second": p["S"].fillna(0)}).astype(float)
+        parsed[texto] = pd.to_datetime(partes, errors="coerce")
+        # Error handler: texto con otra forma (RAYEN cambio el formato). Se lee igual por la
+        # via lenta, pero se AVISA: ahi dia/mes ya no estan garantizados.
+        # (Lo que tampoco se lee asi es «ilegible», y lo avisa el bloque de abajo.)
+        otro = texto & p["y1"].isna() & p["y2"].isna()
+        if otro.any():
+            parsed[otro] = pd.to_datetime(serie[otro], errors="coerce", dayfirst=True,
+                                          format="mixed")
+            otro &= parsed.notna()
+        if otro.any():
+            log(f"[fecha] {int(otro.sum())} valor(es) de «{etiqueta}» con un formato que NO "
+                f"es el de RAYEN (DD/MM/AAAA o AAAA/MM/DD): se leyeron igual, pero sin "
+                f"garantia de dia/mes. Ejemplo: {serie[otro].iloc[0][:40]!r}. Revisar el export.")
     ilegible = parsed.isna() & ~vacio
     n = int(ilegible.sum())
     if n:

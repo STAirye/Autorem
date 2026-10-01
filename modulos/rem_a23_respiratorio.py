@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.15
+# Version: 2.0.22
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -348,8 +348,16 @@ def procesar(entrada, otros=None, estrat=None, inasistentes=None, mes=None, log=
             + " · ".join(f"{r['Profesional'].split('/')[0]}={r['Total']}"
                          for _, r in h.iterrows() if r["Profesional"] != "TOTAL"))
 
-    log(f"[a23] listo: {len(fer)} pacientes, {sum(c.startswith('REMA23') for c in fer.columns)} indicadores REMA23")
+    log(f"[a23] listo: {len(fer)} pacientes en la historia cargada, "
+        f"{int(_con_si(fer).sum())} con algun SI (van al detalle), {sum(c.startswith('REMA23') for c in fer.columns)} indicadores REMA23")
     return fer.reset_index()
+
+
+def _con_si(fer):
+    """Máscara de filas con algún 'SI'. El `.any()` va en numpy: el de pandas compara los
+    `attrs`, y la Sección H cuelga un DataFrame ahí (ValueError ambiguo). `isin` y no
+    `==`: la demografía trae pd.NA, y `NA == 'SI'` no es un bool."""
+    return fer.isin(["SI"]).to_numpy().any(axis=1)
 
 
 def _edad(dem, ref):
@@ -868,7 +876,8 @@ def _tablas_a23(fer):
 
 
 def escribir(fer, salida):
-    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible) + una
+    """Escribe el DETALLE por paciente (paso intermedio, siempre disponible; solo los
+    RUN con algun SI) + una
     hoja POR SECCIÓN del REM A23 (forma copy-paste al SA_26) + las Secciones G y H
     agregadas, en un solo .xlsx."""
     from programas import cobertura
@@ -880,7 +889,11 @@ def escribir(fer, salida):
         # 3) para revisar de un vistazo, y el resto en su orden.
         frente = [c for c in ("Pertenece a SALA", "¿Atendido 1 mes?") if c in fer.columns]
         orden = [fer.columns[0]] + frente + [c for c in fer.columns[1:] if c not in frente]
-        fer[orden].to_excel(xw, index=False, sheet_name="A23_Detalle")
+        # Solo los RUN con algun SI (indicador del mes, SALA o inasistente G): `fer` trae a
+        # TODO RUN de la historia cargada, y con 2021..2026 eran 32k filas (21 s de
+        # escritura) para 6k atendidos en el mes. Las tablas de abajo no cambian: solo
+        # cuentan SI. (2.0.22)
+        fer[orden][_con_si(fer)].to_excel(xw, index=False, sheet_name="A23_Detalle")
         # Una hoja por sección (edad×sexo), forma copy-paste al SA_26.
         for nombre, df in _tablas_a23(fer).items():
             df.to_excel(xw, index=False, sheet_name=nombre[:31])
