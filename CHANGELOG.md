@@ -10,6 +10,24 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.21] — 2026-10-01
+
+### Corregido
+
+- **Trabajo Perdido: el Maestro de Actividades se buscaba con la celda ENTERA de
+  actividades.** Desde la forma canónica «una fila por atención» (1.9.17) la celda trae
+  todas las actividades de la atención unidas por `"; "`, y `analizar` la buscaba tal
+  cual en el Maestro: solo calzaban las atenciones de UNA actividad. Un mes de Control +
+  Consejería caía entero a la heurística con el aviso «el Maestro no reconoce ninguna
+  actividad del mes» (lo vio el autor en el REM de septiembre), y en un mes mixto las de
+  varias actividades caían a la heurística **callado**. Ahora se clasifica cada
+  actividad y la atención **tributa si alguna de sus actividades tributa** (decisión del
+  autor: quedó en el REM). `num_rem` muestra los NUM REM de sus actividades. Los números
+  de SM Actividades no pasaban por acá: el REM no se vio afectado.
+- **Aviso parcial nuevo** (`HEURISTICA`): N atenciones con actividades SM que no están
+  en el Maestro y se clasificaron por heurística. Antes solo se avisaba el caso
+  «ninguna».
+
 ## [2.0.20] — 2026-09-29
 
 ### Agregado

@@ -96,6 +96,7 @@ _MAESTRO = [
     ("Curacion simple", "REM-A28"),                            # no SM
     (_PADDS, "REM-A26"),                                       # A26 pero sección A1
     (_VDI_SM, "REM-A26"),                                      # A26 sección A -> SM
+    ("Prioridad - con integrante con problema de salud mental", "REM-19A"),   # consejería
 ]
 
 
@@ -290,6 +291,35 @@ def test_maestro_que_no_reconoce_nada_del_mes_se_avisa():
     E = tp.procesar(ada, maestro=_mk_maestro([("Taller de salud mental comunitaria", "")]),
                     mes=(2026, 7), log=_quiet)
     assert not any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
+
+
+def test_maestro_por_actividad_en_atencion_de_varias():
+    """2.0.21: el Maestro se buscaba con la celda canónica ENTERA ('A; B'), que solo
+    calza si la atención tiene UNA actividad. Un mes de Control + Consejería caía
+    entero a la heurística, con el aviso «no reconoce ninguna actividad»."""
+    E = _run([_a("Controles Salud Mental", "ANA", id="M1"),
+              _a(_CONS, "ANA", id="M1"),                                  # A06 + A19a
+              _a("AG_Alta programa salud mental", "JUAN", id="M2"),
+              _a("Curacion simple", "JUAN", id="M2")])                    # Gestion + A28
+    assert not any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
+    assert len(E) == 1 and E.iloc[0]["profesional"] == "JUAN", E
+    assert E.iloc[0]["num_rem"].upper() == "REM-GESTION; REM-A28", E.iloc[0]["num_rem"]
+
+
+def test_una_actividad_que_tributa_salva_la_atencion():
+    """Decisión del autor (2.0.21): si alguna actividad de la atención tributa a SM, la
+    atención quedó en el REM y no es saco roto, aunque otra hermana no tribute."""
+    E = _run([_a("Consulta De Salud Mental", "ANA", id="S1"),
+              _a("AG_Alta programa salud mental", "ANA", id="S1")])
+    assert len(E) == 0, E
+
+
+def test_actividad_fuera_del_maestro_avisa_parcial():
+    """Una actividad SM-ish que no está en el Maestro va por heurística: antes solo se
+    avisaba si NINGUNA calzaba, y el caso parcial era callado."""
+    E = _run([_a("Consulta De Salud Mental", "ANA", id="P1"),
+              _a("Taller mental raro inventado", "ANA", id="P2")])
+    assert any(a[1] == "HEURISTICA" for a in E.attrs["avisos"]), E.attrs["avisos"]
 
 
 def test_acepta_el_maestro_ya_cargado_y_no_lo_relee():

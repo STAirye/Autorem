@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.21
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -33,6 +33,7 @@ CLASIFICACIÓN (autoridad = Maestro de Actividades; ver rem_utils.cargar_maestro
   - Actividad SM-ish que NO está en el Maestro (RAYEN la agregó después) -> heurística
     de respaldo: tributa sii matchea los patrones de rem_sm_actividades.mask_tributa_ada.
   - Sin Maestro cargado -> todo por heurística (menos preciso).
+  Se clasifica cada ACTIVIDAD de la atención, y la atención tributa si alguna tributa.
 
 QUÉ NO ES TRABAJO PERDIDO SM (EXCLUIR_SMISH) — sep-2026
 -------------------------------------------------------
@@ -102,7 +103,7 @@ import pandas as pd
 from programas.rem_utils import (norm, cargar_atenciones, cargar_maestro, maestro_rem_map,
                                  _rango_mes, filtrar_mes, contiene_todos, contiene_alguno,
                                  por_actividad, clave_atencion, mes_anterior,
-                                 exigir_cada_mes, etiqueta_periodo)
+                                 exigir_cada_mes, etiqueta_periodo, SEP_ACTIVIDADES)
 from modulos.rem_sm_actividades import mask_tributa_ada
 
 # Heurística SM-ish sobre la ACTIVIDAD (no exhaustiva, por diseño). Ampliable.
@@ -224,14 +225,24 @@ def analizar(d, ini, fin, rem_map=None, log=print):
     bruto = _mask_any(A, _SMISH)
     fuera = bruto & _mask_any(A, [p for p, _ in EXCLUIR_SMISH])
     smish = bruto & ~fuera
-    heur = mask_tributa_ada(A)
     if rem_map:
-        numrem = A.map(lambda x: rem_map.get(x))          # None si no está en el Maestro
-        en_maestro = numrem.notna()
-        tributa = (en_maestro & numrem.isin(TRIBUTA_SM_REM)) | (~en_maestro & heur)
-        etiqueta = numrem.where(en_maestro, _NO_EN_MAESTRO)
+        # El Maestro se consulta POR ACTIVIDAD (2.0.21): la celda canónica trae todas las
+        # de la atención unidas, y buscarla entera solo calzaba las de UNA actividad -- un
+        # mes de Control + Consejería caía entero a la heurística. La atención tributa si
+        # ALGUNA de sus actividades tributa (decisión del autor): quedó en el REM.
+        partes = A.astype(str).str.split(SEP_ACTIVIDADES.strip()).explode().str.strip()
+        numrem = partes.map(rem_map.get)                  # None si no está en el Maestro
+        en_m = numrem.notna()
+        trib = (en_m & numrem.isin(TRIBUTA_SM_REM)) | (~en_m & mask_tributa_ada(partes))
+        g = lambda s: s.groupby(level=0)
+        tributa = g(trib).any().reindex(A.index, fill_value=False)
+        en_maestro = g(en_m).any().reindex(A.index, fill_value=False)
+        con_heur = smish & g(~en_m & _mask_any(partes, _SMISH)).any().reindex(
+            A.index, fill_value=False)
+        etiqueta = g(numrem.fillna(_NO_EN_MAESTRO)).agg(
+            lambda s: SEP_ACTIVIDADES.join(dict.fromkeys(s))).reindex(A.index)
     else:
-        tributa = heur
+        tributa = mask_tributa_ada(A)
         etiqueta = pd.Series(_SIN_MAESTRO, index=A.index)
 
     perd_mask = smish & ~tributa
@@ -268,6 +279,16 @@ def analizar(d, ini, fin, rem_map=None, log=print):
             "el 'Maestro de Actividades' cargado no reconoce ninguna actividad del mes "
             "-> todo por heuristica (menos precisa)",
             "Cargar el Maestro de Actividades vigente de RAYEN"))
+    elif rem_map and con_heur.any():
+        # Parcial: alguna actividad SM-ish no está en el Maestro y se clasificó por
+        # heurística. Antes solo se avisaba el caso «ninguna».
+        log(f"[tp] {int(con_heur.sum())} atencion(es) SM con actividades que NO estan en "
+            "el Maestro: esas actividades se clasificaron por heuristica.")
+        E.attrs["avisos"].append((
+            "Clasificacion de trabajo perdido", "HEURISTICA",
+            f"{int(con_heur.sum())} atencion(es) con actividades que no estan en el "
+            "'Maestro de Actividades' -> esas, por heuristica (menos precisa)",
+            "Ver TP_Detalle (num_rem '(nueva / no en maestro)'); actualizar el Maestro"))
     if fuera.any():   # fail loud: sale del reporte, pero nunca en silencio
         log(f"[tp] {int(fuera.sum())} atencion(es) FUERA del universo SM (otro "
             f"programa, no son trabajo perdido de SM):")
