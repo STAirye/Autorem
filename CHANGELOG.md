@@ -29,6 +29,8 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
     mayoría sin nada de SM. Escritura **29,5 s → 1,7 s**. El cálculo y el Rescate siguen
     sobre la `P` completa.
   - Lo que queda (~30 s) es leer y normalizar el ADA, igual que en el A23.
+- Los arneses de medición de la 2.0.22 y la 2.0.23, archivados en
+  [docs/evanesced/rendimiento-2.0.23/](docs/evanesced/README.md).
 
 ## [2.0.22] — 2026-10-01
 

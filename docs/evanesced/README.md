@@ -310,6 +310,30 @@ Todos llevan la **ruta absoluta del repo** en un `sys.path.insert` y abren venta
 verdad (necesitan display). Los números de esa sesión tienen ruido: corrían en paralelo
 con la revisión ciega de `lectura-calamine`.
 
+### `rendimiento-2.0.23/`
+
+Por qué el A23 y el P6 «se pegaban» con historial 2021..2026 (oct-2026). La hipótesis
+del autor era «solo volumen»: era cierto para la lectura del ADA (~30 s, irreducible sin
+caché, que se descartó por seguridad), pero no para lo demás. Llevó a la **2.0.22** (A23,
+69 -> 47 s) y la **2.0.23** (P6, 91 -> 46 s; RAM 1,6 GB -> 716 MB).
+
+- `bench_a23.py` - pared por fase del A23 entero (ADA, Otros, NSP 2021..2026-09 +
+  Estratificación, mes 2026-09) envolviendo funciones del módulo, + pico de RAM. Mostró
+  los 21 s de `escribir` (detalle con TODO RUN de la historia) y los 9 s del NSP.
+- `bench_a23_2.py` - lectura por archivo + cProfile de `cargar_inasistentes` y de
+  `escribir`: el NSP caía a `dateutil` celda por celda en `fecha_col` (de ahí salió,
+  además, el bug de `AAAA/MM/DD` invertido con `dayfirst`).
+- `bench_p6.py` - lo mismo para `gui/paginas/poblacion.correr` (P6 + Rescate): el formulario
+  SM con `load_workbook` completo (19 s) y `PSM_Poblacion` con los 55k del Inscritos (30 s).
+
+**Trampas:** las rutas de datos son absolutas, al OneDrive del autor (`Datos madre`); los
+dos `bench_a23_2`/`bench_p6` importan `bench_a23` desde la misma carpeta (por eso éste
+tiene el `main()` guardado, agregado a mitad de sesión). `bench_a23.py` envuelve
+`a23.cargar_atenciones` etc., así que los tiempos internos se SOLAPAN (la lectura calamine
+está dentro de las cargas). Solo imprimen tiempos, conteos y nombres de función. La
+comparación vieja-vs-nueva del formulario SM (14.489 filas idénticas) se hizo con una copia
+de `git show 7985ea2~1:programas/poblacion.py`, que NO se archiva (copia de fuente).
+
 ### `tk_tcl_intermitente/`
 
 El `tk.tcl` intermitente de `test_gui_construccion` (sep-2026). El contexto, las rondas y
