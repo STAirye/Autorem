@@ -293,6 +293,7 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
   población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
   dos: un «sin dato» contado como NO subcuenta callado. La cobertura va a la LEEME.
+  Plan aprobado, sin implementar: [docs/demografia_grupal_plan.md](docs/demografia_grupal_plan.md).
 - **Destrabar la GUI durante la carga de una página: CAUSA ENCONTRADA Y CORTADA en
   2.0.16 — falta mirarla con ojos humanos.** Casi todo el costo NO era Tk intrínseco:
   era un **trinquete de layout** en `widgets.etiqueta_envolvente` (~110 re-maquetados
