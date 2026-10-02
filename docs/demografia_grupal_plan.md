@@ -115,9 +115,8 @@ candado; `D` = `SUM(E:X)`):
    CONTEO -- A06·23, los tramos y la demografía del A27, y el aviso de la cascada
    (§4.4: «N asistencias») -- se hace sobre los eventos YA filtrados. Un test: un NSP
    SENAME en el mismo taller no suma ni al total ni a SENAME. Ojo con «B · Sesiones»
-   del A27: hoy se deduplican las asistencias YA filtradas, así que un taller donde
-   todos fueron NSP no cuenta como sesión. Si el autor quiere contar esa sesión igual,
-   es una decisión aparte.
+   del A27: se deduplican las asistencias YA filtradas, así que un taller donde todos
+   fueron NSP **no cuenta como sesión** (decisión del autor, 2026-10-02: se queda así).
 
 ## 4. Implementación
 
@@ -193,11 +192,11 @@ Hoy saca «A · Asistentes» y «B · Sesiones». Pasa a la forma del template, 
   grupal en `_eventos_mes`, igual que `dm["dem_gestante"]`). Z, AA = 0.
 - AB = 0 · AC pueblos · AD migrantes · AE = 0 · AF/AG TRANS M/F · AH SENAME · AI
   Protección Especializada (spec `DEM_A27`, mismo patrón que `DEM_A06`).
-- **Menores de 10 años** (no hay tramo; el mínimo es 10-14): **se pliegan a 10-14** y
-  quedan en un aviso `REVISAR` con el conteo, como el P6 pliega sus recortes. ⚠ Decisión
-  por defecto de este plan, **confirmar con el autor** antes de implementar: la
-  alternativa es contarlos en «Cuidador de» (pero ahí la edad es la del HIJO, no la del
-  asistente). Sin edad legible: aviso, igual que `aviso_fuera_de_grid`.
+- **Menores de 10 años** (no hay tramo; el mínimo es 10-14): **se ignoran** (decisión
+  del autor, 2026-10-02): no cuentan en el Total ni en ningún tramo ni en la demografía
+  del A27. Como sale de la planilla, se deja UNA línea informativa en la LEEME con el
+  conteo («N asistentes menores de 10 años no se cuentan en el A27»), para que el total
+  no baje callado. Sin edad legible: aviso, igual que `aviso_fuera_de_grid`.
 - «B · Sesiones» se mantiene (es la sección B del A27), en su propia tabla o columna
   aparte para no romper el bloque pegable D..AI.
 
@@ -216,7 +215,8 @@ otros con DV válido vía `dv_rut`; fixtures de Inscritos con ESTADO/SITUACION):
 8. Regresión: con Inscritos, `dem_trans_*` del ADA da lo mismo que antes (el `tmap`
    ahora sale de `cargar_inscritos`).
 9. A27: asistentes de 12, 37 y 85 años → 10-14, 35-39 y 80+; total = suma de J..X.
-10. A27: asistente de 7 años → plegado a 10-14 + aviso `REVISAR`.
+10. A27: asistente de 7 años → no cuenta en el Total ni en ningún tramo, y la LEEME
+    trae la línea informativa con «1».
 11. A27: gestante (RUN en `gestante_runs`) → `Y` = 1; SENAME/pueblo/TRANS por la cascada.
 12. A27: las columnas de la tabla salen en el orden D..AI de la plantilla (comparar contra
     `refs_tablas/SA_26_V1.2.xlsm`, filas 9-10, como `test_colores_calzan_con_la_plantilla`
