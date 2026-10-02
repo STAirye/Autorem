@@ -231,6 +231,12 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 - Cuatro checks de pre-commit, instalados **en cada clon** (§8.2). Uno de ellos,
   `check_fuentes`, exige un CONTRATO para todo lector de planillas del usuario (skill
   `tests-fuentes`): un input nuevo se escribe **con** su contrato.
+- **Tag por versión del `.exe`:** toda versión que cambie el comportamiento del
+  ejecutable lleva un `git tag X.Y.Z` (lightweight, **sin** `v`, como los 37 que ya
+  hay) sobre el **último commit funcional** de esa versión, no sobre uno de solo docs.
+  Lo pone la sesión que cierra la versión. Los commits de solo docs no llevan tag. El
+  push es a mano: `git push --follow-tags` no sube tags lightweight, así que van con
+  `git push origin X.Y.Z` o `git push --tags`.
 
 ---
 
