@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 Version: 2.0.26
 -->
 
-# Plan — Demografía de las actividades grupales (SM Actividades)
+# Plan — Demografía de las actividades grupales (SM Actividades: A06·23 y A27)
 
 > **Estado:** aprobado por el autor (2026-10-02), **sin implementar**. Escrito para una
 > sesión fría: todo lo que hace falta está acá o en los archivos citados. Al terminar,
@@ -39,12 +39,26 @@ Contra `refs_tablas/SA_26_V1.2.xlsm` y el código al 2.0.26:
 | **A27 · filas 34/35** (prevención suicidio / trastorno mental) | **Sí**: J..X rango etario, Y-AA Gestantes, AC Pueblos, AD Migrantes, AF/AG TRANS, AH SENAME, AI Protección Especializada | **No**: `_tabla_a27` saca solo «Asistentes» y «Sesiones», sin tramos ni demografía |
 
 Consecuencias:
-- El alcance real de este plan es **una fila: A06·23**. El A19a no tiene dónde ponerla.
+- El alcance de este plan es **A06·23 (demografía) y A27·34/35 (tramos + demografía,
+  §4.5)**. El A19a no tiene dónde ponerla.
 - El texto de la LEEME de hoy («A06 psicosocial / A19a grupal / A27 salen con
   demografía en 0») está **mal en dos partes**: el A19a no tiene esas columnas y al
-  A27 le faltan también los tramos etarios, no solo la demografía. Se corrige en §5.
-- El A27 completo (tramos + demografía) queda **fuera** (§7): el autor lo validó como
-  `SIN REGISTRO` (el 0 es real, nadie registra la actividad).
+  A27 le faltan también los tramos etarios, no solo la demografía. Se corrige en §4.4.
+
+**Layout del A27, filas 34/35** (verificado: E..AI todas ABIERTAS, sin relleno ni
+candado; `D` = `SUM(E:X)`):
+
+| Cols | Qué | De dónde |
+|---|---|---|
+| E..I | «Madre, Padre o Cuidador de» <1 año · 12-23 meses · 2-5 · 6-9 · 10-14 | **no derivable** (el grupal no dice en qué calidad asistió): 0, declarado |
+| J..X | Rango etario **sin sexo**: 10-14, 15-19, …, 75-79, 80 y más (15 tramos) | `EDAD` del grupal (ya viene a años vía `edad_anios`) |
+| Y | Gestantes · APS | `gestante_runs` del ADA (misma ventana de 3 meses que el SM) |
+| Z, AA | Gestantes · Nivel Secundario / Terciario | no derivable: 0, declarado |
+| AB | Familias en Riesgo | `OMITIDO` (el autor no sabe de dónde sale; ya está omitido en el SM) |
+| AC, AD | Pueblos Originarios, Migrantes | cascada §3 |
+| AE | Espacios Amigables / Adolescentes | `OMITIDO` (no se usa en el centro) |
+| AF, AG | TRANS Masculino / Femenino | cascada §3 (solo Inscritos) |
+| AH, AI | SENAME, Protección Especializada | cascada §3 |
 
 ## 3. Decisiones cerradas
 
@@ -126,7 +140,9 @@ def demografia_por_run(runs, inscritos=None, ada=None):
 - `_ev` ya copia `s[c]` si la columna existe (`for c in DEM_COLS`): con las columnas en
   `g`, los eventos grupales las heredan sin tocar `_ev`. Agregar `dem_fuente` a lo que
   viaja si hace falta para el aviso (o calcularlo antes de `_grupal_eventos`).
-- `dem_gestante` del grupal: no se toca (`DEM_A06` no lo usa).
+- `dem_gestante` del grupal: depende del MES (ventana de 3 meses), así que va en
+  `_eventos_mes` sobre `gm`, con el mismo `gset` que ya se calcula para el ADA. Solo lo
+  usa el A27 (§4.5); `DEM_A06` no lo pide.
 
 ### 4.3 Fail loud del cruce
 
@@ -146,9 +162,34 @@ grupal aparecen en él y tampoco hubo Inscritos.
   (cuentan como NO). Es la foto al dia de la descarga, no la del taller",
   "Cargar el 'Informe Inscritos y Adscritos' para completar")`. Sin Inscritos cargado,
   el texto lo dice. Demencia y gestante del grupal: van dichos en el mismo aviso.
-- **Agregar** a `no_cubre` una línea fija honesta para el A27: «A27 rango etario y
-  demografía (cols J-AI)» / `PENDIENTE` / «la tabla saca solo Asistentes y Sesiones» /
-  «A mano si hay asistentes». (Hoy no existe ninguna línea que lo diga.)
+- **Agregar** a `no_cubre` las líneas fijas del A27 que NO se derivan (§2):
+  «A27 Madre/Padre/Cuidador de (E-I)» `MANUAL` (el grupal no dice en qué calidad
+  asistió: todos van por su propia edad en J-X) · «A27 Gestantes nivel secundario /
+  terciario (Z-AA)» `MANUAL` · «A27 Familias en Riesgo / Espacios Amigables (AB, AE)»
+  `OMITIDO`, igual que en el SM.
+- El aviso dinámico de la cascada cubre también las asistencias A27 (mismo conteo
+  Inscritos / ADA / sin dato, por casilla).
+
+### 4.5 Tabla A27 — `_tabla_a27`
+
+Hoy saca «A · Asistentes» y «B · Sesiones». Pasa a la forma del template, una fila por
+área (34 suicidio, 35 trastorno mental), columnas en el ORDEN de D..AI:
+
+- `Total` = asistentes (como hoy «A · Asistentes»).
+- E..I «Cuidador de …» = 0 (columnas presentes, para que el bloque se pegue de una).
+- J..X: 15 tramos **sin sexo**. Bandas nuevas `BANDAS_A27` / `LBL_A27` en `rem_utils`
+  junto a las demás (10-14 … 75-79, 80+), y `grid(..., con_sexo=False)` (ya existe).
+- Y = asistentes con `dem_gestante` (RUN en `gestante_runs` del mes; calcularlo para el
+  grupal en `_eventos_mes`, igual que `dm["dem_gestante"]`). Z, AA = 0.
+- AB = 0 · AC pueblos · AD migrantes · AE = 0 · AF/AG TRANS M/F · AH SENAME · AI
+  Protección Especializada (spec `DEM_A27`, mismo patrón que `DEM_A06`).
+- **Menores de 10 años** (no hay tramo; el mínimo es 10-14): **se pliegan a 10-14** y
+  quedan en un aviso `REVISAR` con el conteo, como el P6 pliega sus recortes. ⚠ Decisión
+  por defecto de este plan, **confirmar con el autor** antes de implementar: la
+  alternativa es contarlos en «Cuidador de» (pero ahí la edad es la del HIJO, no la del
+  asistente). Sin edad legible: aviso, igual que `aviso_fuera_de_grid`.
+- «B · Sesiones» se mantiene (es la sección B del A27), en su propia tabla o columna
+  aparte para no romper el bloque pegable D..AI.
 
 ## 5. Tests
 
@@ -164,6 +205,12 @@ otros con DV válido vía `dv_rut`; fixtures de Inscritos con ESTADO/SITUACION):
 7. Inscritos cargado y 0 cruces → aviso `REVISAR` (§4.3).
 8. Regresión: con Inscritos, `dem_trans_*` del ADA da lo mismo que antes (el `tmap`
    ahora sale de `cargar_inscritos`).
+9. A27: asistentes de 12, 37 y 85 años → 10-14, 35-39 y 80+; total = suma de J..X.
+10. A27: asistente de 7 años → plegado a 10-14 + aviso `REVISAR`.
+11. A27: gestante (RUN en `gestante_runs`) → `Y` = 1; SENAME/pueblo/TRANS por la cascada.
+12. A27: las columnas de la tabla salen en el orden D..AI de la plantilla (comparar contra
+    `refs_tablas/SA_26_V1.2.xlsm`, filas 9-10, como `test_colores_calzan_con_la_plantilla`
+    del P6).
 
 Y la skill **`tests-fuentes`**: `check_fuentes` exige contrato para todo lector tocado;
 si cambia qué columnas lee el SM del Inscritos, actualizar el contrato correspondiente
@@ -180,12 +227,11 @@ en `tests/contratos_fuentes.py`.
 
 ## 7. Fuera de alcance
 
-- **A27 completo** (tramos J..X + demografía Y..AI): hoy el 0 es real (`SIN REGISTRO`,
-  validado por el autor con un registro de prueba en sep-2026). Si algún día se
-  registra, es un plan aparte: necesita `grid()` con las bandas propias del A27
-  (empieza en 10-14, más los «Madre, Padre o Cuidador de» E..I).
+- A27 «Madre, Padre o Cuidador de» (E..I), Gestantes de nivel secundario/terciario
+  (Z, AA), Familias en Riesgo (AB) y Espacios Amigables (AE): no derivables, van en 0
+  y declarados en la LEEME (§4.4).
 - `dem_demencia` del grupal desde otra atención (§3.3).
-- Gestantes del grupal (solo A27 las pide).
+- Las filas del A27 de OTRAS áreas (nutrición, IRA, etc.): no son SM.
 
 ## 8. Divergencias esperadas al implementar
 
