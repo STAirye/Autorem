@@ -108,6 +108,16 @@ candado; `D` = `SUM(E:X)`):
      igual que hoy (hoy `trans_map` lo exige) → `ArchivoInvalido` dentro de
      `opcional("inscritos")`.
 6. **Versión:** Z (corrección/mejora de un módulo existente), no Y.
+7. **Solo cuenta quien ASISTIÓ (`ASISTE = SI`); los NSP no cuentan** (autor). Ya es así
+   hoy: `_eventos_mes` filtra `gm["ASISTE_n"] == "SI"` ANTES de `_grupal_eventos`, y un
+   valor que no es SI ni NO va a la LEEME como SUBCONTADO. **No mover ese filtro.** La
+   demografía se puede pegar a `g` completo en `_cargar` (es por RUN), pero todo
+   CONTEO -- A06·23, los tramos y la demografía del A27, y el aviso de la cascada
+   (§4.4: «N asistencias») -- se hace sobre los eventos YA filtrados. Un test: un NSP
+   SENAME en el mismo taller no suma ni al total ni a SENAME. Ojo con «B · Sesiones»
+   del A27: hoy se deduplican las asistencias YA filtradas, así que un taller donde
+   todos fueron NSP no cuenta como sesión. Si el autor quiere contar esa sesión igual,
+   es una decisión aparte.
 
 ## 4. Implementación
 
