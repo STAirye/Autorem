@@ -14,7 +14,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 > excluyen). Suite: **124 tests verdes**.
 >
 > **Quedan DOS validaciones abiertas**, no una: la brecha del filtro `Ingresado` del
-> P6 (§9) y el rescate contra datos reales. Versión actual **1.9.1**; el bump de la
+> P6 (§9; **causa encontrada el 2026-10-02, era del PowerBI**: falta re-diffear con el
+> PBI corregido) y el rescate contra datos reales. Versión actual **1.9.1**; el bump de la
 > familia va a **1.10.0** (Y++) al cerrar AMBAS — el `1.9.0` se lo llevó la capa de
 > catálogos DEIS (CLAUDE.md §14), no esta familia.
 >
@@ -1048,6 +1049,49 @@ del diagnóstico, que es exactamente lo que interesa.
 
 ## 9. Estado de la validación (sep-2026) — LO QUE QUEDA ABIERTO
 
+> **CAUSA ENCONTRADA — 2026-10-02.** La brecha `Ingresado` es un bug **del PowerBI**, no
+> de autoREM. El Power Query de la tabla `PSM` (ferrada 2.5) hace:
+>
+> ```m
+> Origen = Folder.Files("...\Datos madre\Variables 12m\PSM"),
+> #"Conservar las últimas filas" = Table.LastN(Origen, 3),
+> ```
+>
+> La carpeta tiene **un archivo por año** (`2021.xlsx` … `2026.xlsx`), así que el PBI
+> solo ve los formularios desde **2024-01-02**, que es la fecha mínima de `SM Fecha
+> último formulario` en su `DaxResults`. El DAX está bien, porque lee `ALL(PSM)` sin
+> filtro de fecha, pero la tabla ya viene recortada. La hipótesis «ventana de histórico
+> distinta» de la tabla de abajo **se descartó mal**: el supuesto «mismos inputs, todo
+> 2021 en adelante» nunca se verificó del lado del PBI.
+>
+> **Medido** (P6 de septiembre, cruce RUN a RUN autoREM 2.0.25 vs `DaxResults`, 2616
+> RUN comunes):
+> - Las 28 `(form)` discrepan **en una sola dirección**: autoREM `Activo` y PBI `NO`.
+>   Nunca al revés, y casi nunca `Activo` contra `Egresado`. La regla de estado calza;
+>   lo que cambia es que el PBI no ve el formulario.
+> - `Ingresado` SI (autoREM) / NO (PBI): **492**. De ellos, en 443 el PBI tiene
+>   `SM Fecha último formulario` vacío, y 432 no están en Activo 12m, así que no llegan
+>   al P6.
+> - 424 RUN de autoREM no aparecen en la tabla `Pertenece=SI` del PBI, por la misma
+>   causa. 72 de ellos están en la base del P6.
+> - Base del P6: autoREM 1575 vs PBI 1447. En ambos 1431, solo autoREM 144, solo PBI 16.
+>   De los 16, **15 son PASIVOS**: un segundo bug del PBI, porque sus filtros globales
+>   no incluyen `Estado=Activo`.
+> - Planilla P6: R13 1636 vs 1515 y R24 1559 vs 1446. Ojo: R13 es la suma literal de
+>   las filas 15-24 en los dos lados (§5.2).
+> - Descartado: el formato del RUN (DV K, largo), porque las proporciones son iguales.
+>
+> **Veredicto del autor:** autoREM cuenta bien. Quien ingresó, sigue en controles y no
+> tuvo un hueco de más de 12 meses sigue en control, aunque su formulario de ingreso
+> sea anterior a 2024.
+>
+> **Lo que sigue:** (1) corregir el PQ del PBI y re-diffear, que debería dejar solo a
+> los 15 pasivos; (2) los flags de [SP_P6_flags_ingreso_plan.md](SP_P6_flags_ingreso_plan.md)
+> para marcar a esa gente en la salida; (3) informe a Estadísticas DISAM → SSMC, porque
+> los P6 enviados desde el PBI vienen subcontados, y más con cada archivo anual que se
+> agrega. Lo que sigue abajo es el diagnóstico de agosto **tal como se escribió**, y se
+> conserva como registro.
+
 Fases 0-3 implementadas y con tests. Lo que impide cerrar **el P6** es **una sola
 brecha**, bien localizada — la de abajo. (Para bumpear a **1.10.0** falta además
 validar el rescate de §8 contra datos reales: son dos frentes distintos, este
@@ -1074,7 +1118,7 @@ Comparación contra el PowerBI, mes de agosto:
 | **D2** — los factores de riesgo sin filtro de estamento inflan `Ingresado` | «SOLO por factor de riesgo» = **34**, no 746 | descartada |
 | **Hueco de `Pertenece`** (24 vs 28 columnas, §3.3) | diferencia = **37** | descartada |
 | **D3** — el match del instrumento (`MEDIC` vs `médico`, tildes) | el PSM solo tiene 4 instrumentos: Médico, Psicólogo(a), Terapeuta Ocupacional, Trabajador(a) Social. Ambos criterios matchean lo mismo | descartada |
-| **Ventana de histórico distinta** | mismos inputs, todo 2021 en adelante | descartada |
+| **Ventana de histórico distinta** | mismos inputs, todo 2021 en adelante | descartada — **MAL: era la causa** (ver arriba, 2026-10-02) |
 | **Semántica «último formulario médico» vs «alguna vez»** | el DAX, leído literal, también es «alguna vez»: el `LASTDATE` se calcula sobre formularios que YA cumplen las tres condiciones | ambos hacen lo mismo |
 
 ### Lo que se sabe de la forma de la brecha

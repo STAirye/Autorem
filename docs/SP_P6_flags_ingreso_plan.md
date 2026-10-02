@@ -11,7 +11,8 @@ Version: 2.0.27
 # Plan — Dos flags de ingreso en la familia población (SP·P6)
 
 > **APROBADO, SIN IMPLEMENTAR** — 2026-10-02. Plan autocontenido para una sesión fría
-> (Sonnet). Versión destino **2.0.28** (Z: no es un módulo nuevo). Las decisiones
+> (Sonnet). Versión destino **2.0.29** (Z: no es un módulo nuevo; la 2.0.28 se la llevó
+> un fix del A05 en paralelo, así que revisar el CHANGELOG antes por si hay otra). Las decisiones
 > están cerradas: si algo del código no calza con lo de abajo, anotarlo en §8 y
 > preguntar, no reinterpretar.
 
@@ -184,13 +185,10 @@ comparan las grillas en el test, no el texto.
 
 - `tools/correr_tests.py` / `pytest`, `check_cp1252` (solo ASCII en los `.py`: nada de
   `≤`/`→` en los comentarios nuevos).
-- Skill `versionar` → **2.0.28**: VERSION, headers de los `.py` tocados, contadores de
+- Skill `versionar` → **2.0.29** (o la que siga en el CHANGELOG): VERSION, headers de los `.py` tocados, contadores de
   tests en CLAUDE.md y README, y CHANGELOG.
-- **Corregir el §9 de `SP_P6_poblacion_plan.md`:** la hipótesis «ventana de histórico
-  distinta» figura como descartada por «mismos inputs, todo 2021 en adelante». Era
-  **falso del lado del PBI** (`Table.LastN(Origen, 3)`). Pasa a ser **la causa**, con los
-  números de §1. **Pedir el OK del autor antes**: al escribir este plan seguía sin
-  confirmar.
+- (El §9 de `SP_P6_poblacion_plan.md` ya se corrigió el 2026-10-02, en el mismo commit
+  que este plan: no hay que tocarlo.)
 - Commit sin push. Cerrar este archivo con el header `LISTO Y MERGEADO`.
 
 ## 8. Divergencias encontradas al implementar
