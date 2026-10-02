@@ -58,13 +58,16 @@ def _mk_grupal(rows):
     return _mk(_GRP_HDR, _GRP_K, rows, "grupal.xlsx")
 
 
-_INS_HDR = ["NUMERO TIPO IDENTIFICACION", "SEXO", "GENERO"]
+_INS_HDR = ["NUMERO TIPO IDENTIFICACION", "SEXO", "GENERO", "ESTADO", "SITUACION",
+            "ALERTAS ADMINISTRATIVAS", "PUEBLO INDIG"]
+_INS_DEFAULT = {"ESTADO": "Activo", "SITUACION": "Inscrito"}
 
 
 def _mk_inscritos(rows):
     p = _TMP / "inscritos.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active; ws.append(_INS_HDR)
     for r in rows:
+        r = {**_INS_DEFAULT, **r}
         ws.append([r.get(h, "") for h in _INS_HDR])
     wb.save(p)
     return p
@@ -268,8 +271,9 @@ def test_a27_asistentes_y_sesiones():
     ])
     a27 = t["A27_Educacion_Prev"]
     fila = a27[a27["Área temática"] == "Prevención trastorno mental"].iloc[0]
-    assert fila["A · Asistentes (usuarios)"] == 2
-    assert fila["B · Sesiones (actividades)"] == 1
+    assert fila["Total"] == 2
+    ses = t["A27_B_Sesiones"]
+    assert ses[ses["Área temática"] == "Prevención trastorno mental"].iloc[0]["B · Sesiones (actividades)"] == 1
 
 
 # -- Demografía: SENAME / Mejor Niñez / migrante / pueblo / demencia (Beneficiarios=todos) --
@@ -317,14 +321,17 @@ def test_trans_inscritos_modificado():
     OpcionalInvalido('inscritos') y la GUI pregunta si seguir sin el. Sin el archivo,
     corre normal con TRANS en 0."""
     from programas.rem_utils import ArchivoInvalido, OpcionalInvalido, opcional
-    from programas.rem_utils import trans_map
     p = _TMP / "inscritos_malo.xlsx"
     wb = openpyxl.Workbook(); ws = wb.active
-    ws.append(["NUMERO TIPO IDENTIFICACION", "SEXO"]); ws.append(["T", "Mujer"])  # sin GÉNERO
+    ws.append(["NUMERO TIPO IDENTIFICACION", "SEXO", "ESTADO", "SITUACION"])
+    ws.append(["T", "Mujer", "Activo", "Inscrito"])  # sin GÉNERO
     wb.save(p)
     try:
-        trans_map(p); cat = None
-    except ArchivoInvalido as e:
+        sm._cargar(_mk_ada([{"run": "T", "id": "1", "fecha": date(2026, 7, 3),
+                             "act": "Controles Salud Mental  ;", "instr": "Médico", "edad": 30}]),
+                   inscritos=str(p), log=_quiet, dotacion_tabla=_SIN_DOTACION)
+        cat = None
+    except OpcionalInvalido as e:
         cat = e.categoria
     assert cat == "sin_columnas", cat
     # Y `opcional` NO disfraza un bug de codigo de archivo invalido.
@@ -414,7 +421,7 @@ def test_casilla_en_cero_con_el_mes_cubierto_no_falla():
                   "instr": "Médico", "sexo": "Mujer", "edad": 30}])
     assert _n(E, "A06") == 1
     a27 = t["A27_Educacion_Prev"]
-    assert int(a27["A · Asistentes (usuarios)"].sum()) == 0        # 0 legítimo, sin excepción
+    assert int(a27["Total"].sum()) == 0        # 0 legítimo, sin excepción
     assert int(t["A32_F1_Acciones_Remotas"]["Total"].sum()) == 0
 
 
@@ -501,11 +508,11 @@ def test_los_opcionales_ilegibles_son_opcional_invalido_y_se_validan_primero():
     SS13) salia como `BadZipFile`: `opcional()` no lo reconoce y la corrida ENTERA se
     caia, en vez de ofrecer seguir sin el. Y se validan ANTES del trabajo pesado: la GUI
     re-corre si el usuario dice que si."""
-    from programas.rem_utils import (OpcionalInvalido, trans_map, atenid_multiprofesional,
+    from programas.rem_utils import (OpcionalInvalido, atenid_multiprofesional,
                                      cargar_maestro, opcional)
     falso = _TMP / "opcional_disfrazado.xlsx"
     falso.write_text("<html><body><table><tr><td>x</td></tr></table></body></html>", encoding="utf-8")
-    for entrada, fn in (("inscritos", trans_map), ("multiprofesional", atenid_multiprofesional),
+    for entrada, fn in (("inscritos", sm.cargar_inscritos), ("multiprofesional", atenid_multiprofesional),
                         ("maestro", cargar_maestro)):
         try:
             with opcional(entrada):
@@ -739,3 +746,153 @@ def test_a32f2_tributa_no_es_trabajo_perdido():
     from programas.rem_utils import norm
     A = pd.Series([norm(a) for a in _F2_REALES])
     assert sm.mask_tributa_ada(A).all()
+
+
+# ======================================================================
+# Demografia del grupal por RUN + A27 con tramos y demografia
+# (docs/demografia_grupal_plan.md)
+# ======================================================================
+_PG = "Intervencion psicosocial grupal."
+_A27_TRAST = "Educación en grupo - Prevención de salud mental - Prevención trastorno mental"
+_A27_SUIC = "Educación en grupo - Prevención de salud mental - Prevención del suicidio"
+
+
+def _rut(n):
+    from programas.rem_utils import dv_rut
+    return f"{n}-{dv_rut(n)}"
+
+
+def _rg(run, asiste="SI", edad=30, act=_PG, sexo="Mujer", dia=10):
+    return {"run": run, "fecha": date(2026, 7, dia), "asiste": asiste, "edad": edad,
+            "act": act, "sexo": sexo, "prest": "Dra A"}
+
+
+def _run_g(grupal, inscritos=None, ada=None):
+    """Corrida con grupal + (opcional) Inscritos + ADA de relleno. -> (E, tablas)."""
+    ins = _mk_inscritos(inscritos) if inscritos is not None else None
+    E = sm.procesar(_mk_ada(_RELLENO_ADA + (ada or [])), grupal=_mk_grupal(grupal),
+                    inscritos=ins, mes=(2026, 7), log=_quiet, dotacion_tabla=_SIN_DOTACION)
+    return E, E.attrs["tablas"]
+
+
+def _pg(t):
+    return _cell_row(t["A06_Controles"], "Profesional", "Intervención Psicosocial Grupal")
+
+
+def _aviso(E, empieza):
+    return next((a for a in E.attrs["avisos"] if a[0].startswith(empieza)), None)
+
+
+def test_grupal_demografia_desde_el_inscritos():
+    r = _rut(11111111)
+    E, t = _run_g([_rg(r)], inscritos=[{"NUMERO TIPO IDENTIFICACION": r, "SEXO": "Mujer",
+                                        "ALERTAS ADMINISTRATIVAS": "Programa SENAME - Ambulatorio",
+                                        "PUEBLO INDIG": "Mapuche"}])
+    assert _pg(t)["SENAME"] == 1 and _pg(t)["Pueblos Originarios"] == 1
+    assert _pg(t)["Beneficiarios"] == 1
+    assert list(E.loc[E["casilla"] == "A06PG", "dem_fuente"]) == ["inscritos"]
+
+
+def test_grupal_demografia_cae_al_ada_y_sin_inscritos():
+    r = _rut(11111112)
+    ada = [{"run": r, "id": "P1", "fecha": date(2026, 6, 20), "act": "Curacion simple",
+            "instr": "Enfermero(a)", "sexo": "Mujer", "edad": 30, "pueblo": "Mapuche"}]
+    E, t = _run_g([_rg(r)], ada=ada)                  # sin Inscritos: solo la via ADA
+    assert _pg(t)["Pueblos Originarios"] == 1
+    assert list(E.loc[E["casilla"] == "A06PG", "dem_fuente"]) == ["ada"]
+    assert _aviso(E, "A06 Psicosocial Grupal (demografia)") is not None
+
+
+def test_grupal_demografia_sin_dato_se_avisa():
+    r = _rut(11111113)
+    E, t = _run_g([_rg(r)], inscritos=[{"NUMERO TIPO IDENTIFICACION": _rut(11111114), "SEXO": "Mujer"}])
+    assert _pg(t)["SENAME"] == 0
+    assert list(E.loc[E["casilla"] == "A06PG", "dem_fuente"]) == ["sin_dato"]
+    av = _aviso(E, "A06 Psicosocial Grupal (demografia)")
+    assert av[1] == "SUBCONTADO" and "1 sin dato" in av[2]
+
+
+def test_grupal_trans_desde_el_inscritos():
+    r = _rut(11111115)
+    E, t = _run_g([_rg(r)], inscritos=[{"NUMERO TIPO IDENTIFICACION": r, "SEXO": "Mujer",
+                                        "GENERO": "Transgénero Masculino"}])
+    assert _pg(t)["TRANS Masculino"] == 1 and _pg(t)["TRANS Femenina"] == 0
+
+
+def test_grupal_run_con_dv_en_minuscula_calza():
+    r = _rut(10000013)
+    assert r.endswith("K")
+    E, t = _run_g([_rg(r.lower())], inscritos=[{"NUMERO TIPO IDENTIFICACION": r, "SEXO": "Mujer",
+                                                "ALERTAS ADMINISTRATIVAS": "SENAME"}])
+    assert _pg(t)["SENAME"] == 1
+
+
+def test_grupal_inscritos_sin_ningun_cruce_es_revisar():
+    E, t = _run_g([_rg(_rut(11111116))],
+                  inscritos=[{"NUMERO TIPO IDENTIFICACION": _rut(11111117), "SEXO": "Mujer"}])
+    av = _aviso(E, "Demografia del grupal (cruce con el Inscritos)")
+    assert av is not None and av[1] == "REVISAR"
+
+
+def test_grupal_nsp_no_suma_a_nada():
+    a, b = _rut(11111118), _rut(11111119)
+    ins = [{"NUMERO TIPO IDENTIFICACION": a, "SEXO": "Mujer", "ALERTAS ADMINISTRATIVAS": "SENAME"},
+           {"NUMERO TIPO IDENTIFICACION": b, "SEXO": "Mujer"}]
+    E, t = _run_g([_rg(a, asiste="NO"), _rg(b)], inscritos=ins)
+    assert _pg(t)["Ambos"] == 1 and _pg(t)["SENAME"] == 0
+    assert _pg(t)["Beneficiarios"] == 1
+
+
+def test_a27_tramos_sin_sexo_y_total():
+    rs = [_rut(20000000 + i) for i in range(3)]
+    E, t = _run_g([_rg(rs[0], edad=12, act=_A27_TRAST), _rg(rs[1], edad=37, act=_A27_TRAST),
+                   _rg(rs[2], edad=85, act=_A27_TRAST)])
+    f = _cell_row(t["A27_Educacion_Prev"], "Área temática", "Prevención trastorno mental")
+    assert f["10-14"] == 1 and f["35-39"] == 1 and f["80+"] == 1
+    assert f["Total"] == 3 == sum(f[l] for l in sm.LBL_A27)
+    assert f["Cuidador de <1 año"] == 0
+
+
+def test_a27_menor_de_10_no_cuenta_y_se_avisa():
+    E, t = _run_g([_rg(_rut(20000010), edad=7, act=_A27_SUIC), _rg(_rut(20000011), edad=20, act=_A27_SUIC)])
+    f = _cell_row(t["A27_Educacion_Prev"], "Área temática", "Prevención suicidio")
+    assert f["Total"] == 1 and sum(f[l] for l in sm.LBL_A27) == 1
+    av = _aviso(E, "A27 menores de 10")
+    assert av is not None and "1 asistente" in av[2]
+    # ...pero la sesion existio: la seccion B no depende de la edad.
+    ses = _cell_row(t["A27_B_Sesiones"], "Área temática", "Prevención suicidio")
+    assert ses["B · Sesiones (actividades)"] == 1
+
+
+def test_a27_gestante_y_demografia_por_la_cascada():
+    g, s, p = _rut(20000020), _rut(20000021), _rut(20000022)
+    ada = [{"run": g, "id": "G1", "fecha": date(2026, 7, 2), "act": "Control Prenatal  ;",
+            "instr": "Matron(a)", "sexo": "Mujer", "edad": 25}]
+    ins = [{"NUMERO TIPO IDENTIFICACION": s, "SEXO": "Mujer", "ALERTAS ADMINISTRATIVAS": "SENAME"},
+           {"NUMERO TIPO IDENTIFICACION": p, "SEXO": "Mujer", "PUEBLO INDIG": "Aymara"}]
+    E, t = _run_g([_rg(r, edad=25, act=_A27_TRAST) for r in (g, s, p)], inscritos=ins, ada=ada)
+    f = _cell_row(t["A27_Educacion_Prev"], "Área temática", "Prevención trastorno mental")
+    assert f["Gestantes APS"] == 1 and f["SENAME"] == 1 and f["Pueblos Originarios"] == 1
+    assert f["Gestantes Nivel Secundario"] == 0 and f["Familias en Riesgo"] == 0
+
+
+def test_a27_columnas_en_el_orden_de_la_plantilla():
+    """D..AI de la hoja A27 del SA_26: si MINSAL mueve columnas (SA_27), esto falla."""
+    from programas.rem_utils import norm
+    ws = openpyxl.load_workbook(REPO / "refs_tablas" / "SA_26_V1.2.xlsm", read_only=True)["A27"]
+    r9, r10 = (list(next(ws.iter_rows(min_row=n, max_row=n, min_col=4, max_col=35,
+                                      values_only=True))) for n in (9, 10))
+    plantilla = [norm(b or a).replace(" ", "") for a, b in zip(r9, r10)]
+    # (token en MI columna, token en la plantilla), una por columna D..AI
+    esperado = [("TOTAL", "TOTAL"), ("<1", "MENOSDE1"), ("12-23", "12-23"), ("2-5", "2-5"),
+                ("6-9", "6-9"), ("10-14", "10-14")]
+    esperado += [(l, "80YMAS" if l == "80+" else l) for l in sm.LBL_A27]
+    esperado += [("APS", "APS"), ("SECUNDARIO", "SECUNDARIO"), ("TERCIARIO", "TERCIARIO"),
+                 ("FAMILIAS", "FAMILIAS"), ("PUEBLOS", "PUEBLOS"), ("MIGRANTES", "MIGRANTES"),
+                 ("ESPACIOS", "ESPACIOS"), ("MASCULINO", "MASCULINO"), ("FEMENINO", "FEMENINO"),
+                 ("SENAME", "SENAME"), ("PROT", "PROTECCION")]
+    _, t = _run_g([_rg(_rut(20000030), edad=30, act=_A27_TRAST)])
+    cols = [norm(c).replace(" ", "") for c in t["A27_Educacion_Prev"].columns[1:]]
+    assert len(cols) == len(esperado) == len(plantilla), (len(cols), len(esperado), len(plantilla))
+    for i, (mio, tmpl) in enumerate(esperado):
+        assert mio in cols[i] and tmpl in plantilla[i], (i, cols[i], plantilla[i])

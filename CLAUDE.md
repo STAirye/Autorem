@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.26** (§9). **382 tests.**
+Versión **2.0.27** (§9). **393 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -187,7 +187,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.26**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.27**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -289,11 +289,6 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   SM Actividades + TP, después A05. Se corre el motor MENSUAL por mes y se agrega una
   vez (filtrar el rango entero rompe GESTANTE y los distintos del TP).
   [docs/rango_meses_plan.md](docs/rango_meses_plan.md).
-- **Demografía del grupal.** El grupal sí trae RUN. Fuente por
-  RUN en cascada: **Informe Inscritos** (ya es input opcional del SM; cubre a toda la
-  población inscrita) → última fila del ADA ya cargado → **sin dato**. Tres estados, no
-  dos: un «sin dato» contado como NO subcuenta callado. La cobertura va a la LEEME.
-  Plan aprobado, sin implementar: [docs/demografia_grupal_plan.md](docs/demografia_grupal_plan.md).
 - **Destrabar la GUI durante la carga de una página: CAUSA ENCONTRADA Y CORTADA en
   2.0.16 — falta mirarla con ojos humanos.** Casi todo el costo NO era Tk intrínseco:
   era un **trinquete de layout** en `widgets.etiqueta_envolvente` (~110 re-maquetados

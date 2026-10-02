@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.24
+# Version: 2.0.27
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -50,19 +50,23 @@ import pandas as pd
 from programas.rem_utils import (norm, edad_anios, cargar_atenciones, cargar_canonico,
                                  resolver_columnas, contiene_todos as _all,
                                  contiene_alguno as _any,
-                                 marcar_demografia, gestante_runs, trans_map,
+                                 marcar_demografia, gestante_runs, trans_de, clave_run,
+                                 demografia_por_run,
                                  atenid_multiprofesional, _rango_mes, filtrar_mes, opcional,
                                  grid as _grid, _mujer, _hombre, _band_idx, _isum,
-                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, fecha_col,
+                                 BANDAS_A04, LBL_A04, BANDAS_A06, LBL_A06, BANDAS_A27, LBL_A27,
+                                 fecha_col,
                                  ArchivoInvalido, aviso_fuera_de_grid, por_actividad,
                                  meses_del_rango, etiqueta_periodo)
+from programas.poblacion import cargar_inscritos
 from programas import formatos          # clasificación de fuente plena/parcial (fase 2)
 from programas import dotacion          # separación interno/externo (docs/dotacion_externos_plan.md)
 from programas import cobertura         # categorías de aviso (PENDIENTE/OMITIDO) para la hoja LEEME
 
-# Flags demográficos por evento (fuente ADA IRIS; grupal no los trae -> False).
-# Ver rem_utils.marcar_demografia. dem_gestante (RUN) y dem_trans_* (RUN, requiere
-# el 'Informe Inscritos') se calculan en procesar().
+# Flags demográficos por evento (fuente ADA IRIS; el grupal los toma por RUN de la
+# cascada Inscritos -> ADA, `rem_utils.demografia_por_run`). Ver marcar_demografia.
+# dem_gestante (RUN) y dem_trans_* (RUN, requiere el 'Informe Inscritos') se calculan
+# en _cargar / _eventos_mes.
 DEM_COLS = ["dem_originario", "dem_migrante", "dem_sename", "dem_mejorninez",
             "dem_demencia", "dem_cuidador", "dem_campana", "dem_gestante",
             "dem_trans_m", "dem_trans_f"]
@@ -88,6 +92,18 @@ DEM_A06A2 = [("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migra
 DEM_A32 = [("SENAME", "dem_sename"), ("Prot. Especializada", "dem_mejorninez"),
            ("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
            ("Demencia", "dem_demencia")]
+# A27 (cols. Y..AI del SA_26, en el ORDEN de la plantilla). Las `_zero` no se derivan
+# (docs/demografia_grupal_plan.md §2): gestantes de nivel secundario/terciario, Familias
+# en Riesgo y Espacios Amigables (estos dos OMITIDOS, igual que en el resto del SM).
+DEM_A27 = [("Gestantes APS", "dem_gestante"), ("Gestantes Nivel Secundario", "_zero"),
+           ("Gestantes Nivel Terciario", "_zero"), ("Familias en Riesgo", "_zero"),
+           ("Pueblos Originarios", "dem_originario"), ("Migrantes", "dem_migrante"),
+           ("Espacios Amigables", "_zero"), ("TRANS Masculino", "dem_trans_m"),
+           ("TRANS Femenino", "dem_trans_f"), ("SENAME", "dem_sename"),
+           ("Prot. Especializada", "dem_mejorninez")]
+# A27 E..I «Madre, Padre o Cuidador de»: el grupal no dice en que calidad asistio -> 0.
+A27_CUIDADOR = ["Cuidador de <1 año", "Cuidador de 12-23 meses", "Cuidador de 2-5 años",
+                "Cuidador de 6-9 años", "Cuidador de 10-14 años"]
 
 
 # Bandas etarias + grilla edad×sexo (`_grid`) viven en rem_utils (compartidas SM/A23/A03).
@@ -112,7 +128,7 @@ MAPA_GRUPAL = {
 }
 
 _EV_COLS = ["casilla", "sub", "run", "id", "estamento", "funcionario", "edad", "sexo",
-            "fecha", "actividad", "fuente", "externo", "tabula_en", "mes"]
+            "fecha", "actividad", "fuente", "externo", "tabula_en", "mes", "dem_fuente"]
 
 
 def cargar_grupal(entrada, log=print):
@@ -166,8 +182,9 @@ def _ev(df, mask, casilla, sub, id_col, edad_col, est_col, fuente, prof_col):
         "edad": pd.to_numeric(s[edad_col].map(edad_anios), errors="coerce"),  # ANOS_AT num o texto verboso
         "sexo": s["SEXO"].astype(str), "fecha": s["FECHA"],
         "actividad": s["ACT"].astype(str), "fuente": fuente}
-    for c in DEM_COLS:   # flags demográficos (ADA los trae; grupal -> False)
+    for c in DEM_COLS:   # flags demográficos (ADA los trae; el grupal por la cascada)
         base[c] = s[c].values if c in s.columns else False
+    base["dem_fuente"] = s["dem_fuente"].values if "dem_fuente" in s.columns else ""
     return pd.DataFrame(base)
 
 
@@ -452,14 +469,36 @@ def _tabla_a26(E, multi=None):
     return pd.DataFrame(filas)
 
 
+_A27_AREAS = [("suicidio", "Prevención suicidio"), ("trastorno", "Prevención trastorno mental")]
+
+
+def _a27_menores(s):
+    """Máscara: asistentes de A27 menores de 10 años (no hay tramo: el mínimo es 10-14)."""
+    return pd.to_numeric(s["edad"], errors="coerce") < 10
+
+
 def _tabla_a27(E):
+    """A27·A (filas 34/35), forma del SA_26: D Total, E..I cuidador (0), J..X rango etario
+    SIN sexo, Y..AI gestantes y demografía (`DEM_A27`). Los menores de 10 años no entran
+    (`_tablas` deja el aviso con su conteo). La sección B va en `_tabla_a27_sesiones`."""
     filas = []
-    for cell, lbl in [("suicidio", "Prevención suicidio"),
-                      ("trastorno", "Prevención trastorno mental")]:
+    for cell, lbl in _A27_AREAS:
         s = E[(E["casilla"] == "A27") & (E["sub"] == cell)]
-        ses = s.drop_duplicates(subset=["fecha", "estamento", "actividad"])
-        filas.append({"Área temática": lbl, "A · Asistentes (usuarios)": len(s),
-                      "B · Sesiones (actividades)": len(ses)})
+        s = s[~_a27_menores(s)]
+        g = _grid(s, BANDAS_A27, LBL_A27, con_sexo=False)
+        filas.append({"Área temática": lbl, "Total": g.pop("Total"),
+                      **{c: 0 for c in A27_CUIDADOR}, **g, **_demcols(s, DEM_A27)})
+    return pd.DataFrame(filas)
+
+
+def _tabla_a27_sesiones(E):
+    """A27·B: sesiones = (fecha, prestador, actividad) distintas, sobre las asistencias YA
+    filtradas por Asiste=SI (un taller donde todos fueron NSP no cuenta como sesión)."""
+    filas = []
+    for cell, lbl in _A27_AREAS:
+        s = E[(E["casilla"] == "A27") & (E["sub"] == cell)]
+        filas.append({"Área temática": lbl, "B · Sesiones (actividades)":
+                      len(s.drop_duplicates(subset=["fecha", "estamento", "actividad"]))})
     return pd.DataFrame(filas)
 
 
@@ -546,12 +585,22 @@ def _cargar(ada, grupal=None, inscritos=None, multiprofesional=None, log=print, 
     `_tablas` consumen. Los OPCIONALES van PRIMERO (ronda 12): si uno no sirve, la GUI
     pregunta «¿seguir sin él?» ANTES del trabajo pesado (el ADA y el grupal)."""
     from pathlib import Path
-    tmap = None
+    tmap = insc = None
     if inscritos is not None:
         # Invalido -> OpcionalInvalido: la GUI pregunta si seguir sin el (ronda 11; antes
-        # quedaba en una linea del log y TRANS en 0, sin llegar a la LEEME).
+        # quedaba en una linea del log y TRANS en 0, sin llegar a la LEEME). Se lee UNA
+        # vez (~55k filas): de este DataFrame salen el `tmap` TRANS del ADA y la
+        # demografia del grupal (docs/demografia_grupal_plan.md §3.5).
         with opcional("inscritos"):
-            tmap = trans_map(inscritos)
+            insc = cargar_inscritos(inscritos, log=log)
+            if "GENERO" in insc.attrs["columnas_ausentes"]:   # TRANS no se puede sin el
+                raise ArchivoInvalido(
+                    "sin_columnas",
+                    "No reconozco el 'Informe Inscritos y Adscritos': no encuentro la columna "
+                    "GENERO.\n\n¿Está modificado o es otro reporte? Cárgalo tal como sale de "
+                    "RAYEN/IRIS, sin editar.")
+            tmap = {r: t for r, s, g in zip(insc["RUN"], insc["SEXO"], insc["GENERO"])
+                    if (t := trans_de(s, g))}
     multi = set()
     if multiprofesional is not None:
         with opcional("multiprofesional"):   # invalido: la GUI pregunta si seguir sin el
@@ -611,6 +660,20 @@ def _cargar(ada, grupal=None, inscritos=None, multiprofesional=None, log=print, 
     g = None
     if grupal is not None:
         g = cargar_grupal(grupal, log=log)
+        # Demografia del grupal por RUN (Inscritos -> ultima atencion del ADA -> sin dato).
+        # No depende del mes: UNA vez, sobre `g` completo; los conteos se filtran despues.
+        dem = demografia_por_run(g["RUN"], insc, d)
+        for c in dem.columns:
+            g[c] = dem[c].values
+        por_run = dem["dem_fuente"][~g["RUN"].map(clave_run).duplicated()].value_counts()
+        log("[sm] Grupal, demografia por RUN: " + ", ".join(f"{n} {f}" for f, n in por_run.items()))
+        if insc is not None:
+            ausentes = [c for c in ("ALERTAS", "PUEBLO") if c in insc.attrs["columnas_ausentes"]]
+            if ausentes:
+                avisos.append(("A06 Psicosocial Grupal / A27 (demografia)", "SUBCONTADO",
+                               f"el 'Informe Inscritos' no trae la(s) columna(s) {', '.join(ausentes)}: "
+                               "esas columnas demograficas salen en 0 aunque el RUN calce",
+                               "Descargar el 'Informe Inscritos y Adscritos' completo, sin tocar"))
     else:
         log("[sm] sin reporte grupal -> A06 psicosocial / A19a grupal / A27 = 0")
         avisos.append(("A06 psicosocial / A19a grupal / A27", "EN 0",
@@ -626,7 +689,7 @@ def _cargar(ada, grupal=None, inscritos=None, multiprofesional=None, log=print, 
                         "cancelo el dialogo) -> ninguna atencion se separo del REM",
                         "Abrir 'Revisar dotacion...' y clasificar al equipo"))
 
-    return {"d": d, "g": g, "span": span, "multi": multi, "tabla_dot": tabla_dot,
+    return {"d": d, "g": g, "insc": insc, "span": span, "multi": multi, "tabla_dot": tabla_dot,
             "multiprofesional_cargado": multiprofesional is not None,
             "fuentes": fuentes, "avisos": avisos}
 
@@ -685,6 +748,9 @@ def _eventos_mes(carga, mes, log=print):
                            "en ASISTE: no se cuentan",
                            "Revisar esas filas en RAYEN (asistencia sin registrar)"))
         gm = gm[gm["ASISTE_n"] == "SI"]
+        # Gestante del grupal (solo la usa A27): misma ventana de 3 meses que el ADA.
+        gkeys = {clave_run(r) for r in gset}
+        gm = gm.assign(dem_gestante=gm["RUN"].map(clave_run).isin(gkeys))
         log(f"[sm] Grupal: {len(g)} filas | mes {ini:%Y-%m} + Asiste=SI -> {len(gm)} asistencias")
         Eg = _grupal_eventos(gm)
     else:
@@ -706,6 +772,51 @@ def _eventos_mes(carga, mes, log=print):
     E["estamento_rem"] = E["estamento"].map(_estamento_rem)
     E["mes"] = f"{ini:%Y-%m}"   # arma `Por_Mes` y queda en SM_Detalle para auditar
     return E, avisos
+
+
+def _avisos_grupal(Erem, tiene_insc, log=print):
+    """Avisos LEEME de la demografia del grupal (docs/demografia_grupal_plan.md §4.3-4.5):
+    el conteo por fuente de la cascada (por casilla), la guarda de «0 cruces» y los
+    menores de 10 años que el A27 no cuenta. Todo sobre los eventos YA filtrados
+    (Asiste=SI), nunca sobre las filas NSP."""
+    avisos = []
+    G = Erem[Erem["fuente"] == "Grupal"]
+    if G.empty:
+        return avisos
+    n = G["dem_fuente"].value_counts()
+    if tiene_insc and not n.get("inscritos", 0):
+        avisos.append(("Demografia del grupal (cruce con el Inscritos)", "REVISAR",
+                       f"el 'Informe Inscritos' esta cargado pero NINGUNA de las {len(G)} "
+                       "asistencias grupales calza con el por RUN: RUN en otro formato o archivo "
+                       "equivocado. No es que nadie sea SENAME/migrante/etc.",
+                       "Revisar que el Inscritos sea el del mismo centro y sin modificar"))
+    elif not tiene_insc and not n.get("ada", 0):
+        avisos.append(("Demografia del grupal (cruce con el ADA)", "REVISAR",
+                       f"ninguno de los RUN de las {len(G)} asistencias grupales aparece en el ADA "
+                       "ni se cargo el Inscritos: la demografia sale toda en 0",
+                       "Cargar el 'Informe Inscritos y Adscritos', o revisar el RUN del grupal"))
+    origen = "" if tiene_insc else " (no se cargo el Informe Inscritos: solo la via ADA)"
+    for cas, nombre, nota in (
+            ("A06PG", "A06 Psicosocial Grupal", "Demencia queda en 0 (no se deriva de otra atencion)"),
+            ("A27", "A27 Educacion prev.", "Gestantes APS por el ADA (ventana de 3 meses); "
+                                          "TRANS solo desde el Inscritos")):
+        s = G[G["casilla"] == cas]
+        if s.empty:
+            continue
+        ni, na, ns = (int((s["dem_fuente"] == f).sum()) for f in ("inscritos", "ada", "sin_dato"))
+        avisos.append((f"{nombre} (demografia)", "SUBCONTADO" if ns else "REVISAR",
+                       f"{len(s)} asistencias: {ni} desde el Inscritos, {na} desde la ultima "
+                       f"atencion del ADA, {ns} sin dato (cuentan como NO). Es la foto al dia de "
+                       f"la descarga, no la del taller. {nota}{origen}",
+                       "Cargar el 'Informe Inscritos y Adscritos' para completar"))
+    men = int(_a27_menores(G[G["casilla"] == "A27"]).sum())
+    if men:
+        log(f"[sm] A27: {men} asistente(s) menores de 10 años no se cuentan.")
+        avisos.append(("A27 menores de 10 años", "REVISAR",
+                       f"{men} asistente(s) menores de 10 años no se cuentan en el A27 (no hay "
+                       "tramo etario; el minimo es 10-14): el total baja en ese numero",
+                       "Si hace falta, registrarlos a mano en el REM"))
+    return avisos
 
 
 def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
@@ -812,6 +923,7 @@ def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
                               log=log)
     if _av:
         avisos.append(_av)
+    avisos.extend(_avisos_grupal(Erem, carga["insc"] is not None, log))
     return {
         "SM_Resumen": _tabla_resumen(Erem, etiqueta),
         "Externos_Delta": _tabla_externos_delta(E, etiqueta),
@@ -821,6 +933,7 @@ def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
         "A19a_Consejerias_Fam": _tabla_a19a(Erem),
         "A26_VDI_SM": _tabla_a26(Erem, multi),
         "A27_Educacion_Prev": _tabla_a27(Erem),
+        "A27_B_Sesiones": _tabla_a27_sesiones(Erem),
         "A32_F1_Acciones_Remotas": _tabla_a32f1(Erem),
         "A32_F2_Controles_Remotos": _tabla_a32f2(Erem),
     }

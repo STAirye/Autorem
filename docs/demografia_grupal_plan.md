@@ -8,6 +8,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 Version: 2.0.26
 -->
 
+> **LISTO Y MERGEADO** — 2026-10-02, implementado en 2.0.27.
+> Se conserva como registro: lo citan CHANGELOG.md y modulos/CLAUDE.md.
+
 # Plan — Demografía de las actividades grupales (SM Actividades: A06·23 y A27)
 
 > **Estado:** aprobado por el autor (2026-10-02), **sin implementar**. Escrito para una

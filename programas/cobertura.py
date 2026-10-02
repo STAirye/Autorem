@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.24
+# Version: 2.0.27
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -81,10 +81,17 @@ COBERTURA = {
              "Si el centro empieza a usarlos, hay que implementarlos"),
             ("Campana de Invierno (col. demografica)", OMITIDO,
              "Write-protected en la hoja SM del template", ""),
-            ("Demografia de las actividades grupales", PENDIENTE,
-             "El reporte 'Atenciones Grupales' no trae demografia -> A06 psicosocial "
-             "/ A19a grupal / A27 salen con demografia en 0",
-             "Si se necesita, cruzar a mano contra el padron"),
+            # La demografia del grupal (A06 psicosocial, A27) sale por RUN desde 2.0.27
+            # (Inscritos -> ADA -> sin dato); su cobertura la dice un aviso de la corrida.
+            # El A19a grupal no tiene columnas demograficas en el SA_26.
+            ("A27 Madre / Padre / Cuidador de (cols. E-I)", MANUAL,
+             "El grupal no dice en que calidad asistio cada persona: todos van por su "
+             "propia edad en J-X",
+             "Llenarlas a mano si el taller fue para cuidadores"),
+            ("A27 Gestantes nivel secundario / terciario (cols. Z-AA)", MANUAL,
+             "No hay como derivarlas del grupal ni del ADA", "Llenarlas a mano"),
+            ("A27 Familias en Riesgo / Espacios Amigables (cols. AB, AE)", OMITIDO,
+             "No se usan en este centro (igual que en el resto del SM)", ""),
             ("Control SM a paciente SENAME", OMITIDO,
              "Excluido a proposito: SENAME hace su propio REM", ""),
             # A32-F2 SALIO de esta entrada en 1.9.10. Estaba junto a A27 diciendo

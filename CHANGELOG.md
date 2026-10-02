@@ -10,6 +10,32 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.27] — 2026-10-02
+
+### Agregado
+
+- **SM Actividades: demografía de las actividades grupales por RUN**
+  ([plan](docs/demografia_grupal_plan.md)). El reporte grupal no la trae, pero sí el RUN:
+  cascada **Informe Inscritos -> última atención del ADA -> sin dato**
+  (`rem_utils.demografia_por_run`). Alimenta A06·23 (SENAME, Prot. Especializada,
+  Pueblos, Migrantes, TRANS, Cuidadores) y el A27. Cada evento lleva `dem_fuente`, y la
+  LEEME cuenta cuántas asistencias salieron de cada fuente y cuántas quedaron «sin dato»
+  (cuentan como NO, SUBCONTADO). Aviso REVISAR si el Inscritos cargado no cruza con
+  ninguna asistencia. `dem_demencia` del grupal sigue en 0 (declarado). Solo cuentan
+  asistentes `ASISTE = SI`.
+- **A27 con la forma del SA_26** (cols. D..AI): rango etario 10-14 … 80+ sin sexo,
+  gestantes APS, pueblos, migrantes, TRANS, SENAME y Prot. Especializada. Los menores
+  de 10 años no se cuentan y la LEEME dice cuántos. La sección B (sesiones) pasa a su
+  propia hoja `A27_B_Sesiones`.
+
+### Cambiado
+
+- El Inscritos del SM se lee con `poblacion.cargar_inscritos` (una vez) y de ahí sale
+  también el mapa TRANS; `trans_map` ya no lo usa el SM.
+- Las subcadenas de ALERTAS salen a `rem_utils.ALERTAS_DEM` (una sola copia).
+- LEEME: sale la entrada «Demografía de las actividades grupales»; entran las casillas
+  A27 no derivables (E-I, Z-AA, AB, AE).
+
 ## [2.0.26] — 2026-10-02
 
 ### Corregido

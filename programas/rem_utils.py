@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.26
+# Version: 2.0.27
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -44,7 +44,7 @@ from pathlib import Path   # reexport de conveniencia para los módulos
 # Convención X.Y.Z (ver CLAUDE.md §9):
 #   X = arquitectura grande o plantillas REM de un año nuevo · Y = módulo/reporte nuevo
 #   · Z = corrección. Cada .py lleva en su header la versión de SU último cambio.
-VERSION = "2.0.26"
+VERSION = "2.0.27"
 
 # openpyxl es la única dependencia externa real. En el .exe va empaquetado;
 # corriendo como .py suelto puede faltar -> los módulos avisan con instrucciones.
@@ -1009,6 +1009,8 @@ LBL_A04 = ["<1", "1-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34",
            "70-74", "75-79", "80+"]
 BANDAS_A06 = [(0, 4)] + BANDAS_A04[2:]
 LBL_A06 = ["0-4"] + LBL_A04[2:]
+BANDAS_A27 = BANDAS_A04[3:]   # A27: 10-14 ... 80+ (15 tramos, SIN sexo; no hay tramo <10)
+LBL_A27 = LBL_A04[3:]
 
 
 def dv_rut(cuerpo):
@@ -1258,6 +1260,21 @@ PUEBLO_VACIO = {"", "NO", "NINGUNO", "NINGUNA", "NO APLICA", "SIN INFORMACION",
                 "N/A", "NO SABE", "NO CONTESTA", "NO INFORMADO"}
 _PUEBLO_VACIO = PUEBLO_VACIO   # alias retrocompat (uso interno histórico)
 
+# Subcadenas de ALERTAS ADMINISTRATIVAS (formato norm()) que prenden cada flag. Fuente
+# ÚNICA: la usan marcar_demografia (ADA) y demografia_por_run (Inscritos -> grupal).
+ALERTAS_DEM = {"dem_migrante": ("MIGRANTE",), "dem_sename": ("SENAME",),
+               "dem_mejorninez": ("MEJOR NINEZ", "SPE EX MEJOR"),
+               "dem_cuidador": ("CUIDADOR",)}
+
+
+def _alerta_mask(alertas_n, subs):
+    """Máscara: la Serie ALERTAS (ya normalizada) contiene ALGUNA de `subs`."""
+    m = None
+    for x in subs:
+        c = alertas_n.str.contains(norm(x), regex=False, na=False)
+        m = c if m is None else (m | c)
+    return m.fillna(False)
+
 
 def marcar_demografia(d):
     """Agrega columnas booleanas `dem_*` por atención. Devuelve el mismo df.
@@ -1277,22 +1294,18 @@ def marcar_demografia(d):
     # cuatro máscaras idénticas.
     alertas_n = d["ALERTAS"].map(norm) if "ALERTAS" in d else None
 
-    def alerta(*subs):   # ALERTAS ADMIN contiene ALGUNA subcadena
+    def alerta(flag):   # ALERTAS ADMIN contiene ALGUNA subcadena de la flag
         if alertas_n is None:
             return d.get("RUN", d.index).map(lambda _: False)
-        m = None
-        for x in subs:
-            c = alertas_n.str.contains(norm(x), regex=False, na=False)
-            m = c if m is None else (m | c)
-        return m.fillna(False)
+        return _alerta_mask(alertas_n, ALERTAS_DEM[flag])
 
     emig = d["EMIG"].map(norm) if "EMIG" in d else None
     pueblo = d["PUEBLO"].map(norm) if "PUEBLO" in d else None
-    d["dem_migrante"] = ((emig == "SI") if emig is not None else False) | alerta("MIGRANTE")
+    d["dem_migrante"] = ((emig == "SI") if emig is not None else False) | alerta("dem_migrante")
     d["dem_originario"] = (~pueblo.isin(_PUEBLO_VACIO)) if pueblo is not None else False
-    d["dem_sename"] = alerta("SENAME")
-    d["dem_mejorninez"] = alerta("MEJOR NINEZ", "SPE EX MEJOR")
-    d["dem_cuidador"] = alerta("CUIDADOR")
+    d["dem_sename"] = alerta("dem_sename")
+    d["dem_mejorninez"] = alerta("dem_mejorninez")
+    d["dem_cuidador"] = alerta("dem_cuidador")
     d["dem_campana"] = d["ACT_n"].str.contains(norm("campaña de invierno"), regex=False, na=False)
     d["dem_demencia"] = d["DIAG_n"].str.contains(norm("demencia"), regex=False, na=False)
     return d
@@ -1341,6 +1354,57 @@ def trans_map(entrada):
         if t:
             out[str(run).strip()] = t
     return out
+
+
+def clave_run(v):
+    """RUN comparable entre fuentes: mayúscula, sin puntos ni espacios
+    ('11.111.111-k' == '11111111-K')."""
+    return norm(v).replace(".", "").replace(" ", "")
+
+
+_FLAGS_ADA = ("dem_sename", "dem_mejorninez", "dem_cuidador", "dem_migrante", "dem_originario")
+
+
+def demografia_por_run(runs, inscritos=None, ada=None):
+    """Demografía por RUN para reportes que NO la traen (el grupal): cascada
+    Inscritos -> última atención del ADA -> sin dato (docs/demografia_grupal_plan.md §3).
+    `runs` = Serie de RUN. Devuelve un DataFrame con el MISMO índice que `runs`: las
+    flags `dem_*` (bool) + `dem_fuente` ('inscritos' | 'ada' | 'sin_dato'). «Sin dato»
+    deja las flags en False, pero la fuente lo distingue de un NO verdadero.
+    `inscritos` = DataFrame de `poblacion.cargar_inscritos`; `ada` = atenciones con
+    `marcar_demografia` aplicado. Las TRANS solo salen del Inscritos (el ADA no trae
+    GENERO) y `dem_demencia` no se deriva: depende del dx de ESA atención."""
+    import pandas as pd
+    claves = runs.map(clave_run)
+    u = pd.Index(claves.unique())
+    buscables = u.difference([""])
+    flags = [*_FLAGS_ADA, "dem_trans_m", "dem_trans_f"]
+    out = pd.DataFrame(False, index=u, columns=flags)
+    fuente = pd.Series("sin_dato", index=u)
+    if ada is not None and len(ada):
+        a = ada[["RUN", "FECHA", *_FLAGS_ADA]].copy()
+        a["_k"] = a["RUN"].map(clave_run)
+        a = a[a["_k"].isin(buscables)].sort_values("FECHA").groupby("_k")[list(_FLAGS_ADA)].last()
+        out.loc[a.index, list(_FLAGS_ADA)] = a.astype(bool).values
+        fuente[a.index] = "ada"
+    if inscritos is not None and len(inscritos):
+        k = inscritos["RUN"].map(clave_run)
+        i = inscritos[k.isin(buscables) & ~k.duplicated(keep="last")]
+        k = k[i.index]
+        vacio = pd.Series("", index=i.index)
+        al = i["ALERTAS"].map(norm) if "ALERTAS" in i else vacio
+        pu = i["PUEBLO"].map(norm) if "PUEBLO" in i else vacio
+        tr = [trans_de(s, g) for s, g in zip(i["SEXO"], i["GENERO"])]
+        ins = pd.DataFrame({f: _alerta_mask(al, subs) for f, subs in ALERTAS_DEM.items()})
+        ins["dem_originario"] = ~pu.isin(PUEBLO_VACIO)
+        ins["dem_trans_m"] = [t == "M" for t in tr]
+        ins["dem_trans_f"] = [t == "F" for t in tr]
+        out.loc[k.values, flags] = ins[flags].values
+        fuente[k.values] = "inscritos"
+    res = out.reindex(claves.values)
+    res["dem_fuente"] = fuente.reindex(claves.values).values
+    res.index = runs.index
+    return res
 
 
 # Reporte 'Monitoreo Multiprofesional' (IRIS): composición de las VDI del A26.
