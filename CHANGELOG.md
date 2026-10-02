@@ -10,6 +10,30 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.25] — 2026-10-02
+
+### Corregido
+
+- **P6_A1 salía con las columnas de banda en un orden distinto al de la plantilla.**
+  La fila 13 (suma de la 15-24) armaba sus claves con una lista a mano: los 17 tramos
+  de Hombres y después los 17 de Mujeres. Como es la PRIMERA fila, pandas tomaba de
+  ella el orden de toda la hoja. **Cada número estaba bajo su nombre correcto**, pero el
+  SP_26 intercala H/M por tramo (F = 0-4 H, G = 0-4 M, H = 5-9 H…). ⚠ **Un P6 pegado
+  como bloque desde F con una versión anterior quedó CORRIDO** (las mujeres de 0-4 en
+  la columna de hombres de 5-9, y así), y el SP no lo detecta: los totales C/D/E suman
+  igual. Repegar esos meses. Ahora la 13 toma el orden de `grid()`, y un test fija
+  P6_A1 contra las columnas F..AX de la plantilla.
+
+### Agregado
+
+- **P6_A1 pintada como la plantilla:** amarillo = celda que se llena, gris = cerrada.
+  Sale de la máscara del código (el `.exe` no lleva el `.xlsm`) + `_GRIS_EXTRA`, las
+  celdas que la plantilla pinta de gris aunque la máscara las deje abiertas (fila 21,
+  hombres de la 28, Madre<5 en 37/38, demencias antes de los 30).
+  `test_colores_calzan_con_la_plantilla` compara celda por celda contra
+  `refs_tablas/SP_26_V1.1.xlsm`: si el SP_27 cambia, falla. Sirve además de control
+  visual: un número distinto de 0 sobre gris no entra en el SP.
+
 ## [2.0.24] — 2026-10-02
 
 ### Corregido

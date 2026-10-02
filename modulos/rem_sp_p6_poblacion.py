@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.23
+# Version: 2.0.25
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -120,6 +120,30 @@ EXCLUYE_DEMO = {
 
 def _mascara_demo(fila):
     return [c for c in DEMO_TODAS if c not in EXCLUYE_DEMO.get(fila, set())]
+
+
+# Colores de la plantilla para pintar P6_A1 igual que el SP_26 (2.0.25). Amarillo =
+# celda que se llena; gris = cerrada. Salen de la MASCARA (el .exe no lleva el .xlsm),
+# mas las celdas que la plantilla pinta de gris aunque la mascara las deje abiertas:
+# la fila 21 (Abuso sexual, sin uso), los hombres de la 28 (post parto), Madre<5 en la
+# 37/38 y las demencias antes de los 30. `test_colores_calzan_con_la_plantilla` compara
+# celda por celda contra refs_tablas/SP_26_V1.1.xlsm.
+AMARILLO, GRIS = "FFFFFFBA", "FFBFBFBF"
+_GRIS_EXTRA = {28: {f"{l} H" for l in LBL}, 37: {"AO"}, 38: {"AO"},
+               **{f: {f"{l} {s}" for l in LBL[:6] for s in "HM"} for f in (44, 45, 46)}}
+
+
+def color_celda(fila, col):
+    """Color de la plantilla para la columna `col` de P6_A1 en la fila `fila`, o None
+    si no es una celda de la grilla (Fila, Concepto, totales C/D/E)."""
+    if col in DEMO_TODAS:
+        abierta = col in _mascara_demo(fila)
+    elif col[-2:] in (" H", " M") and col[:-2] in LBL:
+        lo, hi = MASCARA_BANDA[fila]
+        abierta = lo <= LBL.index(col[:-2]) <= hi
+    else:
+        return None
+    return AMARILLO if abierta and fila != 21 and col not in _GRIS_EXTRA.get(fila, ()) else GRIS
 
 
 # ======================================================================
@@ -627,12 +651,12 @@ def construir_p6(P, log=print):
             "diagnóstico de trastorno mental (registro incompleto) -> Revisar_Clinico.")
 
     # Fila 13: SUMA LITERAL de las filas 15-24 (hereda el doble conteo de los FR, §5.2).
-    fila13 = {}
-    claves = ["Ambos", "Hombres", "Mujeres"] + [f"{l} H" for l in LBL] + [f"{l} M" for l in LBL] + \
-             ["AN", "AO", "AP_H", "AQ_M", "AR_H", "AS_M", "AT", "AU", "AV", "AW", "AX"]
-    for k in claves:
-        fila13[k] = sum(filas_grid[f].get(k, 0) for f in range(15, 25) if f in filas_grid)
-    filas_grid[13] = fila13
+    # Claves en el orden de `grid()` (H/M INTERCALADOS por banda, como la plantilla).
+    # Hasta 2.0.24 era una lista a mano con los 17 H primero y los 17 M después, y como
+    # la 13 es la PRIMERA fila, pandas tomaba de ella el orden de columnas de P6_A1 entera:
+    # cada valor bajo su nombre, pero pegado por bloque desde F caía corrido.
+    filas_grid[13] = {k: sum(filas_grid[f].get(k, 0) for f in range(15, 25) if f in filas_grid)
+                      for k in filas_grid[24]}
 
     if not (1300 <= filas_grid[24]["Ambos"] <= 1500):
         log(f"[sp_p6] fila 24 = {filas_grid[24]['Ambos']} está fuera del rango histórico "
@@ -760,6 +784,14 @@ def escribir(P, resultado, salida):
         P[P["¿Pertenece? (28 real)"].eq("SI")].to_excel(xw, index=False, sheet_name="PSM_Poblacion")
         escribir_divergencias(xw.book, P.attrs.get("egreso_divergencias"))
         resultado["grid"].to_excel(xw, index=False, sheet_name="P6_A1")
+        from openpyxl.styles import PatternFill
+        ws = xw.book["P6_A1"]
+        cols = [c.value for c in ws[1]]
+        for fila_xl in ws.iter_rows(min_row=2):
+            for celda, col in zip(fila_xl, cols):
+                color = color_celda(fila_xl[0].value, col)
+                if color:
+                    celda.fill = PatternFill("solid", fgColor=color)
         resultado["detalle"].to_excel(xw, index=False, sheet_name="P6_Detalle")
         resultado["revisar_administrativo"].to_excel(xw, index=False, sheet_name="Revisar_Administrativo")
         resultado["revisar_clinico"].to_excel(xw, index=False, sheet_name="Revisar_Clinico")

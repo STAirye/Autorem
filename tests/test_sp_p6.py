@@ -802,6 +802,54 @@ def test_psm_poblacion_solo_lleva_a_quien_pertenece_a_sm():
     assert [r[0] for r in ws.iter_rows(min_row=2, values_only=True)] == ["11111111-1"]
 
 
+def _letra_plantilla(col):
+    """Columna de P6_A1 -> letra de la plantilla SP_26 (bandas intercaladas H/M desde F)."""
+    from openpyxl.utils import get_column_letter
+    if col in p6mod.DEMO_TODAS:
+        return col.split("_")[0]
+    i = p6mod.LBL.index(col[:-2])
+    return get_column_letter(6 + 2 * i + (col[-1] == "M"))
+
+
+def test_p6_a1_sale_en_el_orden_de_la_plantilla():
+    """2.0.25: la fila 13 traia los 17 H primero y los 17 M despues, y como es la
+    PRIMERA fila fijaba el orden de columnas de P6_A1 entera: pegada por bloque desde F,
+    las mujeres de 0-4 caian en la columna de hombres de 5-9."""
+    P = _poblacion([_ING_FEB], [{"rut": "11111111-1"}], [_sm("11111111-1")])
+    cols = list(_p6(P)["grid"].columns)
+    from openpyxl.utils import column_index_from_string as ci
+    grilla = [c for c in cols if p6mod.color_celda(15, c)]
+    # F..AX contiguas y en orden: una columna de P6_A1 por columna de la plantilla.
+    assert [ci(_letra_plantilla(c)) for c in grilla] == list(range(6, 51)), grilla
+
+
+def test_colores_calzan_con_la_plantilla():
+    """El amarillo/gris de P6_A1 sale de la mascara + _GRIS_EXTRA (el .exe no lleva el
+    .xlsm). Se compara celda por celda contra la plantilla versionada: si MINSAL la
+    cambia (SP_27), esto falla."""
+    wb = openpyxl.load_workbook(REPO / "refs_tablas" / "SP_26_V1.1.xlsm")
+    ws = wb["P6"]
+    cols = [f"{l} {s}" for l in p6mod.LBL for s in "HM"] + p6mod.DEMO_TODAS
+    malas = []
+    for fila in p6mod.MASCARA_BANDA:
+        for col in cols:
+            f = ws[f"{_letra_plantilla(col)}{fila}"].fill.fgColor
+            plantilla = p6mod.AMARILLO if (f.type == "rgb" and f.rgb == p6mod.AMARILLO) else p6mod.GRIS
+            if p6mod.color_celda(fila, col) != plantilla:
+                malas.append((fila, col))
+    assert not malas, malas[:10]
+    # Y la salida de verdad lleva los colores.
+    P = _poblacion([_ING_FEB], [{"rut": "11111111-1"}], [_sm("11111111-1")])
+    salida = _TMP / "p6_colores.xlsx"
+    p6mod.escribir(P, _p6(P), salida)
+    out = openpyxl.load_workbook(salida)["P6_A1"]
+    hdr = [c.value for c in out[1]]
+    for fila_xl in out.iter_rows(min_row=2):
+        if fila_xl[0].value == 28:
+            assert fila_xl[hdr.index("0-4 H")].fill.fgColor.rgb == p6mod.GRIS
+            assert fila_xl[hdr.index("20-24 M")].fill.fgColor.rgb == p6mod.AMARILLO
+
+
 def test_fuente_vacia_tras_el_corte_falla_en_la_fuente():
     """Ronda 9 (bug recurrente de c38a8cc, variante "tiene filas pero ninguna sirve"):
     un formulario o un ADA con TODAS las filas posteriores al corte, o sin UNA fecha
