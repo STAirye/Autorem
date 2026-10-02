@@ -10,6 +10,27 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.24] — 2026-10-02
+
+### Corregido
+
+- **Hoja LEEME: revisión de todos los avisos contra el código actual** (pedido del autor
+  tras ver uno falso en el A23 de septiembre). Solo textos; ningún número cambia.
+  - **A23: se borra «Otros Crónicos en formato Administrativo: PENDIENTE».** Salía en
+    TODAS las corridas, y es falso desde la ronda 11, que implementó el Admin (estamento
+    por funcionario). Lo que sí importa del Admin ya lo avisan `SUBCONTADO` y
+    `sin_estamento`, solo cuando pasa.
+  - **A27: «el filtro nunca se pudo validar»** -> validado contra un registro de prueba
+    hecho a propósito por el autor (sep-2026). Sigue `SIN REGISTRO`: el 0 es real.
+  - **Trabajo Perdido / PADDS:** «hasta que exista `rem_a26_domiciliaria`» -> «el
+    módulo PDS + CPU», su nombre en el roadmap.
+  - **A03, estamento `VACIA`:** decía «sin Utilización de Cupos cargada», pero solo sale
+    si no hay tabla ni cargada NI guardada en el caché; ahora lo dice, y que basta
+    cargarla una vez.
+  - **A23, estamento `SUBCONTADO`:** dice DÓNDE se carga Utilización de Cupos (Salud
+    Mental > Actividades): la página del A23 no tiene ese bloque.
+  - «pestaña» -> «página» (A05, dotación): la GUI 2.0 no tiene pestañas.
+
 ## [2.0.23] — 2026-10-01
 
 ### Cambiado

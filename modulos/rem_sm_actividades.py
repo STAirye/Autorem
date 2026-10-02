@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.20
+# Version: 2.0.24
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -773,7 +773,7 @@ def _tablas(E, carga, avisos, etiqueta, log=print, modulo="sm"):
         avisos.append(("Funcionarios sin clasificar (dotacion)", cobertura.PENDIENTE,
                         f"{len(desc_rows)} atenciones de {len(nombres_desc)} funcionario(s) sin "
                         f"clasificar interno/externo: {muestra}",
-                        "Clasificarlos en 'Revisar dotacion...' de la pestana"))
+                        "Clasificarlos en 'Revisar dotacion...' de la pagina"))
     ests_omit = dotacion.omitidos(tabla_dot, modulo)
     if ests_omit:
         om_norm = set(ests_omit)

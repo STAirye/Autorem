@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.22
+# Version: 2.0.24
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -539,7 +539,8 @@ def _estamento_por_funcionario(od, aten, log=print):
     return [("SALA / Seccion G (estamento del formulario)", "SUBCONTADO",
              f"{int(quedan.sum())} formulario(s) 'Otros Cronicos' sin estamento conocido "
              f"({len(sin)} funcionario(s): {muestra}): no cuentan como de médico",
-             "Cargar 'Utilizacion de Cupos' (bloque de estamentos) o usar el export IRIS")]
+             "Cargar 'Utilizacion de Cupos' en Salud Mental > Actividades (bloque de "
+             "estamentos) o usar el export IRIS")]
 
 
 # Reporte de Estratificación de Riesgo (IRIS). El RUT viene partido (RUT + DV).

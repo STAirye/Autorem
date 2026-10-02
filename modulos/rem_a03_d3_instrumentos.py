@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.24
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -265,8 +265,9 @@ def procesar(entrada, salida=None, instrumento=None, estamentos=None,
         log("[estamento] AUSENTE en Administrativo y sin tabla de estamentos -> "
             "columna vacía. (Carga el reporte 'Utilización de Cupos' para rellenarlo.)")
         avisos.append(("Estamento (detalle)", "VACIA",
-                        "formato Administrativo sin 'Utilizacion de Cupos' cargada",
-                        "Cargar el reporte 'Utilizacion de Cupos'"))
+                        "formato Administrativo sin tabla de estamentos (ni cargada ni "
+                        "guardada de un mes anterior)",
+                        "Cargar el reporte 'Utilizacion de Cupos' una vez: queda guardado"))
 
     filas = []
     n_desde_rayen = 0     # sin puntaje: el nivel del D.3 sale del RESULTADO de RAYEN

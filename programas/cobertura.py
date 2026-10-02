@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.20
+# Version: 2.0.24
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -73,7 +73,7 @@ COBERTURA = {
              "distingue CONFIRMADO de SOSPECHA: separarlas seria adivinar",
              "Llenarlas a mano"),
             ("A05 ingresos / egresos", FUERA,
-             "Los cubre otro modulo del exe", "Usar la pestana A05"),
+             "Los cubre otro modulo del exe", "Usar la pagina A05"),
             ("A03-H Tamizaje (PSC-17, PHQ-9...)", FUERA,
              "El exe cubre A03-D.3 (instrumentos de personas ya INGRESADAS)", ""),
             ("Espacios Amigables - Familias en Riesgo", OMITIDO,
@@ -96,8 +96,8 @@ COBERTURA = {
             ("A27 Educacion para la prevencion en SM", SIN_REGISTRO,
              "La actividad existe en RAYEN pero no se usa (se agrego hace poco). El "
              "trabajo se registra en la ficha, en indicaciones, que no tributa -> 0 "
-             "actividades realizadas. El filtro esta implementado pero nunca se pudo "
-             "validar contra datos reales",
+             "actividades realizadas. El filtro esta validado contra un registro de "
+             "prueba (sep-2026): si alguien la registra, sale",
              "El 0 es correcto: no lo llenes a mano asumiendo que falta. Si sabes que "
              "la actividad se hizo, se registro en un canal que el REM no ve"),
         ],
@@ -112,7 +112,7 @@ COBERTURA = {
             ("A26-A1 VDI del PADDS (dependencia severa)", PENDIENTE,
              "Se excluyen del universo SM a proposito (EXCLUIR_SMISH) porque no son "
              "SM - pero hoy no las tabula ningun modulo",
-             "Contarlas a mano hasta que exista rem_a26_domiciliaria"),
+             "Contarlas a mano hasta que exista el modulo PDS + CPU"),
         ],
     },
     "a23_respiratorio": {
@@ -128,8 +128,6 @@ COBERTURA = {
              "Hoy hay 1 solo indicador, el REM pide dos", "A mano"),
             ("Seccion O (EPOC forma A/B)", PENDIENTE,
              "Falta la forma A/B -> sale 0", "A mano"),
-            ("Formulario 'Otros Cronicos' en formato Administrativo", PENDIENTE,
-             "Solo se lee el formato IRIS", "Descargar el formulario en IRIS"),
             # El caso "cargaste el Monitoreo Admin -> Ira Alta / Bronquitis / EPOC
             # salen 0" vivia ACA como advertencia permanente porque el modulo no
             # tenia como saber que fuente le habian dado. Con la fase 2 del eje de
