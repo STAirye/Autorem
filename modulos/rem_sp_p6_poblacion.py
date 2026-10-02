@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.25
+# Version: 2.0.26
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -114,6 +114,7 @@ DEMO_TODAS = ["AN", "AO", "AP_H", "AQ_M", "AR_H", "AS_M", "AT", "AU", "AV", "AW"
 EXCLUYE_DEMO = {
     28: {"AN", "AP_H", "AR_H", "AX"},                    # Depresión post parto: solo mujeres
     35: {"AO"}, 36: {"AO"},                              # TDAH/disocial: no aplica madre<5
+    37: {"AO"}, 38: {"AO"},                              # ansiedad separacion / otros infancia (2.0.26)
     44: {"AN", "AO", "AT", "AU"}, 45: {"AN", "AO", "AT", "AU"}, 46: {"AN", "AO", "AT", "AU"},
 }
 
@@ -125,11 +126,12 @@ def _mascara_demo(fila):
 # Colores de la plantilla para pintar P6_A1 igual que el SP_26 (2.0.25). Amarillo =
 # celda que se llena; gris = cerrada. Salen de la MASCARA (el .exe no lleva el .xlsm),
 # mas las celdas que la plantilla pinta de gris aunque la mascara las deje abiertas:
-# la fila 21 (Abuso sexual, sin uso), los hombres de la 28 (post parto), Madre<5 en la
-# 37/38 y las demencias antes de los 30. `test_colores_calzan_con_la_plantilla` compara
-# celda por celda contra refs_tablas/SP_26_V1.1.xlsm.
+# la fila 21 (Abuso sexual, sin uso), los hombres de la 28 (post parto: `construir_p6`
+# los saca de la fila) y las demencias antes de los 30 (gris SIN candado: «no esperado»).
+# `test_colores_calzan_con_la_plantilla` compara celda por celda contra
+# refs_tablas/SP_26_V1.1.xlsm.
 AMARILLO, GRIS = "FFFFFFBA", "FFBFBFBF"
-_GRIS_EXTRA = {28: {f"{l} H" for l in LBL}, 37: {"AO"}, 38: {"AO"},
+_GRIS_EXTRA = {28: {f"{l} H" for l in LBL},
                **{f: {f"{l} {s}" for l in LBL[:6] for s in "HM"} for f in (44, 45, 46)}}
 
 
@@ -614,10 +616,21 @@ def construir_p6(P, log=print):
 
     detalle_rows = []
     filas_grid = {}
+    # Fila 28 (post parto): la plantilla cierra con candado las columnas de hombres. Un
+    # hombre ahí es error de registro: sale de la FILA (sigue en la 24, tiene un dx) y
+    # va a Revisar_Administrativo, en vez de escribirse en una celda que el SP rechaza.
+    # astype(bool): vacía, `map` da dtype object y `df[~mascara]` la lee como COLUMNAS.
+    hombre_28 = tributarios[28]["Sexo"].map(_hombre).astype(bool)
+    for run, sexo in zip(tributarios[28].loc[hombre_28, "Número"],
+                         tributarios[28].loc[hombre_28, "Sexo"]):
+        revisar.append({"RUN": run, "Motivo": "Sexo no aplica en esta fila", "Fila_P6": 28,
+                        "Detalle": "Depresion post parto: la plantilla solo abre Mujeres",
+                        "Valor_crudo": sexo, "Categoria": "Administrativo"})
     for fila in list(range(15, 24)) + list(range(25, 59)):
         if fila not in tributarios:
             continue
-        filas_grid[fila] = _grid_y_detalle(tributarios[fila], fila, detalle_rows, revisar)
+        sub = tributarios[fila][~hombre_28] if fila == 28 else tributarios[fila]
+        filas_grid[fila] = _grid_y_detalle(sub, fila, detalle_rows, revisar)
 
     # AV (Plan de Cuidado Integral) — regla WIP §5.4.2: total de fila si GES/FR, 0 en el resto.
     for fila, g in filas_grid.items():

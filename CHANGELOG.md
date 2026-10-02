@@ -10,6 +10,19 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.26] — 2026-10-02
+
+### Corregido
+
+- **P6: dos celdas con candado en la plantilla que el código escribía igual**
+  (encontradas al comparar los colores de 2.0.25 contra el `SP_26`). Mismo trato que
+  cualquier dato que no aplica en su fila: 0 en la celda, RUN a `Revisar_Administrativo`.
+  - **Fila 28, Depresión post parto: hombres.** La plantilla solo abre Mujeres. Un
+    hombre ahí es error de registro: sale de la fila 28 (sigue contando en la 24, porque
+    tiene un dx) y queda en Revisar con «Sexo no aplica en esta fila».
+  - **Filas 37 y 38: `AO` Madre de hijo <5** pasa a `EXCLUYE_DEMO`, como ya estaban la
+    35 y la 36.
+
 ## [2.0.25] — 2026-10-02
 
 ### Corregido

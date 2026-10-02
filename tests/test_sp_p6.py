@@ -646,6 +646,26 @@ def test_dato_demografico_bloqueado_va_a_revisar_y_no_se_escribe():
     assert any(m == "Dato demográfico no aplica en esta fila" for m in _motivos(r))
 
 
+def test_celdas_con_candado_de_la_plantilla_van_a_revisar():
+    """2.0.26: dos celdas que la plantilla cierra con candado y el codigo escribia igual.
+    Un hombre en la 28 (post parto) sale de la fila -- y sigue en la 24 --, y Madre<5 en
+    la 37 (ansiedad de separacion) no se escribe. Los dos quedan en Revisar."""
+    P = _poblacion([
+        {"rut": "11111111-1", "fecha": date(2026, 7, 1), **{_Q[21]: "SI", _Q[22]: "INGRESO"}},
+        {"rut": "22222222-2", "fecha": date(2026, 7, 1),
+         **{_Q[1]: "SI", _Q[71]: "SI", _Q[72]: "INGRESO"}},
+    ], [{"rut": "11111111-1", "sexo": "Hombre"}, {"rut": "22222222-2", "sexo": "Mujer", "edad": 12}],
+        ada_filas=[_sm("11111111-1"), dict(_sm("22222222-2"), id="B")])
+    r = _p6(P)
+    f28 = _fila_p6(r["grid"], 28)
+    assert f28["Ambos"] == 0 and f28["Hombres"] == 0, f28
+    assert "11111111-1" in set(r["detalle"].query("Fila_P6 == 24")["RUN"])
+    adm = r["revisar_administrativo"]
+    assert list(adm.loc[adm["Fila_P6"] == 28, "RUN"]) == ["11111111-1"], adm
+    assert _fila_p6(r["grid"], 37)["AO"] == 0
+    assert "22222222-2" in set(adm.loc[(adm["Fila_P6"] == 37) & (adm["Detalle"] == "AO"), "RUN"])
+
+
 def test_sin_exclusion_comodin_cajon_de_sastre_cuenta_todo():
     """§5.1 ELIMINADA (sep-2026): las filas cajón de sastre (38/43/48) tributan SIN
     restringir por comorbilidad. El adaptativo con 2 comorbilidades ya NO se excluye,
