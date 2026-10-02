@@ -493,10 +493,12 @@ def _tabla_a27(E):
 
 def _tabla_a27_sesiones(E):
     """A27·B: sesiones = (fecha, prestador, actividad) distintas, sobre las asistencias YA
-    filtradas por Asiste=SI (un taller donde todos fueron NSP no cuenta como sesión)."""
+    filtradas por Asiste=SI (un taller donde todos fueron NSP no cuenta como sesión) y
+    sin los menores de 10 (un taller solo de menores tampoco cuenta)."""
     filas = []
     for cell, lbl in _A27_AREAS:
         s = E[(E["casilla"] == "A27") & (E["sub"] == cell)]
+        s = s[~_a27_menores(s)]
         filas.append({"Área temática": lbl, "B · Sesiones (actividades)":
                       len(s.drop_duplicates(subset=["fecha", "estamento", "actividad"]))})
     return pd.DataFrame(filas)

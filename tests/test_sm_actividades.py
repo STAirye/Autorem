@@ -859,9 +859,12 @@ def test_a27_menor_de_10_no_cuenta_y_se_avisa():
     assert f["Total"] == 1 and sum(f[l] for l in sm.LBL_A27) == 1
     av = _aviso(E, "A27 menores de 10")
     assert av is not None and "1 asistente" in av[2]
-    # ...pero la sesion existio: la seccion B no depende de la edad.
+    # Una sesion con algun asistente >=10 cuenta; una solo de menores, no.
     ses = _cell_row(t["A27_B_Sesiones"], "Área temática", "Prevención suicidio")
     assert ses["B · Sesiones (actividades)"] == 1
+    E, t = _run_g([_rg(_rut(20000012), edad=7, act=_A27_SUIC)])
+    ses = _cell_row(t["A27_B_Sesiones"], "Área temática", "Prevención suicidio")
+    assert ses["B · Sesiones (actividades)"] == 0
 
 
 def test_a27_gestante_y_demografia_por_la_cascada():
