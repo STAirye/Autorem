@@ -325,6 +325,11 @@ caché, que se descartó por seguridad), pero no para lo demás. Llevó a la **2
   además, el bug de `AAAA/MM/DD` invertido con `dayfirst`).
 - `bench_p6.py` - lo mismo para `gui/paginas/poblacion.correr` (P6 + Rescate): el formulario
   SM con `load_workbook` completo (19 s) y `PSM_Poblacion` con los 55k del Inscritos (30 s).
+- `bench_sm.py` - SM Actividades (ADA + grupal + Inscritos, 1 mes y 3 meses) para ver si la
+  demografía del grupal de la **2.0.27** costaba tiempo: **no** (11,9 -> 11,0 s y 12,6 ->
+  12,3 s; `demografia_por_run` 0,1-0,6 s aun con el ADA 2021..2026). Toma la raíz del
+  CÓDIGO como 1er argumento: la versión «antes» se corrió sobre un `git archive c6b8b02`
+  extraído al scratchpad (no archivado: copia de fuente). Años del ADA opcionales al final.
 
 **Trampas:** las rutas de datos son absolutas, al OneDrive del autor (`Datos madre`); los
 dos `bench_a23_2`/`bench_p6` importan `bench_a23` desde la misma carpeta (por eso éste
