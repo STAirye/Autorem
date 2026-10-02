@@ -247,6 +247,30 @@ def test_a05_trans_implicito():
     assert trans["44444444-4"] == ""                          # no binarie: sin casilla REM
 
 
+def test_a05_falta_subtipo_tres_tipos_egreso():
+    """Depresión sin subtipo se avisa en Alta, Traslado Y Otras Causas: hasta 2.0.27
+    solo en Alta, y un Otras Causas sin subtipo salía callado (sin fila en el REM)."""
+    p = _TMP / "falta_sub_a05.xlsx"
+    wb = openpyxl.Workbook(); ws = wb.active
+    ws.append(["Servicio", None]); ws.append(["Filtros", None])
+    ws.append(["NUMERO TIPO IDENTIFICACION", "AÑO APLICACIÓN FORMULARIO", "SEXO",
+               "18.- ¿ TIENE DEPRESIÓN ?", "19.- ESTADO", "20.- TIPO DE DEPRESIÓN"])
+    ws.append(["11111111-1", 30, "Mujer", "SI", "EGRESO ALTA", None])
+    ws.append(["22222222-2", 40, "Mujer", "SI", "EGRESO TRASLADO", None])
+    ws.append(["33333333-3", 25, "Mujer", "SI", "EGRESO OTRAS CAUSAS", None])
+    ws.append(["44444444-4", 35, "Mujer", "SI", "EGRESO OTRAS CAUSAS", "Moderada"])
+    wb.save(p)
+    out = _TMP / "falta_sub_a05_out.xlsx"
+    egresos.procesar(p, out, log=_quiet)
+    ws2 = openpyxl.load_workbook(out)["A05_Egresos"]
+    head = [ws2.cell(row=1, column=c).value for c in range(1, ws2.max_column + 1)]
+    ci = head.index("Falta_Subtipo") + 1
+    falta = {ws2.cell(row=r, column=1).value: (ws2.cell(row=r, column=ci).value or "")
+             for r in range(2, ws2.max_row + 1)}
+    assert falta == {"11111111-1": "SI", "22222222-2": "SI",
+                     "33333333-3": "SI", "44444444-4": ""}
+
+
 def test_edad_anios():
     assert sm.edad_anios("45 años 3 meses 2 días") == 45
     assert sm.edad_anios("8 meses 10 días") == 0        # menor de 1 año

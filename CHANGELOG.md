@@ -10,6 +10,16 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.28] — 2026-10-02
+
+### Corregido
+
+- **A05 Egresos: `Falta_Subtipo` también en Traslado y Otras Causas.** Un egreso con
+  diagnóstico que lleva subtipo (Depresión, Violencia, Suicidio, Ansiedad, Alzheimer)
+  y sin subtipo se avisaba solo si era Alta; en los otros dos tipos salía con la
+  celda vacía y sin aviso, aunque tampoco tiene fila en el REM. Era herencia de la
+  1.2 (`AVISAR_ALTA_SIN_SUBTIPO`), sin motivo clínico. Test nuevo que fija los tres.
+
 ## [2.0.27] — 2026-10-02
 
 ### Agregado

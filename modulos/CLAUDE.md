@@ -126,4 +126,5 @@ Regla general del proyecto: **un control de errores de la plantilla avisa, no ma
 - **Otras Causas es manual por diseño** (abandono vs clínica, caso a caso): se flaggea,
   no se clasifica.
 - Zonas editables arriba de cada archivo: `BUSQUEDAS` · `DIAGNOSTICOS_CON_SUBTIPO` ·
-  `REMAP_DIAGNOSTICO` · `DEMOGRAFIA` · `AVISAR_ALTA_SIN_SUBTIPO`.
+  `REMAP_DIAGNOSTICO` · `DEMOGRAFIA` · `AVISAR_SIN_SUBTIPO` (egresos: los tres tipos
+  desde 2.0.28; hasta ahí solo Alta, herencia de la 1.2).

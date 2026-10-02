@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.28
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -48,8 +48,9 @@ BUSQUEDAS = {
 }
 TIPO_LABEL = {"Alta": "Alta", "Traslado": "Traslado", "OtrasCausas": "Otras Causas"}
 ORDEN_TIPOS = {"Alta": 0, "Traslado": 1, "OtrasCausas": 2}
-# Avisar egreso por Alta sin subtipo (solo en diagnósticos que SÍ tienen subtipo).
-AVISAR_SIN_SUBTIPO = {"Alta"}
+# Avisar egreso sin subtipo (solo en diagnósticos que SÍ tienen subtipo). Los tres
+# tipos: un Traslado u Otras Causas sin subtipo tampoco tiene fila en el REM.
+AVISAR_SIN_SUBTIPO = {"Alta", "Traslado", "OtrasCausas"}
 
 _CFG = dict(
     busquedas=BUSQUEDAS,
