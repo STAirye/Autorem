@@ -10,6 +10,10 @@
 > El conflicto semantico del Trabajo Perdido que anunciaba el §4 **ocurrio**, y ademas
 > destapo dos bugs mas de la misma familia (A32·F1/F2 y el centinela con byte NUL de
 > `_una_fila_por_atencion`). Los tres estan en el CHANGELOG de la 2.0.0, con su test.
+>
+> **2026-10-05:** del §4, «mirar la ventana con ojos humanos» y «compilar el `.exe`»
+> estan HECHOS (el autor da la GUI 2.0 por cerrada; el `.exe` compila con el Python de
+> Tcl 9). Lo demas del §4 sigue como esta.
 
 ---
 

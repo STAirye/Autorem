@@ -9,6 +9,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 Se carga al trabajar en `tests/`. Los `§N` son las anclas del [CLAUDE.md raíz](../CLAUDE.md).
 
+## Requisito: Python con Tcl 9 o superior
+
+La suite necesita un Python con **Tcl 9 o superior** (el de desarrollo: 3.14.7+). Con Tcl
+8.6, `test_gui_construccion` falla intermitente con `Can't find a usable tk.tcl`: es un bug
+de Tcl 8.6 con la captura por fd de pytest, no del código
+([docs/tk_tcl_intermitente.md](../docs/tk_tcl_intermitente.md)). Se verifica con
+`python -c "import tkinter; print(tkinter.TclVersion)"`.
+
 ## No compares texto plano que ve el usuario
 
 Un test **no** escribe a mano un texto de la interfaz (`dichos == ["Falta el acuse"]`,

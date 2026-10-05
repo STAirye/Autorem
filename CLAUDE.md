@@ -113,7 +113,7 @@ Versión **2.0.28** (§9). **394 tests.**
   frontera con el hilo worker en `runner.py` -> [gui/CLAUDE.md](gui/CLAUDE.md). Es la
   que corre el `.exe` desde la **2.0.0**; la 1.x quedó congelada en `legacy/`.
 - **Dispatcher — `autorem.py`:** ya no dibuja nada. Registro de tareas del A05,
-  orquestación compartida (`_correr_tareas`) y el CLI **congelado** (§12).
+  orquestación compartida (`_correr_tareas`) y el CLI **congelado** (ver «Arranque»).
 
 Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autorem` / `gui`. Imports
 **absolutos** rooteados en la raíz (`from programas.rem_utils import …`).
@@ -149,7 +149,11 @@ incluye (`a05_o_egresos`).
 **Arranque:** sin args → GUI · arrastrar un `.xlsx` sobre el exe → GUI con la ruta
 precargada · `--cli entrada.xlsx [--formato] [--tarea] [--mes AAAA-MM]` → **el CLI es
 solo del A05**. El resto de los módulos es solo GUI, y no hay plan de CLI para todos.
-El CLI quedó **CONGELADO** en la 2.0.0 (§12): no se le portan los cambios.
+El CLI quedó **CONGELADO** en la 2.0.0 (decisión del autor, cerrada): no se le portan
+los cambios ni se va a actualizar. Consecuencia conocida y aceptada: los mensajes
+cruzados de `validar_iris`/`validar_admin` dicen «Cambia el selector de formato» (ya no
+existe) y el `--cli` manda el A03 «a la pestaña Screening» (tampoco). Solo se alcanzan
+desde el CLI y el notebook 1.x, las dos superficies congeladas.
 
 **Salidas y caché:**
 - La carpeta de salida por defecto es **la de los archivos de entrada**, no el cwd
@@ -245,28 +249,8 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 (Lo hecho está en el [CHANGELOG](CHANGELOG.md).)
 
 **En curso**
-- **Cerrar la 2.0 a ojo:** mirar la ventana con ojos humanos (`python -m gui.app`) y
-  **compilar el `.exe`** (`pyinstaller autoREM.spec`) para probar los arreglos de
-  empaquetado contra un build real -- es el paso 13 del plan, y la primera vez que
-  se pueden probar: hasta la 2.0.0 la GUI 2.0 no entraba al bundle. Checklist en
-  [docs/review_gui-2.0_pendiente.md](docs/review_gui-2.0_pendiente.md) §4.
-- **Ronda de EFICIENCIA y REUSO sobre el codebase completo** (decisión del autor,
-  sep-2026): la primera revisión de la era 2.0, sobre `main`. No era parte de la
-  revisión de la rama. **Dos tandas hechas** (2.0.6 y 2.0.9); lo que quedó abierto,
-  con su número MEDIDO, está más abajo en «Correcciones y mejoras».
-- **El CLI queda CONGELADO** (decisión del autor, sep-2026): no sigue el rediseño
-  de la GUI. Quizás vuelva a funcionar más adelante, probablemente no. Consecuencia
-  conocida y aceptada: los mensajes cruzados de `validar_iris`/`validar_admin` dicen
-  «Cambia el selector de formato», y ese selector ya no existe; y el uso del `--cli`
-  manda el A03 «a la pestaña Screening», que tampoco existe. Solo se alcanzan desde
-  el CLI y el notebook 1.x, las dos superficies congeladas. Si el CLI revive, los
-  textos se revisan junto con él.
-- **Validar la familia población** (§2.1): la brecha `Ingresado` del P6 y el rescate
-  contra datos reales.
-- **Actualizar el Python del PC del trabajo a uno con Tcl 9** (decisión del autor,
-  sep-2026): el `tk.tcl` intermitente de los tests es un bug de Tcl 8.6 que Tcl 9 no
-  tiene. Pasos (verificar el Tcl, reinstalar hooks, compilar el `.exe`) en
-  [docs/tk_tcl_intermitente.md](docs/tk_tcl_intermitente.md) §7.
+- **Validar la familia población** (§2.1) — **LO MÁS CALIENTE** (oct-2026): la brecha
+  `Ingresado` del P6 y el rescate contra datos reales.
 
 **Módulos**
 - **Módulo PDS + CPU** (antes anotado como `rem_a26_domiciliaria`, que se quedaba
@@ -295,58 +279,6 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   SM Actividades + TP, después A05. Se corre el motor MENSUAL por mes y se agrega una
   vez (filtrar el rango entero rompe GESTANTE y los distintos del TP).
   [docs/rango_meses_plan.md](docs/rango_meses_plan.md).
-- **Destrabar la GUI durante la carga de una página: CAUSA ENCONTRADA Y CORTADA en
-  2.0.16 — falta mirarla con ojos humanos.** Casi todo el costo NO era Tk intrínseco:
-  era un **trinquete de layout** en `widgets.etiqueta_envolvente` (~110 re-maquetados
-  de la página entera por etiqueta). Remedido tras el arreglo (mediana de 3, ventana
-  1180×820): `sm_actividades` **389 ms** · `acerca_de` **354 ms** · `a23` 259 · `a05` 232
-  · `sp_p6` 215 · `inicio` 6. Con eso, **el generador de abajo probablemente sobra**, y
-  la precarga (todas las páginas ≈ 1,5 s) quizás se pueda encender tal cual: decisión
-  del autor, después de mirar la ventana. Lo de abajo es el diagnóstico de 2.0.2, y se
-  conserva porque su premisa («no hay trabajo que sacar del hilo, es Tk puro») era
-  cierta pero incompleta: el Tk era autoinfligido.
-
-  (2.0.2; el autor lo probó y lo llamó «VERY JARRING».) Construir una página **bloquea el hilo de la GUI varios
-  segundos**, y mientras tanto Windows no puede repintar: la ventana se ve ROTA — sin
-  sidebar, con el texto del Inicio a medio dibujar y pedazos de la página que se está
-  armando. Pasa igual con el `.exe` y con `python -m gui.app`, o sea **no es empaquetado**.
-
-  **Medido** (con `mainloop` real; arneses en `docs/evanesced/gui-2.0_merge/`):
-
-  | Página | Bloqueo |
-  |---|---|
-  | `acerca_de` | **7105 ms** |
-  | `sm_actividades` | 5753 ms |
-  | `a23_respiratorio` | 1813 ms |
-  | `a05` | 1090 ms |
-  | `sp_p6_poblacion` | 1031 ms |
-  | `inicio` | 89 ms |
-
-  **No se arregla con hilos, y está medido, no supuesto.** `cProfile` dice que el costo
-  es Tk puro: `sm_actividades` = 7,1 s de 8,4 en `_tkinter.tkapp.call` (101.700 llamadas);
-  `acerca_de` = 6,1 s de 7,1 (76.181). No hay I/O ni imports que adelantar, y los widgets
-  de Tk solo existen en el hilo del `mainloop` (un intérprete Tcl por hilo), así que
-  crearlos en un worker es la trampa #1 de `gui/CLAUDE.md`.
-
-  **El arreglo propuesto:** que `_construir_pagina` **ceda el control**, convirtiéndola en
-  un **generador** que hace `yield` entre pasos (título, cada input, extras, mes/carpeta,
-  log, botones). El generador conserva sus closures solo, así que encaja con el código
-  actual sin desarmar el contrato `PANTALLA`. Los llamadores: `mostrar` lo drena entero
-  (comportamiento de hoy) y la precarga lo avanza **un paso por tick**. Con ~10 pasos,
-  `sm_actividades` pasa de un bloqueo de 5753 ms a tramos de ~570 ms.
-
-  **Lo que ya está hecho** y no hay que rehacer:
-  - La **precarga incremental** con barra al pie (`App._precargar_tick`,
-    `widgets.barra_precarga`), con sus tests. Queda **apagada**: `App(precargar=False)`
-    por defecto, porque hoy junta los bloqueos al arranque y empeora la primera
-    impresión. Encenderla es cambiar ese default, una vez que el generador exista.
-  - Las páginas ya **no se gridean mientras se construyen**, que era una causa aparte:
-    customtkinter llama `update_idletasks()` al crear cada widget, así que un frame
-    gridado se PINTA a medio armar. Eso daba páginas superpuestas; ya no pasa.
-
-  **Ojo al implementarlo:** `acerca_de` e `inicio` son **páginas especiales**, no están en
-  `registro` y por eso la precarga no las cubre — y `acerca_de` es justamente la más cara
-  de todas. La solución tiene que incluirlas, o se arregla todo menos lo peor.
 - **Catálogos en la GUI** (fecha visible + actualización manual en modo
   avanzado): va en [docs/GUI_2.0_plan.md](docs/GUI_2.0_plan.md) §7.1. La parte de
   lógica (drop-in en `~/.autorem/catalogos/`) se hace en `main`.

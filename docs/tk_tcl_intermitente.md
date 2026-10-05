@@ -10,7 +10,12 @@ Version: 2.0.11
 
 # El `tk.tcl` intermitente de `test_gui_construccion`
 
-> **EN CURSO** — abierto 2026-09-23. **Causa encontrada y reproducida sin pytest**
+> **LISTO Y CERRADO** — 2026-10-05. Python del PC del trabajo actualizado a uno con
+> Tcl 9, hooks reinstalados y el `.exe` compila; el `tk.tcl` ya no aparece (verificado
+> por el autor). Se conserva como registro: lo citan `gui/CLAUDE.md` y
+> `docs/review_gui-2.0_pendiente.md` §3.
+>
+> *(Header anterior:)* **EN CURSO** — abierto 2026-09-23. **Causa encontrada y reproducida sin pytest**
 > (§6, «El mecanismo»): la captura por fd de pytest cierra los std handles que Tcl
 > tiene anotados, y Windows los reusa. **Es un bug de Tcl 8.6 que Tcl 9 ya no tiene**
 > (ronda 6, 2026-09-26): el arreglo de fondo es actualizar el Python del PC del trabajo

@@ -155,9 +155,8 @@ constante del módulo que lo muestra (`a05.TITULO_FALTA_ACUSE`, `runner.TITULO_N
   aparte, por `collect_submodules('gui.paginas')` en `autoREM.spec`.
 - **Hallazgo #14 cerrado:** `runner.py` duplicaba nueve helpers de `autorem.py` y ya habían
   divergido. Queda UNA copia, la de `gui/`.
-- **Sigue pendiente, y es lo único:** mirar la ventana **con ojos humanos** y **compilar el
-  `.exe`** (paso 13 del plan). Hasta la 2.0.0 la GUI no entraba al bundle, así que los
-  arreglos de empaquetado quedaron razonados pero sin build que los probara.
+- **Hecho (2026-10-05):** la ventana se miró con ojos humanos y el `.exe` compila (paso 13
+  del plan). La GUI 2.0 está cerrada.
 - Los mensajes de `validar_iris`/`validar_admin` dicen «Cambia el selector de formato», y ese
   selector ya no existe. Solo se alcanzan desde el CLI y el notebook 1.x, las dos superficies
-  **congeladas** (§12); se revisan si el CLI revive.
+  **congeladas** (CLAUDE.md §2, «Arranque»): decisión cerrada, no se actualizan.
