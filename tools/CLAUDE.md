@@ -22,6 +22,7 @@ Se carga al trabajar en `tools/`. Los `§N` son las anclas del [CLAUDE.md raíz]
 | `scan_catalogo.py` | Escáner de PII antes de versionar un catálogo. |
 | `limpiar_refs.py` | Deja en **banner + encabezado** lo que entra a `refs_tablas/` (libro nuevo, escaneado antes de escribirse). Skill `limpiar-refs`; lo vigila `tests/test_refs_tablas.py`. |
 | `slim_maestro.py` | Genera el Maestro de Actividades slim comprimido. |
+| `checks_excel/` | **Macros VBA de chequeo pre-envío**, una por módulo: `REM_<serie>_<módulo>.bas` (hoy `REM_A_SM`). Solo leen el total de cada tabla del REM y marcan REVISAR los 0 y los errores, lo que caza un total sin fórmula o una tabla sin pegar. Las celdas salen de la plantilla `SA_26 V1.2`: si cambia la versión, hay que revisarlas. |
 | `correr_tests.py` | **La suite completa en 3 procesos**, un archivo por proceso: ~30 s (2.0.16; 47 s en 2.0.14 con Tcl 9; en 2.0.2 eran 194 s -> 103 s). No reemplaza a `pytest` (para depurar un test suelto, pytest directo da mejor traceback). El reparto es por ARCHIVO y **no** por test suelto a propósito -> ver abajo. |
 
 **¿Por qué el check anti-RUT y `hooks_git.py` son archivos separados?** Porque son
