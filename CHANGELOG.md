@@ -17,9 +17,10 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 - **Inventario de Epidemiología (A04·P a U)**:
   [docs/epidemiologia_casillas_SA.md](docs/epidemiologia_casillas_SA.md). Cruza la tabla
   de actividades del equipo con el Maestro, el Comentado y el `SA_26`. Q, R y S calzan
-  exacto. P, T y U salen del Registro de Atención Comunitaria, y la tabla las manda a
-  actividades `AG_` de gestión (o, en P, a una del A26), así que nunca llegan al A04. Eso
-  explica por qué hoy no se reporta nada. Sin código: es la base del módulo.
+  exacto. P, T y U salen del Registro de Atención Comunitaria (export grupal); la tabla
+  las mapea a actividades `AG_` de gestión (P, a una del A26), y T, U y casi todo P no
+  están habilitadas. Hoy no se reporta nada porque todo se registra como gestión: el
+  módulo espera a que cambie el registro. Sin código.
 - **Referencia `refs_tablas/Tabla_Actividades_RAYEN_Epidemiologia_2026.xlsx`**, una copia
   limpia que trae solo las celdas: el original traía el nombre de quien lo armó en las
   propiedades y 17 controles ActiveX. `limpiar_refs` la deja intacta (denylist

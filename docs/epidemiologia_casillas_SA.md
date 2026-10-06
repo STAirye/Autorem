@@ -65,16 +65,21 @@ Reglas del Comentado que el módulo tiene que respetar:
 | **T** | `Busqueda activa institucional (BAI) de casos - BAI <evento> - <rango de registros>` (3 × 3 = **9 actividades**) | ❌ **ninguna** | `Ag-Investigación Epidemiológica` para las tres filas | ❌ esa es `AG_Investigación Epidemiológica`, **REM-Gestión**: no alimenta ningún REM, y aunque lo hiciera no distingue evento ni rango |
 | **U** | `Busqueda activa comunitaria (BAC) de casos - BAC febriles` · `- BAC otros eventos epidemiológicos` | ❌ **ninguna** | `AG-Busqueda activa de casos ENO` | ❌ es `AG_Búsqueda activa de casos de ENO`, **REM-Gestión** (6 estamentos) |
 
-**Por qué no se reporta nada (hipótesis, falta confirmarla con datos, §4):**
-1. **P, T y U** se registran en el **Registro de Atención Comunitaria**, no en el box. La
-   tabla los manda a actividades de gestión (`AG_…`) o a una del A26, así que **aunque
-   se registren, nunca llegan al A04**. Las actividades de T y U, y tres de las cuatro
-   de P, ni siquiera están en el Maestro: probablemente viven en el catálogo del módulo
-   comunitario, que el Maestro no cubre (sin verificar).
-2. **Q, R y S** sí apuntan bien. Si igual salen en 0, el equipo registra otra cosa en
-   el box: lo más probable son las `AG_…` de la columna G (§3), que son de gestión.
-3. El encabezado de la tabla lo dice solo: *«se encuentran en perfil … Otras actividades
-   para la gestión»*. **Todo lo que es gestión, por definición, no va a ningún REM.**
+**Por qué no se reporta nada (confirmado por el autor, 2026-10-06):** las actividades
+de epidemiología del CESFAM las registra hoy **una sola persona, y todas como trabajo de
+gestión**. El problema no es de mapeo ni de datos: **el dato que pide el A04 no se está
+generando**. Contar el ADA de un mes no aporta nada, porque daría 0 en las seis secciones.
+
+Lo que sí deja el cruce:
+1. **Q, R y S** tienen actividad literal habilitada (43 estamentos): basta con
+   registrarlas así, en el box.
+2. **T, U y tres de las cuatro de P no están habilitadas** en el establecimiento: lo que
+   no aparece en el Maestro no está habilitado (confirmado por el autor). Hoy **no hay
+   forma de registrarlas**, ni bien ni mal.
+3. La única actividad del P que existe (`Encuesta epidemiológica - Visita
+   epidemiológica`) está habilitada **solo para Enfermero/a**.
+4. Aunque se pidieran, la tabla del equipo mapea mal P (al A26·B) y T/U (a gestión).
+   Como guía de registro, hay que usar el §2, no la tabla.
 
 ## 3. Columna G — «Otras actividades epidemiológicas»
 
@@ -113,38 +118,33 @@ contactos/expuestos de ENO`, `Vigilancia Epidemiologica`, `Consulta Epidemiologi
 orientación y/o educación en el marco epidemiológico*, 60 estamentos), que es donde cae
 la «educación para prevención de brote» de la columna E.
 
-## 4. Qué falta para planificar el módulo
+## 4. Qué falta para el módulo
 
-**Datos (los consigue el autor; nada de esto entra al repo):**
-1. **Un mes de ADA IRIS** (`Atenciones/Diagnósticos/Actividades`), el mismo export que
-   usa SM Actividades. Con eso se cuenta qué actividades de epidemiología se registran
-   HOY en el box, y cuánto. Confirma o tira la hipótesis del §2.
-2. **El export del Registro de Atención Comunitaria.** Hay que averiguar qué reporte de
-   RAYEN lo trae: puede ser el mismo «Atenciones Grupales» (tiene `MULTIPROFESIONAL`,
-   que serviría para las columnas de P) u otro. Sin él, P, T y U no se pueden tabular.
-3. Confirmar en RAYEN si las actividades BAI/BAC y las tres de P que faltan en el
-   Maestro **están habilitadas** en el establecimiento, y para qué estamentos.
+**El orden está invertido respecto de un módulo normal: primero el registro, después
+el código.** Sin datos registrados, el módulo saldría en 0 de punta a punta, y un 0 que
+parece real es justo lo que prohíbe la regla dura 2.
 
-**Decisiones para el equipo (no son de código):**
-- **El registro tiene que cambiar.** Con las `AG_…` ninguna herramienta puede llenar el
-  A04: el dato no existe. La corrección es registrar las actividades literales del
-  Comentado (§2). Un módulo que «adivine» el A04 desde actividades de gestión sería un
-  número plausible pero inventado (regla dura 2).
-- **T necesita el rango de registros revisados**, que va EN el nombre de la actividad
-  (<100, 100-250, >250). Si no se registra así, no hay de dónde sacarlo.
-- El encargado de P tiene que agregar a los participantes en «Profesionales que
-  participaron»: si no, todo cae en una columna o en ninguna.
+**Registro (no es código):**
+1. **Q, R y S, desde ya:** registrar en el box las actividades literales del §2 en vez de
+   las `AG_…`. Q es una actividad por insumo **y** destino (18 en total).
+2. **P, T y U:** pedir que se **habiliten** (RAYEN / SSMC). T y U no existen hoy en el
+   establecimiento; de P solo existe la primera fila, y solo para Enfermero/a. T necesita
+   las 9 variantes, porque el rango de registros revisados (<100, 100-250, >250) va **en
+   el nombre** de la actividad.
+3. En P, agregar a los participantes en «Profesionales que participaron»: de eso salen
+   las columnas «uno» vs «dos o más».
 
-**Diseño probable (a confirmar en el plan):**
+**Fuentes, ya resueltas:** box -> ADA IRIS (el mismo export de SM Actividades), y Registro
+de Atención Comunitaria -> **Atenciones Grupales** (confirmado; trae `MULTIPROFESIONAL`).
+No se necesita un export nuevo ni un contrato nuevo.
+
+**Diseño probable (para cuando haya un mes registrado bien):**
 - Nombre: `modulos/rem_a04_pu_epidemiologia.py`, `id` `a04_pu_epidemiologia`.
-- **Q, R y S** son casi gratis: el ADA ya se carga en SM Actividades
-  (`rem_sm_actividades`), las actividades calzan exacto con el Maestro, y los rangos
-  etarios (<18, 18-64, 65+) salen de `AÑOS ATENCION`. Q cruza insumo × destino desde el
-  nombre de la actividad.
-- **P, T y U** dependen del export comunitario (punto 2): sin él, esas secciones van en
-  la hoja LEEME como «no cubiertas», nunca en 0.
-- Como auditoría (regla de la tabla intermedia), una hoja con las `AG_…` epidemiológicas
-  registradas en el mes, con el aviso de que **no suman al REM**: es la evidencia para
-  que el equipo vea que lo que hace no se está reportando.
-- La columna G se puede volver una lista en el código (`ACT_EPI_GESTION`), con los
-  nombres del Maestro, no los de la tabla.
+- **Q, R y S** salen del ADA: el cargador ya existe (`rem_sm_actividades`), las
+  actividades calzan exacto con el Maestro, y los rangos etarios (<18, 18-64, 65+) salen
+  de `AÑOS ATENCION`. Q cruza insumo × destino desde el nombre de la actividad.
+- **P, T y U** salen del grupal (`cargar_grupal`). Mientras no estén habilitadas, van en
+  la hoja LEEME como «actividad no habilitada», **nunca en 0**.
+- Hoja de auditoría con las `AG_…` epidemiológicas del mes y el aviso de que **no suman
+  al REM**. Sirve para la transición: muestra qué se sigue registrando como gestión. La
+  lista (`ACT_EPI_GESTION`) va con los nombres del Maestro (§3), no con los de la tabla.

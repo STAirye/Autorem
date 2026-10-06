@@ -94,7 +94,6 @@ SENSITIVE_PII/
 # NO es export: no tiene pacientes, se versiona COMPLETA (denylist 'tabla_actividades').
 # Es una copia limpia, solo con los valores de celda: el original trae el nombre de quien
 # lo hizo en docProps y 17 controles ActiveX pegados. Escaneada: 0 RUT/correo/telefono.
-# El original (..._original.xlsx) queda local e ignorado.
 !refs_tablas/Tabla_Actividades_RAYEN_Epidemiologia_2026.xlsx
 
 # --- Catálogos oficiales DEIS/MINSAL (catalogos/) — SÍ versionados, en bloque ---
