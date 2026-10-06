@@ -357,3 +357,29 @@ casa (Python 3.9) ademas del de trabajo (3.14).
 Corren desde la raiz del repo. `matriz_pytest.py` con la variante `pin` necesita
 `PYTHONPATH=docs/evanesced/tk_tcl_intermitente` para encontrar `tcl_std_pin`. El fixture de
 `repro_tk_tcl.py` lleva el RUT de ejemplo `11111111-1`.
+
+### `epidemiologia-2.0.29/`
+
+El inventario de Epidemiologia A04 P-U (oct-2026). El resultado esta en
+[docs/epidemiologia_casillas_SA.md](../epidemiologia_casillas_SA.md); esto es lo que lo
+produjo, mas la hoja de registro y la solicitud que se llevaron a la reunion de epi con el
+Servicio.
+
+| Archivo | Que hace |
+|---|---|
+| `cruce_epi.py` | Cruza la tabla del equipo (columnas C y G, desde la fila 7) contra `catalogos/maestro_slim.csv.gz`: calce exacto con `norm`, y si no, los 3 mas parecidos con `difflib` (cutoff 0.6). Tambien lista lo que el Maestro tiene en A04 P-U y todo lo que suena a epidemiologia |
+| `limpiar_epi.py` | Arma la copia limpia de la referencia: un libro nuevo con solo los valores de celda y anchos de columna, sin creador/ultimo-modificador, y verifica que las celdas calcen 1 a 1 con el original |
+| `registro_epi_a04.html` | Fuente del artifact privado (claude.ai/artifact/4S9R9QQKK3EP7spcXFnaz3): la hoja de registro por seccion y la solicitud con boton de copiar |
+| `epi_docx.js` | La misma hoja en `.docx` A4 para imprimir (pag. 1 registro, pag. 2 solicitud). Node + paquete npm `docx` |
+
+Trampas:
+- `cruce_epi.py` corre desde la raiz del repo y toma la ruta de la tabla como argumento.
+  Se corrio sobre el original (`ACTIVIDADES RAYEN PARA REM EPIDEMIOLOGÍA 2026 2.0.xlsx`, ya
+  borrado); sobre la copia limpia de `refs_tablas/` da lo mismo, porque las celdas son
+  identicas. La salida pesa ~200 KB por la lista de actividades con `COVID`: hay que filtrarla.
+- El patron de `cruce_epi.py` es ancho a proposito (`NOTIFICACION`, `ANTIGENO`) y trae
+  mucho ruido (examenes criticos, H. pylori). Lo que importa es el bloque `=== Tabla epi`.
+- `epi_docx.js` necesita `npm install docx` en su carpeta (no estaba preinstalado) y recibe
+  la ruta de salida como argumento. El render se reviso exportando a PDF con Word por COM
+  (no hay LibreOffice en el PC de trabajo). El `.docx`/`.pdf` generados no se archivan
+  (binarios): se regeneran con el script.

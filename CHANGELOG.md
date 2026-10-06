@@ -25,6 +25,10 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
   limpia que trae solo las celdas: el original traía el nombre de quien lo armó en las
   propiedades y 17 controles ActiveX. `limpiar_refs` la deja intacta (denylist
   `tabla_actividades`), porque las filas son la referencia.
+- **Scripts del inventario archivados** en
+  [docs/evanesced/epidemiologia-2.0.29/](docs/evanesced/epidemiologia-2.0.29/): el cruce
+  contra el Maestro, la limpieza de la referencia, y la hoja de registro con la solicitud
+  al Servicio (HTML y generador `.docx`).
 
 ## [2.0.28] — 2026-10-02
 
