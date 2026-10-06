@@ -224,7 +224,8 @@ def header_de(rel):
 
 def staged_py():
     """.py de CODIGO que entran en este commit (los que deben declarar la version)."""
-    salida = _git("diff", "--cached", "--name-only", "--diff-filter=ACM")
+    # R: un archivo movido tambien entra con su header (--name-only da la ruta nueva).
+    salida = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     return [f for f in (l.strip() for l in salida.split("\n"))
             if f.endswith(EXTS) and debe_llevar_version(f)]
 
