@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.28** (§9). **394 tests.**
+Versión **2.0.29** (§9). **394 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -191,7 +191,7 @@ en el `.gitignore`: un `.xlsx` nuevo queda ignorado hasta vetarlo (skill
 **No se reservan números para hitos:** la versión mide avance, y no se congela
 esperando una validación. (El 1.10.0 ya no está apartado para la familia población.)
 
-Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.28**.
+Con puntos (`1.4.10`), para que Z pase de 9. Estado actual: **2.0.29**.
 
 - **Cada `.py` lleva la versión de SU último cambio**, no todas sincronizadas.
   Llevan versión: `autorem.py`, `programas/`, `modulos/`, `tools/`. No llevan: `tests/`
@@ -223,6 +223,7 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
 | **Salud Mental — población** | SP·P6 A.1 + Rescate de inasistentes, vía `programas/poblacion.py` | 🚧 en validación (§2.1) |
 | **Respiratorio** | A23 (indicadores · SALA · Secciones G y H · tablas por sección) | 🚧 IRIS ✅ · Monitoreo Admin parcial · falta formulario admin y afinar A/I-espiro/O |
 | **Dependencia (PDS) + Cuidados Paliativos (CPU)** | A03·D.6 · A05·J/V · A26·A.1/C · A27 · A33 · P3 · P5 | 📌 inventariado (docs/pds_cpu_casillas_*.md), sin implementar (§12) |
+| **Epidemiología** | A04·P a U (encuesta, quimioprofilaxis, muestras, seguimiento de contactos, BAI, BAC) | 📌 inventariado ([docs/epidemiologia_casillas_SA.md](docs/epidemiologia_casillas_SA.md)): hoy no se reporta nada; P/T/U se registran como actividades de gestión |
 | Cardiovascular · SSyR · otros | — | pendiente |
 
 ---
@@ -261,6 +262,11 @@ semilla de Cardiovascular, SSyR y Dependencia es esa misma spec.
   [docs/pds_cpu_casillas_SP.md](docs/pds_cpu_casillas_SP.md) (skill `inventario-rem`).
   Su punto de entrada es `EXCLUIR_SMISH` del Trabajo Perdido. Base: página
   «Dependencia» del PowerBI + `poblacion.py`.
+- **Módulo Epidemiología (A04·P a U)**: hoy el CESFAM no reporta ninguna actividad de
+  epidemiología. Q, R y S calzan exacto con el Maestro (salen del ADA); P, T y U se
+  registran en el Registro de Atención Comunitaria y la tabla del equipo los manda a
+  actividades `AG_` de gestión, que no van a ningún REM. Falta un mes de ADA y saber qué
+  export trae lo comunitario: [docs/epidemiologia_casillas_SA.md](docs/epidemiologia_casillas_SA.md) §4.
 - **Delta P(m) − P(m−1) → A05 N/O** (fase 4 del plan P6): portar el
   `CALCULADOR_A05_DESDE_P_2.1_junio.xlsx`, no reinventarlo. **P y A no calzan banda
   por banda** porque tienen algunos diagnósticos distintos, casillas protegidas

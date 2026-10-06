@@ -7,7 +7,7 @@
 # Author: Simón Tobar — CESFAM Dr. Luis Ferrada Urzúa (APS, SSMC)
 # Copyright (C) 2026 Simón Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.29
 #
 # Distributed WITHOUT ANY WARRANTY. GPL-3.0-or-later:
 # <https://www.gnu.org/licenses/>.
@@ -81,8 +81,11 @@ DENY_EXT = {".xlsm", ".xltx", ".xltm", ".dotx", ".potx"}
 # 'maestro' = Maestro de Actividades (catálogo completo RAYEN act<->profesional, 217k
 # filas, sin PII de paciente). Es REFERENCIA de por vida -> se mantiene INTACTO.
 # 'comparativo' = tabla PSC/PSC-Y/GHQ-12 armada a mano (documento, no export).
+# 'tabla_actividades' = tablas casilla REM <-> actividad RAYEN armadas por un equipo
+# (hoy la de epidemiologia A04 P-U, docs/epidemiologia_casillas_SA.md): sus filas SON
+# la referencia.
 DENY_NOMBRE = ("minimanual", "comentado", "calculador", "manual", "arsenal", "maestro",
-               "comparativo")
+               "comparativo", "tabla_actividades")
 
 # Fila de header = primera fila con al menos esta cantidad de celdas no vacías.
 MIN_CELDAS_HEADER = 5

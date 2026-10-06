@@ -90,6 +90,12 @@ SENSITIVE_PII/
 !refs_tablas/pdscpu_iris.xlsx
 !refs_tablas/zarit_abreviado_admin.xlsx
 !refs_tablas/zarit_abreviado_iris.xlsx
+# Tabla casilla A04 P-U <-> actividad RAYEN de epidemiologia (armada por el equipo, oct-2026).
+# NO es export: no tiene pacientes, se versiona COMPLETA (denylist 'tabla_actividades').
+# Es una copia limpia, solo con los valores de celda: el original trae el nombre de quien
+# lo hizo en docProps y 17 controles ActiveX pegados. Escaneada: 0 RUT/correo/telefono.
+# El original (..._original.xlsx) queda local e ignorado.
+!refs_tablas/Tabla_Actividades_RAYEN_Epidemiologia_2026.xlsx
 
 # --- Catálogos oficiales DEIS/MINSAL (catalogos/) — SÍ versionados, en bloque ---
 # Otra naturaleza que refs_tablas/: no son "ejemplos anonimizados" sino DATOS

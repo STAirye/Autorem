@@ -10,6 +10,21 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.29] — 2026-10-06
+
+### Agregado
+
+- **Inventario de Epidemiología (A04·P a U)**:
+  [docs/epidemiologia_casillas_SA.md](docs/epidemiologia_casillas_SA.md). Cruza la tabla
+  de actividades del equipo con el Maestro, el Comentado y el `SA_26`. Q, R y S calzan
+  exacto. P, T y U salen del Registro de Atención Comunitaria, y la tabla las manda a
+  actividades `AG_` de gestión (o, en P, a una del A26), así que nunca llegan al A04. Eso
+  explica por qué hoy no se reporta nada. Sin código: es la base del módulo.
+- **Referencia `refs_tablas/Tabla_Actividades_RAYEN_Epidemiologia_2026.xlsx`**, una copia
+  limpia que trae solo las celdas: el original traía el nombre de quien lo armó en las
+  propiedades y 17 controles ActiveX. `limpiar_refs` la deja intacta (denylist
+  `tabla_actividades`), porque las filas son la referencia.
+
 ## [2.0.28] — 2026-10-02
 
 ### Corregido
