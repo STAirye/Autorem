@@ -224,7 +224,7 @@ python autorem.py --cli entrada.xlsx [--formato iris|administrativo] [--tarea ID
 
 ## Pruebas
 
-Datos 100% sintéticos, sin PII. **394 pruebas** en 20 archivos:
+Datos 100% sintéticos, sin PII. **396 pruebas** en 21 archivos:
 Requiere python 3.14.7+ con Tcl 9+
 
 ```bash

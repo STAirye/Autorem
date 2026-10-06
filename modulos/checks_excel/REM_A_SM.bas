@@ -6,7 +6,7 @@ Attribute VB_Name = "REM_A_SM"
 ' Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 ' Copyright (C) 2026 Simon Tobar
 ' SPDX-License-Identifier: GPL-3.0-or-later
-' Version: 2.0.28
+' Version: 2.0.29
 ' ==========================================================================
 '
 ' Chequeo pre-envio del REM serie A, Salud Mental (plantilla SA_26 V1.2).
@@ -17,7 +17,8 @@ Attribute VB_Name = "REM_A_SM"
 ' tabla tenia datos y C245 daba 0). No modifica nada.
 '
 ' Uso: abrir el REM del mes, Alt+F11 > Archivo > Importar > este .bas, F5.
-' Si MINSAL cambia la version de la plantilla, revisar las celdas de abajo.
+' Las celdas las vigila tests/test_checks_excel.py contra la plantilla de
+' refs_tablas/: si MINSAL la cambia, el test falla (skill check-excel).
 
 Sub ChequeoSM()
     Dim c, p, v, s As String, malo As Boolean

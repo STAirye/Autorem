@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.5
+# Version: 2.0.29
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -75,7 +75,14 @@ RAIZ_VERSIONADOS = ("autorem.py",)
 EXENTOS_NOMBRE = ("__init__.py",)
 EXENTOS_DIR = ("legacy",)
 
-RE_HEADER = re.compile(r"^# Version: *([\d.]+) *$", re.M)
+# Codigo con header de version: los .py y las macros VBA de modulos/checks_excel/
+# (comentario con ' en vez de #). Los reemplazos conservan el prefijo de cada uno.
+EXTS = (".py", ".bas")
+RE_HEADER = re.compile(r"^[#'] Version: *([\d.]+) *$", re.M)
+
+
+def _con_version(texto, ver):
+    return RE_HEADER.sub(lambda m: m.group(0)[:2] + f"Version: {ver}", texto, count=1)
 RE_VERSION_PY = re.compile(r'^VERSION = "([\d.]+)"', re.M)
 
 # Los sitios de la documentacion VIGENTE donde se repite el conteo de tests, POR
@@ -176,7 +183,7 @@ def debe_llevar_version(rel):
 
 
 def py_del_repo():
-    return [l for l in _git("ls-files", "*.py").split("\n") if l.strip()]
+    return [l for l in _git("ls-files", *(f"*{e}" for e in EXTS)).split("\n") if l.strip()]
 
 
 def _archivos_test():
@@ -219,7 +226,7 @@ def staged_py():
     """.py de CODIGO que entran en este commit (los que deben declarar la version)."""
     salida = _git("diff", "--cached", "--name-only", "--diff-filter=ACM")
     return [f for f in (l.strip() for l in salida.split("\n"))
-            if f.endswith(".py") and debe_llevar_version(f)]
+            if f.endswith(EXTS) and debe_llevar_version(f)]
 
 
 # -- Los chequeos -------------------------------------------------------------
@@ -303,8 +310,7 @@ def arreglar():
         h = header_de(rel)
         if h is not None and h != ver:
             p = RAIZ / rel
-            p.write_text(RE_HEADER.sub(f"# Version: {ver}", p.read_text(encoding="utf-8"),
-                                       count=1), encoding="utf-8")
+            p.write_text(_con_version(p.read_text(encoding="utf-8"), ver), encoding="utf-8")
             tocados.append(f"{rel}: header {h} -> {ver}")
 
     for t in tocados:
@@ -345,13 +351,11 @@ def bump(nueva):
 
     # Headers de lo modificado en el arbol (staged o no): son los que cambiaron.
     mod = {l[3:].strip() for l in _git("status", "--porcelain").split("\n")
-           if l[3:].strip().endswith(".py")}
+           if l[3:].strip().endswith(EXTS)}
     for rel in sorted(f for f in mod if debe_llevar_version(f)):
         p = RAIZ / rel
         if p.exists() and header_de(rel) not in (None, nueva):
-            p.write_text(RE_HEADER.sub(f"# Version: {nueva}",
-                                       p.read_text(encoding="utf-8"), count=1),
-                         encoding="utf-8")
+            p.write_text(_con_version(p.read_text(encoding="utf-8"), nueva), encoding="utf-8")
             print(f"  {rel} -> {nueva}")
 
     claude = CLAUDE.read_text(encoding="utf-8")

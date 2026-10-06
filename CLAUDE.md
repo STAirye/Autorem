@@ -99,7 +99,7 @@ que Claude Code carga solo cuando trabaja con archivos de esa carpeta. Los `§N`
 
 ## 2. Estado actual del repo
 
-Versión **2.0.29** (§9). **394 tests.**
+Versión **2.0.29** (§9). **396 tests.**
 
 **Qué es compartido y qué es modular:**
 - **Compartido — `programas/`:** primitivas (`rem_utils`), eje de formato IRIS/Admin
@@ -122,12 +122,13 @@ Cadena de imports: `rem_utils` ← `formatos` ← capas ← módulos ← `autore
 autorem.py        entry point / dispatcher (único código en la raíz)
 programas/        capas compartidas         -> programas/CLAUDE.md
 modulos/          un reporte REM por archivo -> modulos/CLAUDE.md
+  checks_excel/     macros VBA de chequeo pre-envio, una por programa y serie
 tools/            utilitarios de desarrollo  -> tools/CLAUDE.md
 gui/              la GUI (customtkinter)      -> gui/CLAUDE.md
 catalogos/        CIE-10 / ENO / GES + maestro_slim, que shippea el exe (§14)
 refs_tablas/      planillas de EJEMPLO, solo header (whitelist por archivo)
   specs/            DAX + visuales del PowerBI por página (skill pbip-spec)
-.claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes · inventario-rem
+.claude/skills/   limpiar-refs · check-cp1252 · versionar · tests-fuentes · inventario-rem · check-excel
 legacy/           monolitos viejos + la GUI 1.x congelada (.py.gz; no se importan)
 tests/            pruebas automáticas        -> tests/CLAUDE.md
 docs/             planes y contexto por módulo

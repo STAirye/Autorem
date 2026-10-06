@@ -19,6 +19,8 @@ Se carga al trabajar en `modulos/`. Los `§N` son las anclas del [CLAUDE.md raí
 - Mes vacío por `rem_utils.filtrar_mes`, nunca un filtro a mano (§3.1).
 - Header con versión + bump **Y** (skill `versionar`).
 - Fila en la tabla de abajo y en la matriz de programas (§9 raíz).
+- **Su check pre-envío** en `checks_excel/` (skill `check-excel`): los totales de sus
+  tablas, en la macro de su programa y serie.
 
 ## Módulos
 
