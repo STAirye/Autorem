@@ -10,6 +10,20 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.30] — 2026-10-06
+
+### Cambiado
+
+- **La barra de progreso avisa «puede tardar entre 1 y 2 minutos»** (antes «~1 min»),
+  en `runner.en_hilo`, que la muestran todas las pantallas. Sale del primer benchmark
+  de la herramienta ENTERA, en el PC más rápido donde va a correr (Ryzen 7 5800X3D):
+  A05 3-16 s, SM+TP 16-18 s, A23 45 s y P6+Rescate 44 s con 6 años de historia, de los
+  que ~30 s son leer el ADA. En los PCs del CESFAM se proyecta 1-2 min. Leer los años en
+  paralelo bajaría ~15 s, y **se decidió no hacerlo**: contra más de una hora a mano
+  (30 min para alguien hábil en Excel), 1-2 minutos es razonable.
+- **Arnés y resultados archivados** en
+  [docs/evanesced/benchmark-2.0.29/](docs/evanesced/benchmark-2.0.29/).
+
 ## [2.0.29] — 2026-10-06
 
 ### Agregado

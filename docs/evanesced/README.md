@@ -383,3 +383,36 @@ Trampas:
   la ruta de salida como argumento. El render se reviso exportando a PDF con Word por COM
   (no hay LibreOffice en el PC de trabajo). El `.docx`/`.pdf` generados no se archivan
   (binarios): se regeneran con el script.
+### `benchmark-2.0.29/`
+
+Benchmark de la herramienta ENTERA (oct-2026) en el PC más rápido donde va a correr: Ryzen 7
+5800X3D (8c/16t), 32 GB, NVMe, Python 3.14.7. Exports reales del respaldo `D:\pega
+respaldo\Datos madre` (hasta el 11-mar-2026, mes 2026-02). Medianas de 3 corridas, cada
+escenario en su propio proceso (imports en frío, pico de RAM aislado):
+
+| Escenario | Tiempo | RAM |
+|---|---|---|
+| A05 N+O, PSM 2026 / PSM 2025 (año entero) | 2,7 s / 16,4 s | 131 / 372 MB |
+| A23, ADA+Otros+NSP 2021-26 + Estrat | 45 s | 689 MB |
+| SM Actividades + TP, ADA 2025-26 (1 mes / 6 meses) | 16 s / 18 s | 565 MB |
+| P6 + Rescate, ADA y PSM 2021-26 + Inscritos | 44 s | 711 MB |
+| Suite de tests (399) | 77 s | -- |
+
+`cargar_atenciones` con el ADA 2021-26 son 29,5 s (2/3 del A23 y del P6), de los que 19 s
+son calamine leyendo los 6 archivos en serie. Leerlos en paralelo bajaría ~15 s (estimado,
+no medido), pero **se decidió no hacerlo**: en los PCs del CESFAM se proyecta 1-2 min
+contra >1 h a mano (30 min para alguien hábil en Excel), y eso es razonable. Lo que salió de
+acá fue solo el texto de la barra de progreso (`runner.en_hilo`: «entre 1 y 2 minutos»), en
+la **2.0.30**.
+
+- `bench_todo.py` - orquestador: cada escenario (`import`, `a05_2026`, `a05_2025`, `a23`,
+  `sm_tp`, `sm_6meses`, `p6_rescate`) en un subproceso, N repeticiones, medianas por fase.
+  `--uno <escenario>` corre uno solo. Escribe a un temp y lo borra.
+- `bench_ada.py` - reparto de `cargar_atenciones`: lectura calamine por archivo vs
+  `cargar_canonico`, `fecha_col`, `exigir_estamento`. Importa `bench_todo` de la misma carpeta.
+- `salida_bench_todo.txt` / `salida_suite.txt` - las salidas tal cual.
+
+**Trampas:** rutas absolutas al respaldo de ESTE PC (`RAIZ`, `DM`); en otro PC hay que
+cambiarlas. `bench_todo` importa `gui.app`, que ya venía importado por `autorem`, por eso
+esa fase sale 0,00 s. Los tiempos internos de `bench_ada` se SOLAPAN (la lectura está dentro
+de `cargar_canonico`).

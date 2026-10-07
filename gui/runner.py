@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.14
+# Version: 2.0.30
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -395,7 +395,7 @@ def correr_con_reloj(root, barra, btn, log, trabajo, al_terminar):
 
     btn.configure(state="disabled")
     reloj = Reloj(barra, root).start(side="left", padx=(10, 4))
-    lbl = ctk.CTkLabel(barra, text="Procesando…  (puede tardar ~1 min)")
+    lbl = ctk.CTkLabel(barra, text="Procesando…  (puede tardar entre 1 y 2 minutos)")
     lbl.pack(side="left")
     threading.Thread(target=worker, daemon=True).start()
 

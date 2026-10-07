@@ -1,0 +1,54 @@
+[import] rep 1:   0.14 s (proceso  0.79 s) RAM 89 MB {}
+[import] rep 2:   0.15 s (proceso  0.80 s) RAM 89 MB {}
+[import] rep 3:   0.15 s (proceso  0.81 s) RAM 90 MB {}
+[a05_2026] rep 1:   2.64 s (proceso  3.32 s) RAM 131 MB {}
+[a05_2026] rep 2:   2.67 s (proceso  3.37 s) RAM 130 MB {}
+[a05_2026] rep 3:   2.66 s (proceso  3.36 s) RAM 130 MB {}
+[a05_2025] rep 1:  16.70 s (proceso 17.73 s) RAM 372 MB {}
+[a05_2025] rep 2:  16.18 s (proceso 17.14 s) RAM 372 MB {}
+[a05_2025] rep 3:  16.43 s (proceso 17.38 s) RAM 372 MB {}
+[a23] rep 1:  45.80 s (proceso 46.58 s) RAM 686 MB {'filas': 29916}
+[a23] rep 2:  45.13 s (proceso 45.91 s) RAM 689 MB {'filas': 29916}
+[a23] rep 3:  44.26 s (proceso 45.04 s) RAM 688 MB {'filas': 29916}
+[sm_tp] rep 1:  16.19 s (proceso 16.84 s) RAM 562 MB {'eventos': 817, 'tp': 10}
+[sm_tp] rep 2:  16.48 s (proceso 17.13 s) RAM 563 MB {'eventos': 817, 'tp': 10}
+[sm_tp] rep 3:  16.34 s (proceso 17.00 s) RAM 564 MB {'eventos': 817, 'tp': 10}
+[sm_6meses] rep 1:  18.26 s (proceso 19.01 s) RAM 565 MB {'eventos': 4894}
+[sm_6meses] rep 2:  18.31 s (proceso 19.03 s) RAM 565 MB {'eventos': 4894}
+[sm_6meses] rep 3:  17.94 s (proceso 18.64 s) RAM 565 MB {'eventos': 4894}
+[p6_rescate] rep 1:  45.21 s (proceso 45.92 s) RAM 711 MB {'P': 54148}
+[p6_rescate] rep 2:  44.31 s (proceso 45.02 s) RAM 711 MB {'P': 54148}
+[p6_rescate] rep 3:  43.74 s (proceso 44.42 s) RAM 710 MB {'P': 54148}
+
+=== MEDIANAS ===
+import       total   0.15 s | proceso   0.80 s | RAM    90 MB
+      0.15 s  import programas+modulos
+      0.00 s  import gui (customtkinter + paginas)
+a05_2026     total   2.66 s | proceso   3.36 s | RAM   131 MB
+      0.06 s  detectar formato
+      2.50 s  A05 N+O (abrir+marcar+guardar)
+a05_2025     total  16.43 s | proceso  17.38 s | RAM   372 MB
+      0.11 s  detectar formato
+     16.23 s  A05 N+O (abrir+marcar+guardar)
+a23          total  45.13 s | proceso  45.91 s | RAM   689 MB
+     40.82 s  a23.procesar
+      4.48 s  a23.escribir
+sm_tp        total  16.34 s | proceso  17.00 s | RAM   564 MB
+      8.22 s  cargar_atenciones (ADA 2025+2026)
+      6.15 s  sm.procesar_rango
+      0.35 s  sm.escribir
+      1.42 s  tp.procesar_rango
+      0.12 s  tp.escribir
+sm_6meses    total  18.26 s | proceso  19.01 s | RAM   565 MB
+      8.33 s  cargar_atenciones (ADA 2025+2026)
+      8.23 s  sm.procesar_rango 6 meses
+      1.62 s  sm.escribir
+p6_rescate   total  44.31 s | proceso  45.02 s | RAM   711 MB
+      4.34 s  cargar_inscritos
+      1.66 s  cargar_formulario_sm (PSM 2021-26)
+     29.64 s  cargar_atenciones (ADA 2021-26)
+      4.65 s  construir_poblacion
+      0.53 s  construir_p6
+      1.82 s  p6.escribir
+      1.45 s  rescate.procesar
+      0.09 s  rescate.escribir
