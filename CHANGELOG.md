@@ -25,6 +25,13 @@ Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 - **La carpeta de salida lleva su propio separador «Salida»**: pegada al bloque de
   opcionales se leía como un opcional más.
 
+### Corregido
+
+- **`test_perdidas_aceptadas_quedan_fijas` fallaba desde Python 3.14.10**, y no por un
+  bug: el fixture ahora escribe el `"  "` con `xml:space="preserve"`, y calamine lo
+  respeta (entrega `"  "`, igual que openpyxl). El pin y el docstring de
+  `_hojas_calamine` dicen ahora eso. Ningún número cambia: las guardas pasan por `norm()`.
+
 ## [2.0.30] — 2026-10-06
 
 ### Cambiado

@@ -48,10 +48,12 @@ def test_tipos_exactos(tmp_path):
 
 
 def test_perdidas_aceptadas_quedan_fijas(tmp_path):
-    """Pin de un comportamiento CONOCIDO de calamine (no un requisito): celda de error y
-    string de solo espacios salen ''. Si un cambio de version lo mueve, que se note."""
+    """Pin de un comportamiento CONOCIDO de calamine (no un requisito): la celda de error
+    sale ''. Un string de solo espacios que el XML marca `xml:space="preserve"` (asi lo
+    escribe openpyxl desde Python 3.14.10) llega TAL CUAL, igual que con openpyxl; hasta
+    ahi salia '' (nov-2026). Si un cambio de version lo mueve, que se note."""
     got = filas_xlsx(_libro(tmp_path / "p.xlsx", ("H", [["#N/A", "  ", "x"]])))[0]
-    assert got[0] == "" and got[1] == "" and got[2] == "x"
+    assert got[0] == "" and got[1] == "  " and got[2] == "x"
 
 
 def _referencia(ruta):

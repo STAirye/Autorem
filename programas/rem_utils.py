@@ -238,10 +238,11 @@ def _hojas_calamine(entrada):
     Un no-.xlsx (.html disfrazado, .xls) levanta `zipfile.BadZipFile`, la misma excepcion
     de siempre para `runner.es_error_formato`: sin la guarda, calamine LEERIA un .xls.
     El libro se cierra siempre (OneDrive, CLAUDE.md §13).
-    Perdidas conocidas y aceptadas: celda de error (#N/A) y string de solo espacios salen
-    `''` (0 casos en los exports reales; las fija tests/test_lectura_calamine.py), y en un
-    texto que el .xlsx no marca `xml:space="preserve"` se recortan los blancos de XML del
-    BORDE (no el \\xa0): pasa en el Maestro de Actividades, y `norm()` los recorta igual."""
+    Perdidas conocidas y aceptadas: celda de error (#N/A) sale `''` (0 casos en los
+    exports reales; la fija tests/test_lectura_calamine.py), y en un texto que el .xlsx
+    no marca `xml:space="preserve"` se recortan los blancos de XML del BORDE (no el
+    \\xa0) -- un string de solo espacios sin la marca sale `''`. Pasa en el Maestro de
+    Actividades, y `norm()` los recorta igual. Con la marca, llega tal cual."""
     import zipfile
     from python_calamine import CalamineWorkbook
     if not zipfile.is_zipfile(entrada):
