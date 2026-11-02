@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.19
+# Version: 2.0.31
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -653,7 +653,11 @@ class App(ctk.CTk):
 
         # Carpeta ANTES que mes: mismo orden visual que traian A23/SM/BETA en
         # autorem.py (orden puramente cosmetico, sin efecto funcional).
-        get_carpeta = widgets.fila_carpeta_salida(frame) if pantalla.get("carpeta_salida") else None
+        # Con su propio separador (2.0.30): pegada a los opcionales se leia como uno mas.
+        get_carpeta = None
+        if pantalla.get("carpeta_salida"):
+            widgets.separador_opcionales(frame, "Salida")
+            get_carpeta = widgets.fila_carpeta_salida(frame)
 
         if pantalla.get("mes") == "p":   # corte de un P: junio / final / personalizado
             get_mes[0] = widgets.selector_corte_p(frame, mes_anterior())

@@ -33,3 +33,11 @@ from programas import dotacion, estamentos   # noqa: E402
 CARPETA = Path(tempfile.mkdtemp(prefix="autorem_cache_tests_"))
 dotacion.RUTA_CACHE = CARPETA / "dotacion.json"
 estamentos.RUTA_CACHE = CARPETA / "estamentos.json"
+
+# La memoria de carpetas de los Examinar (2.0.30): los tests de la GUI aprietan
+# Examinar. Sin customtkinter no hay GUI que la toque.
+try:
+    from gui import widgets   # noqa: E402
+    widgets.RUTA_CARPETAS = CARPETA / "carpetas.json"
+except ImportError:
+    pass

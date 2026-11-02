@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 2.0.19
+# Version: 2.0.31
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -77,6 +77,43 @@ COLOR_TEXTO_TRANSPARENTE = ("gray10", "#DCE4EE")
 # REM viejo). Sigue cazando el tipeo de 2 digitos (26 por 2026), que es a lo que vino.
 ANIO_MAX = datetime.date.today().year
 ANIO_MIN = ANIO_MAX - 5
+
+# Ultima carpeta de cada boton Examinar (2.0.30), entre sesiones. Clave = el titulo del
+# dialogo (unico por boton). Solo la CARPETA, nunca el nombre del archivo. Si la carpeta
+# ya no existe no se pasa `initialdir` y Windows abre donde recuerde el (Misc._options
+# descarta los None). Los tests redirigen RUTA_CARPETAS.
+RUTA_CARPETAS = Path.home() / ".autorem" / "carpetas.json"
+_QUE_CARPETAS = "la última carpeta de cada botón Examinar"
+_SIN_CARPETAS = "cada Examinar abre donde lo recuerde Windows."
+_carpetas = None
+
+
+def _carpetas_cargadas():
+    global _carpetas
+    if _carpetas is None:
+        from programas.rem_utils import leer_cache_json
+        _carpetas = leer_cache_json(RUTA_CARPETAS, _QUE_CARPETAS, _SIN_CARPETAS)[0] or {}
+    return _carpetas
+
+
+def carpeta_inicial(clave, actual=""):
+    """`initialdir` del dialogo: la carpeta de lo que ya esta escrito en la fila; si no,
+    la ultima recordada para `clave`; None si ninguna existe."""
+    actual = str(actual).strip().strip('"')
+    for c in (actual, str(Path(actual).parent) if actual else "", _carpetas_cargadas().get(clave)):
+        if c and Path(c).is_absolute() and Path(c).is_dir():
+            return c
+    return None
+
+
+def recordar_carpeta(clave, ruta):
+    """Guarda la carpeta de `ruta` (o `ruta` misma si ya es carpeta) bajo `clave`."""
+    from programas.rem_utils import guardar_cache_json
+    p = Path(ruta)
+    carpeta = str(p if p.is_dir() else p.parent)
+    if _carpetas_cargadas().get(clave) != carpeta:
+        _carpetas[clave] = carpeta
+        guardar_cache_json(RUTA_CARPETAS, _carpetas, _QUE_CARPETAS, _SIN_CARPETAS)
 
 _AVISO_SIN_MODIFICAR = ((" Carga los archivos TAL COMO los descargas de RAYEN/IRIS: sin abrirlos, editarlos ni re-guardarlos, excepto los que se solicitan explicitamente.\n"
                          "     Un export modificado (cambio de formato, columnas, hojas) puede dar cifras erróneas sin aviso."))
@@ -191,8 +228,10 @@ def fila_archivo(parent, var_ruta, titulo, etiqueta="Archivo Excel:", on_elegido
 
     def examinar():
         f = filedialog.askopenfilename(
-            title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
+            title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
+            initialdir=carpeta_inicial(titulo, var_ruta.get()))
         if f:
+            recordar_carpeta(titulo, f)
             var_ruta.set(f)
             if on_elegido:
                 on_elegido(f)
@@ -228,8 +267,10 @@ def fila_archivos(parent, etiqueta, titulo, on_elegido=None):
         lbl.configure(text=f"{len(sel)}: " + (nombres[:70] + "…" if len(nombres) > 70 else nombres))
 
     def examinar():
-        fs = filedialog.askopenfilenames(title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
+        fs = filedialog.askopenfilenames(title=titulo, filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
+                                         initialdir=carpeta_inicial(titulo, sel[0] if sel else ""))
         if fs:
+            recordar_carpeta(titulo, fs[0])
             sel[:] = list(fs)
             _pintar()
             if on_elegido:
@@ -263,8 +304,10 @@ def fila_carpeta_salida(parent):
     ctk.CTkEntry(fila, textvariable=var).pack(side="left", fill="x", expand=True, padx=6)
 
     def elegir():
-        d = filedialog.askdirectory(title="Elige dónde guardar el resultado")
+        d = filedialog.askdirectory(title="Elige dónde guardar el resultado",
+                                    initialdir=carpeta_inicial("carpeta_salida", var.get()))
         if d:
+            recordar_carpeta("carpeta_salida", d)
             var.set(d)
 
     ctk.CTkButton(fila, text="Examinar…", width=100, command=elegir).pack(side="left")

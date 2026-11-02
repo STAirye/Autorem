@@ -220,6 +220,25 @@ class _dialogo_devuelve:
         return False
 
 
+def test_cada_examinar_recuerda_su_carpeta():
+    """Cada boton recuerda SU ultima carpeta entre sesiones (2.0.30); lo escrito en la
+    fila gana, y una carpeta que ya no existe no se ofrece (abre donde diga Windows)."""
+    from gui import widgets
+    widgets.RUTA_CARPETAS = _TMP / "carpetas.json"
+    widgets._carpetas = None
+    a = _TMP / "exports_a"
+    a.mkdir(exist_ok=True)
+    widgets.recordar_carpeta("ADA", a / "Formulario_Rayen.xlsx")
+    assert widgets.carpeta_inicial("ADA") == str(a)
+    assert widgets.carpeta_inicial("Grupal") is None, "un boton heredo la carpeta de otro"
+    widgets._carpetas = None   # sesion nueva: se lee del disco
+    assert widgets.carpeta_inicial("ADA") == str(a), "no sobrevivio al reinicio"
+    assert widgets.carpeta_inicial("ADA", str(_TMP / "otro.xlsx")) == str(_TMP)
+    assert "Formulario_Rayen" not in widgets.RUTA_CARPETAS.read_text(encoding="utf-8")
+    widgets._carpetas["ADA"] = str(_TMP / "ya_no_existe")
+    assert widgets.carpeta_inicial("ADA") is None
+
+
 def test_fila_archivos_se_puede_vaciar():
     """Un input multiple tiene que poder volver a VACIO, no solo sobreescribirse.
 

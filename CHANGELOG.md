@@ -10,6 +10,21 @@ reporte nuevo · `Z` = corrección (reinicia al subir `Y`).
 Tipos de cambio: **Agregado** (nuevo) · **Cambiado** · **Corregido** ·
 **Eliminado** · **Seguridad**.
 
+## [2.0.31] — 2026-11-02
+
+### Cambiado
+
+- **Cada botón Examinar recuerda su última carpeta**, también entre sesiones
+  (`~/.autorem/carpetas.json`, clave = el título del diálogo). Antes todos abrían donde
+  recordaba Windows, que guarda una sola carpeta para todo autoREM, así que el ADA abría
+  donde se había elegido el Grupal. Se guarda solo la carpeta, nunca el nombre del
+  archivo. Si la fila ya tiene una ruta, manda la carpeta de esa ruta; si la recordada ya
+  no existe, decide Windows. Vale para los inputs, la carpeta de salida (que sigue
+  partiendo vacía = junto al input) y los catálogos de «Acerca de»
+  (`widgets.carpeta_inicial` / `recordar_carpeta`).
+- **La carpeta de salida lleva su propio separador «Salida»**: pegada al bloque de
+  opcionales se leía como un opcional más.
+
 ## [2.0.30] — 2026-10-06
 
 ### Cambiado

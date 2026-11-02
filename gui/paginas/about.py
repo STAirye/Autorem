@@ -7,7 +7,7 @@
 # Author: Simon Tobar - CESFAM Dr. Luis Ferrada Urzua (APS, SSMC)
 # Copyright (C) 2026 Simon Tobar
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Version: 1.9.17
+# Version: 2.0.31
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -101,9 +101,11 @@ def _cargar_manual(nombre, root, refrescar):
     from tkinter import filedialog, messagebox
     ruta = filedialog.askopenfilename(
         title=f"Elige el .xlsx del catálogo '{nombre}' (DEIS)",
-        filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")])
+        filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
+        initialdir=widgets.carpeta_inicial("catalogos"))
     if not ruta:
         return
+    widgets.recordar_carpeta("catalogos", ruta)
 
     # Import PEREZOSO y con red: `tools/` es el unico modulo de desarrollo que viaja
     # en el exe (hiddenimport en autoREM.spec). Si algun dia el .spec se desincroniza
